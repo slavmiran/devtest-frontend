@@ -100,6 +100,31 @@
         return entry.catchupByProgress[Number(tester && tester.progress_id || 0)] || null;
     }
 
+    function catchupRequestForDay(catchup, day) {
+        var targetDay = Number(day || 0);
+        var requests = catchup && Array.isArray(catchup.requests) ? catchup.requests : [];
+        for (var index = 0; index < requests.length; index += 1) {
+            if (Number(requests[index] && requests[index].missed_testing_day || 0) === targetDay) {
+                return requests[index];
+            }
+        }
+        return null;
+    }
+
+    function requestedProofLabel(day, requestedAt) {
+        var requestTime = Date.parse(String(requestedAt || ''));
+        var elapsedDays = Number.isFinite(requestTime)
+            ? Math.max(0, Math.floor((Date.now() - requestTime) / 86400000))
+            : 0;
+        if (elapsedDays <= 0) {
+            return text('pcAttentionProofRequestedWaiting', 'Proof for day {day} requested · awaiting', { day: Number(day || 0) });
+        }
+        return text('pcAttentionProofRequestedAge', 'Proof for day {day} requested · {days} d.', {
+            day: Number(day || 0),
+            days: elapsedDays,
+        });
+    }
+
     function filterControlRows(project, rows) {
         if (!project || !rows || !rows.length) return rows || [];
         return rows.filter(function (row) {
@@ -507,8 +532,13 @@
                 (results[0].items || []).forEach(function (item) {
                     catchupByProgress[Number(item.progress_id || 0)] = {
                         requestableMissedDay: Number(item.catchup_proof && item.catchup_proof.requestable_missed_day || 0),
-                        pendingDays: Array.isArray(item.catchup_proof && item.catchup_proof.pending_days)
-                            ? item.catchup_proof.pending_days.map(Number)
+                        requestedDays: Array.isArray(item.catchup_proof && item.catchup_proof.requested_days)
+                            ? item.catchup_proof.requested_days.map(Number)
+                            : (Array.isArray(item.catchup_proof && item.catchup_proof.pending_days)
+                                ? item.catchup_proof.pending_days.map(Number)
+                                : []),
+                        requests: Array.isArray(item.catchup_proof && item.catchup_proof.requests)
+                            ? item.catchup_proof.requests
                             : [],
                         states: item.catchup_proof && typeof item.catchup_proof.states === 'object'
                             ? item.catchup_proof.states
@@ -895,11 +925,16 @@
             var reasons = [];
             var catchup = catchupStateFor(project, tester);
             var requestableMissedDay = Number(catchup && catchup.requestableMissedDay || 0);
-            var pendingDays = (catchup && catchup.pendingDays || []).map(Number);
+            var requestedDays = (catchup && catchup.requestedDays || []).map(Number);
             var yesterdayDay = testerDayNumber(tester) - 1;
             var candidateMissedDay = requestableMissedDay || yesterdayDay;
             var candidateState = String(catchup && catchup.states && catchup.states[String(candidateMissedDay)] || '').toLowerCase();
-            var catchupResolved = candidateState === 'completed' || candidateState === 'closed';
+            var candidateRequest = catchupRequestForDay(catchup, candidateMissedDay);
+            var proofRequested = candidateState === 'requested'
+                || candidateState === 'pending'
+                || requestedDays.indexOf(candidateMissedDay) !== -1;
+            var proofReceived = candidateState === 'proof_received' || candidateState === 'completed';
+            var catchupResolved = candidateState === 'owner_closed' || candidateState === 'closed';
             var neverOpened = !tester.last_check_date;
             if (neverOpened) {
                 reasons.push({
@@ -911,8 +946,16 @@
                 if (!catchupResolved && (requestableMissedDay > 0 || (yesterday && isControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
                     reasons.push({
                         code: 'missed_control',
-                        label: text('pcAttentionMissedControl', 'Control proof was not received yesterday'),
-                        proofRequested: pendingDays.indexOf(requestableMissedDay || yesterdayDay) !== -1,
+                        label: proofReceived
+                            ? text('pcAttentionProofReceived', 'Proof for day {day} received ✓', { day: candidateMissedDay })
+                            : (proofRequested
+                                ? requestedProofLabel(candidateMissedDay, candidateRequest && candidateRequest.requested_at)
+                                : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: candidateMissedDay })),
+                        missedDay: candidateMissedDay,
+                        proofRequested: proofRequested,
+                        proofReceived: proofReceived,
+                        proofRequestId: Number(candidateRequest && candidateRequest.id || 0),
+                        completedProofId: Number(candidateRequest && candidateRequest.completed_proof_id || 0),
                     });
                 }
             }
@@ -933,7 +976,22 @@
                 });
             }
             if (!reasons.length) return;
-            items.push({ tester: tester, testerId: Number(tester.tester_id || 0), reasons: reasons });
+            var waitingOnlyForTester = reasons.some(function (reason) {
+                return reason.code === 'missed_control' && reason.proofRequested && !reason.proofReceived;
+            }) && !reasons.some(function (reason) {
+                return reason.code !== 'missed_control';
+            });
+            items.push({
+                tester: tester,
+                testerId: Number(tester.tester_id || 0),
+                reasons: reasons,
+                waitingOnlyForTester: waitingOnlyForTester,
+            });
+        });
+        // Already-requested rows are useful context, but must not push actual
+        // owner actions lower in the Attention list.
+        items.sort(function (left, right) {
+            return Number(!!left.waitingOnlyForTester) - Number(!!right.waitingOnlyForTester);
         });
         return items;
     }
@@ -1005,16 +1063,29 @@
                     'openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(item.testerId) + ', event)',
                     { title: text('linkedBadgeDebt', 'Mutual debt') });
             }
-            if (missedControl && missedControl.proofRequested) {
+            if (missedControl && missedControl.proofReceived) {
+                if (missedControl.completedProofId > 0) {
+                    actions += iconAct('image', text('pcViewProof', 'View proof'),
+                        'pcOpenProof(' + Number(appId) + ',' + Number(missedControl.completedProofId) + ',0)');
+                }
+                if (missedControl.proofRequestId > 0) {
+                    actions += iconAct('done', text('pcCloseProofRequest', 'Done'),
+                        'pcCloseCatchupProofRequest(' + Number(appId) + ',' + Number(missedControl.proofRequestId) + ')');
+                }
+            } else if (missedControl && missedControl.proofRequested) {
                 actions += iconAct('done', text('pcProofRequested', 'Proof requested'), '', { done: true });
             } else if (missedControl) {
                 actions += iconAct('image', text('pcRequestProof', 'Request proof'),
                     'pcRequestCatchupProof(' + Number(appId) + ',' + Number(item.testerId) + ')');
-            } else {
+            }
+            if (!missedControl || !missedControl.proofReceived) {
                 actions += iconAct('remind', text('pcRemindBtn', 'Remind'),
                     'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
             }
-            var metaHtml = item.reasons.map(function (reason) {
+            var currentDay = testerDayNumber(item.tester);
+            var metaHtml = '<span class="pc-person__day">' +
+                esc(text('pcDayOf', 'Day {day} / {total}', { day: currentDay, total: 14 })) +
+            '</span>' + item.reasons.map(function (reason) {
                 return '<span class="pc-person__reason">• ' + esc(reason.label) + '</span>';
             }).join('');
             return personRowHtml({
@@ -1693,16 +1764,73 @@
         });
     };
 
-    window.pcRequestCatchupProof = async function (appId, testerId) {
-        var isRussian = typeof lang !== 'undefined' && lang === 'ru';
-        var message = isRussian
-            ? 'Запросить у тестировщика досдачу вчерашнего контрольного proof? Он сможет закрыть её на следующем обычном дне.'
-            : 'Request a catch-up for yesterday\'s control proof? The tester can close it on the next regular day.';
-        var confirmed = await new Promise(function(resolve) {
-            if (window.tg && typeof window.tg.showConfirm === 'function') window.tg.showConfirm(message, resolve);
-            else resolve(window.confirm(message));
+    function removeCatchupProofRequestDialog() {
+        var dialog = document.getElementById('pc-catchup-proof-request-dialog');
+        if (dialog && dialog.parentNode) dialog.parentNode.removeChild(dialog);
+    }
+
+    function openCatchupProofRequestDialog(appId, testerId) {
+        removeCatchupProofRequestDialog();
+        var project = projectById(appId);
+        var tester = project && (project.testers || []).find(function (item) {
+            return Number(item && item.tester_id || 0) === Number(testerId || 0);
         });
-        if (!confirmed) return;
+        if (!project || !tester) return;
+        var catchup = catchupStateFor(project, tester);
+        var day = Number(catchup && catchup.requestableMissedDay || 0) || Math.max(1, testerDayNumber(tester) - 1);
+        var html = '<div id="pc-catchup-proof-request-dialog" class="modal-overlay pc-catchup-request-modal" role="presentation" onclick="if (event.target === this) pcCloseCatchupProofRequestDialog()">' +
+            '<section class="modal-content pc-catchup-request-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-catchup-request-title">' +
+                '<div class="sheet-handle" aria-hidden="true"></div>' +
+                '<div class="pc-catchup-request-sheet__head">' +
+                    '<div class="pc-catchup-request-sheet__icon" aria-hidden="true">' + ICONS.image + '</div>' +
+                    '<div><h3 id="pc-catchup-request-title">' + esc(text('pcCatchupRequestTitle', 'Catch-up control proof')) + '</h3>' +
+                    '<p>' + esc(text('pcCatchupRequestDay', 'Control day {day}', { day: day })) + '</p></div>' +
+                    '<button class="pc-catchup-request-sheet__close" type="button" aria-label="' +
+                        esc(text('pcCloseDialog', 'Close')) + '" onclick="pcCloseCatchupProofRequestDialog()">×</button>' +
+                '</div>' +
+                '<div class="pc-catchup-request-sheet__tester">' + avatarHtml(tester) +
+                    '<span>' + esc(handleOf(tester)) + '</span></div>' +
+                '<p class="pc-catchup-request-sheet__lead">' +
+                    esc(text('pcCatchupRequestLead', 'The control proof for day {day} was missed. Send a request to complete it?', { day: day })) +
+                '</p>' +
+                '<ul class="pc-catchup-request-sheet__facts">' +
+                    '<li>' + esc(text('pcCatchupRequestFactRegular', 'One screenshot, Bug, or Idea with a screenshot on the next regular day will close the request.')) + '</li>' +
+                    '<li>' + esc(text('pcCatchupRequestFactControl', 'A regular control-day check-in remains separate.')) + '</li>' +
+                    '<li>' + esc(text('pcCatchupRequestFactPenalty', 'Karma changes only if the test ends while this request is still open.')) + '</li>' +
+                '</ul>' +
+                '<div class="pc-catchup-request-sheet__actions">' +
+                    '<button type="button" class="btn btn-secondary" onclick="pcCloseCatchupProofRequestDialog()">' +
+                        esc(text('pcCancel', 'Cancel')) + '</button>' +
+                    '<button id="pc-catchup-request-submit" type="button" class="btn btn-primary" onclick="pcSubmitCatchupProofRequest(' + Number(appId) + ',' + Number(testerId) + ')">' +
+                        esc(text('pcRequestProof', 'Request proof')) + '</button>' +
+                '</div>' +
+            '</section>' +
+        '</div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+        var dialog = document.getElementById('pc-catchup-proof-request-dialog');
+        window.requestAnimationFrame(function () {
+            if (dialog) dialog.classList.add('active');
+        });
+    }
+
+    window.pcCloseCatchupProofRequestDialog = function () {
+        var dialog = document.getElementById('pc-catchup-proof-request-dialog');
+        if (!dialog) return;
+        dialog.classList.remove('active');
+        window.setTimeout(removeCatchupProofRequestDialog, 220);
+    };
+
+    window.pcRequestCatchupProof = function (appId, testerId) {
+        openCatchupProofRequestDialog(Number(appId), Number(testerId));
+    };
+
+    window.pcSubmitCatchupProofRequest = async function (appId, testerId) {
+        var submit = document.getElementById('pc-catchup-request-submit');
+        if (submit && submit.disabled) return;
+        if (submit) {
+            submit.disabled = true;
+            submit.classList.add('is-loading');
+        }
         try {
             var response = await fetch(API_BASE + '/projects/' + Number(appId) + '/testing-control/catchup-proof-requests', {
                 method: 'POST',
@@ -1711,11 +1839,34 @@
             });
             var payload = await response.json();
             if (!response.ok || payload.status !== 'success') throw new Error(payload.error || payload.detail || 'catchup_request_failed');
-            if (typeof showToast === 'function') showToast(isRussian ? 'Запрос досдачи отправлен' : 'Proof request sent');
+            if (typeof showToast === 'function') showToast(text('pcCatchupRequestSent', 'Proof request sent'));
+            window.pcCloseCatchupProofRequestDialog();
             cache.delete(Number(appId));
             hydrate(appId);
         } catch (_) {
-            if (typeof showToast === 'function') showToast(isRussian ? 'Не удалось создать запрос досдачи' : 'Could not request catch-up proof');
+            if (typeof showToast === 'function') showToast(text('pcCatchupRequestFailed', 'Could not request proof'));
+            if (submit) {
+                submit.disabled = false;
+                submit.classList.remove('is-loading');
+            }
+        }
+    };
+
+    window.pcCloseCatchupProofRequest = async function (appId, requestId) {
+        if (Number(requestId || 0) <= 0) return;
+        try {
+            var response = await fetch(API_BASE + '/projects/' + Number(appId) + '/testing-control/catchup-proof-requests/' + Number(requestId) + '/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ init_data: initData() }),
+            });
+            var payload = await response.json();
+            if (!response.ok || payload.status !== 'success') throw new Error(payload.error || payload.detail || 'catchup_close_failed');
+            if (typeof showToast === 'function') showToast(text('pcCatchupClosed', 'Proof request closed'));
+            cache.delete(Number(appId));
+            hydrate(appId);
+        } catch (_) {
+            if (typeof showToast === 'function') showToast(text('pcCatchupCloseFailed', 'Could not close proof request'));
         }
     };
 

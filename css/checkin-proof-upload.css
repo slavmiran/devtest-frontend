@@ -260,9 +260,9 @@
 }
 
 .checkin-proof-bonus-chip.is-active {
-    background: rgba(52, 199, 89, 0.12);
-    border: 1px solid rgba(52, 199, 89, 0.32);
-    color: #34c759;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.36);
+    color: rgba(255, 255, 255, 0.92);
     font-weight: 600;
 }
 
@@ -294,11 +294,11 @@
 }
 
 .checkin-proof-segment.is-filled {
-    background: var(--button-color, #0a84ff);
+    background: var(--accent-primary, var(--button-color, #0a84ff));
 }
 
 .checkin-proof-upload-status.is-bonus .checkin-proof-segment.is-filled {
-    background: #34c759;
+    background: var(--accent-primary, var(--button-color, #0a84ff));
 }
 
 .checkin-proof-progress-note {
