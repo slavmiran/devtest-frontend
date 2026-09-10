@@ -1637,15 +1637,17 @@ function renderProjects(force) {
                                 </span>
                                 <svg class="pc-quick-tile__chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
-                            <button type="button" class="pc-quick-tile pc-quick-tile--notifications ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer="${project.id}" aria-pressed="${proofPingEnabled ? 'true' : 'false'}" aria-label="${window.escapeHTML(window.t('pcPingToggleAria', {}, lang) || 'Уведомления о скриншотах контрольного дня')}" onclick="event.stopPropagation(); pcProofPingToggleDot(${project.id}, this)">
-                                <span class="pc-quick-tile__icon pc-quick-tile__icon--notifications" aria-hidden="true">
+                            <div class="pc-quick-tile pc-quick-tile--notifications ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer="${project.id}">
+                                <button type="button" class="pc-quick-tile__icon pc-quick-tile__icon--notifications pc-quick-tile__explain" aria-haspopup="dialog" aria-expanded="false" aria-controls="proof-ping-explain" aria-label="${window.escapeHTML(window.t('pcPingExplainAria', {}, lang) || 'Что это за уведомления')}" onclick="event.stopPropagation(); pcProofPingOpenExplain(${project.id}, event)">
                                     <img data-pc-ping-drawer-icon="${project.id}" src="${notificationIconSrc}" alt="">
-                                </span>
-                                <span class="pc-quick-tile__copy">
-                                    <span class="pc-quick-tile__label">${window.escapeHTML(window.t('pcPingTitle', {}, lang) || 'Уведомления')}</span>
-                                    <span class="pc-quick-tile__value pc-quick-tile__value--ping ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer-status="${project.id}">${window.escapeHTML(notificationState)}</span>
-                                </span>
-                            </button>
+                                </button>
+                                <button type="button" class="pc-quick-tile__toggle" role="switch" aria-checked="${proofPingEnabled ? 'true' : 'false'}" aria-pressed="${proofPingEnabled ? 'true' : 'false'}" aria-label="${window.escapeHTML(window.t('pcPingToggleAria', {}, lang) || 'Уведомления о скриншотах контрольного дня')}" onclick="event.stopPropagation(); pcProofPingToggleDot(${project.id}, this)">
+                                    <span class="pc-quick-tile__copy">
+                                        <span class="pc-quick-tile__label">${window.escapeHTML(window.t('pcPingTitle', {}, lang) || 'Уведомления')}</span>
+                                        <span class="pc-quick-tile__value pc-quick-tile__value--ping ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer-status="${project.id}">${window.escapeHTML(notificationState)}</span>
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                         <div class="pc-quick-settings__actions">
                             <button type="button" class="pc-quick-action" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">

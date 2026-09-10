@@ -4766,7 +4766,7 @@ button.pc-quick-tile {
     cursor: pointer;
 }
 
-button.pc-quick-tile:hover {
+.pc-quick-tile:hover {
     background: rgba(255, 255, 255, 0.055);
     border-color: rgba(255, 255, 255, 0.12);
 }
@@ -4774,6 +4774,48 @@ button.pc-quick-tile:hover {
 button.pc-quick-tile:active,
 .pc-quick-action:active {
     transform: scale(0.98);
+}
+
+.pc-quick-tile--notifications {
+    padding-left: 6px;
+    padding-right: 8px;
+}
+
+button.pc-quick-tile__icon {
+    margin-right: 9px;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button.pc-quick-tile__icon:hover,
+button.pc-quick-tile__icon:focus-visible {
+    background: rgba(10, 132, 255, 0.16);
+    border-color: rgba(10, 132, 255, 0.3);
+}
+
+.pc-quick-tile__toggle {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1 1 auto;
+    min-height: 38px;
+    padding: 0 2px 0 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pc-quick-tile__toggle:focus-visible {
+    outline: 1px solid rgba(10, 132, 255, 0.45);
+    outline-offset: 1px;
 }
 
 /* Unified neutral icon well */

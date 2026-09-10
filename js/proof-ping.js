@@ -409,7 +409,10 @@
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-drawer="' + safeId + '"]')).forEach(function (tile) {
             tile.classList.toggle('is-on', on);
             tile.classList.toggle('is-off', !on);
-            tile.setAttribute('aria-pressed', on ? 'true' : 'false');
+            Array.prototype.slice.call(tile.querySelectorAll('.pc-quick-tile__toggle')).forEach(function (toggle) {
+                toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+                toggle.setAttribute('aria-checked', on ? 'true' : 'false');
+            });
         });
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping-drawer-icon="' + safeId + '"]')).forEach(function (icon) {
             icon.src = on
@@ -550,7 +553,11 @@
     };
 
     window.pcProofPingToggleDot = function (appId, button) {
-        var enabled = !(button && button.classList.contains('is-on'));
+        var source = button;
+        if (button && typeof button.closest === 'function') {
+            source = button.closest('[data-pc-ping-drawer]') || button.closest('[data-pc-ping]') || button;
+        }
+        var enabled = !(source && source.classList.contains('is-on'));
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
         setEnabled(appId, enabled);
     };
@@ -558,7 +565,8 @@
     function syncExplainExpanded(appId, isOpen) {
         var safeId = Number(appId || 0);
         Array.prototype.slice.call(document.querySelectorAll(
-            '.pc-ping--compact[data-pc-ping="' + safeId + '"] .pc-ping-icon-btn--info'
+            '.pc-ping--compact[data-pc-ping="' + safeId + '"] .pc-ping-icon-btn--info, ' +
+            '[data-pc-ping-drawer="' + safeId + '"] .pc-quick-tile__explain'
         )).forEach(function (btn) {
             btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });

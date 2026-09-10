@@ -172,13 +172,17 @@ function quickSettings() {
               <span class="pc-quick-tile__value">Публичный</span>
             </span>
           </button>
-          <button type="button" class="pc-quick-tile pc-quick-tile--notifications is-on">
-            <span class="pc-quick-tile__icon pc-quick-tile__icon--notifications" aria-hidden="true">${BELL}</span>
-            <span class="pc-quick-tile__copy">
-              <span class="pc-quick-tile__label">Уведомления</span>
-              <span class="pc-quick-tile__value pc-quick-tile__value--ping is-on">Включены</span>
-            </span>
-          </button>
+          <div class="pc-quick-tile pc-quick-tile--notifications is-on" data-pc-ping-drawer="1">
+            <button type="button" class="pc-quick-tile__icon pc-quick-tile__icon--notifications pc-quick-tile__explain" aria-haspopup="dialog" aria-label="Что это за уведомления">
+              <img src="./images/Icons/notification-new-svgrepo-com.svg" alt="">
+            </button>
+            <button type="button" class="pc-quick-tile__toggle" role="switch" aria-checked="true" aria-pressed="true" aria-label="Уведомления о скриншотах контрольного дня">
+              <span class="pc-quick-tile__copy">
+                <span class="pc-quick-tile__label">Уведомления</span>
+                <span class="pc-quick-tile__value pc-quick-tile__value--ping is-on">Включены</span>
+              </span>
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -234,7 +238,7 @@ function bindPingToggles(root) {
 bindPingToggles();
 var explainOverlay = document.getElementById('proof-ping-explain');
 var explainBody = document.getElementById('proof-ping-explain-body');
-document.querySelectorAll('.pc-ping-icon-btn--info').forEach(function (btn) {
+document.querySelectorAll('.pc-ping-icon-btn--info, .pc-quick-tile__explain').forEach(function (btn) {
   btn.addEventListener('click', function (event) {
     event.stopPropagation();
     explainBody.innerHTML = pingExpanded().replace('pc-ping pc-ping--expanded', 'pc-ping pc-ping--expanded pc-ping--dialog');
@@ -248,8 +252,26 @@ explainOverlay.addEventListener('click', function (event) {
   if (event.target !== explainOverlay) return;
   explainOverlay.classList.remove('active');
   explainOverlay.setAttribute('aria-hidden', 'true');
-  document.querySelectorAll('.pc-ping-icon-btn--info').forEach(function (btn) {
+  document.querySelectorAll('.pc-ping-icon-btn--info, .pc-quick-tile__explain').forEach(function (btn) {
     btn.setAttribute('aria-expanded', 'false');
+  });
+});
+document.querySelectorAll('.pc-quick-tile__toggle').forEach(function (btn) {
+  btn.addEventListener('click', function (event) {
+    event.stopPropagation();
+    var tile = btn.closest('.pc-quick-tile--notifications');
+    if (!tile) return;
+    var on = !tile.classList.contains('is-on');
+    tile.classList.toggle('is-on', on);
+    tile.classList.toggle('is-off', !on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    var status = tile.querySelector('.pc-quick-tile__value--ping');
+    if (status) {
+      status.classList.toggle('is-on', on);
+      status.classList.toggle('is-off', !on);
+      status.textContent = on ? 'Включены' : 'Выключены';
+    }
   });
 });
 document.querySelectorAll('.pc-activity__hist').forEach(function (btn) {
