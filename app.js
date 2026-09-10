@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadTasks(true).catch(function() {});
                 }
                 if (typeof window.refreshVisibleProjects === 'function') {
-                    window.refreshVisibleProjects(false).catch(function() {});
+                    window.refreshVisibleProjects(true).catch(function() {});
                 }
             }
         });

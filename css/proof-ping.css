@@ -489,7 +489,7 @@
     opacity: 0.78;
 }
 
-/* ── State 2: compact bar ───────────────────────────────────────────────── */
+/* ── State 2: compact bar (Smart Status Capsule) ───────────────────────── */
 
 .pc-ping--compact {
     display: flex;
@@ -502,8 +502,91 @@
                 opacity 0.2s ease;
 }
 
+.pc-ping--capsule {
+    justify-content: space-between;
+    gap: 10px;
+    margin: 6px 12px 10px 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(255, 159, 10, 0.05);
+    border: 1px solid rgba(255, 159, 10, 0.22);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+.pc-ping--capsule::after {
+    display: none !important;
+}
+
+.pc-ping__capsule-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.pc-ping__capsule-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    color: #ff9f0a;
+}
+
+.pc-ping__capsule-icon-svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+.pc-ping__capsule-text {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-ping__capsule-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    padding: 5px 12px;
+    border: none;
+    border-radius: 8px;
+    background: #24a1de;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pc-ping__capsule-btn:active {
+    transform: scale(0.96);
+    background: #1b8ec5;
+}
+
+.pc-ping__capsule-btn .pc-ping__glyph {
+    width: 14px;
+    height: 14px;
+    display: block;
+    fill: currentColor;
+}
+
+.pc-ping__capsule-btn-label {
+    white-space: nowrap;
+}
+
 /* Own bottom edge so the ✕ clearly belongs to this strip, not to Activity. */
-.pc-ping--compact::after {
+.pc-ping--compact:not(.pc-ping--capsule)::after {
     content: '';
     position: absolute;
     left: 12px;

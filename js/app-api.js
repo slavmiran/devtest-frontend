@@ -2109,6 +2109,12 @@ async function loadProjects(isBackground, force) {
         if (cached && Array.isArray(cached.projects)) {
             myProjects = cached.projects;
             visibilityStats = cached.visibilityStats || {};
+            if (typeof cached.is_community_member !== 'undefined') {
+                window.isCommunityMember = !!cached.is_community_member;
+                if (window.ProofPing && typeof window.ProofPing.setCommunityMember === 'function') {
+                    window.ProofPing.setCommunityMember(window.isCommunityMember);
+                }
+            }
             _projectsLoadedOnce = true;
             myProjectsLoadError = false;
             markProjectsViewDirty();
@@ -2435,6 +2441,12 @@ async function _loadProjectsImpl(options) {
         var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var data = await response.json();
+        if (typeof data.is_community_member !== 'undefined') {
+            window.isCommunityMember = !!data.is_community_member;
+            if (window.ProofPing && typeof window.ProofPing.setCommunityMember === 'function') {
+                window.ProofPing.setCommunityMember(window.isCommunityMember);
+            }
+        }
         var nextProjects = _mapProjectsFromApi(data);
         var nextStats = _mapStatsFromApi(data);
 
@@ -2469,7 +2481,7 @@ async function _loadProjectsImpl(options) {
         }
 
         // Update cache
-        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, is_community_member: window.isCommunityMember, ts: Date.now() });
         _projectsLoadedOnce = true;
         _lastFetchTimes.projects = Date.now();
         myProjectsLoadError = false;
