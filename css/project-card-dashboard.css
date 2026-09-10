@@ -4017,9 +4017,9 @@ button.pc-act-reason {
     align-items: stretch;
     gap: 0;
     margin: 0 14px 8px;
-    padding: 10px 0 8px;
+    padding: 7px 0 6px;
     border: 1px solid rgba(188, 206, 238, 0.09);
-    border-radius: 16px;
+    border-radius: 14px;
     background: rgba(7, 14, 25, 0.22);
     box-sizing: border-box;
 }
@@ -4030,9 +4030,9 @@ button.pc-act-reason {
     align-items: stretch;
     justify-content: space-between;
     min-width: 0;
-    height: 104px;
+    height: 78px;
     box-sizing: border-box;
-    padding: 0 6px;
+    padding: 0 5px;
     border: none;
     border-radius: 0;
     background: transparent;
@@ -4046,10 +4046,10 @@ button.pc-act-reason {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    min-height: 14px;
+    gap: 4px;
+    min-height: 12px;
     color: rgba(189, 205, 231, 0.58);
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
     line-height: 1.15;
     letter-spacing: 0.055em;
@@ -4079,23 +4079,23 @@ button.pc-act-reason {
 }
 
 .pc-metric-card--term .pc-metric-main {
-    flex: 0 0 54px;
+    flex: 0 0 42px;
     margin: 0;
     min-height: 0;
 }
 
 .pc-metric-card--testers .pc-metric-main {
-    flex: 0 0 54px;
+    flex: 0 0 42px;
     flex-direction: column;
     justify-content: center;
-    gap: 4px;
+    gap: 2px;
     margin: 0;
     min-height: 0;
 }
 
 .pc-metric-day__value,
 .pc-metric-team__value {
-    font-size: 24px;
+    font-size: 23px;
     font-weight: 820;
     letter-spacing: -0.04em;
     line-height: 1;
@@ -4103,13 +4103,13 @@ button.pc-act-reason {
 
 /* Micro progress bar under testers count */
 .pc-testers-microbar {
-    width: 38px;
+    width: 36px;
     height: 3px;
     border-radius: 2px;
     background: rgba(255, 255, 255, 0.12);
     overflow: hidden;
     display: block;
-    margin: 2px auto 0;
+    margin: 1px auto 0;
 }
 
 .pc-testers-microbar__fill {
@@ -4237,7 +4237,7 @@ button.pc-metric-num-btn:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 14px;
+    min-height: 12px;
     margin-top: 0;
     padding-top: 0;
     border-top: none;
@@ -4248,11 +4248,11 @@ button.pc-metric-num-btn:active {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     color: rgba(197, 211, 233, 0.60);
-    font-size: 10.5px;
+    font-size: 9.5px;
     font-weight: 400;
-    line-height: 1.25;
+    line-height: 1.2;
     white-space: nowrap;
 }
 
@@ -4266,8 +4266,8 @@ button.pc-metric-num-btn:active {
 }
 
 .pc-metric-footer__line--buffer .pc-action-btn__icon {
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
     filter: invert(76%) sepia(23%) saturate(794%) hue-rotate(176deg) brightness(98%) contrast(94%);
 }
 
@@ -4284,25 +4284,25 @@ button.pc-metric-num-btn:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 64px;
+    flex: 0 0 46px;
     margin: 0;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
-    width: 64px;
-    height: 64px;
+    width: 46px;
+    height: 46px;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count {
-    font-size: 12.5px;
+    font-size: 10px;
     font-weight: 800;
     line-height: 1.1;
     color: #f8faff;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label {
-    margin-top: 1px;
-    font-size: 7.5px;
+    margin-top: 0;
+    font-size: 6px;
     font-weight: 650;
     color: rgba(204, 216, 238, 0.65);
     text-transform: none;
@@ -4515,7 +4515,7 @@ button.pc-metric-num-btn:active {
     #tab-projects .card[id^="project-card-"] .pc-metrics-grid {
         margin-right: 10px;
         margin-left: 10px;
-        padding: 10px 0 8px;
+        padding: 6px 0 5px;
     }
 
     #tab-projects .card[id^="project-card-"] .pc-action-bar {
@@ -4525,29 +4525,30 @@ button.pc-metric-num-btn:active {
     }
 
     #tab-projects .card[id^="project-card-"] .pc-metric-card {
-        height: 110px;
-        padding: 0 4px;
+        height: 74px;
+        padding: 0 3px;
     }
 
-    .pc-metric-title { font-size: 8.5px; }
+    .pc-metric-title { font-size: 8px; }
     .pc-metric-day__value,
-    .pc-metric-team__value { font-size: 21px; }
-    .pc-metric-day__total { font-size: 12px; }
-    .pc-metric-reserve { padding: 3px 4px; font-size: 8.5px; }
-    .pc-metric-footer__line { font-size: 9px; }
+    .pc-metric-team__value { font-size: 20px; }
+    .pc-metric-day__total { font-size: 11px; }
+    .pc-metric-reserve { padding: 2px 3px; font-size: 8px; }
+    .pc-metric-footer__line { font-size: 8.5px; }
 
     .pc-metric-ring {
         min-height: 0;
         margin-top: 0;
+        flex: 0 0 42px;
     }
 
     #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring {
-        width: 56px;
-        height: 56px;
+        width: 42px;
+        height: 42px;
     }
 
-    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count { font-size: 11px; }
-    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label { font-size: 6.5px; }
+    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__count { font-size: 9px; }
+    #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label { font-size: 5.5px; }
     .pc-daily-activity { padding: 3px 4px; font-size: 8px; }
 
     .pc-action-btn {

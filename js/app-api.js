@@ -2172,8 +2172,11 @@ function _refreshProjectActivityData(projects, forceRefresh) {
     (Array.isArray(projects) ? projects : []).forEach(function(project) {
         var appId = _projectSnapshotId(project);
         if (!appId) return;
-        if (forceRefresh && typeof window.ProjectToday.refresh === 'function') {
-            window.ProjectToday.refresh(appId, { maxAgeMs: 90000 });
+        if (typeof window.ProjectToday.refresh === 'function') {
+            // Revalidate through ProjectToday instead of dropping its cache.
+            // refresh() retains the painted snapshot until a whole fresh result
+            // arrives, so dynamic filters never flash into an empty state.
+            window.ProjectToday.refresh(appId, { maxAgeMs: forceRefresh ? 90000 : 0 });
         } else if (typeof window.ProjectToday.invalidate === 'function') {
             window.ProjectToday.invalidate(appId);
         }

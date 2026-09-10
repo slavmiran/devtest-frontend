@@ -262,7 +262,9 @@
 
     function chatEntryHtml() {
         var member = isCommunityMember();
-        var topicTag = text('pcPingTopicBadge', 'Topic');
+        var statusBadgeHtml = member
+            ? '<span class="pc-ping__chat-status pc-ping__chat-status--member">' + esc(text('pcPingStatusMember', '✓ В сообществе')) + '</span>'
+            : '<span class="pc-ping__chat-status pc-ping__chat-status--warn">' + esc(text('pcPingStatusNotMember', 'Не в сообществе')) + '</span>';
 
         if (member) {
             return '<button type="button" class="pc-ping__chat pc-ping__chat--compact" onclick="pcProofPingOpenChat(event)">' +
@@ -272,7 +274,7 @@
                 '<div class="pc-ping__chat-content pc-ping__chat-content--compact">' +
                     '<div class="pc-ping__chat-title-row">' +
                         '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCta', 'Testing Proofs')) + '</span>' +
-                        '<span class="pc-ping__topic-badge">' + esc(topicTag) + '</span>' +
+                        statusBadgeHtml +
                     '</div>' +
                 '</div>' +
                 '<div class="pc-ping__chat-action pc-ping__chat-action--compact" aria-hidden="true">' +
@@ -289,7 +291,7 @@
             '<div class="pc-ping__chat-content">' +
                 '<div class="pc-ping__chat-title-row">' +
                     '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCta', 'Testing Proofs')) + '</span>' +
-                    '<span class="pc-ping__topic-badge">' + esc(topicTag) + '</span>' +
+                    statusBadgeHtml +
                 '</div>' +
                 '<span class="pc-ping__chat-note">' + esc(text('pcPingChatNonMemberNote', 'Чтобы бот мог тегать вас, вступите в чат сообщества.')) + '</span>' +
             '</div>' +
@@ -311,10 +313,6 @@
         var extra = extraClass ? ' ' + extraClass : '';
         var isDialog = extra.indexOf('pc-ping--dialog') !== -1;
         var titleAttrs = isDialog ? ' id="proof-ping-explain-title"' : '';
-        var member = isCommunityMember();
-        var memberBadgeHtml = member
-            ? '<span class="pc-ping__status pc-ping__status--member">' + esc(text('pcPingStatusMember', '✓ В сообществе')) + '</span>'
-            : '<span class="pc-ping__status pc-ping__status--warn">' + esc(text('pcPingStatusNotMember', '⚠️ Не в чате')) + '</span>';
 
         return '<section class="pc-ping pc-ping--expanded' + extra + (enabled ? ' is-on' : ' is-off') +
             '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
@@ -326,7 +324,6 @@
                     '<div class="pc-ping__title-row">' +
                         '<h3 class="pc-ping__title"' + titleAttrs + '>' + esc(text('pcPingTitle', 'Notifications')) + '</h3>' +
                         '<span class="pc-ping__status ' + (enabled ? 'is-on' : 'is-off') + '" data-pc-ping-status="' + appId + '">' + esc(statusLabel) + '</span>' +
-                        memberBadgeHtml +
                     '</div>' +
                     '<p class="pc-ping__desc">' + descHtml() + '</p>' +
                 '</div>' +

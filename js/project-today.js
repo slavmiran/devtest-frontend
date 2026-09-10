@@ -1033,7 +1033,10 @@
 
     function activityCounts(project) {
         var entry = cache.get(Number(project.id));
-        var hydrated = !!(entry && !entry.loading && !entry.error && entry.loadedAt > 0);
+        // A background refresh keeps the last complete snapshot in `control` /
+        // `others`. Continue using it until the new response is complete: the
+        // activity filters must not briefly disappear while a card is refreshed.
+        var hydrated = !!(entry && !entry.error && entry.loadedAt > 0);
         var controlRows = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
         return {
             entry: entry,

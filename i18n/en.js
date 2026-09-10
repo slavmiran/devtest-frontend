@@ -2963,7 +2963,7 @@
             pcPingJoinBtn: "Join",
             pcPingMemberActive: "Notifications active",
             pcPingStatusMember: "✓ In community",
-            pcPingStatusNotMember: "⚠️ Not in chat",
+            pcPingStatusNotMember: "Not in community",
             pcPingOpenTopic: "Open",
             pcPingChatNonMemberNote: "To receive bot mentions, join the community chat.",
             pcPingMention: "@mention",

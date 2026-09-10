@@ -2970,7 +2970,7 @@
             pcPingJoinBtn: "Вступить",
             pcPingMemberActive: "Уведомления активны",
             pcPingStatusMember: "✓ В сообществе",
-            pcPingStatusNotMember: "⚠️ Не в чате",
+            pcPingStatusNotMember: "Не в сообществе",
             pcPingOpenTopic: "Открыть",
             pcPingChatNonMemberNote: "Чтобы бот мог тегать вас, вступите в чат сообщества.",
             pcPingMention: "@упоминанием",
