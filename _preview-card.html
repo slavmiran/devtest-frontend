@@ -55,20 +55,16 @@ function ring(done, total) {
   }
   const pr=(pin-90)*Math.PI/180;
   const pinHtml = `<circle cx="${(cx+r*Math.cos(pr)).toFixed(2)}" cy="${(cy+r*Math.sin(pr)).toFixed(2)}" r="3" fill="#8e8e93" stroke="#16141c" stroke-width="1.5"/>`;
-  return `<div class="pc-ring"><svg viewBox="0 0 100 100" class="pc-ring__svg"><circle cx="50" cy="50" r="37.5" fill="none" stroke="#24232c" stroke-width="7.5"/>${deficit}${fill}${pinHtml}</svg><div class="pc-ring__center"><span class="pc-ring__count">${done}&nbsp;/&nbsp;12</span><span class="pc-ring__label">Чекины дня</span></div></div>`;
+  return `<div class="pc-ring"><svg viewBox="0 0 100 100" class="pc-ring__svg"><circle cx="50" cy="50" r="37.5" fill="none" stroke="#24232c" stroke-width="7.5"/>${deficit}${fill}${pinHtml}</svg><div class="pc-ring__center"><span class="pc-ring__count"><span class="pc-ring__done">${done}</span><span class="pc-ring__total">&nbsp;/&nbsp;12</span></span><span class="pc-ring__label">Чекины дня</span></div></div>`;
 }
 
 function stateBlock(o) {
   const teamSize = o.teamSize || o.testers;
   const timeIcon = '<img class="pc-action-btn__icon" src="./images/Icons/time-add-svgrepo-com.svg" alt="">';
-  const syncIcon = '<img class="pc-action-btn__icon" src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" alt="">';
   const dayValue = `<span class="pc-metric-day__value${o.bufferActive ? ' pc-metric-day__value--buffer' : ''}">${o.day}</span>${o.total ? '<span class="pc-metric-day__total">/ 14</span>' : ''}`;
   const dayFooter = o.total
     ? `<span class="pc-metric-footer__line">Всего: <span class="pc-metric-footer__value">${o.totalDays} дн.</span></span>`
     : `<span class="pc-metric-footer__line pc-metric-footer__line--buffer">${timeIcon}Буфер +48ч</span>`;
-  const actionSecondary = o.needSync
-    ? `<button type="button" class="pc-action-btn pc-action-btn--sync">${syncIcon}<span>Синхронизировать</span></button>`
-    : `<button type="button" class="pc-action-btn pc-action-btn--term">${timeIcon}<span>Срок</span></button>`;
   return `
   <div class="pc-closed-head">
     <span class="pc-stage-badge pc-stage-badge--${o.stage}">${o.stageLabel}</span>
@@ -93,13 +89,21 @@ function stateBlock(o) {
       <div class="pc-metric-footer"><span class="pc-metric-footer__line pc-daily-activity-line">Сегодня <span class="pc-metric-footer__value">${o.pct}%</span></span></div>
     </section>
   </div>
-  <div class="pc-action-bar${o.needSync ? ' is-sync-required' : ''}">
-    <button type="button" class="pc-cta pc-cta--primary pc-action-btn--invite">${PEOPLE}<span class="pc-cta__label">Пригласить тестеров${o.availableOffer ? ` · ${o.availableOffer}` : ''}</span></button>
-    ${actionSecondary}
-  </div>
   <div class="pc-action-footer">
     <span class="pc-recruit__items">Взаимка 4/15 · Контракты 0/6</span>
     <span class="pc-ping-slot">${o.mini?`<button type="button" class="pc-ping-mini">${TG}</button>`:''}</span>
+  </div>`;
+}
+
+function actionBar(o) {
+  const timeIcon = '<img class="pc-action-btn__icon" src="./images/Icons/time-add-svgrepo-com.svg" alt="">';
+  const syncIcon = '<img class="pc-action-btn__icon" src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" alt="">';
+  const actionSecondary = o.needSync
+    ? `<button type="button" class="pc-action-btn pc-action-btn--sync">${syncIcon}<span>Синхронизировать</span></button>`
+    : `<button type="button" class="pc-action-btn pc-action-btn--term">${timeIcon}<span>Срок</span></button>`;
+  return `<div class="pc-action-bar${o.needSync ? ' is-sync-required' : ''}">
+    <button type="button" class="pc-cta pc-cta--primary pc-action-btn--invite">${PEOPLE}<span class="pc-cta__label">Пригласить тестеров${o.availableOffer ? ` · ${o.availableOffer}` : ''}</span></button>
+    ${actionSecondary}
   </div>`;
 }
 
@@ -211,7 +215,7 @@ function collapseHandle(collapsed, attention) {
 function card(id, opts) {
   return `<div class="card${opts.collapsed ? ' card-collapsed' : ''}" id="project-card-${id}">
     <section class="pc-state-unified">${header(opts.sub)}${opts.quickSettings ? quickSettings() : ''}${stateBlock(opts)}</section>
-    <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}${opts.feedback ? feedbackStub() : ''}</div>
+    <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}${opts.collapsed ? '' : actionBar(opts)}${opts.feedback ? feedbackStub() : ''}</div>
     ${collapseHandle(!!opts.collapsed, !!opts.attention)}
   </div>`;
 }

@@ -332,7 +332,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
                 ${pinHtml}
             </svg>
             <div class="pc-ring__center">
-                <span class="pc-ring__count">${todayDone}&nbsp;/&nbsp;12</span>
+                <span class="pc-ring__count"><span class="pc-ring__done">${todayDone}</span><span class="pc-ring__total">&nbsp;/&nbsp;12</span></span>
                 <span class="pc-ring__label">${compactLabel}</span>
             </div>
         </div>
@@ -1499,19 +1499,22 @@ function renderProjects(force) {
                         <div class="pc-metric-footer">${dailyActivityHtml}</div>
                     </section>
                 </div>
-                <div class="pc-action-bar${needSyncPrompt ? ' is-sync-required' : ''}">
-                    <button type="button" class="pc-action-btn pc-action-btn--invite" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
-                        ${attractPeopleIconHtml}
-                        <span>${window.escapeHTML(inviteCtaLabel)}</span>
-                    </button>
-                    ${actionSecondaryHtml}
-                </div>
                 <div class="pc-action-footer" onclick="event.stopPropagation();">
                     ${recruitPartsHtml.length
                         ? `<button type="button" class="pc-action-footer__summary" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">${recruitPartsHtml.join('<span class="pc-recruit__sep"> · </span>')}</button>`
                         : '<span class="pc-action-footer__summary is-empty">—</span>'}
                     ${pingSlotHtml}
                 </div>
+        `;
+
+        const actionBarHtml = `
+            <div class="pc-action-bar${needSyncPrompt ? ' is-sync-required' : ''}">
+                <button type="button" class="pc-action-btn pc-action-btn--invite" onclick="openAttractTestersSheet(${project.id}); event.stopPropagation();">
+                    ${attractPeopleIconHtml}
+                    <span>${window.escapeHTML(inviteCtaLabel)}</span>
+                </button>
+                ${actionSecondaryHtml}
+            </div>
         `;
 
         /* ── Block 4: collapsed summary of the full tester roster ── */
@@ -1694,6 +1697,7 @@ function renderProjects(force) {
                     </div>
                 </div>
 
+                ${actionBarHtml}
                 ${actionsHtml}
                 ${platformDays >= 15 ? `
                     <button type="button" class="pc-finish-link" onclick="openDeleteModal(${project.id}); event.stopPropagation();">

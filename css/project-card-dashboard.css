@@ -813,6 +813,12 @@ button.pc-stage-badge {
     letter-spacing: -0.02em;
 }
 
+.pc-ring__total {
+    color: inherit;
+    opacity: 0.48;
+    font-weight: 650;
+}
+
 .pc-ring__label {
     font-size: 8px;
     font-weight: 700;
@@ -4300,6 +4306,11 @@ button.pc-metric-num-btn:active {
     color: #f8faff;
 }
 
+#tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__total {
+    opacity: 0.45;
+    font-weight: 600;
+}
+
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label {
     margin-top: 1px;
     font-size: 7.5px;
@@ -4367,7 +4378,7 @@ button.pc-metric-num-btn:active {
     display: grid;
     grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.3fr);
     gap: 7px;
-    margin: 0 14px;
+    margin: 10px 14px 0;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-action-bar.is-sync-required {
