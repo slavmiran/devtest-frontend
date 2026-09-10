@@ -2610,6 +2610,59 @@ button.pc-stage-badge {
     transform: scale(1.08);
 }
 
+/* Collapsed handle: same thin line + circle, not a wide footer bar. */
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-collapse-handle {
+    width: calc(100% + 32px);
+    height: 40px;
+    margin: 4px -16px -8px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    gap: 10px;
+}
+
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-collapse-handle:hover {
+    background: transparent;
+}
+
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-collapse-handle::before,
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-collapse-handle::after {
+    content: '';
+    height: 1px;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    border-radius: 1px;
+    background: var(--border-subtle);
+    opacity: 0.9;
+}
+
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-collapse-handle .card-expand-handle-circle {
+    position: relative;
+    top: auto;
+    transform: none;
+    width: 30px;
+    height: 30px;
+    background: var(--bg-color, var(--secondary-bg-color));
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-collapse-handle:hover .card-expand-handle-circle,
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-collapse-handle:active .card-expand-handle-circle {
+    border-color: rgba(255, 255, 255, 0.22);
+    transform: scale(1.08);
+}
+
+#tab-projects .card.card-collapsed .pc-state-unified {
+    margin-bottom: 0;
+}
+
+#tab-projects .card[id^="project-card-"].card-collapsed .pc-action-bar {
+    display: none;
+}
+
 /* ─────────────────── Activity & reciprocity compact block ─────────────── */
 
 .pc-activity {
@@ -4453,6 +4506,19 @@ button.pc-metric-num-btn:active {
     right: 0;
     top: 50%;
     transform: translateY(-50%);
+}
+
+#tab-projects .card.card-collapsed .pc-action-footer {
+    padding-right: 36px;
+    padding-left: 36px;
+}
+
+#tab-projects .card.card-collapsed .pc-action-footer .pc-ping-slot {
+    display: inline-flex;
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed):not(.pc-ping-is-mini) .pc-action-footer .pc-ping-slot {
+    display: none;
 }
 
 @media (max-width: 359px) {

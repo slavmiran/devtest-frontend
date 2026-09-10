@@ -1702,10 +1702,11 @@ function renderProjects(force) {
                 </div>
             </div>
         `;
-        if (proofPingState === 'mini' && window.ProofPing) {
+        if (window.ProofPing) {
             const pingSlot = card.querySelector('[data-pc-ping-slot="' + project.id + '"]');
             if (pingSlot) pingSlot.innerHTML = window.ProofPing.miniHtml(project);
         }
+        if (proofPingState === 'mini') card.classList.add('pc-ping-is-mini');
         container.appendChild(card);
         requestAnimationFrame(function () {
             fitClosedTestAttractButton(card.querySelector('.pc-cta--testers'));

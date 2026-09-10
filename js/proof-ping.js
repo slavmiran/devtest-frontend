@@ -316,8 +316,8 @@
     function miniHtml(project) {
         var appId = Number(project.id || project.app_id || 0);
         return '<button type="button" class="pc-ping-mini" data-pc-ping-mini="' + appId + '"' +
-            ' aria-label="' + esc(text('pcPingOpenAria', 'Open the Testing Proofs topic')) + '"' +
-            ' onclick="pcProofPingOpenChat(event)">' + TELEGRAM_ICON + '</button>';
+            ' aria-label="' + esc(text('pcPingCommunityAria', 'Open Community Chat')) + '"' +
+            ' onclick="pcProofPingOpenCommunity(event)">' + TELEGRAM_ICON + '</button>';
     }
 
     function blockHtml(project) {
@@ -582,6 +582,7 @@
 
         function finish() {
             if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+            if (card) card.classList.add('pc-ping-is-mini');
             if (slot && project && !slot.querySelector('.pc-ping-mini')) {
                 slot.innerHTML = miniHtml(project);
                 var mini = slot.querySelector('.pc-ping-mini');
