@@ -448,7 +448,6 @@
     color: var(--accent-primary, #0a84ff);
 }
 
-.pc-ping__chat-status,
 .pc-ping__topic-badge {
     display: inline-flex;
     align-items: center;
@@ -463,18 +462,6 @@
     white-space: nowrap;
     user-select: none;
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.pc-ping__chat-status--member {
-    background: rgba(52, 199, 89, 0.08);
-    color: var(--success, #34c759);
-    border: 1px solid rgba(52, 199, 89, 0.18);
-}
-
-.pc-ping__chat-status--warn {
-    background: rgba(255, 159, 10, 0.08);
-    color: var(--warning, #ff9f0a);
-    border: 1px solid rgba(255, 159, 10, 0.18);
 }
 
 .pc-ping__chat-note {
@@ -535,7 +522,7 @@
 }
 
 .pc-ping__chat-content--compact .pc-ping__chat-title-row {
-    gap: 6px;
+    gap: 5px;
 }
 
 .pc-ping__chat--compact .pc-ping__chat-label {
@@ -543,10 +530,26 @@
     font-weight: 600;
 }
 
-.pc-ping__chat--compact .pc-ping__chat-status,
-.pc-ping__chat--compact .pc-ping__topic-badge {
-    font-size: 9.5px;
-    padding: 1px 5px;
+.pc-ping__verified-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    margin-left: 2px;
+}
+
+.pc-ping__check-svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+.pc-ping__chat-sub {
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.25;
+    color: var(--text-tertiary);
+    margin-top: 1px;
 }
 
 .pc-ping__chat-action--compact {

@@ -262,11 +262,14 @@
 
     function chatEntryHtml() {
         var member = isCommunityMember();
-        var statusBadgeHtml = member
-            ? '<span class="pc-ping__chat-status pc-ping__chat-status--member">' + esc(text('pcPingStatusMember', '✓ В сообществе')) + '</span>'
-            : '<span class="pc-ping__chat-status pc-ping__chat-status--warn">' + esc(text('pcPingStatusNotMember', 'Не в сообществе')) + '</span>';
 
         if (member) {
+            var checkSvg = '<span class="pc-ping__verified-check" title="' + esc(text('pcPingStatusMemberTooltip', 'Вы состоите в сообществе')) + '" aria-label="' + esc(text('pcPingStatusMemberTooltip', 'Вы состоите в сообществе')) + '">' +
+                '<svg viewBox="0 0 16 16" class="pc-ping__check-svg" aria-hidden="true">' +
+                    '<path d="M3.2 8.5L6.6 11.8L12.8 4.8" fill="none" stroke="#30d158" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+                '</svg>' +
+            '</span>';
+
             return '<button type="button" class="pc-ping__chat pc-ping__chat--compact" onclick="pcProofPingOpenChat(event)">' +
                 '<div class="pc-ping__chat-badge pc-ping__chat-badge--compact" aria-hidden="true">' +
                     TELEGRAM_ICON +
@@ -274,7 +277,7 @@
                 '<div class="pc-ping__chat-content pc-ping__chat-content--compact">' +
                     '<div class="pc-ping__chat-title-row">' +
                         '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCta', 'Testing Proofs')) + '</span>' +
-                        statusBadgeHtml +
+                        checkSvg +
                     '</div>' +
                 '</div>' +
                 '<div class="pc-ping__chat-action pc-ping__chat-action--compact" aria-hidden="true">' +
@@ -284,18 +287,18 @@
             '</button>';
         }
 
-        return '<button type="button" class="pc-ping__chat" onclick="pcProofPingOpenCommunity(event)">' +
-            '<div class="pc-ping__chat-badge" aria-hidden="true">' +
+        return '<button type="button" class="pc-ping__chat pc-ping__chat--compact" onclick="pcProofPingOpenCommunity(event)">' +
+            '<div class="pc-ping__chat-badge pc-ping__chat-badge--compact" aria-hidden="true">' +
                 TELEGRAM_ICON +
             '</div>' +
-            '<div class="pc-ping__chat-content">' +
+            '<div class="pc-ping__chat-content pc-ping__chat-content--compact">' +
                 '<div class="pc-ping__chat-title-row">' +
-                    '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCta', 'Testing Proofs')) + '</span>' +
-                    statusBadgeHtml +
+                    '<span class="pc-ping__chat-label">' + esc(text('pcPingChatCommunityCta', 'Чат сообщества')) + '</span>' +
                 '</div>' +
-                '<span class="pc-ping__chat-note">' + esc(text('pcPingChatNonMemberNote', 'Чтобы бот мог тегать вас, вступите в чат сообщества.')) + '</span>' +
+                '<span class="pc-ping__chat-sub">' + esc(text('pcPingChatJoinSub', 'Вступите для уведомлений')) + '</span>' +
             '</div>' +
-            '<div class="pc-ping__chat-action" aria-hidden="true">' +
+            '<div class="pc-ping__chat-action pc-ping__chat-action--compact" aria-hidden="true">' +
+                '<span class="pc-ping__chat-action-label">' + esc(text('pcPingJoinBtn', 'Вступить')) + '</span>' +
                 CHEVRON_ICON +
             '</div>' +
         '</button>';

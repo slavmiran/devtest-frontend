@@ -125,17 +125,19 @@ function pingExpanded() {
       </div>
     </div>
     <div class="pc-ping__foot">
-      <button type="button" class="pc-ping__chat">
-        <div class="pc-ping__chat-badge" aria-hidden="true">${TG}</div>
-        <div class="pc-ping__chat-content">
+      <button type="button" class="pc-ping__chat pc-ping__chat--compact">
+        <div class="pc-ping__chat-badge pc-ping__chat-badge--compact" aria-hidden="true">${TG}</div>
+        <div class="pc-ping__chat-content pc-ping__chat-content--compact">
           <div class="pc-ping__chat-title-row">
             <span class="pc-ping__chat-label">Testing Proofs</span>
-            <span class="pc-ping__chat-status pc-ping__chat-status--member">✓ В сообществе</span>
+            <span class="pc-ping__verified-check" title="Вы состоите в сообществе">
+              <svg viewBox="0 0 16 16" class="pc-ping__check-svg" aria-hidden="true"><path d="M3.2 8.5L6.6 11.8L12.8 4.8" fill="none" stroke="#30d158" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
           </div>
-          <span class="pc-ping__chat-note">Чтобы упоминание сработало, нужно состоять в сообществе.</span>
         </div>
-        <div class="pc-ping__chat-action" aria-hidden="true">
-          <svg class="pc-ping__chat-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        <div class="pc-ping__chat-action pc-ping__chat-action--compact" aria-hidden="true">
+          <span class="pc-ping__chat-action-label">Открыть</span>
+          <svg class="pc-ping__chat-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </div>
       </button>
     </div>
