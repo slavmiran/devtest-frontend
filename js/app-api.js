@@ -1767,6 +1767,14 @@ function _mapTestsFromApi(data) {
                 ? null
                 : Number(app.external_days_since_last_completed || 0),
             external_control_day_due: !!(isExternal && isMandatoryScreenshotDay(testingDays)),
+            control_proof_catchups: Array.isArray(app.control_proof_catchups)
+                ? app.control_proof_catchups.map(function(item) {
+                    return {
+                        id: Number(item && item.id || 0),
+                        missed_testing_day: Number(item && item.missed_testing_day || 0),
+                    };
+                }).filter(function(item) { return item.id > 0 && item.missed_testing_day > 0; })
+                : [],
         };
     });
 }

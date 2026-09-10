@@ -2123,6 +2123,46 @@ function restoreTestsViewportAnchor(anchor) {
     if (Math.abs(delta) > 1) window.scrollBy(0, delta);
 }
 
+function renderControlProofCatchupChip(test, testingDay) {
+    const requests = Array.isArray(test && test.control_proof_catchups)
+        ? test.control_proof_catchups.filter(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })
+        : [];
+    if (!requests.length) return '';
+    const count = requests.length;
+    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0));
+    const label = (typeof lang !== 'undefined' && lang === 'ru')
+        ? ('📸 Досдать proof · ' + count)
+        : ('📸 Catch up proof · ' + count);
+    return '<button type="button" class="control-proof-catchup-chip' + (isOfficialDay ? ' is-disabled' : '') + '"' +
+        ' aria-disabled="' + (isOfficialDay ? 'true' : 'false') + '"' +
+        ' onclick="event.stopPropagation(); openControlProofCatchupInfo(' + Number(test.id || 0) + ')">' +
+        window.escapeHTML(label) + '</button>';
+}
+
+window.openControlProofCatchupInfo = function(appId) {
+    const test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    if (!test) return;
+    const days = (Array.isArray(test.control_proof_catchups) ? test.control_proof_catchups : [])
+        .map(function(item) { return Number(item && item.missed_testing_day || 0); })
+        .filter(function(day) { return day > 0; })
+        .sort(function(a, b) { return a - b; });
+    if (!days.length) return;
+    const today = getResolvedTestingDay(test);
+    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(today || 0));
+    const isRussian = typeof lang !== 'undefined' && lang === 'ru';
+    const message = isOfficialDay
+        ? (isRussian
+            ? 'Сегодня контрольный день: сначала завершите его обычным proof. Досдача останется доступна завтра.'
+            : 'Today is a control day: complete its regular proof first. Catch-up stays available tomorrow.')
+        : (isRussian
+            ? ('Нужно досдать proof за день: ' + days.join(', ') + '.\n\nНа обычном дне отправьте скриншот, Bug или Idea со скриншотом — один подходящий proof закроет один запрос. Play Review без скриншота и обычный check-in без медиа не подходят. При завершении активного теста каждая незакрытая досдача уменьшит Карму на 1.')
+            : ('Catch-up proof needed for day(s): ' + days.join(', ') + '.\n\nOn a regular day, send a screenshot, or a Bug/Idea with a screenshot. One suitable proof closes one request. A Play Review without a screenshot and a regular check-in without media do not count. When active testing ends, each unresolved request costs 1 Karma.'));
+    if (window.tg && typeof window.tg.showAlert === 'function') window.tg.showAlert(message);
+    else window.alert(message);
+};
+
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
     const viewportAnchor = captureTestsViewportAnchor();
@@ -2604,6 +2644,9 @@ function renderTests(force) {
         if (showGuestOriginChip) {
             externalMetaChips.push(renderGuestOriginChip(test.external_source));
         }
+        const controlProofCatchupChipHtml = !isExternal && !isSoftTailCard
+            ? renderControlProofCatchupChip(test, userTestingDay)
+            : '';
         const cardHeaderMainHtml = `
             <div class="card-header-main">
                 ${renderTestAvatarWithPhaseBadge(test, lang)}
@@ -2636,6 +2679,7 @@ function renderTests(force) {
                 ${trailingHtml}
             </div>
             ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips })}
+            ${controlProofCatchupChipHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>

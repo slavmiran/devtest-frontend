@@ -5380,3 +5380,26 @@ html.tg-deeplink-loading .tg-deeplink-loader {
 .android-version-picker-overlay {
     z-index: 20000 !important;
 }
+
+/* Pending catch-up is informative only: it never creates a second check-in flow. */
+.control-proof-catchup-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    margin: 2px 12px 10px;
+    padding: 5px 10px;
+    border: 1px solid rgba(90, 170, 255, 0.35);
+    border-radius: 999px;
+    background: rgba(53, 125, 220, 0.13);
+    color: #8ec5ff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.control-proof-catchup-chip.is-disabled {
+    color: rgba(180, 192, 210, 0.74);
+    border-color: rgba(142, 142, 147, 0.26);
+    background: rgba(142, 142, 147, 0.10);
+}
