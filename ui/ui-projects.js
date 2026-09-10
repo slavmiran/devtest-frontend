@@ -1456,10 +1456,10 @@ function renderProjects(force) {
                 '<span class="pc-stage-badge__meta">' + window.escapeHTML(todayWord) + '</span> ' +
                 '<span class="pc-stage-badge__count">' + window.escapeHTML(String(todayActiveCount) + '/' + String(teamTesterCount)) + '</span>';
         } else if (closedTestStage === 'recruiting' && testersToMinimum > 0) {
+            const minWord = window.t('pcStatusRecruitingMinimum', {}, lang) || (lang === 'en' ? 'Minimum' : 'Минимум');
             closedTestStageExtraHtml = ' <span class="pc-stage-badge__sep">·</span> ' +
-                '<span class="pc-stage-badge__extra">' +
-                window.escapeHTML(window.t('pcStatusRecruitingMinimum', { count: testersToMinimum }, lang) || ('Минимум +' + testersToMinimum)) +
-                '</span>';
+                '<span class="pc-stage-badge__meta">' + window.escapeHTML(minWord) + '</span> ' +
+                '<span class="pc-stage-badge__count">' + window.escapeHTML('+' + String(testersToMinimum)) + '</span>';
         }
         const closedTestStageHtml = window.escapeHTML(closedTestStageLabel) + closedTestStageExtraHtml;
         const dayLifecycleAria = window.escapeHTML(window.t('pcLifecycleTitle', {}, lang) || 'Жизненный цикл проекта');

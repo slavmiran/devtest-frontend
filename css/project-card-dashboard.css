@@ -138,7 +138,8 @@ button.pc-stage-badge {
 }
 
 .pc-stage-badge__count {
-    color: var(--accent-primary, #0a84ff);
+    color: inherit;
+    opacity: 1;
     font-weight: 750;
     font-variant-numeric: tabular-nums;
 }
@@ -4005,7 +4006,8 @@ button.pc-act-reason {
 }
 
 #tab-projects .card[id^="project-card-"] .pc-stage-badge__count {
-    color: var(--accent-primary, #0a84ff);
+    color: inherit;
+    opacity: 1;
     font-weight: 750;
 }
 
@@ -5316,7 +5318,7 @@ button.pc-metric-reserve:active {
 }
 
 .pc-lc-step.stage-restart .pc-lc-step__meta {
-    color: #34c759;
+    color: var(--text-tertiary);
     font-weight: 750;
 }
 

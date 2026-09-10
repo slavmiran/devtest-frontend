@@ -321,7 +321,7 @@
                 '<span class="pc-ping__capsule-icon" aria-hidden="true">' +
                     WARNING_SHIELD_ICON +
                 '</span>' +
-                '<span class="pc-ping__capsule-text">' + esc(text('pcPingNeedsCommunity', 'Уведомления: требуется вход в чат')) + '</span>' +
+                '<span class="pc-ping__capsule-text">' + esc(text('pcPingNeedsCommunity', 'Вступите в чат для уведомлений')) + '</span>' +
             '</div>' +
             '<button type="button" class="pc-ping__capsule-btn" aria-label="' + esc(text('pcPingCommunityAria', 'Open Community Chat')) + '" onclick="pcProofPingOpenCommunity(event)">' +
                 TELEGRAM_ICON +
