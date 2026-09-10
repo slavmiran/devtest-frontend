@@ -197,18 +197,30 @@ function feedbackStub() {
   return `<div class="pc-actions"><button type="button" class="project-feedback-btn">💬 Фидбэк</button></div>`;
 }
 
+function collapseHandle(collapsed, attention) {
+  return `<div class="card-footer pc-collapse-handle">
+    <div class="card-expand-handle-circle">
+      <span class="card-expand-chevron${collapsed ? ' is-collapsed' : ''}">
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      ${attention ? '<div class="footer-notification-dot"></div>' : ''}
+    </div>
+  </div>`;
+}
+
 function card(id, opts) {
-  return `<div class="card" id="project-card-${id}">
+  return `<div class="card${opts.collapsed ? ' card-collapsed' : ''}" id="project-card-${id}">
     <section class="pc-state-unified">${header(opts.sub)}${opts.quickSettings ? quickSettings() : ''}${stateBlock(opts)}</section>
     <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}${opts.feedback ? feedbackStub() : ''}</div>
+    ${collapseHandle(!!opts.collapsed, !!opts.attention)}
   </div>`;
 }
 
 document.getElementById('projects-list').innerHTML =
   card(1, { sub:'<span class="pc-subtitle-chips"><button type="button" class="pc-subtitle-chip pc-subtitle-chip--reviews is-on"><span class="pc-subtitle-chip__label">Отзывы Google:</span><span class="pc-subtitle-chip__state is-on">вкл</span></button></span>', stage:'recruiting', stageLabel:'Идёт набор команды · Минимум +4', day:3, total:false, extra:false, totalDays:0, testers:0, teamSize:8, done:0, pct:0, chip:null, needSync:false, availableOffer:4, recruitTarget:12, ping: pingExpanded(), activity:false, feedback:true, quickSettings:true })
 + card(2, { sub:'<span class="pc-subtitle-flags">Email · Запрашивать Google отзывы</span>', stage:'need_sync', stageLabel:'Нужна синхронизация', day:7, total:false, extra:false, totalDays:0, testers:9, teamSize:12, done:7, pct:78, chip:null, needSync:true, availableOffer:7, recruitTarget:12, ping: pingCompact(), activity:true, feedback:true })
-+ card(3, { sub:'com.slavmiran.quickpaste6', stage:'extension', stageLabel:'Продление теста +2 дня', day:14, total:true, extra:2, totalDays:16, testers:16, teamSize:21, done:14, pct:88, chip:{kind:'purple', text:'Сверх нормы (+2)'}, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, paidActive:true })
-+ card(4, { sub:'com.slavmiran.quickpaste6', stage:'buffer', stageLabel:'Буфер +32ч', day:15, total:true, extra:false, totalDays:18, testers:16, teamSize:21, done:12, pct:100, chip:null, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, bufferActive:true });
++ card(3, { sub:'com.slavmiran.quickpaste6', stage:'extension', stageLabel:'Продление теста +2 дня', day:14, total:true, extra:2, totalDays:16, testers:16, teamSize:21, done:14, pct:88, chip:{kind:'purple', text:'Сверх нормы (+2)'}, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, paidActive:true, collapsed:true, attention:true })
++ card(4, { sub:'com.slavmiran.quickpaste6', stage:'buffer', stageLabel:'Буфер +32ч', day:15, total:true, extra:false, totalDays:18, testers:16, teamSize:21, done:12, pct:100, chip:null, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, bufferActive:true, collapsed:true });
 
 function bindPingToggles(root) {
   (root || document).querySelectorAll('.pc-dotswitch, .pc-switch-toggle').forEach(function (btn) {
