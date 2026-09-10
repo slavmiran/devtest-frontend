@@ -130,6 +130,19 @@ button.pc-stage-badge {
     color: var(--text-secondary);
 }
 
+.pc-stage-badge__sep,
+.pc-stage-badge__meta {
+    color: inherit;
+    opacity: 0.58;
+    font-weight: 600;
+}
+
+.pc-stage-badge__count {
+    color: var(--accent-primary, #0a84ff);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Two columns separated by a hairline. The rule lives on the right column as a
    border so it can never contribute extra track width and push the card wide. */
 /* Reference proportions: a narrow day rail on the left, a wider tester panel
@@ -3983,6 +3996,17 @@ button.pc-act-reason {
     color: rgba(210, 221, 238, 0.72);
     background: transparent;
     border-color: transparent;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-stage-badge__sep,
+#tab-projects .card[id^="project-card-"] .pc-stage-badge__meta {
+    opacity: 0.55;
+    font-weight: 600;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-stage-badge__count {
+    color: var(--accent-primary, #0a84ff);
+    font-weight: 750;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metrics-grid {

@@ -1440,25 +1440,35 @@ function renderProjects(force) {
                     <span>${window.escapeHTML(termBtnLabel)}</span>
                </button>`;
 
-        let closedTestStageExtra = '';
+        let closedTestStageExtraHtml = '';
         if (closedTestStage === 'extension' && remainingPaidDays > 0) {
-            closedTestStageExtra = ' +' + remainingPaidDays + ' ' + extraDaysUnitLabel(remainingPaidDays);
+            closedTestStageExtraHtml = ' <span class="pc-stage-badge__extra">' +
+                window.escapeHTML('+' + remainingPaidDays + ' ' + extraDaysUnitLabel(remainingPaidDays)) +
+                '</span>';
         } else if (closedTestStage === 'buffer') {
-            closedTestStageExtra = ' +' + remainingBufferHours + (lang === 'en' ? 'h' : 'ч');
+            closedTestStageExtraHtml = ' <span class="pc-stage-badge__extra">' +
+                window.escapeHTML('+' + remainingBufferHours + (lang === 'en' ? 'h' : 'ч')) +
+                '</span>';
         } else if (closedTestStage === 'active') {
             const todayActiveCount = Math.max(0, Number(dailyMeta.todayDone || 0));
-            closedTestStageExtra = ' · ' + (window.t('pcStatusActiveToday', { done: todayActiveCount, total: teamTesterCount }, lang) || ('сегодня ' + todayActiveCount + '/' + teamTesterCount));
+            const todayWord = window.t('pcStatusActiveToday', {}, lang) || (lang === 'en' ? 'today' : 'сегодня');
+            closedTestStageExtraHtml = ' <span class="pc-stage-badge__sep">·</span> ' +
+                '<span class="pc-stage-badge__meta">' + window.escapeHTML(todayWord) + '</span> ' +
+                '<span class="pc-stage-badge__count">' + window.escapeHTML(String(todayActiveCount) + '/' + String(teamTesterCount)) + '</span>';
         } else if (closedTestStage === 'recruiting' && testersToMinimum > 0) {
-            closedTestStageExtra = ' · ' + (window.t('pcStatusRecruitingMinimum', { count: testersToMinimum }, lang) || ('Минимум +' + testersToMinimum));
+            closedTestStageExtraHtml = ' <span class="pc-stage-badge__sep">·</span> ' +
+                '<span class="pc-stage-badge__extra">' +
+                window.escapeHTML(window.t('pcStatusRecruitingMinimum', { count: testersToMinimum }, lang) || ('Минимум +' + testersToMinimum)) +
+                '</span>';
         }
-        const closedTestStageText = closedTestStageLabel + closedTestStageExtra;
+        const closedTestStageHtml = window.escapeHTML(closedTestStageLabel) + closedTestStageExtraHtml;
         const dayLifecycleAria = window.escapeHTML(window.t('pcLifecycleTitle', {}, lang) || 'Жизненный цикл проекта');
         const testersPlanAria = window.escapeHTML(window.t('dprModalTitle', {}, lang) || 'Суточный план и рекомендации');
         const testersValueClass = 'pc-metric-team__value' + (isPaidDaysActive ? ' pc-metric-team__value--paid' : '');
 
         const stageBadgeHtml = needSyncPrompt
-            ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${window.escapeHTML(closedTestStageText)}</button>`
-            : `<span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${window.escapeHTML(closedTestStageText)}</span>`;
+            ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${closedTestStageHtml}</button>`
+            : `<span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${closedTestStageHtml}</span>`;
 
         const stateBlockHtml = `
                 <div class="pc-closed-head">

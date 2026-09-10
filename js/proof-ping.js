@@ -163,12 +163,24 @@
         }).length;
     }
 
-    /** 'expanded' while the project is empty, 'compact' once testers arrive,
-        'mini' after the owner hides the bar. */
+    var communityMember = false;
+
+    function setCommunityMember(value) {
+        communityMember = !!value;
+    }
+
+    function isCommunityMember() {
+        return communityMember === true;
+    }
+
+    /** 'expanded' while the project is empty,
+        'mini' when the owner is already a member of the community chat,
+        'compact' capsule when the owner needs to join the community chat. */
     function stateFor(project) {
         if (!project) return 'mini';
         if (testerCount(project) < 1) return 'expanded';
-        return isDismissed(project.id || project.app_id) ? 'mini' : 'compact';
+        if (isCommunityMember()) return 'mini';
+        return 'compact';
     }
 
     /* ── icons ──────────────────────────────────────────────────────────── */
@@ -194,6 +206,12 @@
         '<path d="M9 18l6-6-6-6"/>' +
         '</svg>';
 
+    var WARNING_SHIELD_ICON = '<svg class="pc-ping__capsule-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>' +
+        '<line x1="12" y1="9" x2="12" y2="13"></line>' +
+        '<line x1="12" y1="17" x2="12.01" y2="17"></line>' +
+        '</svg>';
+
     function switchHtml(appId, enabled, extraClass) {
         return '<label class="toggle-switch pc-ping-switch' + (extraClass ? ' ' + extraClass : '') + '" onclick="event.stopPropagation();">' +
             '<input type="checkbox"' + (enabled ? ' checked' : '') +
@@ -217,10 +235,11 @@
     function descHtml() {
         var mention = '<span class="pc-ping__mention">' +
             esc(text('pcPingMention', '@mention')) + '</span>';
-        var parts = String(text(
-            'pcPingDesc',
-            'Control-day screenshots land in the shared “Testing Proofs” topic. The bot tags you with an {mention}.'
-        )).split('{mention}');
+        var key = isCommunityMember() ? 'pcPingDescActive' : 'pcPingDescNeedsJoin';
+        var fallback = isCommunityMember()
+            ? 'Скриншот контрольного дня попадает в топик «Testing Proofs». Бот отметит вас {mention}. Вы состоите в сообществе — уведомления активны!'
+            : 'Скриншот контрольного дня попадает в топик «Testing Proofs». Бот отметит вас {mention}. Чтобы бот мог тегать вас, обязательно вступите в группу сообщества.';
+        var parts = String(text(key, fallback)).split('{mention}');
         return esc(parts[0] || '') + mention + esc(parts[1] || '');
     }
 
@@ -297,21 +316,16 @@
 
     function compactHtml(project) {
         var appId = Number(project.id || project.app_id || 0);
-        var enabled = isEnabled(project);
-        return '<section class="pc-ping pc-ping--compact' + (enabled ? ' is-on' : ' is-off') +
-            '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
-            '<button type="button" class="pc-ping-icon-btn pc-ping-icon-btn--info' + (enabled ? ' is-on' : ' is-off') + '"' +
-                ' aria-haspopup="dialog"' +
-                ' aria-expanded="false"' +
-                ' aria-controls="proof-ping-explain"' +
-                ' aria-label="' + esc(text('pcPingExplainAria', 'What these notifications are')) + '"' +
-                ' onclick="event.stopPropagation(); pcProofPingOpenExplain(' + Number(appId) + ', event)">' +
-                notificationIconHtml(appId, enabled) +
-            '</button>' +
-            ctaHtml('sm') +
-            '<button type="button" class="pc-ping__close" aria-label="' + esc(text('pcPingHide', 'Hide')) + '"' +
-                ' onclick="pcProofPingDismiss(' + appId + ', event)">' +
-                '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.3-6.3 6.29 1.42 1.42 6.29-6.3 6.3 6.3 1.41-1.42-6.3-6.29 6.3-6.3z"/></svg>' +
+        return '<section class="pc-ping pc-ping--compact pc-ping--capsule" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
+            '<div class="pc-ping__capsule-left">' +
+                '<span class="pc-ping__capsule-icon" aria-hidden="true">' +
+                    WARNING_SHIELD_ICON +
+                '</span>' +
+                '<span class="pc-ping__capsule-text">' + esc(text('pcPingNeedsCommunity', 'Уведомления: требуется вход в чат')) + '</span>' +
+            '</div>' +
+            '<button type="button" class="pc-ping__capsule-btn" aria-label="' + esc(text('pcPingCommunityAria', 'Open Community Chat')) + '" onclick="pcProofPingOpenCommunity(event)">' +
+                TELEGRAM_ICON +
+                '<span class="pc-ping__capsule-btn-label">' + esc(text('pcPingJoinBtn', 'Вступить')) + '</span>' +
             '</button>' +
         '</section>';
     }
@@ -694,6 +708,8 @@
         isEnabled: isEnabled,
         isDismissed: isDismissed,
         isMasterEnabled: isMasterEnabled,
+        setCommunityMember: setCommunityMember,
+        isCommunityMember: isCommunityMember,
         applyMasterFromProfile: function (value) {
             setMasterLocal(value !== false);
             syncSettingsRow();
