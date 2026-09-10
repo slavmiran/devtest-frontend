@@ -2130,14 +2130,23 @@ function renderControlProofCatchupChip(test, testingDay) {
     if (!requests.length) return '';
     const count = requests.length;
     const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0));
-    const label = (typeof lang !== 'undefined' && lang === 'ru')
-        ? ('📸 Досдать proof · ' + count)
-        : ('📸 Catch up proof · ' + count);
-    return '<button type="button" class="control-proof-catchup-chip' + (isOfficialDay ? ' is-disabled' : '') + '"' +
-        ' aria-disabled="' + (isOfficialDay ? 'true' : 'false') + '"' +
+    const label = window.t('catchupTesterChip', { count: count }, lang);
+    return '<button type="button" class="meta-chip control-proof-catchup-chip' + (isOfficialDay ? ' is-disabled' : '') + '"' +
         ' onclick="event.stopPropagation(); openControlProofCatchupInfo(' + Number(test.id || 0) + ')">' +
         window.escapeHTML(label) + '</button>';
 }
+
+function removeControlProofCatchupInfoDialog() {
+    const dialog = document.getElementById('pc-catchup-tester-dialog');
+    if (dialog && dialog.parentNode) dialog.parentNode.removeChild(dialog);
+}
+
+window.closeControlProofCatchupInfo = function() {
+    const dialog = document.getElementById('pc-catchup-tester-dialog');
+    if (!dialog) return;
+    dialog.classList.remove('active');
+    window.setTimeout(removeControlProofCatchupInfoDialog, 220);
+};
 
 window.openControlProofCatchupInfo = function(appId) {
     const test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
@@ -2151,16 +2160,44 @@ window.openControlProofCatchupInfo = function(appId) {
     if (!days.length) return;
     const today = getResolvedTestingDay(test);
     const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(today || 0));
-    const isRussian = typeof lang !== 'undefined' && lang === 'ru';
-    const message = isOfficialDay
-        ? (isRussian
-            ? 'Сегодня контрольный день: сначала завершите его обычным proof. Досдача останется доступна завтра.'
-            : 'Today is a control day: complete its regular proof first. Catch-up stays available tomorrow.')
-        : (isRussian
-            ? ('Нужно досдать proof за день: ' + days.join(', ') + '.\n\nНа обычном дне отправьте скриншот, Bug или Idea со скриншотом — один подходящий proof закроет один запрос. Play Review без скриншота и обычный check-in без медиа не подходят. При завершении активного теста каждая незакрытая досдача уменьшит Карму на 1.')
-            : ('Catch-up proof needed for day(s): ' + days.join(', ') + '.\n\nOn a regular day, send a screenshot, or a Bug/Idea with a screenshot. One suitable proof closes one request. A Play Review without a screenshot and a regular check-in without media do not count. When active testing ends, each unresolved request costs 1 Karma.'));
-    if (window.tg && typeof window.tg.showAlert === 'function') window.tg.showAlert(message);
-    else window.alert(message);
+    const lead = days.length === 1
+        ? window.t('catchupTesterLeadOne', { day: days[0] }, lang)
+        : window.t('catchupTesterLeadMany', { days: days.join(', ') }, lang);
+    const dayLabel = days.length === 1
+        ? window.t('pcCatchupRequestDay', { day: days[0] }, lang)
+        : window.t('pcCatchupRequestDay', { day: days.join(', ') }, lang);
+    removeControlProofCatchupInfoDialog();
+    const facts = [
+        window.t('catchupTesterFactAnyDay', {}, lang),
+        window.t('catchupTesterFactClose', {}, lang),
+        window.t('catchupTesterFactPenalty', {}, lang),
+    ];
+    if (isOfficialDay) facts.push(window.t('catchupTesterOfficialNote', {}, lang));
+    const html = '<div id="pc-catchup-tester-dialog" class="modal-overlay pc-catchup-request-modal" role="presentation" onclick="if (event.target === this) closeControlProofCatchupInfo()">' +
+        '<section class="modal-content pc-catchup-request-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-catchup-tester-title">' +
+            '<div class="sheet-handle" aria-hidden="true"></div>' +
+            '<div class="pc-catchup-request-sheet__head">' +
+                '<div class="pc-catchup-request-sheet__icon" aria-hidden="true">📸</div>' +
+                '<div><h3 id="pc-catchup-tester-title">' + window.escapeHTML(window.t('catchupTesterTitle', {}, lang)) + '</h3>' +
+                '<p>' + window.escapeHTML(dayLabel) + '</p></div>' +
+                '<button class="pc-catchup-request-sheet__close" type="button" aria-label="' +
+                    window.escapeHTML(window.t('pcCloseDialog', {}, lang) || 'Close') + '" onclick="closeControlProofCatchupInfo()">×</button>' +
+            '</div>' +
+            '<p class="pc-catchup-request-sheet__lead">' + window.escapeHTML(lead) + '</p>' +
+            '<ul class="pc-catchup-request-sheet__facts">' +
+                facts.map(function(item) { return '<li>' + window.escapeHTML(item) + '</li>'; }).join('') +
+            '</ul>' +
+            '<div class="pc-catchup-request-sheet__actions pc-catchup-request-sheet__actions--single">' +
+                '<button type="button" class="btn btn-primary" onclick="closeControlProofCatchupInfo()">' +
+                    window.escapeHTML(window.t('catchupTesterGotIt', {}, lang)) + '</button>' +
+            '</div>' +
+        '</section>' +
+    '</div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+    const dialog = document.getElementById('pc-catchup-tester-dialog');
+    window.requestAnimationFrame(function() {
+        if (dialog) dialog.classList.add('active');
+    });
 };
 
 function renderTests(force) {
@@ -2678,8 +2715,7 @@ function renderTests(force) {
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;" onclick="event.stopPropagation()">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips })}
-            ${controlProofCatchupChipHtml}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips.concat(controlProofCatchupChipHtml ? [controlProofCatchupChipHtml] : []) })}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>

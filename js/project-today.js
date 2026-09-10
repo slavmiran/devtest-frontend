@@ -5,6 +5,7 @@
     'use strict';
 
     var MANDATORY_DAYS = [1, 4, 7, 10, 14];
+    var CATCHUP_CONTROL_DAYS = [4, 7, 10, 14];
     var MAX_SLOTS = 3;
     var CACHE_TTL_MS = 90000;
     var MAX_TICKET_REQUESTS = 8;
@@ -39,6 +40,10 @@
 
     function isControlDay(day) {
         return MANDATORY_DAYS.indexOf(Number(day || 0)) !== -1;
+    }
+
+    function isCatchupControlDay(day) {
+        return CATCHUP_CONTROL_DAYS.indexOf(Number(day || 0)) !== -1;
     }
 
     function todayString() {
@@ -943,7 +948,7 @@
                 });
             }
             if (!neverOpened || requestableMissedDay > 0) {
-                if (!catchupResolved && (requestableMissedDay > 0 || (yesterday && isControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
+                if (!catchupResolved && (requestableMissedDay > 0 || (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
                     reasons.push({
                         code: 'missed_control',
                         label: proofReceived
@@ -1073,9 +1078,9 @@
                         'pcCloseCatchupProofRequest(' + Number(appId) + ',' + Number(missedControl.proofRequestId) + ')');
                 }
             } else if (missedControl && missedControl.proofRequested) {
-                actions += iconAct('done', text('pcProofRequested', 'Proof requested'), '', { done: true });
-            } else if (missedControl) {
-                actions += iconAct('image', text('pcRequestProof', 'Request proof'),
+                actions += iconAct('done', text('pcProofRequested', 'Requested'), '', { done: true });
+            } else if (missedControl && isCatchupControlDay(missedControl.missedDay)) {
+                actions += iconAct('image', text('pcRequestProof', 'Request'),
                     'pcRequestCatchupProof(' + Number(appId) + ',' + Number(item.testerId) + ')');
             }
             if (!missedControl || !missedControl.proofReceived) {
@@ -1777,7 +1782,12 @@
         });
         if (!project || !tester) return;
         var catchup = catchupStateFor(project, tester);
-        var day = Number(catchup && catchup.requestableMissedDay || 0) || Math.max(1, testerDayNumber(tester) - 1);
+        var day = Number(catchup && catchup.requestableMissedDay || 0);
+        if (!isCatchupControlDay(day)) {
+            var yesterdayDay = testerDayNumber(tester) - 1;
+            day = isCatchupControlDay(yesterdayDay) ? yesterdayDay : 0;
+        }
+        if (!isCatchupControlDay(day)) return;
         var html = '<div id="pc-catchup-proof-request-dialog" class="modal-overlay pc-catchup-request-modal" role="presentation" onclick="if (event.target === this) pcCloseCatchupProofRequestDialog()">' +
             '<section class="modal-content pc-catchup-request-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-catchup-request-title">' +
                 '<div class="sheet-handle" aria-hidden="true"></div>' +
@@ -1795,7 +1805,6 @@
                 '</p>' +
                 '<ul class="pc-catchup-request-sheet__facts">' +
                     '<li>' + esc(text('pcCatchupRequestFactRegular', 'One screenshot, Bug, or Idea with a screenshot on the next regular day will close the request.')) + '</li>' +
-                    '<li>' + esc(text('pcCatchupRequestFactControl', 'A regular control-day check-in remains separate.')) + '</li>' +
                     '<li>' + esc(text('pcCatchupRequestFactPenalty', 'Karma changes only if the test ends while this request is still open.')) + '</li>' +
                 '</ul>' +
                 '<div class="pc-catchup-request-sheet__actions">' +
@@ -1829,7 +1838,9 @@
         if (submit && submit.disabled) return;
         if (submit) {
             submit.disabled = true;
+            submit.setAttribute('aria-busy', 'true');
             submit.classList.add('is-loading');
+            submit.textContent = text('pcCatchupRequestSending', 'Sending…');
         }
         try {
             var response = await fetch(API_BASE + '/projects/' + Number(appId) + '/testing-control/catchup-proof-requests', {
@@ -1847,7 +1858,9 @@
             if (typeof showToast === 'function') showToast(text('pcCatchupRequestFailed', 'Could not request proof'));
             if (submit) {
                 submit.disabled = false;
+                submit.removeAttribute('aria-busy');
                 submit.classList.remove('is-loading');
+                submit.textContent = text('pcRequestProof', 'Request');
             }
         }
     };
