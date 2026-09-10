@@ -55,7 +55,7 @@ function ring(done, total) {
   }
   const pr=(pin-90)*Math.PI/180;
   const pinHtml = `<circle cx="${(cx+r*Math.cos(pr)).toFixed(2)}" cy="${(cy+r*Math.sin(pr)).toFixed(2)}" r="3" fill="#8e8e93" stroke="#16141c" stroke-width="1.5"/>`;
-  return `<div class="pc-ring"><svg viewBox="0 0 100 100" class="pc-ring__svg"><circle cx="50" cy="50" r="37.5" fill="none" stroke="#24232c" stroke-width="7.5"/>${deficit}${fill}${pinHtml}</svg><div class="pc-ring__center"><span class="pc-ring__count"><span class="pc-ring__done">${done}</span><span class="pc-ring__total">&nbsp;/&nbsp;12</span></span><span class="pc-ring__label">Чекины дня</span></div></div>`;
+  return `<div class="pc-ring"><svg viewBox="0 0 100 100" class="pc-ring__svg"><circle cx="50" cy="50" r="37.5" fill="none" stroke="#24232c" stroke-width="7.5"/>${deficit}${fill}${pinHtml}</svg><div class="pc-ring__center"><span class="pc-ring__count">${done}&nbsp;/&nbsp;12</span><span class="pc-ring__label">Чекины дня</span></div></div>`;
 }
 
 function stateBlock(o) {

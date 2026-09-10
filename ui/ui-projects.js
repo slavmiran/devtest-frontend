@@ -332,7 +332,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
                 ${pinHtml}
             </svg>
             <div class="pc-ring__center">
-                <span class="pc-ring__count"><span class="pc-ring__done">${todayDone}</span><span class="pc-ring__total">&nbsp;/&nbsp;12</span></span>
+                <span class="pc-ring__count">${todayDone}&nbsp;/&nbsp;12</span>
                 <span class="pc-ring__label">${compactLabel}</span>
             </div>
         </div>

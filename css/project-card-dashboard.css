@@ -813,12 +813,6 @@ button.pc-stage-badge {
     letter-spacing: -0.02em;
 }
 
-.pc-ring__total {
-    color: inherit;
-    opacity: 0.48;
-    font-weight: 650;
-}
-
 .pc-ring__label {
     font-size: 8px;
     font-weight: 700;
@@ -4304,11 +4298,6 @@ button.pc-metric-num-btn:active {
     font-weight: 800;
     line-height: 1.1;
     color: #f8faff;
-}
-
-#tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__total {
-    opacity: 0.45;
-    font-weight: 600;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metric-card--google .pc-ring__label {
