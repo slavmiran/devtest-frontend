@@ -4559,7 +4559,8 @@ button.pc-metric-num-btn:active {
     min-height: 39px;
     margin: 11px 14px 0;
     padding: 10px 0 11px;
-    border-top: 1px solid rgba(188, 206, 238, 0.08);
+    border-top: none;
+    border-bottom: 1px solid rgba(188, 206, 238, 0.08);
 }
 
 .pc-action-footer__summary {
