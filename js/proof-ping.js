@@ -227,7 +227,7 @@
     function ctaHtml(modifier) {
         var isCommunity = modifier === 'sm';
         var label = isCommunity
-            ? text('pcPingChatCtaShort', 'Community')
+            ? text('pcPingChatCtaShort', 'Community Chat')
             : text('pcPingChatCta', 'Testing Proofs');
         var opener = isCommunity ? 'pcProofPingOpenCommunity(event)' : 'pcProofPingOpenChat(event)';
         var aria = isCommunity
@@ -262,14 +262,17 @@
 
     /* ── card markup ────────────────────────────────────────────────────── */
 
-    function expandedHtml(project) {
+    function expandedHtml(project, extraClass) {
         var appId = Number(project.id || project.app_id || 0);
         var enabled = isEnabled(project);
         var statusLabel = text(
             enabled ? 'pcPingStatusOn' : 'pcPingStatusOff',
             enabled ? 'Enabled' : 'Disabled'
         );
-        return '<section class="pc-ping pc-ping--expanded' + (enabled ? ' is-on' : ' is-off') +
+        var extra = extraClass ? ' ' + extraClass : '';
+        var isDialog = extra.indexOf('pc-ping--dialog') !== -1;
+        var titleAttrs = isDialog ? ' id="proof-ping-explain-title"' : '';
+        return '<section class="pc-ping pc-ping--expanded' + extra + (enabled ? ' is-on' : ' is-off') +
             '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
             '<div class="pc-ping__head">' +
                 '<div class="pc-ping__badge" aria-hidden="true">' +
@@ -277,7 +280,7 @@
                 '</div>' +
                 '<div class="pc-ping__titles">' +
                     '<div class="pc-ping__title-row">' +
-                        '<h3 class="pc-ping__title">' + esc(text('pcPingTitle', 'Notifications')) + '</h3>' +
+                        '<h3 class="pc-ping__title"' + titleAttrs + '>' + esc(text('pcPingTitle', 'Notifications')) + '</h3>' +
                         '<span class="pc-ping__status ' + (enabled ? 'is-on' : 'is-off') + '" data-pc-ping-status="' + appId + '">' + esc(statusLabel) + '</span>' +
                     '</div>' +
                     '<p class="pc-ping__desc">' + descHtml() + '</p>' +
@@ -297,10 +300,12 @@
         var enabled = isEnabled(project);
         return '<section class="pc-ping pc-ping--compact' + (enabled ? ' is-on' : ' is-off') +
             '" data-pc-ping="' + appId + '" onclick="event.stopPropagation();">' +
-            '<button type="button" class="pc-ping-icon-btn' + (enabled ? ' is-on' : ' is-off') + '"' +
-                ' aria-pressed="' + (enabled ? 'true' : 'false') + '"' +
-                ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
-                ' onclick="event.stopPropagation(); pcProofPingToggleDot(' + Number(appId) + ', this)">' +
+            '<button type="button" class="pc-ping-icon-btn pc-ping-icon-btn--info' + (enabled ? ' is-on' : ' is-off') + '"' +
+                ' aria-haspopup="dialog"' +
+                ' aria-expanded="false"' +
+                ' aria-controls="proof-ping-explain"' +
+                ' aria-label="' + esc(text('pcPingExplainAria', 'What these notifications are')) + '"' +
+                ' onclick="event.stopPropagation(); pcProofPingOpenExplain(' + Number(appId) + ', event)">' +
                 notificationIconHtml(appId, enabled) +
             '</button>' +
             ctaHtml('sm') +
@@ -383,6 +388,7 @@
             Array.prototype.slice.call(block.querySelectorAll('.pc-dotswitch, .pc-switch-toggle, .pc-ping-icon-btn')).forEach(function (btn) {
                 btn.classList.toggle('is-on', on);
                 btn.classList.toggle('is-off', !on);
+                if (btn.classList.contains('pc-ping-icon-btn--info')) return;
                 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
                 btn.setAttribute('aria-checked', on ? 'true' : 'false');
             });
@@ -549,6 +555,44 @@
         setEnabled(appId, enabled);
     };
 
+    function syncExplainExpanded(appId, isOpen) {
+        var safeId = Number(appId || 0);
+        Array.prototype.slice.call(document.querySelectorAll(
+            '.pc-ping--compact[data-pc-ping="' + safeId + '"] .pc-ping-icon-btn--info'
+        )).forEach(function (btn) {
+            btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+    }
+
+    window.pcProofPingOpenExplain = function (appId, event) {
+        if (event) event.stopPropagation();
+        var overlay = document.getElementById('proof-ping-explain');
+        var body = document.getElementById('proof-ping-explain-body');
+        var project = projectById(appId);
+        if (!overlay || !body || !project) return;
+        var previousId = Number(overlay.getAttribute('data-pc-ping-explain') || 0);
+        if (previousId && previousId !== Number(appId || 0)) syncExplainExpanded(previousId, false);
+        body.innerHTML = expandedHtml(project, 'pc-ping--dialog');
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        overlay.setAttribute('data-pc-ping-explain', String(Number(appId || 0)));
+        syncExplainExpanded(appId, true);
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
+    window.closeProofPingExplain = function (event) {
+        var overlay = document.getElementById('proof-ping-explain');
+        if (!overlay) return;
+        if (event && event.target !== overlay) return;
+        var appId = Number(overlay.getAttribute('data-pc-ping-explain') || 0);
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.removeAttribute('data-pc-ping-explain');
+        if (appId) syncExplainExpanded(appId, false);
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    };
+
     window.pcProofPingMasterToggle = function (input) {
         var enabled = !!(input && input.checked);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
@@ -572,6 +616,14 @@
     window.pcProofPingDismiss = function (appId, event) {
         if (event) event.stopPropagation();
         var safeId = Number(appId || 0);
+        var explain = document.getElementById('proof-ping-explain');
+        if (explain && explain.classList.contains('active')) {
+            explain.classList.remove('active');
+            explain.setAttribute('aria-hidden', 'true');
+            explain.removeAttribute('data-pc-ping-explain');
+            syncExplainExpanded(safeId, false);
+            if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        }
         rememberDismissed(safeId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 
@@ -642,10 +694,28 @@
         syncSettingsRow: syncSettingsRow,
     };
 
+    function bindExplainOverlay() {
+        var overlay = document.getElementById('proof-ping-explain');
+        if (!overlay || overlay._pcPingExplainBound || typeof MutationObserver === 'undefined') return;
+        overlay._pcPingExplainBound = true;
+        var observer = new MutationObserver(function () {
+            if (overlay.classList.contains('active')) return;
+            var appId = Number(overlay.getAttribute('data-pc-ping-explain') || 0);
+            overlay.setAttribute('aria-hidden', 'true');
+            overlay.removeAttribute('data-pc-ping-explain');
+            if (appId) syncExplainExpanded(appId, false);
+        });
+        observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+    }
+
     setMasterLocal(readStoredMaster());
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', syncSettingsRow);
+        document.addEventListener('DOMContentLoaded', function () {
+            syncSettingsRow();
+            bindExplainOverlay();
+        });
     } else {
         syncSettingsRow();
+        bindExplainOverlay();
     }
 })();

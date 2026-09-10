@@ -12,15 +12,41 @@
     border-bottom: 0;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body {
+    background: var(--pc-shell-bg, #182332);
+    border: 1px solid var(--pc-shell-border, rgba(171, 194, 231, 0.12));
+    border-top: 0;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+    padding-bottom: 12px;
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded.is-on {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+    box-shadow: none;
 }
 
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-today > .pc-activity,
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping ~ .pc-today > .pc-activity {
-    margin-top: 0;
-    border-top: 0;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     padding-top: 10px;
+}
+
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-actions {
+    margin: 4px 14px 0;
 }
 
 /* ── Shared shell ───────────────────────────────────────────────────────── */
@@ -872,4 +898,41 @@
 
 .pc-ping--compact .pc-ping__link {
     margin-left: auto;
+}
+
+/* Compact bell opens a centered copy of the expanded explanation. */
+#proof-ping-explain.modal-overlay,
+.proof-ping-explain-overlay {
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    z-index: 10070;
+}
+
+#proof-ping-explain .proof-ping-explain-card {
+    width: 100%;
+    max-width: 380px;
+    margin: auto;
+    padding: 0;
+    padding-bottom: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+    max-height: none;
+    transform: scale(0.96);
+}
+
+#proof-ping-explain.active .proof-ping-explain-card {
+    transform: scale(1);
+}
+
+.pc-ping--dialog {
+    margin: 0;
+    overflow: visible;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.46);
+}
+
+.pc-ping--dialog::before {
+    display: none;
 }

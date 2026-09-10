@@ -1538,7 +1538,7 @@ function renderProjects(force) {
         /* ── Remaining actions: feedback stays here after attract moved into testers ── */
         const actionsHtml = `
             <div class="pc-actions">
-                ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'margin: 0; min-height: 46px; border-radius: 13px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: var(--bg-surface-2); color: var(--text-secondary); border: 1px solid var(--border-subtle);')}
+                ${buildProjectFeedbackButton(project.id, project.feedback_total_count || 0, project.feedback_new_count || 0, false, 'margin: 0; min-height: 46px; border-radius: 13px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center;')}
             </div>
         `;
 

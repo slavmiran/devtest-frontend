@@ -2431,8 +2431,8 @@ button.pc-stage-badge {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    background: var(--bg-surface-2);
-    border: 1px solid var(--border-subtle);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--pc-shell-border, rgba(171, 194, 231, 0.12));
     color: var(--text-secondary);
 }
 
@@ -3605,13 +3605,15 @@ button.pc-act-reason {
 
 #tab-projects .card[id^="project-card-"] {
     --pc-hero-line: rgba(148, 180, 255, 0.13);
+    --pc-shell-bg: #182332;
+    --pc-shell-border: rgba(171, 194, 231, 0.12);
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-unified {
     margin-bottom: 12px;
-    border-color: rgba(171, 194, 231, 0.12);
+    border-color: var(--pc-shell-border);
     border-radius: 18px;
-    background: #182332;
+    background: var(--pc-shell-bg);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 12px 28px rgba(0, 0, 0, 0.16);
 }
 

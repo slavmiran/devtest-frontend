@@ -19,6 +19,11 @@
 <div id="tab-projects">
   <div id="projects-list"></div>
 </div>
+<div id="proof-ping-explain" class="modal-overlay centered-popup-overlay proof-ping-explain-overlay" aria-hidden="true">
+  <div class="modal-content centered-popup proof-ping-explain-card" role="dialog" aria-modal="true" aria-labelledby="proof-ping-explain-title">
+    <div id="proof-ping-explain-body"></div>
+  </div>
+</div>
 
 <script>
 const CAL = `<svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/></svg>`;
@@ -134,10 +139,11 @@ function pingExpanded() {
 }
 
 function pingCompact() {
-  return `<section class="pc-ping pc-ping--compact is-on">
-    <button type="button" class="pc-dotswitch is-on" aria-pressed="true"><span class="pc-dotswitch__dot"></span></button>
-    <span class="pc-ping__compact-label">Уведомления</span>
-    <button type="button" class="pc-ping__link pc-ping__link--sm">${TG}<span class="pc-ping__link-label">Community</span></button>
+  return `<section class="pc-ping pc-ping--compact is-on" data-pc-ping="2">
+    <button type="button" class="pc-ping-icon-btn pc-ping-icon-btn--info is-on" aria-haspopup="dialog" aria-expanded="false" aria-label="Что это за уведомления">
+      <img class="pc-ping-svg-ico pc-ping-notification-icon" src="./images/Icons/notification-new-svgrepo-com.svg" alt="" aria-hidden="true">
+    </button>
+    <button type="button" class="pc-ping__link pc-ping__link--sm">${TG}<span class="pc-ping__link-label">Community Chat</span></button>
     <button type="button" class="pc-ping__close"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.3-6.3 6.29 1.42 1.42 6.29-6.3 6.3 6.3 1.41-1.42-6.3-6.29 6.3-6.3z"/></svg></button>
   </section>`;
 }
@@ -183,36 +189,67 @@ function activityStub() {
   return `<div class="pc-today"><section class="pc-activity"><header class="pc-activity__head"><h3 class="pc-activity__title">Активность тестировщиков</h3></header><div class="pc-activity__filters"><button class="pc-activity__filter is-active">Все</button></div><div class="pc-activity__caption"><p class="pc-activity__hint">Все, кто сейчас в тесте.</p><button type="button" class="pc-activity__hist"><span class="pc-activity__hist-dot"></span>История</button></div><div class="pc-activity__list" style="min-height:44px"></div></section></div>`;
 }
 
+function feedbackStub() {
+  return `<div class="pc-actions"><button type="button" class="project-feedback-btn">💬 Фидбэк</button></div>`;
+}
+
 function card(id, opts) {
   return `<div class="card" id="project-card-${id}">
     <section class="pc-state-unified">${header(opts.sub)}${opts.quickSettings ? quickSettings() : ''}${stateBlock(opts)}</section>
-    <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}</div>
+    <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}${opts.feedback ? feedbackStub() : ''}</div>
   </div>`;
 }
 
 document.getElementById('projects-list').innerHTML =
-  card(1, { sub:'<span class="pc-subtitle-chips"><button type="button" class="pc-subtitle-chip pc-subtitle-chip--reviews is-on"><span class="pc-subtitle-chip__label">Отзывы Google:</span><span class="pc-subtitle-chip__state is-on">вкл</span></button></span>', stage:'recruiting', stageLabel:'Идёт набор команды · Минимум +4', day:3, total:false, extra:false, totalDays:0, testers:0, teamSize:8, done:0, pct:0, chip:null, needSync:false, availableOffer:4, recruitTarget:12, ping: pingExpanded(), activity:false, quickSettings:true })
-+ card(2, { sub:'<span class="pc-subtitle-flags">Email · Запрашивать Google отзывы</span>', stage:'need_sync', stageLabel:'Нужна синхронизация', day:7, total:false, extra:false, totalDays:0, testers:9, teamSize:12, done:7, pct:78, chip:null, needSync:true, availableOffer:7, recruitTarget:12, ping: pingCompact(), activity:true })
+  card(1, { sub:'<span class="pc-subtitle-chips"><button type="button" class="pc-subtitle-chip pc-subtitle-chip--reviews is-on"><span class="pc-subtitle-chip__label">Отзывы Google:</span><span class="pc-subtitle-chip__state is-on">вкл</span></button></span>', stage:'recruiting', stageLabel:'Идёт набор команды · Минимум +4', day:3, total:false, extra:false, totalDays:0, testers:0, teamSize:8, done:0, pct:0, chip:null, needSync:false, availableOffer:4, recruitTarget:12, ping: pingExpanded(), activity:false, feedback:true, quickSettings:true })
++ card(2, { sub:'<span class="pc-subtitle-flags">Email · Запрашивать Google отзывы</span>', stage:'need_sync', stageLabel:'Нужна синхронизация', day:7, total:false, extra:false, totalDays:0, testers:9, teamSize:12, done:7, pct:78, chip:null, needSync:true, availableOffer:7, recruitTarget:12, ping: pingCompact(), activity:true, feedback:true })
 + card(3, { sub:'com.slavmiran.quickpaste6', stage:'extension', stageLabel:'Продление теста +2 дня', day:14, total:true, extra:2, totalDays:16, testers:16, teamSize:21, done:14, pct:88, chip:{kind:'purple', text:'Сверх нормы (+2)'}, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, paidActive:true })
 + card(4, { sub:'com.slavmiran.quickpaste6', stage:'buffer', stageLabel:'Буфер +32ч', day:15, total:true, extra:false, totalDays:18, testers:16, teamSize:21, done:12, pct:100, chip:null, needSync:false, availableOffer:9, recruitTarget:21, mini:true, ping:'', activity:true, bufferActive:true });
 
-document.querySelectorAll('.pc-dotswitch, .pc-switch-toggle').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    var on = !btn.classList.contains('is-on');
-    btn.classList.toggle('is-on', on);
-    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    btn.setAttribute('aria-checked', on ? 'true' : 'false');
-    var block = btn.closest('.pc-ping');
-    if (block) {
-      block.classList.toggle('is-on', on);
-      block.classList.toggle('is-off', !on);
-      var status = block.querySelector('.pc-ping__status');
-      if (status) {
-        status.classList.toggle('is-on', on);
-        status.classList.toggle('is-off', !on);
-        status.textContent = on ? 'Включены' : 'Выключены';
+function bindPingToggles(root) {
+  (root || document).querySelectorAll('.pc-dotswitch, .pc-switch-toggle').forEach(function (btn) {
+    if (btn._pingBound) return;
+    btn._pingBound = true;
+    btn.addEventListener('click', function () {
+      var on = !btn.classList.contains('is-on');
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      var block = btn.closest('.pc-ping');
+      if (block) {
+        block.classList.toggle('is-on', on);
+        block.classList.toggle('is-off', !on);
+        var status = block.querySelector('.pc-ping__status');
+        if (status) {
+          status.classList.toggle('is-on', on);
+          status.classList.toggle('is-off', !on);
+          status.textContent = on ? 'Включены' : 'Выключены';
+        }
       }
-    }
+      var compactBell = document.querySelector('.pc-ping--compact .pc-ping-icon-btn--info');
+      if (compactBell) compactBell.classList.toggle('is-on', on);
+    });
+  });
+}
+bindPingToggles();
+var explainOverlay = document.getElementById('proof-ping-explain');
+var explainBody = document.getElementById('proof-ping-explain-body');
+document.querySelectorAll('.pc-ping-icon-btn--info').forEach(function (btn) {
+  btn.addEventListener('click', function (event) {
+    event.stopPropagation();
+    explainBody.innerHTML = pingExpanded().replace('pc-ping pc-ping--expanded', 'pc-ping pc-ping--expanded pc-ping--dialog');
+    explainOverlay.classList.add('active');
+    explainOverlay.setAttribute('aria-hidden', 'false');
+    btn.setAttribute('aria-expanded', 'true');
+    bindPingToggles(explainBody);
+  });
+});
+explainOverlay.addEventListener('click', function (event) {
+  if (event.target !== explainOverlay) return;
+  explainOverlay.classList.remove('active');
+  explainOverlay.setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('.pc-ping-icon-btn--info').forEach(function (btn) {
+    btn.setAttribute('aria-expanded', 'false');
   });
 });
 document.querySelectorAll('.pc-activity__hist').forEach(function (btn) {
