@@ -1805,6 +1805,7 @@
                 '</p>' +
                 '<ul class="pc-catchup-request-sheet__facts">' +
                     '<li>' + esc(text('pcCatchupRequestFactRegular', 'One screenshot, Bug, or Idea with a screenshot on the next regular day will close the request.')) + '</li>' +
+                    '<li>' + esc(text('pcCatchupRequestFactBothWays', 'A catch-up report also completes today\'s test. Conversely, today\'s test with a screenshot closes one catch-up request.')) + '</li>' +
                     '<li>' + esc(text('pcCatchupRequestFactPenalty', 'Karma changes only if the test ends while this request is still open.')) + '</li>' +
                 '</ul>' +
                 '<div class="pc-catchup-request-sheet__actions">' +

@@ -2178,8 +2178,11 @@ window.openControlProofCatchupInfo = function(appId) {
     const facts = [
         window.t('catchupTesterFactAnyDay', {}, lang),
         window.t('catchupTesterFactClose', {}, lang),
-        window.t('catchupTesterFactPenalty', {}, lang),
     ];
+    if (!bufferOnly && !isOfficialDay) {
+        facts.push(window.t('catchupTesterFactBothWays', {}, lang));
+    }
+    facts.push(window.t('catchupTesterFactPenalty', {}, lang));
     if (bufferOnly) facts.push(window.t('catchupTesterBufferNote', {}, lang));
     if (isOfficialDay) facts.push(window.t('catchupTesterOfficialNote', {}, lang));
     const actionsHtml = isOfficialDay
