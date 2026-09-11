@@ -131,7 +131,10 @@
     }
 
     function filterControlRows(project, rows) {
-        if (!project || !rows || !rows.length) return rows || [];
+        if (!project || project.status === 'pending_completion' || project.app_status === 'pending_completion') {
+            return [];
+        }
+        if (!rows || !rows.length) return rows || [];
         return rows.filter(function (row) {
             var roster = project.testers || [];
             for (var index = 0; index < roster.length; index += 1) {
@@ -191,6 +194,7 @@
         skips: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3 1.7 20.5h20.6L12 3Zm1 13h-2V9h2v7Zm0 3h-2v-2h2v2Z"/></svg>',
         missed_control: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10v2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3V2Zm2 2h6V3H9v1Zm11 4H4v12h16V8Zm-8 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm1 1v2.59l1.7 1.7-1.4 1.41L11 14v-3h2Z"/></svg>',
         not_opened: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5c5.3 0 9.27 4.11 10.5 7-1.23 2.89-5.2 7-10.5 7S2.73 14.89 1.5 12C2.73 9.11 6.7 5 12 5Zm0 2c-3.96 0-7.16 2.86-8.39 5 1.23 2.14 4.43 5 8.39 5s7.16-2.86 8.39-5C19.16 9.86 15.96 7 12 7Zm0 2.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Zm-7.7 9.34L18.6 4.3l1.41 1.41L5.71 20 4.3 18.59Z"/></svg>',
+        direct_invite: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>',
     };
 
     function iconAct(kind, label, onclick, opts) {
@@ -272,6 +276,101 @@
         return text(key, '{count} screenshots', { count: amount });
     }
 
+    function formatDeviceInfo(device) {
+        if (!device) return '';
+        var model = String(device.model || '').trim();
+        var brand = String(device.brand || '').trim();
+        var name = model || brand;
+        if (brand && model && model.toLowerCase().indexOf(brand.toLowerCase()) === -1) {
+            name = brand + ' ' + model;
+        }
+        var android = String(device.android_version || '').trim();
+        if (android) {
+            if (!/^android/i.test(android)) {
+                android = 'Android ' + android;
+            }
+        }
+        var parts = [];
+        if (name) parts.push(name);
+        if (android) parts.push(android);
+        return parts.join(' • ');
+    }
+
+    function testerReliabilityLabel(tester) {
+        if (!tester) return '';
+        var relState = typeof getDossierReliabilityState === 'function'
+            ? getDossierReliabilityState(tester)
+            : null;
+        var relName = text('metricReliability', 'Reliability');
+        if (relState) {
+            if (relState.isNewbie) {
+                return relName + ' · ' + (text('bountyAppReliabilityNewbieShort', 'Newbie'));
+            }
+            return relName + ' ' + relState.reliabilityPct + '%';
+        }
+        if (tester.reliability_index != null && !isNaN(Number(tester.reliability_index))) {
+            var pct = Math.round(Number(tester.reliability_index));
+            return relName + ' ' + pct + '%';
+        }
+        return relName + ' · ' + text('bountyAppReliabilityNewbieShort', 'Newbie');
+    }
+
+    function skipsLabel(count) {
+        var n = Number(count || 0);
+        var mod10 = n % 10;
+        var mod100 = n % 100;
+        var key = 'pcAttentionSkips';
+        if (mod100 >= 11 && mod100 <= 19) {
+            key = 'pcAttentionSkipsMany';
+        } else if (mod10 === 1) {
+            key = 'pcAttentionSkipsOne';
+        } else if (mod10 >= 2 && mod10 <= 4) {
+            key = 'pcAttentionSkipsFew';
+        } else {
+            key = 'pcAttentionSkipsMany';
+        }
+        return text(key, '{count} consecutive skips', { count: n });
+    }
+
+    function isTesterRemindedToday(appId, testerId) {
+        try {
+            var key = 'pc_control_reminded_' + Number(appId) + '_' + todayString();
+            var val = localStorage.getItem(key);
+            var list = val ? JSON.parse(val) : [];
+            return Array.isArray(list) && list.indexOf(Number(testerId)) !== -1;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function markTesterRemindedToday(appId, testerId) {
+        try {
+            var key = 'pc_control_reminded_' + Number(appId) + '_' + todayString();
+            var val = localStorage.getItem(key);
+            var list = val ? JSON.parse(val) : [];
+            if (!Array.isArray(list)) list = [];
+            if (list.indexOf(Number(testerId)) === -1) {
+                list.push(Number(testerId));
+                localStorage.setItem(key, JSON.stringify(list));
+            }
+        } catch (_) {}
+    }
+
+    function isMutualOfferPending(testerId) {
+        var idStr = String(testerId || '');
+        if (typeof _blockedOfferProjectsByOwner !== 'undefined' && _blockedOfferProjectsByOwner && _blockedOfferProjectsByOwner[idStr]) {
+            return true;
+        }
+        if (Array.isArray(window.myOffers)) {
+            var found = window.myOffers.some(function (o) {
+                var pId = Number(o.responder_id || o.target_id || o.partner_id || 0);
+                return pId === Number(testerId) && (o.status === 'pending' || o.status === 'sent');
+            });
+            if (found) return true;
+        }
+        return false;
+    }
+
     function dossierClick(appId, tester) {
         var username = dossierUsername(tester);
         var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
@@ -284,8 +383,8 @@
             codes[String(reason.code || '')] = true;
         });
         if (codes.skips || codes.missed_control || codes.debt) return 'amber';
-        if (codes.not_opened) return 'sky';
-        return 'amber';
+        if (codes.not_opened || codes.direct_invite) return 'sky';
+        return 'neutral';
     }
 
     /**
@@ -458,6 +557,7 @@
             testerId: Number(item.tester && item.tester.id || 0),
             tester: item.tester || {},
             day: Number(item.current_day || 0),
+            device: item.device || null,
             received: !!checked,
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
@@ -683,7 +783,7 @@
         var html = '';
         if (!row.received) {
             return iconAct('remind', text('pcRemindBtn', 'Remind'),
-                'pcRemindTester(' + Number(appId) + ',' + Number(row.testerId) + ')');
+                'pcRemindTester(' + Number(appId) + ',' + Number(row.testerId) + ', \'control\', { day: ' + Number(row.day || 0) + ' })');
         }
         if (row.proofId > 0) {
             html += iconAct('image', '',
@@ -718,6 +818,10 @@
         if (typeLabel) {
             meta += '<span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
         }
+        var devText = formatDeviceInfo(row.device);
+        if (devText) {
+            meta += '<span class="pc-person__device">• ' + esc(devText) + '</span>';
+        }
         return personRowHtml({
             appId: appId,
             tester: row.tester,
@@ -733,6 +837,9 @@
     /* ───────────────────────── control block rendering ─────────────────────── */
 
     function fallbackControlRows(project) {
+        if (!project || project.status === 'pending_completion' || project.app_status === 'pending_completion') {
+            return [];
+        }
         var today = todayString();
         return (project.testers || []).filter(function (tester) {
             if (tester.is_left_soft || tester.is_guest_tester || tester.is_external) return false;
@@ -743,6 +850,7 @@
                 testerId: Number(tester.tester_id || 0),
                 tester: tester,
                 day: Number(tester.testing_days || 0),
+                device: tester.device || null,
                 received: tester.last_check_date === today,
                 proofId: 0,
                 proofType: '',
@@ -922,9 +1030,31 @@
         });
     }
 
+    function attentionPriority(item) {
+        var reasons = item && item.reasons || [];
+        var hasActionable = reasons.some(function (r) {
+            if (r.code === 'not_opened' || r.code === 'skips') return true;
+            if (r.code === 'missed_control') {
+                return !r.proofRequested || r.proofReceived;
+            }
+            return false;
+        });
+        if (hasActionable) return 1;
+
+        var hasPendingCatchup = reasons.some(function (r) {
+            return r.code === 'missed_control' && r.proofRequested && !r.proofReceived;
+        });
+        if (hasPendingCatchup) return 2;
+
+        return 3;
+    }
+
     function collectAttention(project) {
+        var isBuffer = project && (project.status === 'pending_completion' || project.app_status === 'pending_completion');
         var yesterday = shiftDateString(todayString(), -1);
         var items = [];
+        var hasRealIssue = false;
+
         (project && project.testers || []).forEach(function (tester) {
             if (!tester || tester.is_left_soft || tester.is_guest_tester || tester.is_external) return;
             var reasons = [];
@@ -940,63 +1070,89 @@
                 || requestedDays.indexOf(candidateMissedDay) !== -1;
             var proofReceived = candidateState === 'proof_received' || candidateState === 'completed';
             var catchupResolved = candidateState === 'owner_closed' || candidateState === 'closed';
-            var neverOpened = !tester.last_check_date;
+
+            // Real issue: not_opened (only before buffer)
+            var neverOpened = !isBuffer && !tester.last_check_date;
             if (neverOpened) {
                 reasons.push({
                     code: 'not_opened',
                     label: text('statusNotOpened', 'Not opened yet'),
                 });
+                hasRealIssue = true;
             }
-            if (!neverOpened || requestableMissedDay > 0) {
-                if (!catchupResolved && (requestableMissedDay > 0 || (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
-                    reasons.push({
-                        code: 'missed_control',
-                        label: proofReceived
-                            ? text('pcAttentionProofReceived', 'Proof for day {day} received ✓', { day: candidateMissedDay })
-                            : (proofRequested
-                                ? requestedProofLabel(candidateMissedDay, candidateRequest && candidateRequest.requested_at)
-                                : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: candidateMissedDay })),
-                        missedDay: candidateMissedDay,
-                        proofRequested: proofRequested,
-                        proofReceived: proofReceived,
-                        proofRequestId: Number(candidateRequest && candidateRequest.id || 0),
-                        completedProofId: Number(candidateRequest && candidateRequest.completed_proof_id || 0),
-                    });
-                }
+
+            // Real issue: missed_control
+            if (!catchupResolved && (requestableMissedDay > 0 || (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
+                reasons.push({
+                    code: 'missed_control',
+                    label: proofReceived
+                        ? text('pcAttentionProofReceived', 'Proof for day {day} received ✓', { day: candidateMissedDay })
+                        : (proofRequested
+                            ? requestedProofLabel(candidateMissedDay, candidateRequest && candidateRequest.requested_at)
+                            : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: candidateMissedDay })),
+                    missedDay: candidateMissedDay,
+                    proofRequested: proofRequested,
+                    proofReceived: proofReceived,
+                    proofRequestId: Number(candidateRequest && candidateRequest.id || 0),
+                    completedProofId: Number(candidateRequest && candidateRequest.completed_proof_id || 0),
+                    requestedAt: candidateRequest && candidateRequest.requested_at,
+                });
+                hasRealIssue = true;
             }
+
+            // Real issue: skips >= 3 (only before buffer)
             var skips = (typeof calculateConsecutiveSkips === 'function')
                 ? Number(calculateConsecutiveSkips(tester) || 0)
                 : Number(tester.consecutive_skips || 0);
-            if (skips >= 3) {
+            if (!isBuffer && skips >= 3) {
                 reasons.push({
                     code: 'skips',
-                    label: text('pcAttentionSkips', '{count} consecutive skips', { count: skips }),
+                    label: skipsLabel(skips),
+                    skips: skips,
                 });
+                hasRealIssue = true;
             }
+
+            // Secondary state: debt
             var joinType = String(tester.join_type || '').toLowerCase();
             if ((joinType === 'mutual' || joinType === 'prelaunch') && tester.is_mutual_debt) {
                 reasons.push({
                     code: 'debt',
-                    label: text('pcAttentionDebt', 'Still owes finishing your project'),
+                    label: text('pcAttentionDebtLabel', 'Your project still needs to be tested'),
                 });
             }
+
+            // Secondary state: direct_invite (only before buffer)
+            var isDirectInvite = !isBuffer && (joinType === 'invite' || joinType === 'direct' || !joinType)
+                && !tester.reciprocal_app_id;
+            if (isDirectInvite) {
+                reasons.push({
+                    code: 'direct_invite',
+                    label: text('pcAttentionDirectInvite', 'Direct testing · No mutual obligation'),
+                });
+            }
+
             if (!reasons.length) return;
-            var waitingOnlyForTester = reasons.some(function (reason) {
-                return reason.code === 'missed_control' && reason.proofRequested && !reason.proofReceived;
-            }) && !reasons.some(function (reason) {
-                return reason.code !== 'missed_control';
-            });
+
             items.push({
                 tester: tester,
                 testerId: Number(tester.tester_id || 0),
                 reasons: reasons,
-                waitingOnlyForTester: waitingOnlyForTester,
             });
         });
-        // Already-requested rows are useful context, but must not push actual
-        // owner actions lower in the Attention list.
+
+        // Trigger rule: direct_invite and debt alone never trigger the creation of Внимание tab.
+        // It appears only if there is a real issue.
+        if (!hasRealIssue) {
+            return [];
+        }
+
+        // Sorting priority:
+        // 1) Actionable issues for owner (skips, not_opened, unrequested or proof-received missed_control)
+        // 2) Pending tester catch-up (missed_control requested & awaiting proof)
+        // 3) Preventive states (direct_invite, debt)
         items.sort(function (left, right) {
-            return Number(!!left.waitingOnlyForTester) - Number(!!right.waitingOnlyForTester);
+            return attentionPriority(left) - attentionPriority(right);
         });
         return items;
     }
@@ -1011,47 +1167,73 @@
         return '<div class="pc-activity-empty">' + esc(message) + '</div>';
     }
 
+    function contributionPriority(item, context) {
+        var reasons = item && item.reasons || [];
+        var hasUnprocessed = reasons.some(function (r) {
+            return r.feedbackId > 0 && !isProcessed(r);
+        });
+        if (hasUnprocessed) return 1;
+
+        var isRewarded = context && context.rewardedTesterIds && context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
+        var hasFeedback = reasons.some(function (r) { return r.feedbackId > 0; });
+        var allFeedbackProcessed = hasFeedback && reasons.every(function (r) {
+            return r.feedbackId > 0 ? isProcessed(r) : true;
+        });
+
+        if (isRewarded || allFeedbackProcessed) return 3;
+        return 2;
+    }
+
     function contributionSheetHtml(appId, items, context) {
         if (!items.length) return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
-        return '<ul class="pc-act-list">' + items.map(function (item) {
-            var reasonHtml = item.reasons.map(function (reason) {
-                var handler = reason.feedbackId > 0
-                    ? 'pcOpenFeedback(' + Number(appId) + ',' + Number(reason.feedbackId) + ')'
-                    : (reason.proofId > 0
-                        ? 'pcOpenProof(' + Number(appId) + ',' + Number(reason.proofId) + ',0)'
-                        : '');
-                if (!handler) return '<span class="pc-act-reason">' + esc(reason.label) + '</span>';
-                return '<button type="button" class="pc-act-reason" onclick="event.stopPropagation(); ' + handler + '">' +
-                    esc(reason.label) + '</button>';
-            }).join('<span class="pc-act-reason-sep"> · </span>');
+
+        var sorted = items.slice().sort(function (left, right) {
+            return contributionPriority(left, context) - contributionPriority(right, context);
+        });
+
+        return '<ul class="pc-act-list">' + sorted.map(function (item) {
             var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
-            var feedbackReasons = item.reasons.filter(function (reason) {
-                return ['bug', 'idea', 'play_review'].indexOf(reason.kind) !== -1;
-            });
-            var pendingFeedback = feedbackReasons.find(function (reason) {
-                return Number(reason.feedbackId || 0) > 0 && !isProcessed(reason);
-            });
-            // A feedback-only contribution is handled through its ticket. When there
-            // is another contribution too, its regular karma action remains available.
-            var mayRewardHere = !feedbackReasons.length || item.reasons.length > 1;
-            var actionsHtml = '';
-            if (pendingFeedback) {
-                actionsHtml += contributionProcessActionHtml(appId, pendingFeedback.feedbackId);
-            }
-            // Keep the reward (or its issued summary) to the right of ticket handling.
+            var headerActionsHtml = '';
             if (rewarded) {
-                actionsHtml += awardedRewardBadgeHtml(context, item.testerId);
-            } else if (mayRewardHere && context.rewardsLeft > 0) {
-                actionsHtml += iconAct('reward', text('pcRewardBtn', 'Reward'),
+                headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId);
+            } else if (context.rewardsLeft > 0) {
+                headerActionsHtml = iconAct('reward', text('pcRewardBtn', 'Reward'),
                     'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
             }
+
+            var subrowsHtml = '<div class="pc-contribution-subrows">' + item.reasons.map(function (reason) {
+                var reasonIcon = CONTRIBUTION_ICONS[reason.kind] || CONTRIBUTION_ICONS.screenshots;
+                var actionHtml = '';
+                if (reason.feedbackId > 0) {
+                    if (isProcessed(reason)) {
+                        actionHtml = '<span class="pc-badge-processed">' + esc(text('pcContributionProcessed', '✓ Processed')) + '</span>';
+                    } else {
+                        actionHtml = iconAct('process', text('pcProcessBtn', 'Process'),
+                            'pcOpenFeedback(' + Number(appId) + ',' + Number(reason.feedbackId) + ')');
+                    }
+                } else if (reason.proofId > 0) {
+                    actionHtml = iconAct('image', text('pcViewProof', 'View proof'),
+                        'pcOpenProof(' + Number(appId) + ',' + Number(reason.proofId) + ',0)');
+                }
+
+                return '<div class="pc-contribution-subrow pc-contribution-subrow--' + esc(reason.kind) + '">' +
+                    '<div class="pc-contribution-subrow__info">' +
+                        '<span class="pc-contribution-subrow__icon" aria-hidden="true">' + reasonIcon + '</span>' +
+                        '<span class="pc-contribution-subrow__label">' + esc(reason.label) + '</span>' +
+                    '</div>' +
+                    '<div class="pc-contribution-subrow__action">' + actionHtml + '</div>' +
+                '</div>';
+            }).join('') + '</div>';
+
             return personRowHtml({
                 appId: appId,
                 tester: item.tester,
                 tone: rewarded ? 'green' : 'sky',
-                metaHtml: reasonHtml,
-                actionsHtml: actionsHtml,
+                rowClass: 'pc-person--contribution',
+                metaHtml: '',
+                actionsHtml: headerActionsHtml,
                 avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
+                extraHtml: subrowsHtml,
             });
         }).join('') + '</ul>';
     }
@@ -1059,48 +1241,79 @@
     function attentionSheetHtml(appId, items) {
         if (!items.length) return emptySheetHtml(text('pcAttentionEmpty', 'Nobody needs attention right now'));
         return '<ul class="pc-act-list">' + items.map(function (item) {
-            var hasDebt = item.reasons.some(function (reason) { return reason.code === 'debt'; });
-            var missedControl = item.reasons.find(function (reason) { return reason.code === 'missed_control'; });
-            // Remind stays rightmost; debt/link (if any) sits to its left.
-            var actions = '';
-            if (hasDebt && typeof openTesterLinkStatusFromRow === 'function') {
-                actions += iconAct('link', text('pcDebtShort', 'Debt'),
-                    'openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(item.testerId) + ', event)',
-                    { title: text('linkedBadgeDebt', 'Mutual debt') });
-            }
-            if (missedControl && missedControl.proofReceived) {
-                if (missedControl.completedProofId > 0) {
-                    actions += iconAct('image', text('pcViewProof', 'View proof'),
-                        'pcOpenProof(' + Number(appId) + ',' + Number(missedControl.completedProofId) + ',0)');
+            var tester = item.tester || {};
+            var currentDay = testerDayNumber(tester);
+            var linkedIcon = String(tester.reciprocal_app_icon_url || '').trim();
+            var avatarMarkerHtml = linkedIcon
+                ? '<img class="pc-person__avatar-linked" src="' + esc(linkedIcon) + '" alt="" loading="lazy">'
+                : '<span class="pc-person__dot" aria-hidden="true"></span>';
+
+            var metaHtml = '<span class="pc-person__reliability">' + esc(testerReliabilityLabel(tester)) + '</span>' +
+                '<span class="pc-person__day">• ' + esc(text('pcDayOf', 'Day {day} / {total}', { day: currentDay, total: 14 })) + '</span>';
+
+            var subrowsHtml = '<div class="pc-attention-subrows">' + item.reasons.map(function (reason) {
+                var reasonIcon = ATTENTION_ICONS[reason.code] || ATTENTION_ICONS.not_opened;
+                var actionHtml = '';
+                if (reason.code === 'not_opened') {
+                    actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
+                        'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ', \'not_opened\')');
+                } else if (reason.code === 'skips') {
+                    actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
+                        'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ', \'skips\', { skips: ' + Number(reason.skips || 0) + ' })');
+                } else if (reason.code === 'debt') {
+                    actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
+                        'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ', \'debt\')');
+                } else if (reason.code === 'missed_control') {
+                    if (reason.proofReceived) {
+                        if (reason.completedProofId > 0) {
+                            actionHtml += iconAct('image', text('pcViewProof', 'View proof'),
+                                'pcOpenProof(' + Number(appId) + ',' + Number(reason.completedProofId) + ',0)');
+                        }
+                        if (reason.proofRequestId > 0) {
+                            actionHtml += iconAct('done', text('pcCloseProofRequest', 'Done'),
+                                'pcCloseCatchupProofRequest(' + Number(appId) + ',' + Number(reason.proofRequestId) + ')');
+                        }
+                    } else if (reason.proofRequested) {
+                        actionHtml += iconAct('done', text('pcProofRequested', 'Requested'), '', { done: true });
+                    } else if (isCatchupControlDay(reason.missedDay)) {
+                        actionHtml += iconAct('image', text('pcRequestProof', 'Request'),
+                            'pcRequestCatchupProof(' + Number(appId) + ',' + Number(item.testerId) + ')');
+                    }
+                } else if (reason.code === 'direct_invite') {
+                    var isPending = isMutualOfferPending(item.testerId);
+                    if (isPending) {
+                        actionHtml = '<span class="pc-btn-pending" title="' + esc(text('pcAttentionOfferPending', 'Awaiting reply')) + '">' +
+                            esc(text('pcAttentionOfferPending', 'Awaiting reply')) + '</span>';
+                    } else {
+                        actionHtml = '<button type="button" class="pc-btn-mutual-offer" onclick="event.stopPropagation(); pcOfferMutual(' +
+                            Number(appId) + ',' + Number(item.testerId) + ', event)">' +
+                            esc(text('pcAttentionDirectInviteAction', 'Offer mutual')) + '</button>';
+                    }
                 }
-                if (missedControl.proofRequestId > 0) {
-                    actions += iconAct('done', text('pcCloseProofRequest', 'Done'),
-                        'pcCloseCatchupProofRequest(' + Number(appId) + ',' + Number(missedControl.proofRequestId) + ')');
+
+                var labelClick = '';
+                if (reason.code === 'debt' && typeof openTesterLinkStatusFromRow === 'function') {
+                    labelClick = ' onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(item.testerId) + ', event)" style="cursor: pointer;"';
                 }
-            } else if (missedControl && missedControl.proofRequested) {
-                actions += iconAct('done', text('pcProofRequested', 'Requested'), '', { done: true });
-            } else if (missedControl && isCatchupControlDay(missedControl.missedDay)) {
-                actions += iconAct('image', text('pcRequestProof', 'Request'),
-                    'pcRequestCatchupProof(' + Number(appId) + ',' + Number(item.testerId) + ')');
-            }
-            if (!missedControl || !missedControl.proofReceived) {
-                actions += iconAct('remind', text('pcRemindBtn', 'Remind'),
-                    'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
-            }
-            var currentDay = testerDayNumber(item.tester);
-            var metaHtml = '<span class="pc-person__day">' +
-                esc(text('pcDayOf', 'Day {day} / {total}', { day: currentDay, total: 14 })) +
-            '</span>' + item.reasons.map(function (reason) {
-                return '<span class="pc-person__reason">• ' + esc(reason.label) + '</span>';
-            }).join('');
+
+                return '<div class="pc-attention-subrow pc-attention-subrow--' + esc(reason.code) + '">' +
+                    '<div class="pc-attention-subrow__info"' + labelClick + '>' +
+                        '<span class="pc-attention-subrow__icon" aria-hidden="true">' + reasonIcon + '</span>' +
+                        '<span class="pc-attention-subrow__label">' + esc(reason.label) + '</span>' +
+                    '</div>' +
+                    '<div class="pc-attention-subrow__action">' + actionHtml + '</div>' +
+                '</div>';
+            }).join('') + '</div>';
+
             return personRowHtml({
                 appId: appId,
-                tester: item.tester,
+                tester: tester,
                 tone: attentionTone(item),
-                rowClass: 'pc-person--reasons',
+                rowClass: 'pc-person--attention',
                 metaHtml: metaHtml,
-                actionsHtml: actions,
-                avatarMarkerHtml: attentionAvatarMarkerHtml(item.reasons),
+                actionsHtml: '',
+                avatarMarkerHtml: avatarMarkerHtml,
+                extraHtml: subrowsHtml,
             });
         }).join('') + '</ul>';
     }
@@ -1127,9 +1340,67 @@
 
     function controlNowHtml(appId, rows, context) {
         if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
-        return '<ul class="pc-act-list pc-activity-control">' +
-            rows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
-        '</ul>';
+        var pendingRows = rows.filter(function (row) { return !row.received; });
+        var receivedRows = rows.filter(function (row) { return row.received; });
+        var totalCount = rows.length;
+        var receivedCount = receivedRows.length;
+        var pendingCount = pendingRows.length;
+
+        var bulkRemindHtml = '';
+        if (pendingCount > 0) {
+            var unreminded = pendingRows.filter(function (r) {
+                return !isTesterRemindedToday(appId, r.testerId);
+            });
+            if (unreminded.length > 0) {
+                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn" onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
+                    '🔔 ' + esc(text('pcControlRemindAll', 'Remind pending ({count})', { count: unreminded.length })) +
+                '</button>';
+            } else {
+                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn is-done" disabled>' +
+                    '✓ ' + esc(text('pcControlRemindAllDone', 'Reminders sent ✓')) +
+                '</button>';
+            }
+        }
+
+        var summaryHtml = '<div class="pc-control-summary">' +
+            '<div class="pc-control-summary__info">' +
+                '<span class="pc-control-summary__badge">' + receivedCount + '/' + totalCount + '</span>' +
+                '<span class="pc-control-summary__text">' +
+                    esc(text('pcControlSummaryReceived', 'Received {count} of {total}', { count: receivedCount, total: totalCount })) +
+                    ' · ' +
+                    esc(text('pcControlSummaryPending', 'Pending {count}', { count: pendingCount })) +
+                '</span>' +
+            '</div>' +
+            bulkRemindHtml +
+        '</div>';
+
+        var pendingSectionHtml = '';
+        if (pendingRows.length > 0) {
+            pendingSectionHtml = '<div class="pc-control-section pc-control-section--pending">' +
+                '<div class="pc-control-section-title">' +
+                    '<span>' + esc(text('pcControlSectionPending', 'Pending')) + '</span>' +
+                    '<span class="pc-control-section-count">(' + pendingRows.length + ')</span>' +
+                '</div>' +
+                '<ul class="pc-act-list pc-activity-control">' +
+                    pendingRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+                '</ul>' +
+            '</div>';
+        }
+
+        var receivedSectionHtml = '';
+        if (receivedRows.length > 0) {
+            receivedSectionHtml = '<div class="pc-control-section pc-control-section--received">' +
+                '<div class="pc-control-section-title">' +
+                    '<span>' + esc(text('pcControlSectionReceived', 'Received')) + '</span>' +
+                    '<span class="pc-control-section-count">(' + receivedRows.length + ')</span>' +
+                '</div>' +
+                '<ul class="pc-act-list pc-activity-control">' +
+                    receivedRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+                '</ul>' +
+            '</div>';
+        }
+
+        return summaryHtml + pendingSectionHtml + receivedSectionHtml;
     }
 
     function nowHtmlForFilter(project, filter, data, context) {
@@ -1285,6 +1556,7 @@
     }
 
     function filtersHtml(appId, visible, active, data) {
+        if (!visible || visible.length <= 1) return '';
         var labels = {
             contribution: text('pcFilterContribution', 'Contribution'),
             attention: text('pcFilterAttention', 'Attention'),
@@ -1325,7 +1597,16 @@
 
     function captionHtml(appId, filter, mode, project) {
         var historyOn = mode === 'history';
-        var avail = karmaAvailability(project || projectById(appId));
+        var proj = project || projectById(appId);
+        var isOnlyAll = false;
+        if (proj) {
+            var data = activityCounts(proj);
+            var visible = visibleFilters(data);
+            if (visible.length === 1 && visible[0] === 'testers') {
+                isOnlyAll = true;
+            }
+        }
+        var avail = karmaAvailability(proj);
         var karmaMax = avail.max || 3;
         var karmaAvail = avail.available;
         var karmaIcon = typeof window.karmaIconHtml === 'function'
@@ -1352,15 +1633,19 @@
             '<span class="pc-activity__hist-label">' + esc(text('pcModeHistory', 'History')) + '</span>' +
         '</button>';
 
-        var hintText = hintForFilter(filter);
-        return '<div class="pc-activity__caption">' +
+        var hintText = (filter === 'testers' && isOnlyAll) ? '' : hintForFilter(filter);
+        var hintHtml = hintText ? (
+            '<div class="pc-activity__hint-scroll" tabindex="0">' +
+                '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
+                '<button type="button" class="pc-activity__info" aria-label="' +
+                    esc(text('pcHintInfoAria', 'Filter criteria')) +
+                    '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
+            '</div>'
+        ) : '';
+
+        return '<div class="pc-activity__caption' + (isOnlyAll ? ' pc-activity__caption--only-all' : '') + '">' +
             '<div class="pc-activity__hint-wrap">' +
-                '<div class="pc-activity__hint-scroll" tabindex="0">' +
-                    '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
-                    '<button type="button" class="pc-activity__info" aria-label="' +
-                        esc(text('pcHintInfoAria', 'Filter criteria')) +
-                        '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
-                '</div>' +
+                hintHtml +
             '</div>' +
             '<div class="pc-activity__actions">' +
                 karmaBtn +
@@ -1441,16 +1726,31 @@
         var captionEl = shell.querySelector('.pc-activity__caption');
         var nowEl = document.getElementById('pc-activity-now-' + safeAppId);
         var histEl = document.getElementById('pc-activity-history-' + safeAppId);
-        shell.classList.toggle('is-hydrating', !!data.loading);
+        var visible = visibleFilters(data);
+        var newFiltersMarkup = filtersHtml(safeAppId, visible, filter, data);
         if (filtersEl) {
+            if (newFiltersMarkup) {
+                var nextFilters = document.createElement('div');
+                nextFilters.innerHTML = newFiltersMarkup;
+                if (nextFilters.firstChild) {
+                    filtersEl.replaceWith(nextFilters.firstChild);
+                }
+            } else {
+                filtersEl.remove();
+            }
+        } else if (newFiltersMarkup && captionEl) {
             var nextFilters = document.createElement('div');
-            nextFilters.innerHTML = filtersHtml(safeAppId, visibleFilters(data), filter, data);
-            filtersEl.replaceWith(nextFilters.firstChild);
+            nextFilters.innerHTML = newFiltersMarkup;
+            if (nextFilters.firstChild) {
+                captionEl.before(nextFilters.firstChild);
+            }
         }
         if (captionEl) {
             var nextCaption = document.createElement('div');
             nextCaption.innerHTML = captionHtml(safeAppId, filter, mode, project);
-            captionEl.replaceWith(nextCaption.firstChild);
+            if (nextCaption.firstChild) {
+                captionEl.replaceWith(nextCaption.firstChild);
+            }
         }
         if (nowEl) {
             nowEl.hidden = mode !== 'now';
@@ -1753,20 +2053,103 @@
         else if (typeof openKarmaDistribution === 'function') openKarmaDistribution(Number(appId || 0));
     };
 
-    window.pcRemindTester = function (appId, testerId) {
-        var project = projectById(appId);
+    window.pcRemindTester = function (appId, testerId, reasonCode, extraData) {
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        var project = projectById(safeAppId);
         var tester = project && (project.testers || []).find(function (item) {
-            return Number(item && item.tester_id) === Number(testerId || 0);
+            return Number(item && item.tester_id) === safeTesterId;
         });
         if (!tester || typeof openBellRemindPreview !== 'function') return;
+        var skips = extraData && extraData.skips != null
+            ? Number(extraData.skips)
+            : Number(tester.consecutive_skips || 0);
+        var day = extraData && extraData.day != null
+            ? Number(extraData.day)
+            : Number(tester.current_day || tester.testing_days || 0);
+
         openBellRemindPreview({
             username: String(tester.username || '').replace(/^@+/, ''),
             fullName: tester.full_name || '',
             avatarUrl: tester.avatar_url || '',
-            testerId: Number(tester.tester_id || 0),
-            remindAppId: Number(project.id),
+            testerId: safeTesterId,
+            remindAppId: safeAppId,
             remindAppName: project.name || '',
+            remindReason: reasonCode || 'regular',
+            consecutiveSkips: skips,
+            controlDay: day,
+            onSent: function () {
+                markTesterRemindedToday(safeAppId, safeTesterId);
+                refreshActivityWorkspace(safeAppId);
+            },
         });
+    };
+
+    window._isSendingControlBulkReminder = false;
+
+    window.pcRemindAllPendingControl = function (appId) {
+        if (window._isSendingControlBulkReminder) return;
+        var safeAppId = Number(appId || 0);
+        var project = projectById(safeAppId);
+        if (!project) return;
+        var counts = activityCounts(project);
+        var pending = (counts.controlRows || []).filter(function (r) { return !r.received; });
+        var unreminded = pending.filter(function (r) {
+            return !isTesterRemindedToday(safeAppId, r.testerId);
+        });
+        if (!unreminded.length) {
+            if (typeof showToast === 'function') {
+                showToast(text('pcControlRemindAllDone', 'Reminders sent ✓'));
+            }
+            return;
+        }
+
+        var confirmMsg = text('pcControlRemindAllConfirm', 'Send reminder for today\'s control day to pending testers ({count})?', { count: unreminded.length });
+        if (typeof window.confirm === 'function' && !window.confirm(confirmMsg)) {
+            return;
+        }
+
+        window._isSendingControlBulkReminder = true;
+        try {
+            var tags = unreminded.map(function (r) { return handleOf(r.tester); }).filter(Boolean).join(' ');
+            var controlDay = unreminded[0] ? Number(unreminded[0].day || 0) : 0;
+
+            if (typeof openBellRemindPreview === 'function') {
+                openBellRemindPreview({
+                    username: '', // send to topic
+                    userTags: tags,
+                    fullName: '',
+                    remindAppId: safeAppId,
+                    remindAppName: project.name || '',
+                    remindReason: 'control_bulk',
+                    controlDay: controlDay,
+                    onSent: function () {
+                        unreminded.forEach(function (r) {
+                            markTesterRemindedToday(safeAppId, r.testerId);
+                        });
+                        refreshActivityWorkspace(safeAppId);
+                    },
+                });
+            }
+        } finally {
+            window.setTimeout(function () {
+                window._isSendingControlBulkReminder = false;
+            }, 800);
+        }
+    };
+
+    window.pcOfferMutual = function (appId, testerId, event) {
+        if (event && event.stopPropagation) event.stopPropagation();
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        var project = projectById(safeAppId);
+        var tester = project && (project.testers || []).find(function (item) {
+            return Number(item && item.tester_id) === safeTesterId;
+        });
+        var username = String(tester && (tester.username || '')).replace(/^@+/, '');
+        if (typeof openDossierModal === 'function') {
+            openDossierModal(username, safeTesterId, safeAppId);
+        }
     };
 
     function removeCatchupProofRequestDialog() {

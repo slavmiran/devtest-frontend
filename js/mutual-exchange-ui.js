@@ -1134,23 +1134,51 @@
                 : ('https://t.me/Android12TestersBot/app?startapp=app_focus_' + appId));
 
         var langKey = messageLang === 'en' ? 'en' : 'ru';
+        var reason = String(state.remindReason || 'regular');
+        var isTopic = mode === 'topic';
 
-        if (mode === 'topic') {
-            if (window.t) {
-                return window.t('bellNotifyTopicMsg', {
-                    user_tag: userTag,
-                    app_name: appName,
-                    deep_link: deepLink,
-                }, langKey);
-            }
-            return (userTag ? (userTag + ' ') : '') + 'Hi! Reminder for ' + appName + ': ' + deepLink + '\n\n#reminder #alarm #devtest';
+        var key = isTopic ? 'bellNotifyTopicMsg' : 'bellNotifyDmMsg';
+        if (reason === 'not_opened') {
+            key = isTopic ? 'bellNotifyTopicMsg_not_opened' : 'bellNotifyDmMsg_not_opened';
+        } else if (reason === 'skips') {
+            key = isTopic ? 'bellNotifyTopicMsg_skips' : 'bellNotifyDmMsg_skips';
+        } else if (reason === 'debt') {
+            key = isTopic ? 'bellNotifyTopicMsg_debt' : 'bellNotifyDmMsg_debt';
+        } else if (reason === 'control') {
+            key = isTopic ? 'bellNotifyTopicMsg_control' : 'bellNotifyDmMsg_control';
+        } else if (reason === 'control_bulk') {
+            key = isTopic ? 'bellNotifyTopicMsg_control_bulk' : 'bellNotifyDmMsg_control_bulk';
         }
 
+        var skipsCount = Number(state.consecutiveSkips || 0);
+        var daysWord = '';
+        if (langKey === 'ru') {
+            var mod10 = skipsCount % 10;
+            var mod100 = skipsCount % 100;
+            if (mod100 >= 11 && mod100 <= 19) daysWord = 'дней';
+            else if (mod10 === 1) daysWord = 'день';
+            else if (mod10 >= 2 && mod10 <= 4) daysWord = 'дня';
+            else daysWord = 'дней';
+        } else {
+            daysWord = skipsCount === 1 ? 'day' : 'days';
+        }
+
+        var userTags = state.userTags || (userTag ? userTag : '');
+
         if (window.t) {
-            return window.t('bellNotifyDmMsg', {
+            return window.t(key, {
+                user_tag: userTag,
+                user_tags: userTags,
                 app_name: appName,
                 deep_link: deepLink,
+                count: skipsCount,
+                days_word: daysWord,
+                day: Number(state.controlDay || 0),
             }, langKey);
+        }
+
+        if (isTopic) {
+            return (userTags ? (userTags + ' ') : '') + 'Reminder for ' + appName + ': ' + deepLink + '\n\n#reminder #alarm #devtest';
         }
         return 'Hi! Reminder for ' + appName + ': ' + deepLink;
     }
@@ -1306,6 +1334,11 @@
             messageLang: detectedLang,
             defaultLang: detectedLang,
             isExpanded: false,
+            remindReason: source.remindReason || source.contextType || 'regular',
+            consecutiveSkips: Number(source.consecutiveSkips || source.skips || 0),
+            controlDay: Number(source.controlDay || source.day || 0),
+            userTags: source.userTags || '',
+            onSent: typeof source.onSent === 'function' ? source.onSent : null,
         };
 
         var overlay = document.getElementById('bell-remind-overlay');
@@ -1342,6 +1375,7 @@
         var username = String(state.username || state.testerUsername || '').replace(/^@+/, '');
         var fullName = String(state.fullName || state.testerFullName || '').trim();
         var messageLang = state.messageLang === 'en' ? 'en' : 'ru';
+        var onSent = typeof state.onSent === 'function' ? state.onSent : null;
 
         var textEl = document.getElementById('bell-remind-text');
         var enteredText = textEl ? String(textEl.value || '').trim() : '';
@@ -1373,6 +1407,9 @@
             }
 
             _bellRemindState = null;
+            if (typeof onSent === 'function') {
+                try { onSent(target); } catch (_) {}
+            }
             if (typeof showToast === 'function') {
                 showToast(_t('bellRemindSentTopicToast'));
             }
@@ -1391,11 +1428,26 @@
         }
 
         if (!username) {
+            if (state.userTags) {
+                if (typeof onSent === 'function') {
+                    try { onSent(target); } catch (_) {}
+                }
+                _bellRemindState = null;
+                if (typeof showToast === 'function') {
+                    showToast(_t('bellRemindSentTopicToast'));
+                }
+                openGeneralTopic();
+                return;
+            }
             if (typeof showToast === 'function') {
                 showToast(_t('bellRemindNoUsername'));
             }
             _bellRemindState = null;
             return;
+        }
+
+        if (typeof onSent === 'function') {
+            try { onSent(target); } catch (_) {}
         }
 
         if (typeof showToast === 'function') {
