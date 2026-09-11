@@ -848,8 +848,15 @@ function renderFeedCard(item, kind) {
     let buttonDisabledAttr = '';
     let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
     const isOwnProject = !!item.is_own_project;
+    const hasAccessIssue = !!item.has_access_issue;
+    const ownProjectChip = isOwnProject
+        ? `<span class="meta-chip accent-blue">${window.escapeHTML(window.t('ownProjectBadge', {}, lang))}</span>`
+        : '';
+    const accessIssueChip = hasAccessIssue
+        ? `<span class="meta-chip accent-red" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</span>`
+        : '';
 
-    if (kind === 'mutual-seeking' && !isOwnProject) {
+    if (kind === 'mutual-seeking' && !isOwnProject && !hasAccessIssue) {
         const hasAvailableMutual = typeof window.getAvailableMutualProjectsForOwner === 'function'
             ? window.getAvailableMutualProjectsForOwner(item.owner_id).length > 0
             : true;
@@ -924,6 +931,13 @@ function renderFeedCard(item, kind) {
             }
         }
     }
+    if (hasAccessIssue && !isOwnProject) {
+        buttonText = window.t('accessIssueCta', {}, lang);
+        clickAction = 'void(0)';
+        buttonClass = 'btn btn-secondary disabled';
+        buttonDisabledAttr = 'disabled';
+        buttonExtraAttrs = '';
+    }
     if (isOwnProject) {
         buttonText = window.t('ownProjectCta', {}, lang);
         clickAction = 'void(0)';
@@ -932,8 +946,12 @@ function renderFeedCard(item, kind) {
         buttonExtraAttrs = '';
     }
 
+    const cardClasses = ['market-card'];
+    if (isOwnProject) cardClasses.push('market-card-own');
+    if (hasAccessIssue) cardClasses.push('market-card-access-issue');
+
     return `
-        <div class="market-card${isOwnProject ? ' market-card-own' : ''}" data-app-id="${item.app_id}">
+        <div class="${cardClasses.join(' ')}" data-app-id="${item.app_id}">
             <div class="market-top">
                 <div>
                     <div class="card-title notranslate">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
@@ -951,6 +969,8 @@ function renderFeedCard(item, kind) {
                 ${emailChip}
                 ${bountyChip}
                 ${syncChip}
+                ${ownProjectChip}
+                ${accessIssueChip}
             </div>
             <button class="${buttonClass}" ${buttonDisabledAttr} ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
             ${(kind === 'mutual-seeking' && pendingOfferMeta) ? `<div class="market-offer-note">${window.escapeHTML(pendingOfferMeta)}</div>` : ''}
@@ -8631,7 +8651,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             contactButtonHtml +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'' + escapeInlineJsString(project.package_name || '') + '\')">' + window.escapeHTML(window.t('openGooglePlay', {}, lang)) + '</button>' +
             (joinBlocked
-                ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
+                ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t(project.has_access_issue ? 'accessIssueCta' : 'dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
                 : ((hasPendingBountyApp || alreadyTestingThisProject)
                     ? '<button class="btn pending disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(takeBtnLabel) + '</button>'
                     : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(takeBtnLabel) + '</button>')) +
@@ -8710,7 +8730,7 @@ function _buildDossierProjectMetaChips(ownedProject) {
 }
 
 function _isDossierProjectJoinBlocked(ownedProject) {
-    return !!(ownedProject && (ownedProject.is_blocked || ownedProject.blocked_at))
+    return !!(ownedProject && (ownedProject.is_blocked || ownedProject.blocked_at || ownedProject.has_access_issue))
         || _normalizeDossierVisibilityProject(ownedProject).visibility_mode === 'full_isolation';
 }
 
@@ -9879,7 +9899,8 @@ async function openDossierModal(username, testerId, appId) {
     const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0;
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
         && marketCandidate.market_kind !== 'mutual-return';
-    const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
+    const takeFromShowcaseBlockedByAccess = !!(marketCandidate && marketCandidate.has_access_issue);
+    const takeFromShowcaseDisabled = !!(marketCandidate && (marketCandidate.has_pending_offer || takeFromShowcaseBlockedByAccess));
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
     const pendingBountyApplication = (typeof findPendingBountyApplicationForTester === 'function')
         ? findPendingBountyApplicationForTester(testerId, appId)
@@ -9989,7 +10010,7 @@ async function openDossierModal(username, testerId, appId) {
                 </div>
             </div>` : ''}
             ${tgName ? `<button class="btn btn-accent-soft" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
-            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
+            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseBlockedByAccess ? 'accessIssueCta' : (takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest'), {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn btn-karma-soft" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
             ${canDeleteFromProject ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger-soft" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button></div>` : ''}
             ${canAdminBan ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger" onclick="closeDossierModal(); openBanUserModal(${testerId}, '${safeTelegramUsername}')">${t.dossierBtnBan || '🛑 Заблокировать'}</button></div>` : ''}

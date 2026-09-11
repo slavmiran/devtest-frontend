@@ -2704,6 +2704,15 @@ input::placeholder,
     box-shadow: inset 0 0 0 1px rgba(100, 149, 237, 0.12);
 }
 
+.market-card-access-issue {
+    border-color: rgba(255, 59, 48, 0.34);
+    box-shadow: inset 0 0 0 1px rgba(255, 59, 48, 0.10);
+}
+
+.market-card-own.market-card-access-issue {
+    border-color: rgba(255, 59, 48, 0.34);
+}
+
 .market-card.highlight-pulse,
 .card.highlight-pulse,
 .access-view-card.highlight-pulse,
