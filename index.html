@@ -36,23 +36,23 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260911-catchup-both-ways-v1"></script>
-    <script src="./i18n/en.js?v=20260911-catchup-both-ways-v1"></script>
+<script src="./i18n/ru.js?v=20260911-screenshot-boost-v1"></script>
+    <script src="./i18n/en.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260911-catchup-both-ways-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260911-extension-total-days-v1"></script>
-    <script src="./ui/ui-market.js?v=20260909-review-upload-unlocked-v1"></script>
+    <script src="./ui/ui-tests.js?v=20260911-screenshot-boost-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260911-screenshot-boost-v1"></script>
+    <script src="./ui/ui-market.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20260903-card-polish-v1"></script>
-    <script src="./js/app-api.js?v=20260910-activity-snapshot-v1"></script>
+    <script src="./js/app-api.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260904-feedback-reward-sync-v2"></script>
-    <script src="./js/checkin-proof-upload.js?v=20260909-exact-dedupe-v1"></script>
+    <script src="./js/app-actions.js?v=20260911-screenshot-boost-v1"></script>
+    <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260904-activity-history-fix-v1"></script>
     <script src="./js/project-today.js?v=20260911-catchup-both-ways-v1"></script>
     <script src="./js/proof-ping.js?v=20260910-quick-ping-explain-v1"></script>
@@ -96,9 +96,9 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260904-scroll-smooth-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260821-chooser-v6">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260904-scroll-smooth-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260911-screenshot-boost-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
-    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260911-extension-total-days-v1">
+    <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260911-screenshot-boost-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260910-actions-gap-v1">
 </head>
 <body>
@@ -1634,6 +1634,7 @@
 
             <!-- Check-in Proof Screenshot Upload Block (shown when proof upload is active) -->
             <div class="report-proof-upload-block" id="report-proof-upload-block">
+                <div id="report-screenshot-boost" class="screenshot-boost-offer" hidden></div>
                 <p class="checkin-proof-visibility-note" id="t-checkinProofVisibilityNote" data-i18n="checkinProofVisibilityNote">Скриншот публикуется в теме Testing Proofs. Убедитесь, что на нём нет личных данных.</p>
 
                 <input id="checkin-proof-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onchange="handleCheckinProofFileSelected(event)">
@@ -1692,6 +1693,7 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-checkinOptionsTitle"></h3>
             <p id="t-checkinOptionsSubtitle" style="color: var(--hint-color); font-size: 14px; line-height: 1.5; margin: 8px 0 20px;"></p>
+            <div id="checkin-options-screenshot-boost" class="screenshot-boost-offer" hidden></div>
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button class="btn btn-secondary" id="t-checkinOptionsSendScreenshot" style="width: 100%; justify-content: center;" onclick="checkinOptionsScreenshot()"></button>
                 <div style="display: flex; gap: 10px;">
@@ -1702,6 +1704,12 @@
                 <button class="btn btn-success" id="t-checkinOptionsJustConfirm" style="width: 100%; font-weight: 600; justify-content: center;" onclick="checkinOptionsConfirm()"></button>
             </div>
             <div id="checkin-review-options" style="display:none; margin-top: 14px;"></div>
+        </div>
+    </div>
+
+    <div id="screenshot-boost-modal" class="modal-overlay screenshot-boost-modal" onclick="closeScreenshotBoostModal(event)">
+        <div class="modal-content screenshot-boost-sheet" onclick="event.stopPropagation()">
+            <div id="screenshot-boost-modal-body"></div>
         </div>
     </div>
 

@@ -1775,6 +1775,7 @@ function _mapTestsFromApi(data) {
                     };
                 }).filter(function(item) { return item.id > 0 && item.missed_testing_day > 0; })
                 : [],
+            screenshot_boost_campaign: app.screenshot_boost_campaign || null,
         };
     });
 }
@@ -2324,6 +2325,7 @@ function _mapProjectsFromApi(data) {
             protection_bust_pool: Number(project.protection_bust_pool || 0),
             consumed_pending_hours: Number(project.consumed_pending_hours || 0),
             pending_completion_started_at: project.pending_completion_started_at || null,
+            screenshot_boost_campaign: project.screenshot_boost_campaign || null,
         };
     });
 }

@@ -467,6 +467,25 @@ function buildProjectCardSubtitle(project, options) {
         );
     }
 
+    const screenshotBoost = project.screenshot_boost_campaign;
+    if (screenshotBoost && screenshotBoost.enabled === true) {
+        const reward = Math.max(0, Number(screenshotBoost.reward_bust || 0));
+        const pool = Math.max(0, Number(screenshotBoost.pool_remaining || 0));
+        if (reward > 0) {
+            const boostLabel = window.t('screenshotBoostChip', {
+                amount: formatScreenshotBoostAmount(reward),
+                pool: formatScreenshotBoostAmount(pool),
+            }, lang);
+            chips.push(
+                (interactive
+                    ? '<button type="button" class="pc-subtitle-chip pc-subtitle-chip--screenshot-boost" onclick="openScreenshotBoostInfo(' + Number(project.id || project.app_id || 0) + ', event)">'
+                    : '<span class="pc-subtitle-chip pc-subtitle-chip--screenshot-boost">') +
+                    window.escapeHTML(boostLabel) +
+                (interactive ? '</button>' : '</span>')
+            );
+        }
+    }
+
     if (project.target_lang && String(project.target_lang).toUpperCase() !== 'ALL') {
         const langCode = String(project.target_lang).toUpperCase();
         const langLabel = langCode === 'RU' ? '🇷🇺 RU' : (langCode === 'EN' ? '🇬🇧 EN' : langCode);
@@ -545,6 +564,231 @@ async function toggleProjectRequestReviews(appId, event) {
     }
 }
 window.toggleProjectRequestReviews = toggleProjectRequestReviews;
+
+var _screenshotBoostModalAppId = 0;
+var _screenshotBoostModalBalance = 0;
+
+function getScreenshotBoostProject(appId) {
+    return (typeof myProjects !== 'undefined' && Array.isArray(myProjects) ? myProjects : []).find(function(item) {
+        return Number(item && (item.id || item.app_id) || 0) === Number(appId || 0);
+    }) || null;
+}
+
+function normalizeScreenshotBoostCampaign(campaign, appId, runIteration) {
+    campaign = campaign && typeof campaign === 'object' ? campaign : {};
+    return {
+        id: Number(campaign.id || 0),
+        app_id: Number(campaign.app_id || appId || 0),
+        run_iteration: Math.max(1, Number(campaign.run_iteration || runIteration || 1)),
+        reward_bust: Math.max(1, Number(campaign.reward_bust || 2)),
+        pool_remaining: Math.max(0, Number(campaign.pool_remaining || 0)),
+        funded_total: Math.max(0, Number(campaign.funded_total || 0)),
+        paid_total: Math.max(0, Number(campaign.paid_total || 0)),
+        returned_total: Math.max(0, Number(campaign.returned_total || 0)),
+        reward_control_days: campaign.reward_control_days === true,
+        enabled: campaign.enabled === true,
+    };
+}
+
+function closeScreenshotBoostModal(event) {
+    var modal = document.getElementById('screenshot-boost-modal');
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.remove('active');
+    window.setTimeout(function() {
+        var body = document.getElementById('screenshot-boost-modal-body');
+        if (body && !modal.classList.contains('active')) body.innerHTML = '';
+    }, 220);
+}
+
+function renderScreenshotBoostSettings(project, campaign, balanceBust) {
+    var body = document.getElementById('screenshot-boost-modal-body');
+    if (!body || !project) return;
+    campaign = normalizeScreenshotBoostCampaign(campaign, project.id || project.app_id, project.run_iteration);
+    var safeName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang) || 'Project');
+    body.innerHTML = `
+        <div class="screenshot-boost-sheet__handle" aria-hidden="true"></div>
+        <div class="screenshot-boost-sheet__head">
+            <div class="screenshot-boost-sheet__icon" aria-hidden="true">🎁</div>
+            <div class="screenshot-boost-sheet__heading">
+                <h3>${window.escapeHTML(window.t('screenshotBoostSettingsTitle', {}, lang))}</h3>
+                <p class="notranslate">${safeName}</p>
+            </div>
+            <button type="button" class="screenshot-boost-sheet__close" onclick="closeScreenshotBoostModal()" aria-label="Close">×</button>
+        </div>
+        <p class="screenshot-boost-sheet__intro">${window.escapeHTML(window.t('screenshotBoostSettingsIntro', {}, lang))}</p>
+        <label class="screenshot-boost-switch-row">
+            <span>
+                <strong>${window.escapeHTML(window.t('screenshotBoostEnabledLabel', {}, lang))}</strong>
+                <small>${window.escapeHTML(window.t(campaign.enabled ? 'screenshotBoostQuickOn' : 'screenshotBoostQuickOff', {
+                    amount: formatScreenshotBoostAmount(campaign.reward_bust),
+                    pool: formatScreenshotBoostAmount(campaign.pool_remaining),
+                }, lang))}</small>
+            </span>
+            <input id="screenshot-boost-enabled" type="checkbox" ${campaign.enabled ? 'checked' : ''} onchange="syncScreenshotBoostSettingsToggle()">
+            <span class="screenshot-boost-switch" aria-hidden="true"></span>
+        </label>
+        <div class="screenshot-boost-fields">
+            <label class="screenshot-boost-field">
+                <span>${window.escapeHTML(window.t('screenshotBoostRewardLabel', {}, lang))}</span>
+                <div class="screenshot-boost-input-wrap"><input id="screenshot-boost-reward" type="number" inputmode="numeric" min="1" step="1" value="${Math.round(campaign.reward_bust)}"><b>$BUST</b></div>
+            </label>
+            <label class="screenshot-boost-field">
+                <span>${window.escapeHTML(window.t('screenshotBoostPoolLabel', {}, lang))}</span>
+                <div class="screenshot-boost-input-wrap"><input id="screenshot-boost-pool" type="number" inputmode="numeric" min="0" step="1" value="${Math.round(campaign.pool_remaining)}"><b>$BUST</b></div>
+            </label>
+        </div>
+        <label class="screenshot-boost-control-row">
+            <input id="screenshot-boost-control-days" type="checkbox" ${campaign.reward_control_days ? 'checked' : ''}>
+            <span class="screenshot-boost-control-check" aria-hidden="true"></span>
+            <span><strong>${window.escapeHTML(window.t('screenshotBoostControlLabel', {}, lang))}</strong><small>${window.escapeHTML(window.t('screenshotBoostControlHint', {}, lang))}</small></span>
+        </label>
+        <div class="screenshot-boost-balance">
+            <span>${window.escapeHTML(window.t('screenshotBoostBalanceAvailable', { amount: formatScreenshotBoostAmount(balanceBust) }, lang))}</span>
+            <span>${window.escapeHTML(window.t('screenshotBoostPoolReserved', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</span>
+        </div>
+        <p class="screenshot-boost-sheet__hint">${window.escapeHTML(window.t('screenshotBoostPoolHint', {}, lang))}</p>
+        <div id="screenshot-boost-settings-error" class="screenshot-boost-settings-error" hidden></div>
+        <div class="screenshot-boost-sheet__actions">
+            <button type="button" class="btn btn-secondary" onclick="closeScreenshotBoostModal()">${window.escapeHTML(window.t('screenshotBoostCancel', {}, lang))}</button>
+            <button id="screenshot-boost-save" type="button" class="btn btn-primary" onclick="saveScreenshotBoostSettings()">${window.escapeHTML(window.t('screenshotBoostSave', {}, lang))}</button>
+        </div>
+    `;
+    syncScreenshotBoostSettingsToggle();
+}
+
+function syncScreenshotBoostSettingsToggle() {
+    var enabled = document.getElementById('screenshot-boost-enabled');
+    var sheet = document.querySelector('#screenshot-boost-modal .screenshot-boost-sheet');
+    if (sheet) sheet.classList.toggle('is-enabled', !!(enabled && enabled.checked));
+}
+
+async function openScreenshotBoostSettings(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var project = getScreenshotBoostProject(appId);
+    var modal = document.getElementById('screenshot-boost-modal');
+    var body = document.getElementById('screenshot-boost-modal-body');
+    if (!project || !modal || !body) return;
+    _screenshotBoostModalAppId = Number(appId || 0);
+    _screenshotBoostModalBalance = Number(visibilityStats && visibilityStats.balance_bust || 0);
+    renderScreenshotBoostSettings(project, project.screenshot_boost_campaign, _screenshotBoostModalBalance);
+    modal.classList.add('active');
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    try {
+        var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((window.tg && window.tg.initData) || '');
+        var response = await fetch(API_BASE + '/projects/' + _screenshotBoostModalAppId + '/screenshot-boost?init_data=' + encodeURIComponent(initData));
+        var payload = await response.json().catch(function() { return {}; });
+        if (!response.ok || payload.status !== 'success') throw new Error(payload.code || payload.error || 'load_failed');
+        if (_screenshotBoostModalAppId !== Number(appId || 0) || !modal.classList.contains('active')) return;
+        _screenshotBoostModalBalance = Number(payload.balance_bust || 0);
+        project.screenshot_boost_campaign = normalizeScreenshotBoostCampaign(payload.campaign, project.id, project.run_iteration);
+        renderScreenshotBoostSettings(project, project.screenshot_boost_campaign, _screenshotBoostModalBalance);
+    } catch (error) {
+        var errorNode = document.getElementById('screenshot-boost-settings-error');
+        if (errorNode) {
+            errorNode.hidden = false;
+            errorNode.textContent = window.t('screenshotBoostLoadError', {}, lang);
+        }
+    }
+}
+
+function openScreenshotBoostInfo(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var project = getScreenshotBoostProject(appId);
+    var modal = document.getElementById('screenshot-boost-modal');
+    var body = document.getElementById('screenshot-boost-modal-body');
+    if (!project || !modal || !body) return;
+    var campaign = normalizeScreenshotBoostCampaign(project.screenshot_boost_campaign, appId, project.run_iteration);
+    _screenshotBoostModalAppId = Number(appId || 0);
+    body.innerHTML = `
+        <div class="screenshot-boost-sheet__handle" aria-hidden="true"></div>
+        <div class="screenshot-boost-sheet__head">
+            <div class="screenshot-boost-sheet__icon" aria-hidden="true">🎁</div>
+            <div class="screenshot-boost-sheet__heading"><h3>${window.escapeHTML(window.t('screenshotBoostInfoTitle', {}, lang))}</h3></div>
+            <button type="button" class="screenshot-boost-sheet__close" onclick="closeScreenshotBoostModal()" aria-label="Close">×</button>
+        </div>
+        <div class="screenshot-boost-info-card">
+            <p>${window.escapeHTML(window.t('screenshotBoostInfoText', {}, lang))}</p>
+            <strong>${window.escapeHTML(window.t('screenshotBoostInfoReward', { amount: formatScreenshotBoostAmount(campaign.reward_bust) }, lang))}</strong>
+            <span>${window.escapeHTML(window.t('screenshotBoostInfoOnce', {}, lang))}</span>
+        </div>
+        <div class="screenshot-boost-sheet__actions screenshot-boost-sheet__actions--single">
+            <button type="button" class="btn btn-primary" onclick="openScreenshotBoostSettings(${Number(appId || 0)}, event)">${window.escapeHTML(window.t('screenshotBoostToSettings', {}, lang))}</button>
+        </div>
+    `;
+    modal.classList.add('active');
+}
+
+async function saveScreenshotBoostSettings() {
+    var appId = Number(_screenshotBoostModalAppId || 0);
+    var project = getScreenshotBoostProject(appId);
+    var enabledNode = document.getElementById('screenshot-boost-enabled');
+    var rewardNode = document.getElementById('screenshot-boost-reward');
+    var poolNode = document.getElementById('screenshot-boost-pool');
+    var controlNode = document.getElementById('screenshot-boost-control-days');
+    var saveButton = document.getElementById('screenshot-boost-save');
+    var errorNode = document.getElementById('screenshot-boost-settings-error');
+    if (!project || !enabledNode || !rewardNode || !poolNode || !controlNode) return;
+    var enabled = !!enabledNode.checked;
+    var reward = Number(rewardNode.value || 0);
+    var pool = Number(poolNode.value || 0);
+    if (!Number.isInteger(reward) || reward <= 0 || !Number.isInteger(pool) || pool < 0 || (enabled && pool < reward)) {
+        if (errorNode) {
+            errorNode.hidden = false;
+            errorNode.textContent = window.t('screenshotBoostInvalid', {}, lang);
+        }
+        return;
+    }
+    if (saveButton) saveButton.disabled = true;
+    if (errorNode) errorNode.hidden = true;
+    try {
+        var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((window.tg && window.tg.initData) || '');
+        var response = await fetch(API_BASE + '/projects/' + appId + '/screenshot-boost', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                enabled: enabled,
+                reward_bust: reward,
+                pool_bust: enabled ? pool : 0,
+                reward_control_days: !!controlNode.checked,
+                init_data: initData,
+            }),
+        });
+        var payload = await response.json().catch(function() { return {}; });
+        if (!response.ok || payload.status !== 'success') throw new Error(payload.code || payload.error || payload.detail || 'save_failed');
+        project.screenshot_boost_campaign = normalizeScreenshotBoostCampaign(payload.campaign, appId, project.run_iteration);
+        _screenshotBoostModalBalance = Number(payload.balance_bust || 0);
+        if (visibilityStats) visibilityStats.balance_bust = _screenshotBoostModalBalance;
+        if (typeof setProjectsCache === 'function') {
+            setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+        }
+        closeScreenshotBoostModal();
+        if (typeof renderProjects === 'function') renderProjects(true);
+        if (typeof showToast === 'function') showToast(window.t('screenshotBoostSaved', {}, lang));
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
+    } catch (error) {
+        if (errorNode) {
+            errorNode.hidden = false;
+            errorNode.textContent = String(error && error.message || '').indexOf('insufficient_bust') !== -1
+                ? window.t('screenshotBoostInsufficient', {}, lang)
+                : window.t('screenshotBoostLoadError', {}, lang);
+        }
+    } finally {
+        if (saveButton) saveButton.disabled = false;
+    }
+}
+
+window.openScreenshotBoostSettings = openScreenshotBoostSettings;
+window.openScreenshotBoostInfo = openScreenshotBoostInfo;
+window.closeScreenshotBoostModal = closeScreenshotBoostModal;
+window.syncScreenshotBoostSettingsToggle = syncScreenshotBoostSettingsToggle;
+window.saveScreenshotBoostSettings = saveScreenshotBoostSettings;
 
 function captureProjectViewportAnchor(container) {
     if (!container || !isTabVisible('projects') || window.scrollY <= 0) return null;
@@ -634,12 +878,13 @@ function renderProjects(force) {
             if (!p) return acc;
             const status = String(p.status || p.app_status || 'active').toLowerCase();
             if (status === 'completed' || status === 'archived') return acc;
+            const screenshotPool = Number(p.screenshot_boost_campaign && p.screenshot_boost_campaign.pool_remaining || 0);
             const mode = String(p.mode || 'mutual').toLowerCase();
-            if (mode !== 'bounty' && mode !== 'hybrid') return acc + Number(p.protection_bust_pool || 0);
+            if (mode !== 'bounty' && mode !== 'hybrid') return acc + Number(p.protection_bust_pool || 0) + screenshotPool;
             const limit = Number(p.limit_bounty || 0);
             const rate = Number(p.bounty_per_tester || 0);
             const protection = Number(p.protection_bust_pool || 0);
-            return acc + (limit * rate) + protection;
+            return acc + (limit * rate) + protection + screenshotPool;
         }, 0);
         const reservedBustFormatted = (typeof formatUiAmount === 'function')
             ? formatUiAmount(reservedBust, 1)
@@ -1662,6 +1907,21 @@ function renderProjects(force) {
                                 </button>
                             </div>
                         </div>
+                        <button type="button" class="pc-quick-boost ${project.screenshot_boost_campaign && project.screenshot_boost_campaign.enabled ? 'is-on' : 'is-off'}" onclick="openScreenshotBoostSettings(${project.id}, event)">
+                            <span class="pc-quick-boost__icon" aria-hidden="true">🎁</span>
+                            <span class="pc-quick-boost__copy">
+                                <span class="pc-quick-boost__label">${window.escapeHTML(window.t('screenshotBoostQuickTitle', {}, lang))}</span>
+                                <span class="pc-quick-boost__value">${window.escapeHTML(
+                                    project.screenshot_boost_campaign && project.screenshot_boost_campaign.enabled
+                                        ? window.t('screenshotBoostQuickOn', {
+                                            amount: formatScreenshotBoostAmount(project.screenshot_boost_campaign.reward_bust),
+                                            pool: formatScreenshotBoostAmount(project.screenshot_boost_campaign.pool_remaining),
+                                        }, lang)
+                                        : window.t('screenshotBoostQuickOff', {}, lang)
+                                )}</span>
+                            </span>
+                            <svg class="pc-quick-boost__chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
                         <div class="pc-quick-settings__actions">
                             <button type="button" class="pc-quick-action" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
                                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>

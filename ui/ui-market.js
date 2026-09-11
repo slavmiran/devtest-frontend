@@ -3305,6 +3305,9 @@ function openCheckinOptionsModal(appId, ownerUsername) {
         reviewBtn.style.display = canReview ? 'block' : 'none';
     }
     renderCheckinReviewOptions();
+    if (typeof window.syncScreenshotBoostOfferUi === 'function') {
+        window.syncScreenshotBoostOfferUi(appId);
+    }
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -3343,6 +3346,13 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
         reviewBtn.style.display = 'none';
     }
     renderCheckinReviewOptions();
+    ['checkin-options-screenshot-boost', 'report-screenshot-boost'].forEach(function(id) {
+        var node = document.getElementById(id);
+        if (node) {
+            node.hidden = true;
+            node.textContent = '';
+        }
+    });
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -4236,10 +4246,25 @@ function openReportModal(appId, ownerUsername, options) {
         if (submitLabel) submitLabel.textContent = window.t('checkinProofSubmit', {}, lang);
         var cancelLabel = document.getElementById('t-checkinProofCancel');
         if (cancelLabel) cancelLabel.textContent = window.t('checkinProofCancel', {}, lang);
+        if (typeof window.syncScreenshotBoostOfferUi === 'function') {
+            window.syncScreenshotBoostOfferUi(appId);
+        }
+        if (isCatchupSubmission) {
+            var catchupBoost = document.getElementById('report-screenshot-boost');
+            if (catchupBoost) {
+                catchupBoost.hidden = true;
+                catchupBoost.textContent = '';
+            }
+        }
     } else {
         renderReportOwnerHeader(appId, ownerUsername);
         renderReportLanguageToggle();
         updateReportModalPrefill();
+        var legacyBoost = document.getElementById('report-screenshot-boost');
+        if (legacyBoost) {
+            legacyBoost.hidden = true;
+            legacyBoost.textContent = '';
+        }
     }
     document.getElementById('t-reportModalTitle').innerText = window.t(
         usesProofUpload

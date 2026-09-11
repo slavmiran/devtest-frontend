@@ -434,7 +434,8 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     if (wasFirstCheckin && !checkin.already_checked_today && typeof markDefaultGroupJoined === 'function') {
         markDefaultGroupJoined({ silent: true, rerender: false });
     }
-    if (!checkin.already_checked_today && typeof showCheckinRewardToasts === 'function') showCheckinRewardToasts(checkin);
+    if ((!checkin.already_checked_today || Number(checkin.screenshot_boost_earned || 0) > 0)
+        && typeof showCheckinRewardToasts === 'function') showCheckinRewardToasts(checkin);
     if (typeof setFirstDayScreenshotVisible === 'function') setFirstDayScreenshotVisible(appId, false);
     if (typeof setTimerReadyForConfirm === 'function') setTimerReadyForConfirm(appId, false, false, '');
     if (typeof clearActiveTimerForApp === 'function') clearActiveTimerForApp(appId);

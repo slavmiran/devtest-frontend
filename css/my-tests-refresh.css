@@ -1928,3 +1928,10 @@ button.ts-section-head {
     opacity: 0.7;
     transition: opacity 0.2s ease;
 }
+
+.split-btn-options.has-screenshot-boost { min-width:104px; padding-inline:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; color:#f6c85f; }
+.split-btn-options__boost { font-size:11px; font-weight:750; line-height:1; white-space:nowrap; }
+#tab-tests .split-btn-group .split-btn-options.has-screenshot-boost,
+#tab-tests .split-btn-group.split-timer-running .split-btn-options.has-screenshot-boost { color:#f6c85f!important; }
+.screenshot-boost-offer { margin:0 0 12px; padding:9px 11px; border:1px solid rgba(246,200,95,.22); border-radius:11px; color:#f6c85f; background:rgba(246,200,95,.08); font-size:12px; font-weight:650; line-height:1.35; text-align:left; }
+.screenshot-boost-offer[hidden] { display:none!important; }

@@ -2143,6 +2143,78 @@ function isBufferOnlyCatchupSubmission(test, testingDay) {
         && Number(test.protection_bust_pool || 0) <= 0;
 }
 
+function getScreenshotBoostOffer(test, testingDay) {
+    if (!test || test.is_external || test.is_kicked_soft || test.is_unlinked_soft) return null;
+    var campaign = test.screenshot_boost_campaign;
+    if (!campaign || campaign.enabled !== true) return null;
+    var reward = Math.max(0, Number(campaign.reward_bust || 0));
+    var pool = Math.max(0, Number(campaign.pool_remaining || 0));
+    var day = Math.max(0, Number(testingDay || getResolvedTestingDay(test) || 0));
+    var run = Math.max(1, Number(test.run_iteration || 1));
+    if (!reward || pool < reward || !day) return null;
+    if (Math.max(1, Number(campaign.run_iteration || 1)) !== run) return null;
+    if (String(test.progress_status || 'active').toLowerCase() !== 'active') return null;
+    if (String(test.app_status || 'active').toLowerCase() === 'pending_completion'
+        && isBufferOnlyCatchupSubmission(test, day)) return null;
+    if (['completed', 'archived', 'blocked'].indexOf(String(test.app_status || '').toLowerCase()) !== -1) return null;
+    if (isTestedToday(test)) return null;
+
+    // A make-up control proof always owns the first eligible screenshot of the day.
+    // The database also records a zero-value day claim, so a retry cannot bypass it.
+    var catchups = Array.isArray(test.control_proof_catchups) ? test.control_proof_catchups : [];
+    if (catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
+
+    var isControlDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day);
+    if (isControlDay && campaign.reward_control_days !== true) return null;
+    return {
+        reward: reward,
+        pool: pool,
+        day: day,
+        isControlDay: isControlDay,
+    };
+}
+
+function formatScreenshotBoostAmount(value) {
+    var number = Number(value || 0);
+    return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
+}
+
+function getScreenshotBoostPaperclipContent(appId) {
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
+    if (!offer) return '<span aria-hidden="true">📎</span>';
+    return '<span aria-hidden="true">📎</span><span class="split-btn-options__boost">+' +
+        window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</span>';
+}
+
+function syncScreenshotBoostOfferUi(appId) {
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
+    ['checkin-options-screenshot-boost', 'report-screenshot-boost'].forEach(function(id) {
+        var node = document.getElementById(id);
+        if (!node) return;
+        node.hidden = !offer;
+        if (!offer) {
+            node.textContent = '';
+            return;
+        }
+        node.textContent = window.t(
+            offer.isControlDay ? 'screenshotBoostControlOffer' : 'screenshotBoostOfferInline',
+            { amount: formatScreenshotBoostAmount(offer.reward) },
+            lang
+        );
+    });
+    return offer;
+}
+
+window.getScreenshotBoostOffer = getScreenshotBoostOffer;
+window.getScreenshotBoostPaperclipContent = getScreenshotBoostPaperclipContent;
+window.syncScreenshotBoostOfferUi = syncScreenshotBoostOfferUi;
+
 function removeControlProofCatchupInfoDialog() {
     const dialog = document.getElementById('pc-catchup-tester-dialog');
     if (dialog && dialog.parentNode) dialog.parentNode.removeChild(dialog);
@@ -2646,8 +2718,8 @@ function renderTests(force) {
                             <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
                                 ${window.escapeHTML(isFeedbackCheckinPending ? feedbackPendingBtnLabel : (window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed'))}
                             </button>
-                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang))}">
-                                📎
+                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${getScreenshotBoostOffer(test, testingDay) ? ' has-screenshot-boost' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang))}">
+                                ${getScreenshotBoostPaperclipContent(test.id)}
                             </button>`}
                         </div>
                     </div>

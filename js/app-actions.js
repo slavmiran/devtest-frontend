@@ -1102,6 +1102,22 @@ function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
     return String(test.owner_username || '').trim().replace(/^@+/, '');
 }
 
+function _syncScreenshotBoostPaperclip(button, appId) {
+    if (!button) return;
+    var offer = null;
+    var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    if (test && typeof window.getScreenshotBoostOffer === 'function') {
+        var testingDay = typeof window.getUserTestingDay === 'function'
+            ? window.getUserTestingDay(test.start_date, test.testing_days)
+            : Number(test.testing_days || 0);
+        offer = window.getScreenshotBoostOffer(test, testingDay);
+    }
+    button.classList.toggle('has-screenshot-boost', !!offer);
+    button.innerHTML = typeof window.getScreenshotBoostPaperclipContent === 'function'
+        ? window.getScreenshotBoostPaperclipContent(appId)
+        : '<span aria-hidden="true">📎</span>';
+}
+
 function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     if (isTestFeedbackCheckinPending(finishedId)) {
         applyTestFeedbackCheckinPendingUi(finishedId);
@@ -1250,7 +1266,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             existingOptionsBtn.className = isExternalTest
                 ? 'btn btn-success split-btn-options external-tests-attach-btn'
                 : 'btn btn-success split-btn-options';
-            existingOptionsBtn.textContent = '📎';
+            _syncScreenshotBoostPaperclip(existingOptionsBtn, finishedId);
             existingOptionsBtn.title = window.t('checkinOptionsTitle', {}, lang);
             existingOptionsBtn.setAttribute('aria-label', window.t('checkinOptionsTitle', {}, lang));
             existingOptionsBtn.onclick = function(event) {
@@ -1282,8 +1298,9 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             '<button class="btn btn-success split-btn-options' + (isExternalTest ? ' external-tests-attach-btn' : '') + '" onclick="' + (isExternalTest
                 ? 'openExternalCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\', event)'
                 : 'openCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\')') + '" title="' + window.escapeHTML(window.t('checkinOptionsTitle', {}, lang)) + '">' +
-            '📎' +
+            (typeof window.getScreenshotBoostPaperclipContent === 'function' ? window.getScreenshotBoostPaperclipContent(finishedId) : '📎') +
             '</button>';
+        _syncScreenshotBoostPaperclip(splitWrapper.querySelector('.split-btn-options'), finishedId);
         btn.parentNode.replaceChild(splitWrapper, btn);
     }
     return true;
@@ -1342,7 +1359,7 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
         }
         optionsBtn.disabled = false;
         optionsBtn.className = 'btn split-btn-options split-btn-options--timer';
-        optionsBtn.textContent = '📎';
+        _syncScreenshotBoostPaperclip(optionsBtn, appId);
         optionsBtn.title = optionsTitle;
         optionsBtn.setAttribute('aria-label', optionsTitle);
         optionsBtn.onclick = function(event) {
@@ -1365,7 +1382,9 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
         window.escapeHTML(timerLabel) +
         '</button>' +
         '<button class="btn split-btn-options split-btn-options--timer" onclick="openCheckinOptionsModal(' + appId + ', \'' + safeOwner + '\')" ' +
-        'title="' + optionsTitleSafe + '" aria-label="' + optionsTitleSafe + '">📎</button>';
+        'title="' + optionsTitleSafe + '" aria-label="' + optionsTitleSafe + '">' +
+        (typeof window.getScreenshotBoostPaperclipContent === 'function' ? window.getScreenshotBoostPaperclipContent(appId) : '📎') + '</button>';
+    _syncScreenshotBoostPaperclip(splitWrapper.querySelector('.split-btn-options'), appId);
     btn.parentNode.replaceChild(splitWrapper, btn);
     return true;
 }
@@ -4112,11 +4131,17 @@ async function sendKarmaReward(appId, testerId, rewardType) {
 
 function showCheckinRewardToasts(result) {
     result = result || {};
+    var screenshotBoostEarned = Math.max(0, Number(result.screenshot_boost_earned || 0));
     var catchupSuffix = result.catchup_proof_completed
         ? '\n' + window.t('catchupTesterSent', {}, lang)
         : '';
+    var screenshotBoostSuffix = screenshotBoostEarned > 0
+        ? '\n' + window.t('screenshotBoostRewardToast', {
+            amount: formatAmountValue(screenshotBoostEarned, 1)
+        }, lang)
+        : '';
     var showPrimaryCheckinToast = function(message) {
-        showToast(String(message || '') + catchupSuffix);
+        showToast(String(message || '') + catchupSuffix + screenshotBoostSuffix);
     };
     if (result.already_checked_today) {
         showPrimaryCheckinToast(window.t('checkinAlreadyDone', {}, lang));
@@ -4124,12 +4149,13 @@ function showCheckinRewardToasts(result) {
     }
 
     var earnedBust = Number(result.earned_bust != null ? result.earned_bust : result.bust_earned || 0);
+    var baseEarnedBust = Math.max(0, earnedBust - screenshotBoostEarned);
     var earnedKarma = Number(result.earned_karma != null ? result.earned_karma : result.karma_earned || 0);
     var sourceType = String(result.source_type || '').toLowerCase();
-    var rewardBust = Number(result.reward_bust != null ? result.reward_bust : earnedBust);
+    var rewardBust = Number(result.reward_bust != null ? result.reward_bust : baseEarnedBust);
     var holdBonusEarned = Number(result.hold_bonus_earned || 0);
     var holdBonusForfeited = !!result.hold_bonus_forfeited;
-    var dailyOnlyBust = Math.max(0, earnedBust - (holdBonusEarned > 0 ? holdBonusEarned : 0));
+    var dailyOnlyBust = Math.max(0, baseEarnedBust - (holdBonusEarned > 0 ? holdBonusEarned : 0));
 
     var karmaValFormatted = formatAmountValue(earnedKarma || 0.5, 1);
     var karmaStr = (lang === 'ru') ? karmaValFormatted.replace('.', ',') : karmaValFormatted;
@@ -4146,15 +4172,15 @@ function showCheckinRewardToasts(result) {
             bust: formatAmountValue(dailyOnlyBust, 1),
             karma: karmaStr
         }, lang));
-    } else if (earnedBust > 0 && earnedKarma > 0 && holdBonusEarned <= 0) {
+    } else if (baseEarnedBust > 0 && earnedKarma > 0 && holdBonusEarned <= 0) {
         showPrimaryCheckinToast(window.t('checkinEarnBustAndKarma', {
-            bust: formatAmountValue(earnedBust, 1),
+            bust: formatAmountValue(baseEarnedBust, 1),
             karma: karmaStr
         }, lang));
     } else if (dailyOnlyBust > 0) {
         showPrimaryCheckinToast(window.t('checkinEarnBust', { amount: formatAmountValue(dailyOnlyBust, 1) }, lang));
-    } else if (earnedBust > 0 && holdBonusEarned <= 0) {
-        showPrimaryCheckinToast(window.t('checkinEarnBust', { amount: formatAmountValue(earnedBust, 1) }, lang));
+    } else if (baseEarnedBust > 0 && holdBonusEarned <= 0) {
+        showPrimaryCheckinToast(window.t('checkinEarnBust', { amount: formatAmountValue(baseEarnedBust, 1) }, lang));
     } else if (earnedKarma > 0) {
         showPrimaryCheckinToast(window.t('checkinEarnKarma', { amount: karmaStr }, lang));
     } else if (holdBonusEarned <= 0 && !holdBonusForfeited) {
