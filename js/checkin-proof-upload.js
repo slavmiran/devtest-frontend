@@ -2,7 +2,18 @@
 
 var CHECKIN_PROOF_MAX_FILES = 5;
 var CHECKIN_PROOF_UPLOAD_CONCURRENCY = 2;
-var _checkinProofUploadState = { appId: null, progressId: null, files: [], previewUrls: [], fingerprints: [], checkingFiles: false, selectionGeneration: 0, idempotencyKey: '' };
+var _checkinProofUploadState = {
+    appId: null,
+    progressId: null,
+    files: [],
+    previewUrls: [],
+    fingerprints: [],
+    checkingFiles: false,
+    selectionGeneration: 0,
+    idempotencyKey: '',
+    submissionMode: 'standard',
+    catchupRequested: false,
+};
 var _checkinProofPendingAppIds = {};
 var _checkinProofUploadQueue = [];
 var _checkinProofActiveJobs = 0;
@@ -236,11 +247,16 @@ function _resetCheckinProofSelection() {
     _syncCheckinProofControls();
 }
 
-function openCheckinProofUploadModal(appId) {
+function _resetCheckinProofSubmissionMode() {
+    _checkinProofUploadState.submissionMode = 'standard';
+    _checkinProofUploadState.catchupRequested = false;
+}
+
+function openCheckinProofUploadModal(appId, options) {
     var safeAppId = Number(appId || 0);
     if (isScreenshotProofUploadPending(safeAppId)) return false;
     if (typeof window.openReportModal === 'function') {
-        return window.openReportModal(safeAppId, '');
+        return window.openReportModal(safeAppId, '', options || null);
     }
     return false;
 }
@@ -384,6 +400,10 @@ function _checkinProofErrorMessage(result) {
     var code = result && (result.code || result.detail);
     if (code === 'checkin_already_proved') return window.t('checkinProofAlreadyReceived', {}, lang);
     if (code === 'proof_attach_incomplete') return window.t('checkinProofAttachIncomplete', {}, lang);
+    if (code === 'catchup_proof_attach_incomplete') return window.t('checkinProofAttachIncomplete', {}, lang);
+    if (code === 'catchup_control_day_blocked') return window.t('catchupTesterOfficialNote', {}, lang);
+    if (code === 'catchup_request_not_found') return window.t('catchupTesterRequestUnavailable', {}, lang);
+    if (code === 'catchup_buffer_only') return window.t('catchupTesterBufferOnly', {}, lang);
     if (typeof window.resolveApiMessage === 'function') return window.resolveApiMessage(result || {}, 'checkinProofUploadFailed', lang);
     return window.t('checkinProofUploadFailed', {}, lang);
 }
@@ -434,6 +454,28 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     }, 250);
 }
 
+function _applyBufferCatchupProofResult(appId, result) {
+    var test = _checkinProofTest(appId);
+    var catchup = result && result.catchup ? result.catchup : {};
+    var missedDay = Number(catchup.missed_testing_day || 0);
+    if (test && Array.isArray(test.control_proof_catchups)) {
+        test.control_proof_catchups = test.control_proof_catchups.filter(function(item) {
+            return Number(item && item.missed_testing_day || 0) !== missedDay;
+        });
+    }
+    delete _checkinProofPendingAppIds[Number(appId || 0)];
+    if (typeof setTestsCache === 'function' && typeof myTests !== 'undefined') {
+        setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+    }
+    if (typeof renderTests === 'function') renderTests(true);
+    if (typeof refreshOpenModals === 'function') refreshOpenModals();
+    if (typeof showToast === 'function') showToast(window.t('catchupTesterSent', {}, lang));
+    setTimeout(function() {
+        if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
+        if (typeof loadProjects === 'function') loadProjects(true).catch(function() {});
+    }, 250);
+}
+
 async function _runCheckinProofUploadJob(job) {
     try {
         var openToken = typeof _getCheckinOpenToken === 'function' ? _getCheckinOpenToken(job.appId) : '';
@@ -447,6 +489,7 @@ async function _runCheckinProofUploadJob(job) {
         form.append('init_data', typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : String((tg && tg.initData) || ''));
         form.append('open_token', String(openToken || ''));
         form.append('idempotency_key', job.idempotencyKey);
+        if (job.submissionMode === 'buffer_catchup') form.append('catchup_only', 'true');
         job.files.forEach(function(file, index) {
             form.append('files', file, file.name || ('checkin-proof-' + (index + 1)));
         });
@@ -466,7 +509,11 @@ async function _runCheckinProofUploadJob(job) {
             throw { isApiError: true, payload: result || { code: 'checkinProofUploadFailed' } };
         }
         _clearCheckinProofKey(job.progressId);
-        _applyScreenshotCheckinResult(job.appId, result, job.files ? job.files.length : 1);
+        if (result.buffer_catchup_only === true || job.submissionMode === 'buffer_catchup') {
+            _applyBufferCatchupProofResult(job.appId, result);
+        } else {
+            _applyScreenshotCheckinResult(job.appId, result, job.files ? job.files.length : 1);
+        }
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
@@ -501,6 +548,8 @@ function submitCheckinProofScreenshot() {
         progressId: progressId,
         files: _checkinProofUploadState.files.slice(0, CHECKIN_PROOF_MAX_FILES),
         idempotencyKey: _checkinProofUploadState.idempotencyKey,
+        submissionMode: _checkinProofUploadState.submissionMode,
+        catchupRequested: _checkinProofUploadState.catchupRequested,
     });
     closeCheckinProofUploadModal();
     _drainCheckinProofUploadQueue();

@@ -4199,7 +4199,7 @@ function setReportMessageLanguage(nextLang) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function openReportModal(appId, ownerUsername) {
+function openReportModal(appId, ownerUsername, options) {
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
     _reportTextExpanded = false;
@@ -4211,6 +4211,9 @@ function openReportModal(appId, ownerUsername) {
     var reportModal = document.getElementById('report-modal');
     if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
     if (usesProofUpload) {
+        var proofOptions = options && typeof options === 'object' ? options : {};
+        var isBufferCatchup = proofOptions.submissionMode === 'buffer_catchup';
+        var isCatchupSubmission = isBufferCatchup || proofOptions.catchupRequested === true;
         var safeAppId = Number(appId || 0);
         var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
         var progressId = Number(test && test.progress_id || 0);
@@ -4219,6 +4222,8 @@ function openReportModal(appId, ownerUsername) {
             _checkinProofUploadState.appId = safeAppId;
             _checkinProofUploadState.progressId = progressId;
             _checkinProofUploadState.idempotencyKey = _loadOrCreateCheckinProofKey(progressId);
+            _checkinProofUploadState.submissionMode = isBufferCatchup ? 'buffer_catchup' : 'standard';
+            _checkinProofUploadState.catchupRequested = isCatchupSubmission;
             if (typeof _setCheckinProofStatus === 'function') _setCheckinProofStatus('', '');
         }
         var visibilityNote = document.getElementById('t-checkinProofVisibilityNote');
@@ -4237,15 +4242,27 @@ function openReportModal(appId, ownerUsername) {
         updateReportModalPrefill();
     }
     document.getElementById('t-reportModalTitle').innerText = window.t(
-        usesProofUpload ? 'reportProofModalTitle' : 'reportModalTitle', {}, lang
+        usesProofUpload
+            ? (isCatchupSubmission ? 'catchupTesterUploadTitle' : 'reportProofModalTitle')
+            : 'reportModalTitle',
+        {},
+        lang
     );
     document.getElementById('t-reportModalHint').innerText = window.t(
-        usesProofUpload ? 'checkinProofUploadHint' : 'reportModalHint', {}, lang
+        usesProofUpload
+            ? (isBufferCatchup ? 'catchupTesterBufferUploadHint' : (isCatchupSubmission ? 'catchupTesterUploadHint' : 'checkinProofUploadHint'))
+            : 'reportModalHint',
+        {},
+        lang
     );
     var sendBtn = document.getElementById('t-reportBtnSend');
     if (sendBtn) {
         sendBtn.innerText = window.t(
-            usesProofUpload ? 'reportProofBtnUpload' : 'reportBtnSend', {}, lang
+            usesProofUpload
+                ? (isCatchupSubmission ? 'catchupTesterUploadSubmit' : 'reportProofBtnUpload')
+                : 'reportBtnSend',
+            {},
+            lang
         );
     }
     var altLabel = document.getElementById('t-reportAltLabel');
@@ -4298,6 +4315,7 @@ function closeReportModal(event) {
     var modal = document.getElementById('report-modal');
     if (modal) modal.classList.remove('active');
     if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
+    if (typeof _resetCheckinProofSubmissionMode === 'function') _resetCheckinProofSubmissionMode();
     setTimeout(() => {
         _reportAppId = null;
         _reportOwnerUsername = null;

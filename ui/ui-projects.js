@@ -1363,7 +1363,7 @@ function renderProjects(force) {
             return metricFooterPairHtml('Total:', n + ' days');
         })();
         const termFooterHtml = hasSync
-            ? '<span class="pc-metric-footer__line">' + totalDaysHtml + '</span>'
+            ? '<span class="pc-metric-footer__line' + (isPaidDaysActive ? ' pc-metric-footer__line--paid' : '') + '">' + totalDaysHtml + '</span>'
             : '<span class="pc-metric-footer__line">' + window.escapeHTML(window.t('pcBufferLine', {}, lang)) + '</span>';
 
         const dailyMeta = getProjectDailyProgressMeta(project);
@@ -1464,7 +1464,7 @@ function renderProjects(force) {
         const closedTestStageHtml = window.escapeHTML(closedTestStageLabel) + closedTestStageExtraHtml;
         const dayLifecycleAria = window.escapeHTML(window.t('pcLifecycleTitle', {}, lang) || 'Жизненный цикл проекта');
         const testersPlanAria = window.escapeHTML(window.t('dprModalTitle', {}, lang) || 'Суточный план и рекомендации');
-        const testersValueClass = 'pc-metric-team__value' + (isPaidDaysActive ? ' pc-metric-team__value--paid' : '');
+        const testersValueClass = 'pc-metric-team__value';
 
         const stageBadgeHtml = needSyncPrompt
             ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${closedTestStageHtml}</button>`

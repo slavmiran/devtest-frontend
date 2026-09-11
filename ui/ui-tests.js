@@ -2136,6 +2136,13 @@ function renderControlProofCatchupChip(test, testingDay) {
         window.escapeHTML(label) + '</button>';
 }
 
+function isBufferOnlyCatchupSubmission(test, testingDay) {
+    if (!test || String(test.app_status || '').toLowerCase() !== 'pending_completion') return false;
+    var paidDays = Math.max(0, Number(test.paid_protection_days || test.purchased_protection_days || 0));
+    return Number(testingDay || 0) > 14 + paidDays
+        && Number(test.protection_bust_pool || 0) <= 0;
+}
+
 function removeControlProofCatchupInfoDialog() {
     const dialog = document.getElementById('pc-catchup-tester-dialog');
     if (dialog && dialog.parentNode) dialog.parentNode.removeChild(dialog);
@@ -2160,6 +2167,7 @@ window.openControlProofCatchupInfo = function(appId) {
     if (!days.length) return;
     const today = getResolvedTestingDay(test);
     const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(today || 0));
+    const bufferOnly = isBufferOnlyCatchupSubmission(test, today);
     const lead = days.length === 1
         ? window.t('catchupTesterLeadOne', { day: days[0] }, lang)
         : window.t('catchupTesterLeadMany', { days: days.join(', ') }, lang);
@@ -2172,7 +2180,19 @@ window.openControlProofCatchupInfo = function(appId) {
         window.t('catchupTesterFactClose', {}, lang),
         window.t('catchupTesterFactPenalty', {}, lang),
     ];
+    if (bufferOnly) facts.push(window.t('catchupTesterBufferNote', {}, lang));
     if (isOfficialDay) facts.push(window.t('catchupTesterOfficialNote', {}, lang));
+    const actionsHtml = isOfficialDay
+        ? '<div class="pc-catchup-request-sheet__actions pc-catchup-request-sheet__actions--single">' +
+            '<button type="button" class="btn btn-primary" onclick="closeControlProofCatchupInfo()">' +
+                window.escapeHTML(window.t('catchupTesterGotIt', {}, lang)) + '</button>' +
+          '</div>'
+        : '<div class="pc-catchup-request-sheet__actions pc-catchup-request-sheet__actions--choice">' +
+            '<button type="button" class="btn btn-secondary" onclick="openControlProofCatchupApp(' + Number(appId || 0) + ')">' +
+                window.escapeHTML(window.t('catchupTesterOpenApp', {}, lang)) + '</button>' +
+            '<button type="button" class="btn btn-primary" onclick="openControlProofCatchupScreenshot(' + Number(appId || 0) + ')">' +
+                window.escapeHTML(window.t('catchupTesterAttachScreenshot', {}, lang)) + '</button>' +
+          '</div>';
     const html = '<div id="pc-catchup-tester-dialog" class="modal-overlay pc-catchup-request-modal" role="presentation" onclick="if (event.target === this) closeControlProofCatchupInfo()">' +
         '<section class="modal-content pc-catchup-request-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-catchup-tester-title">' +
             '<div class="sheet-handle" aria-hidden="true"></div>' +
@@ -2187,16 +2207,45 @@ window.openControlProofCatchupInfo = function(appId) {
             '<ul class="pc-catchup-request-sheet__facts">' +
                 facts.map(function(item) { return '<li>' + window.escapeHTML(item) + '</li>'; }).join('') +
             '</ul>' +
-            '<div class="pc-catchup-request-sheet__actions pc-catchup-request-sheet__actions--single">' +
-                '<button type="button" class="btn btn-primary" onclick="closeControlProofCatchupInfo()">' +
-                    window.escapeHTML(window.t('catchupTesterGotIt', {}, lang)) + '</button>' +
-            '</div>' +
+            actionsHtml +
         '</section>' +
     '</div>';
     document.body.insertAdjacentHTML('beforeend', html);
     const dialog = document.getElementById('pc-catchup-tester-dialog');
     window.requestAnimationFrame(function() {
         if (dialog) dialog.classList.add('active');
+    });
+};
+
+window.openControlProofCatchupApp = function(appId) {
+    const test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    if (!test) return;
+    window.closeControlProofCatchupInfo();
+    const packageName = String(test.package || test.package_name || '').trim();
+    if (packageName && typeof window.startTimer === 'function') {
+        // Buffer cards do not contain a check-in button. startTimer therefore
+        // only opens Google Play there and does not create a daily task.
+        window.startTimer(Number(appId), packageName, false, '');
+    }
+};
+
+window.openControlProofCatchupScreenshot = function(appId) {
+    const test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    if (!test) return;
+    const testingDay = getResolvedTestingDay(test);
+    if (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0))) {
+        if (typeof showToast === 'function') showToast(window.t('catchupTesterOfficialNote', {}, lang));
+        return;
+    }
+    window.closeControlProofCatchupInfo();
+    if (typeof window.openCheckinProofUploadModal !== 'function') return;
+    window.openCheckinProofUploadModal(Number(appId), {
+        submissionMode: isBufferOnlyCatchupSubmission(test, testingDay) ? 'buffer_catchup' : 'standard',
+        catchupRequested: true,
     });
 };
 
