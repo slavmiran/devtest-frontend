@@ -23,11 +23,11 @@
     var PAYPAL_OPEN_URL = "https://www.paypal.com/myaccount/transfer/homepage/pay";
 
     var CRYPTO_EXCHANGES = [
-        { id: 'binance', name: 'Binance', label: 'ID', value: '967321648', initials: 'BN', logo: './images/Binance.webp' },
-        { id: 'bybit', name: 'ByBit', label: 'UID', value: '30291060', initials: 'BY', logo: './images/Bybit.webp' },
-        { id: 'okx', name: 'OKX', label: 'UID', value: '323906492761830368', initials: 'OK', logo: './images/OKX.webp' },
-        { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT', logo: './images/HTX.webp' },
-        { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT', logo: './images/Gate.webp' }
+        { id: 'binance', name: 'Binance', label: 'ID', value: '967321648', initials: 'BN', logo: './images/Binance.webp', website: 'https://www.binance.com' },
+        { id: 'bybit', name: 'ByBit', label: 'UID', value: '30291060', initials: 'BY', logo: './images/Bybit.webp', website: 'https://www.bybit.com' },
+        { id: 'okx', name: 'OKX', label: 'UID', value: '323906492761830368', initials: 'OK', logo: './images/OKX.webp', website: 'https://www.okx.com' },
+        { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT', logo: './images/HTX.webp', website: 'https://www.htx.com' },
+        { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT', logo: './images/Gate.webp', website: 'https://www.gate.io' }
     ];
     var FIAT_CURRENCIES = [
         { code: 'TRY', en: 'Turkey (Lira)', ru: 'Турция (Лира)' },
@@ -284,12 +284,14 @@
             'Скопировано. Сделайте перевод в {name}, затем вернитесь и загрузите скриншот.'
         ],
         cryptoPopupTitle: ['Transfer in {name}', 'Перевод в {name}'],
+        cryptoPopupLead: ['The ID is copied.', 'ID скопирован.'],
         cryptoPopupText: [
-            'The ID is copied. Complete the transfer inside {name} and come back to upload the payment screenshot.',
-            'ID скопирован. Завершите перевод в {name} и вернитесь, чтобы загрузить скриншот оплаты.'
+            'Complete the transfer inside {name} and come back to upload the payment screenshot.',
+            'Завершите перевод в {name} и вернитесь, чтобы загрузить скриншот оплаты.'
         ],
         cryptoPopupStay: ['Stay here', 'Остаться'],
-        cryptoPopupGo: ['Go to Telegram', 'В Telegram'],
+        cryptoPopupGo: ['Continue', 'Перейти'],
+        cryptoPopupOpenSite: ['Open website', 'Открыть сайт'],
         selectedExchange: ['the selected exchange', 'выбранной бирже'],
 
         guidePageTitle: ['License Testing, step by step', 'License Testing: пошаговая настройка'],
@@ -2739,34 +2741,85 @@
         }
     }
 
+    function collapseGuaranteedMiniApp() {
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg && typeof tg.minimize === 'function') {
+            try { tg.minimize(); } catch (_) {}
+        }
+    }
+
+    function hideCryptoExitHint() {
+        var overlay = document.getElementById('gtw-crypto-exit-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.style.display = 'none';
+    }
+
     function handleCryptoCopyExitHint() {
         var exchange = getExchangeById(wizardState.paymentExchange);
         var exName = exchange ? exchange.name : L('selectedExchange');
+        var website = exchange && exchange.website ? exchange.website : '';
         if (typeof showToast === 'function') {
             showToast(L('cryptoCopiedToast', { name: exName }));
         }
-        try {
-            var tg = window.Telegram && window.Telegram.WebApp;
-            if (tg && typeof tg.showPopup === 'function') {
-                tg.showPopup({
-                    title: L('cryptoPopupTitle', { name: exName }),
-                    message: L('cryptoPopupText', { name: exName }),
-                    buttons: [
-                        { id: 'later', type: 'cancel', text: L('cryptoPopupStay') },
-                        { id: 'close', type: 'default', text: L('cryptoPopupGo') }
-                    ]
-                }, function (buttonId) {
-                    if (buttonId === 'close' && typeof tg.close === 'function') {
-                        if (typeof tg.openTelegramLink === 'function') {
-                            try { tg.openTelegramLink('https://t.me/saved'); } catch (_) {}
-                        }
-                        tg.close();
-                    }
-                });
-            } else if (tg && typeof tg.close === 'function') {
-                tg.close();
-            }
-        } catch (_) {}
+
+        var overlay = document.getElementById('gtw-crypto-exit-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'gtw-crypto-exit-overlay';
+            overlay.className = 'gtw-crypto-exit-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            document.body.appendChild(overlay);
+        }
+
+        overlay.innerHTML =
+            '<div class="gtw-crypto-exit-card">' +
+                '<h3 class="gtw-crypto-exit-title">' + escapeHtml(L('cryptoPopupTitle', { name: exName })) + '</h3>' +
+                '<p class="gtw-crypto-exit-desc">' +
+                    '<strong>' + escapeHtml(L('cryptoPopupLead')) + '</strong> ' +
+                    escapeHtml(L('cryptoPopupText', { name: exName })) +
+                '</p>' +
+                '<div class="gtw-crypto-exit-actions">' +
+                    '<button type="button" class="gtw-crypto-exit-close" id="gtw-crypto-exit-close">' +
+                        escapeHtml(L('cryptoPopupGo')) +
+                    '</button>' +
+                    '<button type="button" class="gtw-crypto-exit-stay" id="gtw-crypto-exit-stay">' +
+                        escapeHtml(L('cryptoPopupStay')) +
+                    '</button>' +
+                    (website
+                        ? '<button type="button" class="gtw-crypto-exit-site" id="gtw-crypto-exit-site">' +
+                            escapeHtml(L('cryptoPopupOpenSite')) +
+                          '</button>'
+                        : '') +
+                '</div>' +
+            '</div>';
+
+        overlay.style.display = 'flex';
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function () { overlay.classList.add('is-open'); });
+
+        overlay.onclick = function (event) {
+            if (event.target === overlay) hideCryptoExitHint();
+        };
+
+        var closeBtn = overlay.querySelector('#gtw-crypto-exit-close');
+        var stayBtn = overlay.querySelector('#gtw-crypto-exit-stay');
+        var siteBtn = overlay.querySelector('#gtw-crypto-exit-site');
+        if (closeBtn) {
+            closeBtn.onclick = function () {
+                hideCryptoExitHint();
+                collapseGuaranteedMiniApp();
+            };
+        }
+        if (stayBtn) stayBtn.onclick = hideCryptoExitHint;
+        if (siteBtn && website) {
+            siteBtn.onclick = function () {
+                hideCryptoExitHint();
+                openExternalUrl(website);
+            };
+        }
     }
 
     function resolveProjectById(projectId) {

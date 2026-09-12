@@ -12,6 +12,7 @@
 .gtw-modal-overlay,
 .gtw-order-status-overlay,
 .gtw-start-gate-overlay,
+.gtw-crypto-exit-overlay,
 .add-project-chooser-overlay,
 .guaranteed-orders-section {
     --gt-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text",
@@ -1704,6 +1705,93 @@
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;
+    cursor: pointer;
+}
+
+.gtw-crypto-exit-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10070;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(8, 10, 14, 0.72);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.gtw-crypto-exit-overlay.is-open { opacity: 1; }
+
+.gtw-crypto-exit-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+    border-radius: var(--gt-radius-section, 14px);
+    background: var(--gt-surface-raised, #171b22);
+    border: 1px solid var(--gt-hairline, rgba(255, 255, 255, 0.08));
+}
+
+.gtw-crypto-exit-title {
+    margin: 0 0 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-crypto-exit-desc {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-secondary, #AEB7C2);
+}
+
+.gtw-crypto-exit-desc strong {
+    font-weight: 700;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-crypto-exit-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gtw-crypto-exit-close,
+.gtw-crypto-exit-stay {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: var(--gt-radius-control, 10px);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 18px;
+    cursor: pointer;
+}
+
+.gtw-crypto-exit-close {
+    border: none;
+    background: var(--accent-primary, #4C8DFF);
+    color: #FFFFFF;
+}
+
+.gtw-crypto-exit-stay {
+    border: 1px solid var(--gt-hairline, rgba(255, 255, 255, 0.12));
+    background: transparent;
+    color: var(--text-primary, #F4F6F8);
+}
+
+.gtw-crypto-exit-site {
+    width: 100%;
+    min-height: 36px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--accent-primary, #4C8DFF);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
 }
 

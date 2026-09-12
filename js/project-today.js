@@ -395,16 +395,15 @@
         var tester = opts.tester || {};
         var tone = opts.tone || 'neutral';
         var extra = opts.extraHtml || '';
-        var avatarMarker = opts.avatarMarkerHtml || '<span class="pc-person__dot" aria-hidden="true"></span>';
+        var identityAvatar = window.ProjectActivityRows
+            ? window.ProjectActivityRows.avatarHtml(tester, projectById(opts.appId))
+            : '<span class="pc-person__avatar">' + avatarHtml(tester) + '</span>';
         var stateCls = opts.received ? ' is-received' : (opts.waiting ? ' is-waiting' : '');
         var rowCls = opts.rowClass ? ' ' + String(opts.rowClass) : '';
         return '<li class="pc-person is-' + esc(tone) + stateCls + rowCls + '"' +
             ' onclick="' + dossierClick(opts.appId, tester) + '">' +
             '<div class="pc-person__top">' +
-                '<span class="pc-person__avatar">' +
-                    avatarHtml(tester) +
-                    avatarMarker +
-                '</span>' +
+                identityAvatar +
                 '<div class="pc-person__copy">' +
                     '<span class="pc-person__name notranslate">' + esc(handleOf(tester)) + '</span>' +
                     '<span class="pc-person__meta">' + (opts.metaHtml || '') + '</span>' +
@@ -1141,8 +1140,13 @@
             });
         });
 
-        // Trigger rule: direct_invite and debt alone never trigger the creation of Внимание tab.
-        // It appears only if there is a real issue.
+        if (window.ProjectActivityAttention) {
+            return window.ProjectActivityAttention.augment(project, items, {
+                lang: typeof lang !== 'undefined' && lang === 'ru' ? 'ru' : 'en',
+            });
+        }
+
+        // Compatibility fallback when the attention helper is unavailable.
         if (!hasRealIssue) {
             return [];
         }
@@ -1254,7 +1258,12 @@
             var subrowsHtml = '<div class="pc-attention-subrows">' + item.reasons.map(function (reason) {
                 var reasonIcon = ATTENTION_ICONS[reason.code] || ATTENTION_ICONS.not_opened;
                 var actionHtml = '';
-                if (reason.code === 'not_opened') {
+                if (reason.action === 'left_status' || reason.action === 'link_status') {
+                    reasonIcon = '<span aria-hidden="true">↗</span>';
+                    actionHtml = iconAct('process', reason.actionLabel || workspaceText('Подробнее', 'Details'),
+                        (reason.action === 'left_status' ? 'openLeftTesterLinkStatus' : 'openTesterLinkStatusFromRow') +
+                        '(' + Number(appId) + ',' + Number(item.testerId) + ', event)');
+                } else if (reason.code === 'not_opened') {
                     actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
                         'pcRemindTester(' + Number(appId) + ',' + Number(item.testerId) + ', \'not_opened\')');
                 } else if (reason.code === 'skips') {
@@ -1560,17 +1569,17 @@
         var labels = {
             contribution: text('pcFilterContribution', 'Contribution'),
             attention: text('pcFilterAttention', 'Attention'),
-            control: text('pcFilterControl', 'Control'),
+            control: workspaceText('Контроль', 'Control'),
             testers: text('pcFilterAll', 'All'),
         };
-        return '<div class="pc-activity__filters" role="tablist">' +
+        return '<div class="pc-activity__filters" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
             visible.map(function (key) {
                 var count = filterCount(key, data || {});
                 var countHtml = key === 'testers' || count <= 0
                     ? ''
                     : '<span class="pc-activity__count' + (key === 'attention' ? ' is-warn' : '') + '">' + count + '</span>';
                 return '<button type="button" class="pc-activity__filter' + (key === active ? ' is-active' : '') +
-                    '" role="tab" aria-selected="' + (key === active ? 'true' : 'false') +
+                    '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (key === active ? 'true' : 'false') +
                     '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
                     '<span class="pc-activity__filter-label">' + esc(labels[key]) + '</span>' +
                     countHtml +
@@ -1595,6 +1604,10 @@
         };
     }
 
+    function workspaceText(ru, en) {
+        return typeof lang !== 'undefined' && lang === 'ru' ? ru : en;
+    }
+
     function captionHtml(appId, filter, mode, project) {
         var historyOn = mode === 'history';
         var proj = project || projectById(appId);
@@ -1607,33 +1620,39 @@
             }
         }
         var avail = karmaAvailability(proj);
-        var karmaMax = avail.max || 3;
+        var karmaMax = avail.max;
         var karmaAvail = avail.available;
         var karmaIcon = typeof window.karmaIconHtml === 'function'
             ? window.karmaIconHtml('karma-yin-icon--inline')
             : '<span class="pc-activity__karma-glyph">☯️</span>';
 
         var karmaBtn = '<button type="button" class="pc-activity__karma" ' +
-            'title="' + esc(text('pcKarmaAvailableShort', 'Available {available}/{max}', { available: karmaAvail, max: karmaMax })) + '" ' +
-            'aria-label="' + esc(text('pcKarmaAvailableShort', 'Available {available}/{max}', { available: karmaAvail, max: karmaMax })) + '" ' +
+            'title="' + esc(workspaceText('Наградить тестера', 'Reward a tester')) + '" ' +
+            'aria-label="' + esc(workspaceText('Наградить тестера. Доступно ', 'Reward a tester. Available ') + karmaAvail + '/' + karmaMax) + '" ' +
             'onclick="event.stopPropagation(); ' +
             (typeof openKarmaDistribution === 'function'
                 ? ('openKarmaDistribution(' + Number(appId) + ')')
                 : 'void 0') +
             '">' +
             karmaIcon +
-            '<span class="pc-activity__karma-count">' + karmaAvail + '/' + karmaMax + '</span>' +
+            '<span>' + esc(workspaceText('Награды', 'Rewards')) + '</span>' +
+            '<span class="pc-activity__karma-count">' + karmaAvail + '/' + karmaMax + '</span><span aria-hidden="true">↗</span>' +
         '</button>';
 
-        var histBtn = '<button type="button" class="pc-activity__hist' + (historyOn ? ' is-on' : '') +
-            '" aria-pressed="' + (historyOn ? 'true' : 'false') +
-            '" title="' + esc(text('pcModeHistory', 'History')) + '"' +
-            ' onclick="event.stopPropagation(); pcToggleActivityHistory(' + Number(appId) + ')">' +
-            '<span class="pc-activity__hist-dot" aria-hidden="true"></span>' +
-            '<span class="pc-activity__hist-label">' + esc(text('pcModeHistory', 'History')) + '</span>' +
-        '</button>';
+        var histBtn = '<div class="pc-activity__mode" role="group" aria-label="' + esc(workspaceText('Период просмотра', 'View period')) + '">' +
+            ['now', 'history'].map(function (key) {
+                return '<button type="button" aria-pressed="' + (mode === key) + '" class="' + (mode === key ? 'is-active' : '') +
+                    '" onclick="event.stopPropagation(); pcSetActivityMode(' + Number(appId) + ',\'' + key + '\')">' +
+                    esc(key === 'now' ? workspaceText('Сейчас', 'Now') : workspaceText('История', 'History')) + '</button>';
+            }).join('') + '</div>';
 
-        var hintText = (filter === 'testers' && isOnlyAll) ? '' : hintForFilter(filter);
+        var hints = {
+            contribution: workspaceText('Вклад за сегодня · посмотрите и поблагодарите', 'Extra effort today · review and thank'),
+            attention: workspaceText('Сначала нарушения, затем состояния связи', 'Issues first, then relationship status'),
+            control: workspaceText('Контрольный день · проверьте доказательства', 'Control day · review proof'),
+            testers: workspaceText('Все участники текущего теста', 'All participants in this test'),
+        };
+        var hintText = historyOn ? workspaceText('История тестирования участников выбранной группы', 'Testing history for this group') : hints[filter];
         var hintHtml = hintText ? (
             '<div class="pc-activity__hint-scroll" tabindex="0">' +
                 '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
@@ -1644,11 +1663,11 @@
         ) : '';
 
         return '<div class="pc-activity__caption' + (isOnlyAll ? ' pc-activity__caption--only-all' : '') + '">' +
+            '<div class="pc-activity__heading"><span class="pc-activity__title">' + esc(workspaceText('Участники', 'Participants')) + '</span>' + karmaBtn + '</div>' +
             '<div class="pc-activity__hint-wrap">' +
                 hintHtml +
             '</div>' +
             '<div class="pc-activity__actions">' +
-                karmaBtn +
                 histBtn +
             '</div>' +
         '</div>';
@@ -1656,7 +1675,7 @@
 
     function workspaceListHtml(project, filter, mode, data, context) {
         var safeId = Number(project.id);
-        return '<div class="pc-activity__list">' +
+        return '<div class="pc-activity__list" id="pc-activity-list-' + safeId + '" role="tabpanel">' +
             '<div class="pc-activity__now" id="pc-activity-now-' + safeId + '"' + (mode === 'now' ? '' : ' hidden') + '>' +
                 nowHtmlForFilter(project, filter, data, context) +
             '</div>' +
@@ -1863,7 +1882,7 @@
                 '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + Number(project.id) + ')">' +
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
-        return '<section class="pc-activity' + (data.loading ? ' is-hydrating' : '') + '">' +
+        return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + '">' +
             filtersHtml(project.id, visibleFilters(data), filter, data) +
             captionHtml(project.id, filter, mode, project) +
             workspaceListHtml(project, filter, mode, data, context) +
