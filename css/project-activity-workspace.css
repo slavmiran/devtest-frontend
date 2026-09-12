@@ -69,6 +69,7 @@
     color: var(--text-primary);
 }
 .pc-activity--workspace .pc-activity__count,
+.pc-activity--workspace .pc-activity__filter.is-active .pc-activity__count,
 .pc-activity--workspace .pc-activity__count.is-warn {
     min-width: 0;
     padding: 0;
@@ -79,11 +80,12 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
-.pc-activity--workspace .pc-activity__hint-wrap { order: -1; width: 100%; margin-top: 7px; }
-.pc-activity--workspace .pc-activity__hint-scroll { display: flex; align-items: center; overflow: visible; white-space: normal; }
+.pc-activity--workspace .pc-activity__toolbar { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.pc-activity--workspace .pc-activity__hint-wrap { display: block; flex: 1; min-width: 0; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+.pc-activity--workspace .pc-activity__hint-scroll { display: flex; align-items: center; overflow: visible; white-space: normal; padding-right: 0; }
 .pc-activity--workspace .pc-activity__hint-text { white-space: normal; font-size: 11px; line-height: 1.4; color: var(--text-tertiary, #8493a7); }
 .pc-activity--workspace .pc-activity__info { min-width: 32px; min-height: 32px; flex-shrink: 0; }
-.pc-activity--workspace .pc-activity__actions { display: flex; justify-content: flex-end; margin: 2px 0 8px; }
+.pc-activity--workspace .pc-activity__actions { display: flex; flex-shrink: 0; justify-content: flex-end; margin: 0; }
 .pc-activity--workspace .pc-activity__mode { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(128,145,168,.08); }
 .pc-activity--workspace .pc-activity__mode button { min-height: 40px; padding: 6px 13px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
 .pc-activity--workspace .pc-activity__mode button.is-active { background: var(--bg-surface-2, #24303f); color: var(--text-primary); }
@@ -94,11 +96,11 @@
 .pc-activity--workspace .pc-person__avatar,
 .pc-activity--workspace .pc-person .pc-avatar { width: 42px; height: 42px; min-width: 42px; }
 .pc-activity--workspace .pc-person__avatar { position: relative; overflow: visible; flex-shrink: 0; }
-.pc-activity--workspace .pc-identity-app { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; width: 22px; height: 22px; overflow: hidden; border: 2px solid var(--bg-surface-2, #1b2635); border-radius: 50%; background: var(--bg-surface-2, #1b2635); font-size: 12px; line-height: 1; }
+.pc-activity--workspace .pc-identity-app { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; width: 24px; height: 24px; overflow: hidden; border: 2px solid var(--bg-surface-2, #1b2635); border-radius: 50%; background: #344c6a; color: #e0edff; font-size: 12px; font-weight: 700; line-height: 1; }
 .pc-activity--workspace .pc-identity-app img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .pc-activity--workspace .pc-person__meta:empty { display: none; }
-.pc-activity--workspace .pc-person__name { font-size: 13px; }
-.pc-activity--workspace .pc-person__meta { font-size: 11px; font-weight: 500; }
+.pc-activity--workspace .pc-person__name { font-size: 14px; }
+.pc-activity--workspace .pc-person__meta { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; font-weight: 500; }
 .pc-activity--workspace .pc-contribution-subrows,
 .pc-activity--workspace .pc-attention-subrows { margin: 12px 0 0; gap: 6px; }
 .pc-activity--workspace .pc-contribution-subrow,
@@ -126,16 +128,22 @@
 .pc-activity--workspace .pc-contribution-subrow__icon,
 .pc-activity--workspace .pc-attention-subrow__icon { color: var(--reason-color); flex-shrink: 0; }
 .pc-activity--workspace .pc-contribution-subrow__label,
-.pc-activity--workspace .pc-attention-subrow__label { white-space: normal; overflow: visible; font-size: 12px; line-height: 1.4; font-weight: 500; color: var(--text-primary); }
+.pc-activity--workspace .pc-attention-subrow__label { white-space: normal; overflow: visible; font-size: 13px; line-height: 1.4; font-weight: 500; color: var(--text-primary); }
 .pc-activity--workspace .pc-person .pc-iconact { min-width: 44px; min-height: 44px; }
 .pc-activity--workspace .pc-contribution-subrow__action .pc-iconact,
 .pc-activity--workspace .pc-attention-subrow__action .pc-iconact { flex-direction: column; background: transparent; padding: 3px 5px; }
-.pc-activity--workspace .pc-iconact__label { font-size: 10px; }
+.pc-activity--workspace .pc-iconact__label { font-size: 11px; }
 .pc-activity--workspace .pc-person .pc-slots { margin: 12px 0 0; }
-.pc-activity--workspace .pc-control-summary { background: transparent; border: 0; padding: 4px 0 12px; }
+.pc-activity--workspace .pc-control-summary { flex-wrap: wrap; background: transparent; border: 0; padding: 4px 0 12px; }
+.pc-activity--workspace .pc-control-summary__text { white-space: normal; overflow: visible; text-overflow: clip; font-size: 12px; }
+.pc-activity--workspace .pc-control-remind-all-btn { min-height: 44px; border: 1px solid rgba(128,145,168,.2); background: transparent; color: var(--text-secondary); box-shadow: none; font-size: 12px; }
+.pc-activity--workspace .pc-attention-section-label { list-style: none; padding: 16px 0 4px; color: var(--text-secondary); font-size: 11px; font-weight: 600; }
 .pc-activity--workspace .pc-control-section-title { padding-left: 0; font-size: 11px; }
 .pc-activity--workspace button:focus-visible { outline: 2px solid var(--accent-primary, #669cf0); outline-offset: 2px; }
 @media (max-width: 360px) {
+    .pc-activity--workspace .pc-activity__toolbar { flex-wrap: wrap; }
+    .pc-activity--workspace .pc-activity__hint-wrap { flex-basis: 100%; }
+    .pc-activity--workspace .pc-activity__actions { margin-left: auto; }
     .pc-activity--workspace .pc-activity__filter { font-size: 11px; gap: 3px; }
     .pc-activity--workspace .pc-person__top { gap: 7px; }
 }

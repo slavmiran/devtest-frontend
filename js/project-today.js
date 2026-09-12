@@ -1244,6 +1244,7 @@
 
     function attentionSheetHtml(appId, items) {
         if (!items.length) return emptySheetHtml(text('pcAttentionEmpty', 'Nobody needs attention right now'));
+        var monitoringShown = false;
         return '<ul class="pc-act-list">' + items.map(function (item) {
             var tester = item.tester || {};
             var currentDay = testerDayNumber(tester);
@@ -1314,7 +1315,12 @@
                 '</div>';
             }).join('') + '</div>';
 
-            return personRowHtml({
+            var sectionLabel = '';
+            if (!monitoringShown && Number(item.priority) >= 4) {
+                monitoringShown = true;
+                sectionLabel = '<li class="pc-attention-section-label" role="presentation">' + esc(workspaceText('Наблюдение', 'Monitoring')) + '</li>';
+            }
+            return sectionLabel + personRowHtml({
                 appId: appId,
                 tester: tester,
                 tone: attentionTone(item),
@@ -1373,11 +1379,8 @@
 
         var summaryHtml = '<div class="pc-control-summary">' +
             '<div class="pc-control-summary__info">' +
-                '<span class="pc-control-summary__badge">' + receivedCount + '/' + totalCount + '</span>' +
                 '<span class="pc-control-summary__text">' +
                     esc(text('pcControlSummaryReceived', 'Received {count} of {total}', { count: receivedCount, total: totalCount })) +
-                    ' · ' +
-                    esc(text('pcControlSummaryPending', 'Pending {count}', { count: pendingCount })) +
                 '</span>' +
             '</div>' +
             bulkRemindHtml +
@@ -1549,7 +1552,10 @@
             return text('pcHintCriteriaContribution', 'Value: testers who sent a bug, idea, review, or 3+ screenshots today.');
         }
         if (filter === 'attention') {
-            return text('pcHintCriteriaAttention', 'Attention: testers who have not opened the app, missed yesterday\'s control proof, skipped 3+ days, or still owe a mutual test.');
+            return workspaceText(
+                'Сначала — 3 и более пропуска подряд, выход тестера и пропущенные действия. Ниже — ожидание доказательства, долг, прямая ссылка и разорванная взаимная связь. Долг и отсутствие взаимки сами по себе не означают нарушение.',
+                'First: 3 or more consecutive skips, departed testers and missed actions. Then: pending proof, test debt, direct links and broken mutual links. Debt or no mutual link alone does not mean a violation.'
+            );
         }
         if (filter === 'control') {
             return text('pcHintCriteriaControl', 'Control: testers whose today is a mandatory proof day (1, 4, 7, 10, 14).');
@@ -1647,9 +1653,9 @@
             }).join('') + '</div>';
 
         var hints = {
-            contribution: workspaceText('Вклад за сегодня · посмотрите и поблагодарите', 'Extra effort today · review and thank'),
-            attention: workspaceText('Сначала нарушения, затем состояния связи', 'Issues first, then relationship status'),
-            control: workspaceText('Контрольный день · проверьте доказательства', 'Control day · review proof'),
+            contribution: workspaceText('Сверх обычного чекина', 'Beyond a check-in'),
+            attention: workspaceText('Сначала — самое важное', 'Most important first'),
+            control: workspaceText('Проверка доказательств', 'Review proof'),
             testers: workspaceText('Все участники текущего теста', 'All participants in this test'),
         };
         var hintText = historyOn ? workspaceText('История тестирования участников выбранной группы', 'Testing history for this group') : hints[filter];
@@ -1664,12 +1670,12 @@
 
         return '<div class="pc-activity__caption' + (isOnlyAll ? ' pc-activity__caption--only-all' : '') + '">' +
             '<div class="pc-activity__heading"><span class="pc-activity__title">' + esc(workspaceText('Участники', 'Participants')) + '</span>' + karmaBtn + '</div>' +
-            '<div class="pc-activity__hint-wrap">' +
+            '<div class="pc-activity__toolbar"><div class="pc-activity__hint-wrap">' +
                 hintHtml +
             '</div>' +
             '<div class="pc-activity__actions">' +
                 histBtn +
-            '</div>' +
+            '</div></div>' +
         '</div>';
     }
 
