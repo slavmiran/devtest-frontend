@@ -1087,22 +1087,6 @@
     letter-spacing: 0.5px;
 }
 
-/* Long Press button progress indicator */
-.fb-btn-accept-wrapper {
-    position: relative;
-    overflow: hidden;
-}
-.fb-btn-accept-progress {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.25);
-    width: 0;
-    pointer-events: none;
-    transition: width 0.05s linear;
-}
-
 .feedback-list {
     gap: 12px !important;
     margin-top: 4px !important;
@@ -1935,20 +1919,9 @@
     flex: 1 1 0;
     position: relative;
     overflow: hidden;
-}
-
-#project-feedback-body .fb-btn-accept-wrapper {
-    position: relative;
-    overflow: hidden;
-}
-
-#project-feedback-body .fb-btn-accept-progress {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 0;
-    background: linear-gradient(90deg, rgba(48, 209, 88, 0.25), rgba(48, 209, 88, 0.55));
-    pointer-events: none;
-    z-index: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 #project-feedback-body .fb-btn-accept-text {
@@ -1967,10 +1940,6 @@
     background: rgba(255, 90, 95, 0.1) !important;
     color: var(--danger, #ff5a5f) !important;
     border: 1px solid rgba(255, 90, 95, 0.22) !important;
-}
-
-#project-feedback-body .fb-action-btn--holding {
-    box-shadow: 0 0 0 1px rgba(48, 209, 88, 0.35);
 }
 
 /* Hide legacy footer layout leftovers */

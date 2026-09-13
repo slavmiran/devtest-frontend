@@ -468,18 +468,22 @@ function buildProjectCardSubtitle(project, options) {
     }
 
     const screenshotBoost = project.screenshot_boost_campaign;
-    if (screenshotBoost && screenshotBoost.enabled === true) {
+    if (screenshotBoost) {
         const reward = Math.max(0, Number(screenshotBoost.reward_bust || 0));
         const pool = Math.max(0, Number(screenshotBoost.pool_remaining || 0));
-        if (reward > 0) {
+        const boostOn = screenshotBoost.enabled === true;
+        if (reward > 0 || pool > 0 || Number(screenshotBoost.id || 0) > 0) {
             const boostLabel = window.t('screenshotBoostChip', {
                 amount: formatScreenshotBoostAmount(reward),
                 pool: formatScreenshotBoostAmount(pool),
             }, lang);
+            const boostClass = 'pc-subtitle-chip pc-subtitle-chip--screenshot-boost' +
+                (boostOn ? ' is-on' : ' is-off');
             chips.push(
                 (interactive
-                    ? '<button type="button" class="pc-subtitle-chip pc-subtitle-chip--screenshot-boost" onclick="openScreenshotBoostInfo(' + Number(project.id || project.app_id || 0) + ', event)">'
-                    : '<span class="pc-subtitle-chip pc-subtitle-chip--screenshot-boost">') +
+                    ? '<button type="button" class="' + boostClass + '" onclick="openScreenshotBoostInfo(' + Number(project.id || project.app_id || 0) + ', event)">'
+                    : '<span class="' + boostClass + '">') +
+                    screenshotBoostCameraIconHtml('pc-subtitle-chip__camera', 12) +
                     window.escapeHTML(boostLabel) +
                 (interactive ? '</button>' : '</span>')
             );
@@ -569,6 +573,11 @@ var _screenshotBoostModalAppId = 0;
 var _screenshotBoostModalBalance = 0;
 var _screenshotBoostSettingsLoaded = false;
 
+function screenshotBoostCameraIconHtml(className, size) {
+    var px = Math.max(12, Number(size || 12));
+    return '<svg class="' + window.escapeHTML(className || '') + '" viewBox="0 0 24 24" width="' + px + '" height="' + px + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg>';
+}
+
 function getScreenshotBoostProject(appId) {
     return (typeof myProjects !== 'undefined' && Array.isArray(myProjects) ? myProjects : []).find(function(item) {
         return Number(item && (item.id || item.app_id) || 0) === Number(appId || 0);
@@ -610,7 +619,7 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
     body.innerHTML = `
         <div class="screenshot-boost-sheet__handle" aria-hidden="true"></div>
         <div class="screenshot-boost-sheet__head">
-            <div class="screenshot-boost-sheet__icon" aria-hidden="true">🎁</div>
+            <div class="screenshot-boost-sheet__icon" aria-hidden="true">${screenshotBoostCameraIconHtml('screenshot-boost-sheet__camera', 22)}</div>
             <div class="screenshot-boost-sheet__heading">
                 <h3>${window.escapeHTML(window.t('screenshotBoostSettingsTitle', {}, lang))}</h3>
                 <p class="notranslate">${safeName}</p>
@@ -744,7 +753,7 @@ function openScreenshotBoostInfo(appId, event) {
     body.innerHTML = `
         <div class="screenshot-boost-sheet__handle" aria-hidden="true"></div>
         <div class="screenshot-boost-sheet__head">
-            <div class="screenshot-boost-sheet__icon" aria-hidden="true">🎁</div>
+            <div class="screenshot-boost-sheet__icon" aria-hidden="true">${screenshotBoostCameraIconHtml('screenshot-boost-sheet__camera', 22)}</div>
             <div class="screenshot-boost-sheet__heading"><h3>${window.escapeHTML(window.t('screenshotBoostInfoTitle', {}, lang))}</h3></div>
             <button type="button" class="screenshot-boost-sheet__close" onclick="closeScreenshotBoostModal()" aria-label="Close">×</button>
         </div>

@@ -4840,143 +4840,12 @@ function updateIconPreview(inputId, previewId) {
     if (picker) picker.classList.add('has-icon');
 }
 
-let _feedbackAcceptLongPressTimeout = null;
-let _feedbackAcceptLongPressActive = false;
-let _feedbackAcceptLongPressStart = 0;
-let _feedbackAcceptLongPressPulse = null;
-let _feedbackAcceptTouchStartX = 0;
-let _feedbackAcceptTouchStartY = 0;
-const FEEDBACK_ACCEPT_HOLD_DURATION_MS = 3500;
-
-function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
-    if (_feedbackAcceptLongPressActive) return;
-    if (event && event.touches && event.touches[0]) {
-        _feedbackAcceptTouchStartX = event.touches[0].clientX;
-        _feedbackAcceptTouchStartY = event.touches[0].clientY;
-    } else {
-        _feedbackAcceptTouchStartX = 0;
-        _feedbackAcceptTouchStartY = 0;
-    }
-
-    _feedbackAcceptLongPressActive = true;
-    _feedbackAcceptLongPressStart = Date.now();
-    if (btnEl) btnEl.classList.add('fb-action-btn--holding');
-
-    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
-    if (progressEl) {
-        progressEl.style.transition = `width ${FEEDBACK_ACCEPT_HOLD_DURATION_MS / 1000}s linear`;
-        progressEl.getBoundingClientRect();
-        progressEl.style.width = '100%';
-    }
-
-    if (window.tg && window.tg.HapticFeedback) {
-        window.tg.HapticFeedback.impactOccurred('light');
-    }
-
-    if (_feedbackAcceptLongPressPulse) clearInterval(_feedbackAcceptLongPressPulse);
-    _feedbackAcceptLongPressPulse = setInterval(function() {
-        if (navigator.vibrate) navigator.vibrate(10);
-    }, 400);
-
-    _feedbackAcceptLongPressTimeout = setTimeout(async function() {
-        _feedbackAcceptLongPressActive = false;
-        if (_feedbackAcceptLongPressPulse) {
-            clearInterval(_feedbackAcceptLongPressPulse);
-            _feedbackAcceptLongPressPulse = null;
-        }
-        if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
-        if (window.tg && window.tg.HapticFeedback) {
-            window.tg.HapticFeedback.notificationOccurred('success');
-        } else if (navigator.vibrate) {
-            navigator.vibrate([20, 40, 20]);
-        }
-
-        await submitQuickFeedbackAccept(feedbackId, projectId, btnEl);
-
-        if (progressEl) {
-            progressEl.style.transition = 'none';
-            progressEl.style.width = '0';
-        }
-    }, FEEDBACK_ACCEPT_HOLD_DURATION_MS);
-}
-
-function handleFeedbackAcceptTouchMove(btnEl, event) {
-    if (!_feedbackAcceptLongPressActive) return;
-    if (event && event.touches && event.touches[0]) {
-        const dx = Math.abs(event.touches[0].clientX - _feedbackAcceptTouchStartX);
-        const dy = Math.abs(event.touches[0].clientY - _feedbackAcceptTouchStartY);
-        if (dx > 8 || dy > 8) {
-            cancelFeedbackAcceptLongPress(btnEl, event);
-        }
-    }
-}
-
-function cancelFeedbackAcceptLongPress(btnEl, event) {
-    if (!_feedbackAcceptLongPressActive) return;
-    _feedbackAcceptLongPressActive = false;
-
-    clearTimeout(_feedbackAcceptLongPressTimeout);
-    if (_feedbackAcceptLongPressPulse) {
-        clearInterval(_feedbackAcceptLongPressPulse);
-        _feedbackAcceptLongPressPulse = null;
-    }
-    if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
-
-    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
-    if (progressEl) {
-        progressEl.style.transition = 'width 0.2s ease-out';
-        progressEl.style.width = '0';
-    }
-}
-
 function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
-    const duration = Date.now() - _feedbackAcceptLongPressStart;
-    if (duration >= FEEDBACK_ACCEPT_HOLD_DURATION_MS) {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        return;
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
     }
-
-    cancelFeedbackAcceptLongPress(btnEl, event);
     openFeedbackRewardModal(projectId, feedbackId);
-}
-
-async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
-    // Long-press = instant accept with 0 $BUST (and no karma).
-    const targetBust = 0;
-    const targetKarma = 0;
-
-    if (typeof window.removeFeedbackCardOptimistic === 'function') {
-        window.removeFeedbackCardOptimistic(feedbackId, 'accepted', { reward_bust: targetBust });
-    }
-
-    if (typeof window.triggerFeedbackAutoAdvance === 'function') {
-        window.triggerFeedbackAutoAdvance(feedbackId);
-    }
-
-    try {
-        const response = await fetch(`${API_BASE}/feedback/${feedbackId}/reward`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                owner_id: userId,
-                bust_amount: targetBust,
-                karma_amount: targetKarma,
-                reply_text: "",
-            }))
-        });
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            showToast(getApiErrorMessage(data, 'genericError'));
-            return;
-        }
-        showToast(window.t('feedbackQuickAcceptToast', {}, lang) || (lang === 'ru' ? '✅ Принято' : '✅ Accepted'));
-    } catch (error) {
-        console.error('Quick accept error:', error);
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
-    }
 }
 
 function triggerFeedbackAutoAdvance(currentFeedbackId) {
@@ -5021,10 +4890,7 @@ function triggerFeedbackAutoAdvance(currentFeedbackId) {
 }
 window.triggerFeedbackAutoAdvance = triggerFeedbackAutoAdvance;
 
-window.startFeedbackAcceptLongPress = startFeedbackAcceptLongPress;
-window.cancelFeedbackAcceptLongPress = cancelFeedbackAcceptLongPress;
 window.handleFeedbackAcceptClick = handleFeedbackAcceptClick;
-window.submitQuickFeedbackAccept = submitQuickFeedbackAccept;
 
 window.updateIconPreview = updateIconPreview;
 

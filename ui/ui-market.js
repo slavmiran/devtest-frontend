@@ -5321,31 +5321,15 @@ function renderProjectFeedbackCards(project, items) {
             if (isOpen && isReviewTicket) {
                 decideButtonsHtml = `
                     <button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
-                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward fb-btn-accept-wrapper"
-                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
-                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
-                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            ontouchmove="handleFeedbackAcceptTouchMove(this, event)"
-                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
-                        <span class="fb-btn-accept-progress"></span>
+                    <button type="button" class="fb-action-btn fb-action-btn--primary fb-action-btn--reward"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)">
                         <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             } else if (isOpen) {
                 decideButtonsHtml = `
                     <button class="fb-action-btn fb-action-btn--reject" onclick="openFeedbackRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
-                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--accept fb-btn-accept-wrapper"
-                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
-                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
-                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            ontouchmove="handleFeedbackAcceptTouchMove(this, event)"
-                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
-                        <span class="fb-btn-accept-progress"></span>
+                    <button type="button" class="fb-action-btn fb-action-btn--primary fb-action-btn--accept"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)">
                         <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             }
