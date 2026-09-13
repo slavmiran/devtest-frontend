@@ -28,6 +28,8 @@
         previewThumbnailLoading: new Map(),
         previewMediumCache: new Map(),
         previewMediumLoading: new Map(),
+        albumTicketLoading: new Map(),
+        albumDetails: new Map(),
         // Set when the viewer is opened outside Testing Control (e.g. from a project card),
         // where local timeline/gallery state cannot describe the proof.
         previewFallback: null,
@@ -703,6 +705,8 @@
     }
 
     async function requestProofDetails(proofId) {
+        var cached = state.albumDetails.get(Number(proofId));
+        if (cached) return cached;
         var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
         var response = await fetchWithRetry(
             API_BASE + '/checkin-proofs/' + Number(proofId || 0) + '/details?init_data=' + encodeURIComponent(initData),
@@ -714,6 +718,32 @@
             throw new Error((payload && (payload.code || payload.message)) || ('HTTP ' + response.status));
         }
         return payload.proof;
+    }
+
+    async function warmAlbumTickets(proofId, variant) {
+        var key = Number(proofId) + ':' + variant;
+        var count = proofImageCount(proofId);
+        var get = variant === 'medium' ? previewMediumCacheGet : previewThumbnailCacheGet;
+        var valid = true;
+        for (var index = 0; index < count; index++) if (!get(proofId, index)) valid = false;
+        if (valid) return state.albumDetails.get(Number(proofId)) || { image_count: count };
+        if (state.albumTicketLoading.has(key)) return state.albumTicketLoading.get(key);
+        var task = (async function() {
+            var response = await fetchWithRetry(API_BASE + '/checkin-proofs/' + Number(proofId) + '/album-tickets', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ init_data: typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '', variant: variant }), timeoutMs: 20000,
+            }, 1);
+            var payload = await response.json();
+            if (!response.ok || payload.status !== 'success') throw new Error('album_unavailable');
+            (payload.tickets || []).forEach(function(ticket) {
+                (variant === 'medium' ? previewMediumCachePut : previewThumbnailCachePut)(proofId, Number(ticket.media_index), secureMediaUrl(ticket.url), Number(ticket.expires_at) * 1000);
+            });
+            var details = { image_count: Number(payload.image_count || count), original_message_urls: payload.original_message_urls || [] };
+            state.albumDetails.set(Number(proofId), details);
+            return details;
+        })();
+        state.albumTicketLoading.set(key, task);
+        try { return await task; } finally { state.albumTicketLoading.delete(key); }
     }
 
     async function loadPreviewMediaSource(proofId, mediaIndex) {
@@ -757,6 +787,9 @@
         var pending = state.previewThumbnailLoading.get(key);
         if (pending) return pending;
         var task = (async function () {
+            await warmAlbumTickets(proofId, 'thumbnail').catch(function() {});
+            var batchSource = previewThumbnailCacheGet(proofId, safeIndex);
+            if (batchSource) return batchSource;
             var ticket = await requestMediaTicket(proofId, 'thumbnail', safeIndex);
             return previewThumbnailCachePut(proofId, safeIndex, ticket.url, ticket.expiresAt);
         })();
@@ -776,6 +809,9 @@
         var pending = state.previewMediumLoading.get(key);
         if (pending) return pending;
         var task = (async function () {
+            await warmAlbumTickets(proofId, 'medium').catch(function() {});
+            var batchSource = previewMediumCacheGet(proofId, safeIndex);
+            if (batchSource) return batchSource;
             var ticket = await requestMediaTicket(proofId, 'medium', safeIndex);
             return previewMediumCachePut(proofId, safeIndex, ticket.url, ticket.expiresAt);
         })();
@@ -870,10 +906,10 @@
         var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
         var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
         var image = slide && slide.querySelector('img');
-        if (!slide || !image || image.dataset.quality === 'medium') return;
+        if (!slide || !image || image.dataset.quality === 'medium' || image.dataset.quality === 'full') return;
         try {
             var source = await loadPreviewMediumSource(proofId, mediaIndex);
-            if (!document.body.contains(slide) || image.dataset.quality === 'medium') return;
+            if (!document.body.contains(slide) || image.dataset.quality === 'medium' || image.dataset.quality === 'full') return;
             image.onload = function () { slide.classList.remove('is-error'); slide.classList.add('is-loaded'); };
             image.onerror = function () { slide.classList.add('is-error'); };
             image.src = source;
@@ -887,12 +923,28 @@
 
     function hydrateAlbumThumbnails(proofId, mediaIndex, imageCount) {
         var order = [mediaIndex];
-        if (mediaIndex + 1 < imageCount) order.push(mediaIndex + 1);
-        if (mediaIndex > 0) order.push(mediaIndex - 1);
+        for (var index = 0; index < imageCount; index++) if (index !== mediaIndex) order.push(index);
         order.forEach(function (index) {
             hydrateAlbumThumbnail(proofId, index);
             hydrateAlbumMedium(proofId, index);
         });
+    }
+
+    async function hydrateAlbumFull(proofId, mediaIndex) {
+        var album = document.querySelector('#checkin-proof-preview-body .checkin-proof-preview-album');
+        if (!album || Number(album.dataset.proofId) !== Number(proofId)) return;
+        var slide = album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex) + '"]');
+        var image = slide && slide.querySelector('img');
+        if (!image || image.dataset.quality === 'full') return;
+        try {
+            var source = await loadPreviewMediaSource(proofId, mediaIndex);
+            if (!document.body.contains(slide)) return;
+            image.src = source;
+            image.dataset.quality = 'full';
+            image.classList.remove('is-thumbnail', 'is-medium');
+            slide.classList.remove('is-loading', 'is-error');
+            slide.classList.add('is-loaded');
+        } catch (_) { /* Medium resolution and the topic link remain usable. */ }
     }
 
     function setAlbumIndex(album, proofId, mediaIndex, imageCount, animate) {
@@ -915,6 +967,7 @@
         if (previous) previous.disabled = safeIndex <= 0;
         if (next) next.disabled = safeIndex >= imageCount - 1;
         hydrateAlbumThumbnails(proofId, safeIndex, imageCount);
+        hydrateAlbumFull(proofId, safeIndex);
     }
 
     function bindAlbumSwipe(album, proofId, imageCount) {
@@ -1218,6 +1271,66 @@
         }
     }
 
+    function renderProofOverview(body, proofId, count) {
+        var tiles = [];
+        for (var index = 0; index < count; index++) {
+            var source = previewThumbnailCacheGet(proofId, index);
+            tiles.push('<button type="button" class="checkin-proof-overview-tile' + (source ? ' is-loading' : '') + '" data-media-index="' + index + '" onclick="openCheckinProofPreview(' + proofId + ',' + index + ')">' +
+                '<span class="checkin-proof-overview-placeholder" aria-hidden="true">▧</span><img alt="' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: index + 1, total: count })) + '"' + (source ? ' src="' + escape(source) + '"' : '') + '>' +
+                '<span class="checkin-proof-overview-number">' + (index + 1) + '</span></button>');
+        }
+        body.innerHTML = '<div class="checkin-proof-overview"><div class="checkin-proof-overview-intro"><div><strong>' + escape(text('pcProofOverviewTitle', 'All screenshots')) + '</strong><p>' + escape(text('pcProofOverviewHint', 'Tap any image to inspect it in detail.')) + '</p></div>' +
+            '<button class="checkin-proof-overview-topic" type="button" onclick="openCheckinProofOriginal(' + proofId + ',0,event)">↗ ' + escape(text('pcProofOpenTopic', 'Open in topic')) + '</button></div>' +
+            '<div class="checkin-proof-overview-grid">' + tiles.join('') + '</div></div>';
+        body.querySelectorAll('.checkin-proof-overview-tile img').forEach(function(image) {
+            image.onload = function() { image.parentNode.classList.remove('is-loading', 'is-error'); image.parentNode.classList.add('is-loaded'); };
+            image.onerror = function() { image.parentNode.classList.remove('is-loading'); image.parentNode.classList.add('is-error'); };
+            if (image.complete && image.naturalWidth) image.onload();
+        });
+    }
+
+    async function openCheckinProofOverview(proofId, options) {
+        var id = Number(proofId);
+        if (!galleryEnabled() || id <= 0) return;
+        var modal = document.getElementById('checkin-proof-preview-modal');
+        var body = document.getElementById('checkin-proof-preview-body');
+        if (!modal || !body) return;
+        if (options) state.previewFallback = { proofId: id, imageCount: Number(options.imageCount || 1), title: String(options.title || ''), subtitle: String(options.subtitle || '') };
+        state.previewProofId = id;
+        state.previewMode = 'overview';
+        body.classList.remove('is-proof-album');
+        body.classList.add('is-proof-overview');
+        var meta = previewMeta(id);
+        document.getElementById('checkin-proof-preview-title').textContent = meta.title;
+        document.getElementById('checkin-proof-preview-subtitle').textContent = meta.subtitle;
+        syncProofPreviewViewport();
+        renderProofOverview(body, id, proofImageCount(id));
+        modal.classList.add('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        try {
+            var details = await warmAlbumTickets(id, 'thumbnail');
+            if (state.previewProofId !== id || state.previewMode !== 'overview' || !modal.classList.contains('active')) return;
+            var count = Math.max(1, Math.min(5, Number(details.image_count || 1)));
+            if (state.previewFallback && state.previewFallback.proofId === id) state.previewFallback.imageCount = count;
+            renderProofOverview(body, id, count);
+            body.querySelectorAll('.checkin-proof-overview-tile').forEach(function(tile) {
+                var index = Number(tile.dataset.mediaIndex);
+                var image = tile.querySelector('img');
+                if (!image.getAttribute('src')) {
+                    loadPreviewThumbnailSource(id, index).then(function(source) { if (document.body.contains(tile)) image.src = source; }).catch(function() { tile.classList.add('is-error'); });
+                }
+            });
+            // Thumbnails are requested first; warm every medium image in the
+            // background so jumping straight to image 3 or 5 stays responsive.
+            warmAlbumTickets(id, 'medium').then(function() {
+                for (var index = 0; index < count; index++) decodePreviewImage(previewMediumCacheGet(id, index));
+            }).catch(function() {});
+        } catch (_) {
+            if (state.previewProofId !== id || state.previewMode !== 'overview') return;
+            body.innerHTML = '<div class="checkin-proof-preview-error"><span>' + escape(text('testingControlMediaUnavailable', 'Images are temporarily unavailable.')) + '</span><button type="button" class="btn btn-secondary" onclick="openCheckinProofOverview(' + id + ')">' + escape(text('retry', 'Retry')) + '</button></div>';
+        }
+    }
+
     async function openCheckinProofPreview(proofId, mediaIndex, options) {
         var safeProofId = Number(proofId || 0);
         if (!galleryEnabled() || safeProofId <= 0) return;
@@ -1243,6 +1356,7 @@
         state.previewProofId = safeProofId;
         state.previewMediaIndex = safeIndex;
         state.previewMode = 'screenshot';
+        body.classList.remove('is-proof-overview');
         body.classList.add('is-proof-album');
         var meta = previewMeta(safeProofId);
         if (keepCurrentFrame) {
@@ -1251,6 +1365,11 @@
             renderPreviewAlbum(body, safeProofId, safeIndex, imageCount);
             bindAlbumSwipe(body.querySelector('.checkin-proof-preview-album'), safeProofId, imageCount);
             hydrateAlbumThumbnails(safeProofId, safeIndex, imageCount);
+            hydrateAlbumFull(safeProofId, safeIndex);
+        }
+        var album = body.querySelector('.checkin-proof-preview-album');
+        if (album && !album.querySelector('.checkin-proof-album-overview-link')) {
+            album.insertAdjacentHTML('beforeend', '<button type="button" class="checkin-proof-album-overview-link" onclick="openCheckinProofOverview(' + safeProofId + ')">▦ ' + escape(text('pcProofOverviewTitle', 'All screenshots')) + '</button>');
         }
         var title = document.getElementById('checkin-proof-preview-title');
         var subtitle = document.getElementById('checkin-proof-preview-subtitle');
@@ -1360,7 +1479,7 @@
         if (event && event.target !== modal) return;
         var body = document.getElementById('checkin-proof-preview-body');
         if (body) {
-            body.classList.remove('is-proof-album');
+            body.classList.remove('is-proof-album', 'is-proof-overview');
             var image = body.querySelector('img');
             if (image) image.removeAttribute('src');
             body.innerHTML = '';
@@ -1459,6 +1578,7 @@
     window.openTestingControlProof = openTestingControlProof;
     window.closeTestingControlProofMeta = closeTestingControlProofMeta;
     window.openCheckinProofPreview = openCheckinProofPreview;
+    window.openCheckinProofOverview = openCheckinProofOverview;
     window.stepCheckinProofPreview = stepCheckinProofPreview;
     window.openCheckinProofOriginal = openCheckinProofOriginal;
     window.openTestingControlFeedbackPreview = openTestingControlFeedbackPreview;

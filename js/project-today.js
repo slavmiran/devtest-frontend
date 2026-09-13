@@ -16,6 +16,8 @@
     /* appId -> { loadedAt, loading, error, control[], others[], catchupByProgress{} } */
     var cache = new Map();
     var thumbnailCache = new Map();
+    var controlReminderStates = new Map();
+    var controlReminderSending = new Set();
     var observer = null;
     var expandedOthers = new Set();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
@@ -169,6 +171,7 @@
 
     /* Compact Material-style glyphs for filtered-tab actions. */
     var ICONS = {
+        topic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21 3-7 18-4-7-7-4 18-7Z"/><path d="m10 14 11-11"/></svg>',
         remind: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>',
         reward: (typeof window.karmaIconHtml === 'function'
             ? window.karmaIconHtml('karma-yin-icon--inline')
@@ -205,7 +208,7 @@
             return '<span class="pc-iconact pc-iconact--done" title="' + esc(title) + '">' +
                 ICONS.done + labelHtml + '</span>';
         }
-        return '<button type="button" class="pc-iconact pc-iconact--' + esc(kind) + '" title="' + esc(title) + '"' +
+        return '<button type="button" class="pc-iconact pc-iconact--' + esc(kind) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '"' +
             ' onclick="event.stopPropagation(); ' + onclick + '">' +
             (ICONS[kind] || '') +
             labelHtml +
@@ -392,6 +395,7 @@
      */
     function personRowHtml(opts) {
         var tester = opts.tester || {};
+        var fullName = String(tester.full_name || tester.name || '').trim();
         var tone = opts.tone || 'neutral';
         var extra = opts.extraHtml || '';
         var identityAvatar = window.ProjectActivityRows
@@ -405,9 +409,9 @@
                 identityAvatar +
                 '<div class="pc-person__copy">' +
                     '<span class="pc-person__name notranslate"><span class="pc-person__handle">' + esc(handleOf(tester)) + '</span>' +
-                        (tester.username && String(tester.full_name || '').trim()
-                            && String(tester.full_name).trim().replace(/^@/, '').toLowerCase() !== String(tester.username).replace(/^@/, '').toLowerCase()
-                            ? '<span class="pc-person__fullname">' + esc(String(tester.full_name).trim()) + '</span>' : '') + '</span>' +
+                        (tester.username && fullName
+                            && fullName.replace(/^@/, '').toLowerCase() !== String(tester.username).replace(/^@/, '').toLowerCase()
+                            ? '<span class="pc-person__fullname">' + esc(fullName) + '</span>' : '') + '</span>' +
                     '<span class="pc-person__meta">' + (opts.metaHtml || '') + '</span>' +
                 '</div>' +
                 '<div class="pc-person__actions">' + (opts.actionsHtml || '') + '</div>' +
@@ -788,8 +792,12 @@
         }
         if (row.proofId > 0) {
             html += iconAct('image', '',
-                'pcOpenProof(' + Number(appId) + ',' + Number(row.proofId) + ',0)',
+                (row.proofType === 'screenshot' ? 'pcOpenProofOverview' : 'pcOpenProof') + '(' + Number(appId) + ',' + Number(row.proofId) + ',0)',
                 { title: controlProofLabel(row) });
+            if (row.proofType === 'screenshot') {
+                html += iconAct('topic', '', 'openCheckinProofOriginal(' + Number(row.proofId) + ',0,event)',
+                    { title: text('pcProofOpenTopic', 'Open in topic') });
+            }
         }
         if (row.feedbackId > 0 && !isProcessed(row)) {
             html += iconAct('process', '',
@@ -811,7 +819,7 @@
             esc(row.received ? text('pcControlReceived', 'Received') : text('pcControlPending', 'Pending')) +
             '</span>';
         if (dayNum > 0) {
-            meta += '<span class="pc-person__day">• ' +
+            meta += '<span class="pc-person__day">' +
                 esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
             '</span>';
         }
@@ -823,6 +831,15 @@
         if (devText) {
             meta += '<span class="pc-person__device">• ' + esc(devText) + '</span>';
         }
+        var receipts = controlReminderStates.get(Number(appId));
+        var receipt = receipts && (receipts.items || []).find(function(item) {
+            return Number(item.tester_id) === Number(row.testerId) && Number(item.day) === dayNum;
+        });
+        if (!row.received && receipt && receipt.status !== 'ready') {
+            meta += '<span class="pc-reminder-receipt ' + (receipt.status === 'sent' ? 'is-sent' : 'is-unavailable') + '">' +
+                esc(receipt.status === 'sent' ? text('pcReminderSentAt', 'DM sent at {time}', { time: reminderTime(receipt.sent_at) })
+                    : text(receipt.status === 'reserved' || receipt.status === 'uncertain' ? 'pcReminderUnconfirmed' : 'pcReminderUnavailable', 'Delivery unavailable')) + '</span>';
+        }
         return personRowHtml({
             appId: appId,
             tester: row.tester,
@@ -831,7 +848,10 @@
             waiting: !row.received,
             metaHtml: meta,
             actionsHtml: controlActionsHtml(appId, row, context),
-            extraHtml: row.received && row.slots && row.slots.length ? slotsHtml(appId, row) : '',
+            extraHtml: row.received && row.proofType === 'screenshot' && row.proofId > 0
+                ? '<button type="button" class="pc-proof-album-launch" onclick="event.stopPropagation(); pcOpenProofOverview(' + Number(appId) + ',' + Number(row.proofId) + ')">' +
+                    '<span class="pc-proof-album-launch__icon" aria-hidden="true">' + ICONS.image + (row.imageCount > 1 ? '<b>' + Number(row.imageCount) + '</b>' : '') + '</span>' +
+                    '<span><strong>' + esc(text('pcProofAlbumCount', '{count} screenshots', { count: row.imageCount })) + '</strong><small>' + esc(text('pcProofAlbumOverview', 'Quick overview of all images')) + '</small></span><span aria-hidden="true">›</span></button>' : '',
         });
     }
 
@@ -1364,17 +1384,16 @@
         var pendingCount = pendingRows.length;
 
         var bulkRemindHtml = '';
+        var reminderState = controlReminderStates.get(Number(appId));
+        var sending = controlReminderSending.has(Number(appId));
+        var readyCount = reminderState && reminderState.ready_count != null ? Number(reminderState.ready_count) : pendingCount;
         if (pendingCount > 0) {
-            var unreminded = pendingRows.filter(function (r) {
-                return !isTesterRemindedToday(appId, r.testerId);
-            });
-            if (unreminded.length > 0) {
-                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn" onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
-                    '🔔 ' + esc(text('pcControlRemindAll', 'Remind pending ({count})', { count: unreminded.length })) +
-                '</button>';
+            if (readyCount > 0 || sending) {
+                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn' + (sending ? ' is-sending' : '') + '"' + (sending ? ' disabled aria-busy="true"' : '') + ' onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
+                    ICONS.remind + esc(sending ? text('pcRemindersSending', 'Sending DMs…') : text('pcControlRemindAll', 'Remind everyone ({count})', { count: readyCount })) + '</button>';
             } else {
                 bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn is-done" disabled>' +
-                    '✓ ' + esc(text('pcControlRemindAllDone', 'Reminders sent ✓')) +
+                    esc(text('pcRemindersAttempted', 'Reminders processed')) +
                 '</button>';
             }
         }
@@ -1386,7 +1405,8 @@
                 '</span>' +
             '</div>' +
             bulkRemindHtml +
-        '</div>';
+        '</div>' + '<div class="pc-control-reminder-feedback" role="status" aria-live="polite">' + controlReminderFeedbackHtml(reminderState) + '</div>' +
+            (pendingCount > 0 ? '<p class="pc-control-reminder-hint">' + esc(text('pcRemindersHint', 'The bot sends a private message once per testing milestone.')) + '</p>' : '');
 
         var pendingSectionHtml = '';
         if (pendingRows.length > 0) {
@@ -1729,7 +1749,7 @@
         if (mode === 'history') {
             loadFilterHistory(appId, filter, data);
         } else if (filter === 'control') {
-            loadPendingThumbnails(Number(appId), { scope: '.pc-activity__list' });
+            loadControlReminderStatus(Number(appId));
         }
     }
 
@@ -2112,56 +2132,57 @@
         });
     };
 
-    window._isSendingControlBulkReminder = false;
+    function reminderTime(value) {
+        if (!value) return '—';
+        return new Date(value).toLocaleTimeString(typeof lang !== 'undefined' && lang === 'ru' ? 'ru-RU' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
 
-    window.pcRemindAllPendingControl = function (appId) {
-        if (window._isSendingControlBulkReminder) return;
+    function controlReminderFeedbackHtml(state) {
+        if (!state) return '';
+        if (state.error) return '<span class="is-error">' + esc(text('pcRemindersFailed', 'Could not send reminders. Please retry.')) + '</span>';
+        var items = state.items || [];
+        var sent = items.filter(function(item) { return item.status === 'sent'; });
+        var unavailable = items.filter(function(item) { return ['unavailable', 'failed', 'rate_limited'].indexOf(item.status) !== -1; });
+        var uncertain = items.filter(function(item) { return ['reserved', 'uncertain'].indexOf(item.status) !== -1; });
+        var at = sent.map(function(item) { return item.sent_at || ''; }).sort().pop();
+        return (sent.length ? '<span class="is-sent">' + esc(text('pcRemindersSentCount', 'DMs sent: {count} · {time}', { count: sent.length, time: reminderTime(at) })) + '</span>' : '') +
+            (unavailable.length ? '<span class="is-error">' + esc(text('pcRemindersUnavailableCount', 'Not delivered: {count}', { count: unavailable.length })) + '</span>' : '') +
+            (uncertain.length ? '<span>' + esc(text('pcRemindersUnconfirmedCount', 'Delivery unconfirmed: {count}', { count: uncertain.length })) + '</span>' : '');
+    }
+
+    async function loadControlReminderStatus(appId, force) {
+        var previous = controlReminderStates.get(Number(appId));
+        if (!force && previous && (previous.loading || Date.now() - previous.loadedAt < CACHE_TTL_MS)) return;
+        controlReminderStates.set(Number(appId), Object.assign({}, previous, { loading: true }));
+        try {
+            var payload = await requestJson(API_BASE + '/projects/' + Number(appId) + '/testing-control/reminders?init_data=' + encodeURIComponent(initData()));
+            controlReminderStates.set(Number(appId), Object.assign({}, payload, { loadedAt: Date.now(), loading: false }));
+            refreshActivityWorkspace(appId);
+        } catch (_) {
+            controlReminderStates.set(Number(appId), Object.assign({}, previous, { loadedAt: Date.now(), loading: false }));
+        }
+    }
+
+    window.pcRemindAllPendingControl = async function (appId) {
         var safeAppId = Number(appId || 0);
         var project = projectById(safeAppId);
-        if (!project) return;
-        var counts = activityCounts(project);
-        var pending = (counts.controlRows || []).filter(function (r) { return !r.received; });
-        var unreminded = pending.filter(function (r) {
-            return !isTesterRemindedToday(safeAppId, r.testerId);
-        });
-        if (!unreminded.length) {
-            if (typeof showToast === 'function') {
-                showToast(text('pcControlRemindAllDone', 'Reminders sent ✓'));
-            }
-            return;
-        }
-
-        var confirmMsg = text('pcControlRemindAllConfirm', 'Send reminder for today\'s control day to pending testers ({count})?', { count: unreminded.length });
-        if (typeof window.confirm === 'function' && !window.confirm(confirmMsg)) {
-            return;
-        }
-
-        window._isSendingControlBulkReminder = true;
+        if (!project || controlReminderSending.has(safeAppId)) return;
+        controlReminderSending.add(safeAppId);
+        refreshActivityWorkspace(safeAppId);
         try {
-            var tags = unreminded.map(function (r) { return handleOf(r.tester); }).filter(Boolean).join(' ');
-            var controlDay = unreminded[0] ? Number(unreminded[0].day || 0) : 0;
-
-            if (typeof openBellRemindPreview === 'function') {
-                openBellRemindPreview({
-                    username: '', // send to topic
-                    userTags: tags,
-                    fullName: '',
-                    remindAppId: safeAppId,
-                    remindAppName: project.name || '',
-                    remindReason: 'control_bulk',
-                    controlDay: controlDay,
-                    onSent: function () {
-                        unreminded.forEach(function (r) {
-                            markTesterRemindedToday(safeAppId, r.testerId);
-                        });
-                        refreshActivityWorkspace(safeAppId);
-                    },
-                });
-            }
+            var response = await fetch(API_BASE + '/projects/' + safeAppId + '/testing-control/reminders', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ init_data: initData() }),
+            });
+            var payload = await response.json();
+            if (!response.ok || payload.status !== 'success') throw new Error('reminders_failed');
+            controlReminderStates.set(safeAppId, Object.assign({}, payload, { loadedAt: Date.now() }));
+            if (typeof showToast === 'function') showToast(text('pcRemindersResultToast', 'DMs sent: {count}', { count: Number(payload.sent_count || 0) }));
+        } catch (_) {
+            var previous = controlReminderStates.get(safeAppId) || {};
+            controlReminderStates.set(safeAppId, Object.assign({}, previous, { error: true }));
         } finally {
-            window.setTimeout(function () {
-                window._isSendingControlBulkReminder = false;
-            }, 800);
+            controlReminderSending.delete(safeAppId);
+            refreshActivityWorkspace(safeAppId);
         }
     };
 
@@ -2300,6 +2321,15 @@
         openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
             imageCount: Number(row && row.imageCount || 1),
             title: row ? handleOf(row.tester) : '',
+            subtitle: row ? workspaceText('День ', 'Day ') + row.day : '',
+        });
+    };
+
+    window.pcOpenProofOverview = function(appId, proofId) {
+        var row = findRow(appId, proofId);
+        if (typeof openCheckinProofOverview !== 'function') return;
+        openCheckinProofOverview(Number(proofId), {
+            imageCount: Number(row && row.imageCount || 1), title: row ? handleOf(row.tester) : '',
             subtitle: row ? workspaceText('День ', 'Day ') + row.day : '',
         });
     };

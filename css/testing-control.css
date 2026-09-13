@@ -235,6 +235,23 @@
 .checkin-proof-preview-feedback-card__open { justify-self: start; min-height: 38px; padding: 0 14px; }
 
 @keyframes testing-control-pulse { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+
+.checkin-proof-preview-body.is-proof-overview { display:block; padding:20px 14px; background:#111a26; }
+.checkin-proof-overview { max-width:760px; margin:0 auto; }
+.checkin-proof-overview-intro { display:flex; align-items:flex-start; gap:12px; margin-bottom:18px; }
+.checkin-proof-overview-intro>div { flex:1; min-width:0; }
+.checkin-proof-overview-intro strong { color:#edf4ff; font-size:16px; }
+.checkin-proof-overview-intro p { margin:6px 0 0; color:#98a8bd; font-size:12px; line-height:1.5; }
+.checkin-proof-overview-topic { min-height:42px; padding:8px 10px; border:1px solid #334763; border-radius:11px; color:#97c2ff; background:#1c2a3c; font-size:11px; }
+.checkin-proof-overview-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; }
+.checkin-proof-overview-tile { position:relative; display:grid; place-items:center; aspect-ratio:9/15; overflow:hidden; padding:0; border:1px solid #304158; border-radius:13px; color:#8497b0; background:#1c2838; }
+.checkin-proof-overview-tile img { position:absolute; width:100%; height:100%; object-fit:contain; opacity:0; }
+.checkin-proof-overview-tile.is-loaded img { opacity:1; }
+.checkin-proof-overview-placeholder { font-size:28px; opacity:.4; }
+.checkin-proof-overview-tile.is-loading .checkin-proof-overview-placeholder { animation:testing-control-pulse 1s infinite; }
+.checkin-proof-overview-tile.is-error { border-color:#a66c6a; }
+.checkin-proof-overview-number { position:absolute; left:7px; bottom:7px; min-width:24px; padding:4px 7px; border-radius:7px; color:#fff; background:rgba(8,15,25,.85); font-size:11px; font-weight:650; }
+.checkin-proof-album-overview-link { position:absolute; top:10px; left:10px; z-index:3; min-height:40px; padding:8px 12px; border:1px solid rgba(150,181,219,.3); border-radius:11px; color:#c1d7f3; background:rgba(13,24,40,.88); font-size:12px; }
 @keyframes testing-control-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
 @media (max-width: 520px) {
