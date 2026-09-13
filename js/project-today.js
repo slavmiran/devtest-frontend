@@ -395,6 +395,12 @@
      */
     function personRowHtml(opts) {
         var tester = opts.tester || {};
+        var project = projectById(opts.appId);
+        var testerId = Number(tester.tester_id || tester.id || 0);
+        var rosterTester = ((project && project.testers) || []).find(function (person) {
+            return Number(person.tester_id || person.id || 0) === testerId;
+        });
+        tester = Object.assign({}, rosterTester || {}, tester);
         var fullName = String(tester.full_name || tester.name || '').trim();
         var tone = opts.tone || 'neutral';
         var extra = opts.extraHtml || '';
@@ -1379,8 +1385,6 @@
         if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
         var pendingRows = rows.filter(function (row) { return !row.received; });
         var receivedRows = rows.filter(function (row) { return row.received; });
-        var totalCount = rows.length;
-        var receivedCount = receivedRows.length;
         var pendingCount = pendingRows.length;
 
         var bulkRemindHtml = '';
@@ -1398,15 +1402,10 @@
             }
         }
 
-        var summaryHtml = '<div class="pc-control-summary">' +
-            '<div class="pc-control-summary__info">' +
-                '<span class="pc-control-summary__text">' +
-                    esc(text('pcControlSummaryReceived', 'Received {count} of {total}', { count: receivedCount, total: totalCount })) +
-                '</span>' +
-            '</div>' +
+        var summaryHtml = pendingCount > 0 ? '<section class="pc-control-reminder-panel" aria-label="' + esc(text('pcControlRemindAll', 'Bot reminders', {count:readyCount})) + '">' +
             bulkRemindHtml +
-        '</div>' + '<div class="pc-control-reminder-feedback" role="status" aria-live="polite">' + controlReminderFeedbackHtml(reminderState) + '</div>' +
-            (pendingCount > 0 ? '<p class="pc-control-reminder-hint">' + esc(text('pcRemindersHint', 'The bot sends a private message once per testing milestone.')) + '</p>' : '');
+            '<div class="pc-control-reminder-feedback" role="status" aria-live="polite">' + controlReminderFeedbackHtml(reminderState) + '</div>' +
+            '<p class="pc-control-reminder-hint">' + esc(text('pcRemindersHint', 'One bot reminder per milestone. Personal reminders remain separate.')) + '</p></section>' : '';
 
         var pendingSectionHtml = '';
         if (pendingRows.length > 0) {
@@ -1434,7 +1433,7 @@
             '</div>';
         }
 
-        return summaryHtml + pendingSectionHtml + receivedSectionHtml;
+        return pendingSectionHtml + receivedSectionHtml + summaryHtml;
     }
 
     function nowHtmlForFilter(project, filter, data, context) {
@@ -1677,7 +1676,7 @@
         var hints = {
             contribution: workspaceText('Сверх обычного чекина', 'Beyond a check-in'),
             attention: workspaceText('Пропуски, отчёты и взаимные обязательства', 'Missed days, reports and mutual commitments'),
-            control: workspaceText('Проверка доказательств', 'Review proof'),
+            control: workspaceText('Контрольные отчёты', 'Milestone reports'),
             testers: workspaceText('Все участники текущего теста', 'All participants in this test'),
         };
         var hintText = historyOn ? workspaceText('История тестирования участников выбранной группы', 'Testing history for this group') : hints[filter];

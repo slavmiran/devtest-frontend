@@ -1156,6 +1156,8 @@ function renderProjects(force) {
 
         let testersHtml = '';
         let testerRowsHtml = '';
+        const testerReportIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>';
+        const testerWarningIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.3 4-8 14a2 2 0 0 0 1.7 3h16a2 2 0 0 0 1.7-3l-8-14a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/></svg>';
         // Roster signals surfaced in the collapsed "All testers" summary.
         let attentionCount = 0;
         let mutualDebtCount = 0;
@@ -1225,7 +1227,7 @@ function renderProjects(force) {
                     : '';
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
-                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label notranslate">@${window.escapeHTML(cleanUsername)}</span></span>`;
+                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label notranslate">@${window.escapeHTML(cleanUsername)}</span>${tester.full_name ? `<span class="tester-fullname">${window.escapeHTML(tester.full_name)}</span>` : ''}</span>`;
                 } else if (tester.full_name) {
                     nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label">${window.escapeHTML(tester.full_name)}</span></span>`;
                 } else {
@@ -1283,14 +1285,14 @@ function renderProjects(force) {
                 }
                 let warningHtml = '';
                 if (!isLeftSoft && consecutiveSkips >= 3) {
-                    warningHtml = `<span class="tester-icon-action tester-warn-action" role="button" tabindex="0" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">⚠️</span>`;
+                    warningHtml = `<button type="button" class="tester-icon-action tester-warn-action" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" aria-label="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${testerWarningIcon}</button>`;
                 }
 
                 let brokenHtml = '';
 
                 let screenshotDayHtml = '';
                 if (!isLeftSoft && isMandatoryScreenshotDay(testerDay)) {
-                    screenshotDayHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`;
+                    screenshotDayHtml = `<button type="button" class="tester-icon-action tester-report-action" aria-label="${window.escapeHTML(window.t('pcControlTitle', {}, lang))}" onclick="event.stopPropagation(); showScreenshotDayAlert()">${testerReportIcon}</button>`;
                 }
 
                 let karmaHtml = '';
@@ -1322,7 +1324,7 @@ function renderProjects(force) {
                     rowHtml = `
                     <li class="tester-row-left-soft">
                         <div class="tester-row-main">
-                            <span class="tester-name">${leftDayHtml}<span class="tester-left-prefix" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span></span>
+                            <span class="tester-name">${leftDayHtml}<span class="tester-left-prefix" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span>${tester.username && tester.full_name ? `<span class="tester-fullname">${window.escapeHTML(tester.full_name)}</span>` : ''}</span>
                         </div>
                         <div class="tester-row-meta">
                             <button type="button" class="tester-leave-chip" onclick="event.stopPropagation(); openLeftTesterLinkStatus(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${window.escapeHTML(window.t('testerLeftChip', {}, lang))}</button>
@@ -1369,13 +1371,13 @@ function renderProjects(force) {
                     ? `<span class="tester-day-badge">[${window.escapeHTML(String(Number(currentDay || 0)))}]</span>`
                     : '';
                 var screenshotDayHtml = isControlToday
-                    ? `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`
+                    ? `<button type="button" class="tester-icon-action tester-report-action" aria-label="${window.escapeHTML(window.t('pcControlTitle', {}, lang))}" onclick="event.stopPropagation(); showScreenshotDayAlert()">${testerReportIcon}</button>`
                     : '';
                 var statusLabel = controlMeta.label;
                 testerRowsHtml += `
                     <li onclick="openGuestTesterDetailsModal(${project.id}, ${Number(tester.progress_id || 0)}, event)" style="cursor: pointer;">
                         <div class="tester-row-main">
-                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">${window.escapeHTML(guestListPrefix)}</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
+                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">${window.escapeHTML(guestListPrefix)}</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span>${tester.full_name ? `<span class="tester-fullname">${window.escapeHTML(tester.full_name)}</span>` : ''}</span>
                             ${screenshotDayHtml}
                         </div>
                         <div class="tester-row-meta">
