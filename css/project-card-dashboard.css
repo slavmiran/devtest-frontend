@@ -6112,14 +6112,8 @@ button.pc-metric-reserve:active {
 
 /* Project-funded daily screenshot Boost. */
 .pc-subtitle-chip--screenshot-boost { color:#f6c85f; border-color:rgba(246,200,95,.28); background:rgba(246,200,95,.09); }
-.pc-quick-boost { width:100%; min-height:52px; margin-top:8px; padding:8px 11px; display:flex; align-items:center; gap:10px; border:1px solid rgba(148,163,184,.14); border-radius:13px; color:var(--text-color); background:rgba(30,41,59,.46); text-align:left; }
-.pc-quick-boost.is-on { border-color:rgba(246,200,95,.24); background:linear-gradient(100deg,rgba(246,200,95,.10),rgba(30,41,59,.48)); }
-.pc-quick-boost__icon { width:34px; height:34px; flex:0 0 34px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; background:rgba(246,200,95,.12); font-size:17px; }
-.pc-quick-boost__copy { min-width:0; display:flex; flex:1; flex-direction:column; gap:2px; }
-.pc-quick-boost__label { color:rgba(226,232,240,.66); font-size:11px; line-height:1.15; }
-.pc-quick-boost__value { overflow:hidden; color:rgba(226,232,240,.9); font-size:13px; font-weight:650; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
-.pc-quick-boost.is-on .pc-quick-boost__value { color:#f6c85f; }
-.pc-quick-boost__chevron { flex:0 0 auto; color:rgba(148,163,184,.65); }
+.pc-quick-tile--screenshot-bust { margin-top:8px; }
+.pc-quick-tile--screenshot-bust.is-on .pc-quick-tile__icon { color:#f6c85f; }
 
 .screenshot-boost-modal.modal-overlay { align-items:flex-end; padding:12px 10px max(12px,env(safe-area-inset-bottom)); }
 .screenshot-boost-sheet.modal-content { width:min(100%,520px); max-height:min(88dvh,760px); margin:0 auto; padding:11px 18px 18px; overflow-y:auto; border:1px solid rgba(148,163,184,.18); border-radius:24px; background:#171d27; box-shadow:0 24px 72px rgba(0,0,0,.5); }
@@ -6142,9 +6136,15 @@ button.pc-metric-reserve:active {
 .screenshot-boost-switch-row input:checked+.screenshot-boost-switch::after { transform:translateX(18px); }
 .screenshot-boost-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:10px; }
 .screenshot-boost-field { min-width:0; padding:10px; border:1px solid rgba(148,163,184,.14); border-radius:13px; background:rgba(15,23,42,.42); }
-.screenshot-boost-field>span { min-height:28px; display:block; color:rgba(203,213,225,.7); font-size:11px; line-height:1.25; }
-.screenshot-boost-input-wrap { display:flex; align-items:baseline; gap:4px; margin-top:5px; }
-.screenshot-boost-input-wrap input { min-width:0; width:100%; padding:6px 4px; border:0; outline:0; color:#f8fafc; background:transparent; font-size:20px; font-weight:750; }
+.screenshot-boost-field>label { min-height:28px; display:block; color:rgba(203,213,225,.7); font-size:11px; line-height:1.25; }
+.screenshot-boost-stepper { display:flex; align-items:center; gap:3px; margin-top:5px; padding:3px; border:1px solid rgba(148,163,184,.24); border-radius:10px; background:rgba(15,23,42,.55); }
+.screenshot-boost-stepper:focus-within { border-color:#669cf0; box-shadow:0 0 0 2px rgba(102,156,240,.12); }
+.screenshot-boost-stepper>button { width:30px; min-height:38px; flex:0 0 30px; padding:0; border:0; border-radius:7px; color:#b6c7e0; background:rgba(148,163,184,.1); font-size:20px; cursor:pointer; }
+.screenshot-boost-stepper>button:active { background:rgba(102,156,240,.22); }
+.screenshot-boost-input-wrap { display:flex; flex:1; min-width:0; flex-direction:column; align-items:center; gap:0; }
+.screenshot-boost-input-wrap input { min-width:0; width:100%; padding:4px 0 0; border:0; outline:0; color:#f8fafc; background:transparent; text-align:center; font-size:20px; font-weight:750; appearance:textfield; }
+.screenshot-boost-input-wrap input::-webkit-inner-spin-button,.screenshot-boost-input-wrap input::-webkit-outer-spin-button { appearance:none; margin:0; }
+.screenshot-boost-budget-preview { margin:8px 2px 14px; color:#91a4bf; font-size:11px; line-height:1.4; }
 .screenshot-boost-input-wrap b { color:#f6c85f; font-size:10px; }
 .screenshot-boost-control-row { margin-top:10px; }
 .screenshot-boost-control-check { width:21px; height:21px; flex:0 0 21px; border:1px solid rgba(148,163,184,.5); border-radius:6px; }

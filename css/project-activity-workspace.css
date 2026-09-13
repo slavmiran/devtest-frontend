@@ -96,10 +96,15 @@
 .pc-activity--workspace .pc-person__avatar,
 .pc-activity--workspace .pc-person .pc-avatar { width: 42px; height: 42px; min-width: 42px; }
 .pc-activity--workspace .pc-person__avatar { position: relative; overflow: visible; flex-shrink: 0; }
-.pc-activity--workspace .pc-identity-app { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; width: 24px; height: 24px; overflow: hidden; border: 2px solid var(--bg-surface-2, #1b2635); border-radius: 50%; background: #344c6a; color: #e0edff; font-size: 12px; font-weight: 700; line-height: 1; }
+.pc-activity--workspace .pc-identity-app { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 28px; height: 28px; overflow: hidden; border: 2px solid var(--bg-surface-2, #1b2635); border-radius: 50%; background: #344c6a; color: #e0edff; font-size: 13px; font-weight: 700; line-height: 1; }
 .pc-activity--workspace .pc-identity-app img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .pc-activity--workspace .pc-person__meta:empty { display: none; }
-.pc-activity--workspace .pc-person__name { font-size: 14px; }
+.pc-activity--workspace .pc-person__name { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; white-space:normal; font-size:15px; line-height:1.35; }
+.pc-activity--workspace .pc-person__handle { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; color:var(--text-primary); }
+.pc-activity--workspace .pc-person__fullname { font-size:12px; font-weight:450; color:var(--text-secondary); overflow-wrap:anywhere; }
+.pc-activity--workspace .pc-person__reliability { padding:0; margin:0; background:transparent; color:var(--text-secondary); font-size:11px; font-weight:500; }
+.pc-activity--workspace .pc-person__day { color:var(--text-tertiary, #8493a7); font-size:11px; }
+.pc-activity--workspace .pc-person__day::before { content:'·'; margin-right:6px; }
 .pc-activity--workspace .pc-person__meta { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; font-weight: 500; }
 .pc-activity--workspace .pc-contribution-subrows,
 .pc-activity--workspace .pc-attention-subrows { margin: 12px 0 0; gap: 6px; }
@@ -127,11 +132,21 @@
 .pc-activity--workspace .pc-attention-subrow--broken_link { --reason-color: #8394a9; }
 .pc-activity--workspace .pc-contribution-subrow__icon,
 .pc-activity--workspace .pc-attention-subrow__icon { color: var(--reason-color); flex-shrink: 0; }
+.pc-activity--workspace .pc-attention-subrow { border-left:0; border:1px solid rgba(148,163,184,.09); border-radius:12px; padding:8px 9px; background:rgba(128,145,168,.035); }
+.pc-activity--workspace .pc-attention-subrow__info { gap:10px; align-items:center; }
+.pc-activity--workspace .pc-attention-subrow__icon { width:32px; height:32px; flex:0 0 32px; border-radius:9px; background:color-mix(in srgb,var(--reason-color) 10%,transparent); }
+.pc-activity--workspace .pc-attention-subrow__icon svg { width:20px; height:20px; }
+.pc-activity--workspace .pc-attention-subrow--skips { border-color:rgba(213,144,139,.2); }
+.pc-activity--workspace .pc-attention-subrow--missed_control { border-color:rgba(197,173,124,.18); }
 .pc-activity--workspace .pc-contribution-subrow__label,
 .pc-activity--workspace .pc-attention-subrow__label { white-space: normal; overflow: visible; font-size: 13px; line-height: 1.4; font-weight: 500; color: var(--text-primary); }
+.pc-activity--workspace .pc-attention-subrow__label { color:var(--text-secondary, #afbac9); font-size:12px; font-weight:450; }
 .pc-activity--workspace .pc-person .pc-iconact { min-width: 44px; min-height: 44px; }
 .pc-activity--workspace .pc-contribution-subrow__action .pc-iconact,
 .pc-activity--workspace .pc-attention-subrow__action .pc-iconact { flex-direction: column; background: transparent; padding: 3px 5px; }
+.pc-activity--workspace .pc-attention-subrow__action .pc-iconact { flex-direction:row; gap:5px; padding:7px 8px; border:1px solid rgba(102,156,240,.14); border-radius:9px; background:rgba(102,156,240,.06); }
+.pc-activity--workspace .pc-attention-subrow__action .pc-iconact svg { width:18px; height:18px; }
+.pc-activity--workspace .pc-attention-subrow__action .pc-iconact__label { font-size:10px; }
 .pc-activity--workspace .pc-iconact__label { font-size: 11px; }
 .pc-activity--workspace .pc-person .pc-slots { margin: 12px 0 0; }
 .pc-activity--workspace .pc-control-summary { flex-wrap: wrap; background: transparent; border: 0; padding: 4px 0 12px; }

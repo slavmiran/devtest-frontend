@@ -298,21 +298,20 @@
 
     function testerReliabilityLabel(tester) {
         if (!tester) return '';
-        var relState = typeof getDossierReliabilityState === 'function'
-            ? getDossierReliabilityState(tester)
-            : null;
         var relName = text('metricReliability', 'Reliability');
-        if (relState) {
-            if (relState.isNewbie) {
-                return relName + ' · ' + (text('bountyAppReliabilityNewbieShort', 'Newbie'));
-            }
-            return relName + ' ' + relState.reliabilityPct + '%';
+        if (tester.reliability_status === 'newbie') {
+            return relName + ' · ' + text('bountyAppReliabilityNewbieShort', 'Newbie');
         }
         if (tester.reliability_index != null && !isNaN(Number(tester.reliability_index))) {
             var pct = Math.round(Number(tester.reliability_index));
             return relName + ' ' + pct + '%';
         }
-        return relName + ' · ' + text('bountyAppReliabilityNewbieShort', 'Newbie');
+        if (tester.total_expected_checkins != null && typeof getDossierReliabilityState === 'function') {
+            var relState = getDossierReliabilityState(tester);
+            return relState.isNewbie ? relName + ' · ' + text('bountyAppReliabilityNewbieShort', 'Newbie')
+                : relName + ' ' + relState.reliabilityPct + '%';
+        }
+        return relName + ' · ' + workspaceText('нет данных', 'unavailable');
     }
 
     function skipsLabel(count) {
@@ -405,7 +404,10 @@
             '<div class="pc-person__top">' +
                 identityAvatar +
                 '<div class="pc-person__copy">' +
-                    '<span class="pc-person__name notranslate">' + esc(handleOf(tester)) + '</span>' +
+                    '<span class="pc-person__name notranslate"><span class="pc-person__handle">' + esc(handleOf(tester)) + '</span>' +
+                        (tester.username && String(tester.full_name || '').trim()
+                            && String(tester.full_name).trim().replace(/^@/, '').toLowerCase() !== String(tester.username).replace(/^@/, '').toLowerCase()
+                            ? '<span class="pc-person__fullname">' + esc(String(tester.full_name).trim()) + '</span>' : '') + '</span>' +
                     '<span class="pc-person__meta">' + (opts.metaHtml || '') + '</span>' +
                 '</div>' +
                 '<div class="pc-person__actions">' + (opts.actionsHtml || '') + '</div>' +
@@ -1254,13 +1256,13 @@
                 : '<span class="pc-person__dot" aria-hidden="true"></span>';
 
             var metaHtml = '<span class="pc-person__reliability">' + esc(testerReliabilityLabel(tester)) + '</span>' +
-                '<span class="pc-person__day">• ' + esc(text('pcDayOf', 'Day {day} / {total}', { day: currentDay, total: 14 })) + '</span>';
+                '<span class="pc-person__day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>';
 
             var subrowsHtml = '<div class="pc-attention-subrows">' + item.reasons.map(function (reason) {
                 var reasonIcon = ATTENTION_ICONS[reason.code] || ATTENTION_ICONS.not_opened;
                 var actionHtml = '';
                 if (reason.action === 'left_status' || reason.action === 'link_status') {
-                    reasonIcon = '<span aria-hidden="true">↗</span>';
+                    reasonIcon = ATTENTION_ICONS.direct_invite;
                     actionHtml = iconAct('process', reason.actionLabel || workspaceText('Подробнее', 'Details'),
                         (reason.action === 'left_status' ? 'openLeftTesterLinkStatus' : 'openTesterLinkStatusFromRow') +
                         '(' + Number(appId) + ',' + Number(item.testerId) + ', event)');
@@ -1654,7 +1656,7 @@
 
         var hints = {
             contribution: workspaceText('Сверх обычного чекина', 'Beyond a check-in'),
-            attention: workspaceText('Сначала — самое важное', 'Most important first'),
+            attention: workspaceText('Пропуски, отчёты и взаимные обязательства', 'Missed days, reports and mutual commitments'),
             control: workspaceText('Проверка доказательств', 'Review proof'),
             testers: workspaceText('Все участники текущего теста', 'All participants in this test'),
         };
@@ -2298,7 +2300,7 @@
         openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
             imageCount: Number(row && row.imageCount || 1),
             title: row ? handleOf(row.tester) : '',
-            subtitle: row ? text('pcDayOf', 'Day {day} / {total}', { day: row.day, total: 14 }) : '',
+            subtitle: row ? workspaceText('День ', 'Day ') + row.day : '',
         });
     };
 })();

@@ -3017,7 +3017,7 @@ function renderPlayReviewModal() {
                 ownerRewardText = `+${reviewOwnerBoostKarma.toFixed(1)} ☯️ Karma`;
             }
             rewardsHtml += `<div class="confirmed-reward-item" style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-                <span style="color:var(--text-secondary); font-size:13px;">${window.escapeHTML(lang === 'ru' ? 'Буст от разработчика' : 'Developer boost')}</span>
+                <span style="color:var(--text-secondary); font-size:13px;">${window.escapeHTML(lang === 'ru' ? 'Награда от разработчика' : 'Developer reward')}</span>
                 <span style="font-weight:700; color:#ffcc00; font-size:14px;">${ownerRewardText}</span>
             </div>`;
         }
