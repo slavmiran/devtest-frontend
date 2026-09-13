@@ -1430,7 +1430,7 @@
         if (!username) {
             if (state.userTags) {
                 if (typeof onSent === 'function') {
-                    try { onSent(target); } catch (_) {}
+                    try { onSent('topic'); } catch (_) {}
                 }
                 _bellRemindState = null;
                 if (typeof showToast === 'function') {
@@ -1446,21 +1446,22 @@
             return;
         }
 
-        if (typeof onSent === 'function') {
-            try { onSent(target); } catch (_) {}
-        }
-
         if (typeof showToast === 'function') {
             showToast(_t('bellRemindSentDmToast'));
         }
 
+        var opened = false;
         if (typeof openOwnerCheckpointChat === 'function') {
-            openOwnerCheckpointChat(username, dmText, {
+            opened = openOwnerCheckpointChat(username, dmText, {
                 trackScreenshotReminder: false,
                 showCopyToast: false,
             });
         } else {
             openMutualBalanceTelegram('https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(dmText));
+            opened = true;
+        }
+        if (opened && typeof onSent === 'function') {
+            try { onSent('dm'); } catch (_) {}
         }
         _bellRemindState = null;
     }

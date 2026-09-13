@@ -85,8 +85,8 @@ function stateBlock(o) {
     </section>
     <section class="pc-metric-card pc-metric-card--google">
       <div class="pc-metric-title">АКТИВНОСТЬ</div>
-      <div class="pc-metric-ring">${ring(o.done, o.testers).replace('Чекины дня', 'чекины')}</div>
-      <div class="pc-metric-footer"><span class="pc-metric-footer__line pc-daily-activity-line">Сегодня <span class="pc-metric-footer__value">${o.pct}%</span></span></div>
+      <div class="pc-metric-ring">${ring(o.done, o.testers).replace('Чекины дня', 'тесты')}</div>
+      <div class="pc-metric-footer"><span class="pc-metric-footer__line pc-daily-activity-line${Number(o.pct) >= 100 ? ' is-complete' : ''}">Сегодня <span class="pc-metric-footer__value">${o.pct}%</span></span></div>
     </section>
   </div>
   <div class="pc-action-footer">

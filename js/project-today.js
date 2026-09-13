@@ -846,6 +846,11 @@
                 esc(receipt.status === 'sent' ? text('pcReminderSentAt', 'DM sent at {time}', { time: reminderTime(receipt.sent_at) })
                     : text(receipt.status === 'reserved' || receipt.status === 'uncertain' ? 'pcReminderUnconfirmed' : 'pcReminderUnavailable', 'Delivery unavailable')) + '</span>';
         }
+        if (!row.received && receipt && receipt.personal_dm_opened_at) {
+            meta += '<span class="pc-reminder-receipt is-personal">' +
+                esc(text('pcReminderPersonalOpenedAt', 'Personal DM opened in Telegram at {time}', { time: reminderTime(receipt.personal_dm_opened_at) })) +
+            '</span>';
+        }
         return personRowHtml({
             appId: appId,
             tester: row.tester,
@@ -2124,9 +2129,34 @@
             remindReason: reasonCode || 'regular',
             consecutiveSkips: skips,
             controlDay: day,
-            onSent: function () {
+            onSent: function (target) {
                 markTesterRemindedToday(safeAppId, safeTesterId);
-                refreshActivityWorkspace(safeAppId);
+                if (target !== 'dm') {
+                    refreshActivityWorkspace(safeAppId);
+                    return;
+                }
+                fetch(API_BASE + '/projects/' + safeAppId + '/testing-control/personal-reminder-opened', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ init_data: initData(), tester_id: safeTesterId }),
+                }).then(function (response) {
+                    if (!response.ok) throw new Error('personal_reminder_failed');
+                    return response.json();
+                }).then(function (payload) {
+                    if (!payload || payload.status !== 'success' || !payload.personal_dm_opened_at) {
+                        throw new Error('personal_reminder_failed');
+                    }
+                    var state = controlReminderStates.get(safeAppId);
+                    if (state && Array.isArray(state.items)) {
+                        state.items.forEach(function (item) {
+                            if (Number(item.tester_id) === safeTesterId) item.personal_dm_opened_at = payload.personal_dm_opened_at;
+                        });
+                        controlReminderStates.set(safeAppId, state);
+                    }
+                    refreshActivityWorkspace(safeAppId);
+                }).catch(function () {
+                    // Do not show a receipt when its durable write was not confirmed.
+                    refreshActivityWorkspace(safeAppId);
+                });
             },
         });
     };

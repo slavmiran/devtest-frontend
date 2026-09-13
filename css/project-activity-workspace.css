@@ -189,15 +189,6 @@
 .pc-control-reminder-panel { display:flex; flex-direction:column; gap:10px; margin-top:18px; padding:14px; border:1px solid rgba(132,164,207,.14); border-radius:14px; background:rgba(99,139,194,.035); }
 .pc-control-reminder-panel .pc-control-reminder-hint { margin:0; }
 .pc-control-reminder-panel .pc-control-remind-all-btn { width:100%; }
-.pc-activity--workspace .tester-list .tester-name { display:flex; flex-wrap:wrap; align-items:baseline; gap:3px 7px; white-space:normal; min-width:0; }
-.pc-activity--workspace .tester-list .tester-primary-label { font-size:15px; font-weight:700; color:var(--text-primary); }
-.pc-activity--workspace .tester-list .tester-fullname { font-size:12px; font-weight:450; color:var(--text-secondary); overflow-wrap:anywhere; }
-.pc-activity--workspace .tester-list .tester-day-badge { color:var(--text-tertiary,#8493a7); font-size:11px; font-weight:500; }
-.pc-activity--workspace .tester-list .tester-status { font-size:11px; font-weight:450; }
-.pc-activity--workspace .tester-list .tester-icon-action { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; border-radius:9px; font-size:20px; background:rgba(102,156,240,.06); }
-.pc-activity--workspace .tester-list button.tester-icon-action { border:1px solid rgba(102,156,240,.14); color:#a4caff; }
-.pc-activity--workspace .tester-list .tester-icon-action svg { width:20px; height:20px; }
-.pc-activity--workspace .tester-list button.tester-warn-action { color:#d8b995; border-color:rgba(216,185,149,.18); background:rgba(216,185,149,.06); }
 @media (max-width: 360px) {
     .pc-activity--workspace .pc-activity__toolbar { flex-wrap: wrap; }
     .pc-activity--workspace .pc-activity__hint-wrap { flex-basis: 100%; }

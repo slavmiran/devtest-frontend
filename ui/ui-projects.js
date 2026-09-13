@@ -250,7 +250,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
     const meta = getProjectDailyProgressMeta(project);
     const appId = Number(project && (project.id || project.app_id) || 0);
     const compactLabel = options && options.compactLabel
-        ? (typeof window.t === 'function' ? window.t('pcMetricCheckins', {}, typeof lang !== 'undefined' ? lang : 'ru') : 'Чекины')
+        ? (typeof window.t === 'function' ? window.t('pcMetricCheckins', {}, typeof lang !== 'undefined' ? lang : 'ru') : 'тесты')
         : meta.centerLabel;
     const glowId = `dpr-glow-${appId || Math.floor(Math.random() * 10000)}`;
 
@@ -472,7 +472,7 @@ function buildProjectCardSubtitle(project, options) {
         const reward = Math.max(0, Number(screenshotBoost.reward_bust || 0));
         const pool = Math.max(0, Number(screenshotBoost.pool_remaining || 0));
         const boostOn = screenshotBoost.enabled === true;
-        if (reward > 0 || pool > 0 || Number(screenshotBoost.id || 0) > 0) {
+        if (pool > 0 && reward > 0) {
             const boostLabel = window.t('screenshotBoostChip', {
                 amount: formatScreenshotBoostAmount(reward),
                 pool: formatScreenshotBoostAmount(pool),
@@ -667,6 +667,14 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
             <span>${window.escapeHTML(window.t('screenshotBoostPoolReserved', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</span>
         </div>
         <p class="screenshot-boost-sheet__hint">${window.escapeHTML(window.t('screenshotBoostPoolHint', {}, lang))}</p>
+        ${campaign.pool_remaining > 0 ? `
+        <div class="screenshot-boost-return">
+            <button type="button" class="screenshot-boost-return-link" onclick="toggleScreenshotBoostReturnConfirm()">${window.escapeHTML(window.t('screenshotBoostReturnLink', {}, lang))}</button>
+            <div id="screenshot-boost-return-panel" class="screenshot-boost-return-panel" hidden>
+                <p>${window.escapeHTML(window.t('screenshotBoostReturnText', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</p>
+                <button id="screenshot-boost-return-confirm" type="button" class="screenshot-boost-return-btn" onclick="returnScreenshotBoostPool()">${window.escapeHTML(window.t('screenshotBoostReturnBtn', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</button>
+            </div>
+        </div>` : ''}
         <div id="screenshot-boost-settings-error" class="screenshot-boost-settings-error" hidden></div>
         <div class="screenshot-boost-sheet__actions">
             <button type="button" class="btn btn-secondary" onclick="closeScreenshotBoostModal()">${window.escapeHTML(window.t('screenshotBoostCancel', {}, lang))}</button>
@@ -714,7 +722,7 @@ async function openScreenshotBoostSettings(appId, event) {
     _screenshotBoostSettingsLoaded = false;
     _screenshotBoostModalBalance = Number(visibilityStats && visibilityStats.balance_bust || 0);
     renderScreenshotBoostSettings(project, project.screenshot_boost_campaign, _screenshotBoostModalBalance);
-    body.querySelectorAll('input, .screenshot-boost-stepper button, #screenshot-boost-save').forEach(function(node) {
+    body.querySelectorAll('input, .screenshot-boost-stepper button, #screenshot-boost-save, #screenshot-boost-return-confirm, .screenshot-boost-return-link').forEach(function(node) {
         node.disabled = true;
     });
     modal.classList.add('active');
@@ -784,6 +792,8 @@ async function saveScreenshotBoostSettings() {
     var enabled = !!enabledNode.checked;
     var reward = Number(rewardNode.value || 0);
     var pool = Number(poolNode.value || 0);
+    var previousPool = Math.max(0, Number(project.screenshot_boost_campaign && project.screenshot_boost_campaign.pool_remaining || 0));
+    if (pool === 0) enabled = false;
     if (!Number.isInteger(reward) || reward <= 0 || reward > 100000 || !Number.isSafeInteger(pool) || pool < 0 || (enabled && pool < reward)) {
         if (errorNode) {
             errorNode.hidden = false;
@@ -792,6 +802,8 @@ async function saveScreenshotBoostSettings() {
         return;
     }
     if (saveButton) saveButton.disabled = true;
+    var returnButton = document.getElementById('screenshot-boost-return-confirm');
+    if (returnButton) returnButton.disabled = true;
     if (errorNode) errorNode.hidden = true;
     try {
         var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((window.tg && window.tg.initData) || '');
@@ -816,7 +828,10 @@ async function saveScreenshotBoostSettings() {
         }
         closeScreenshotBoostModal();
         if (typeof renderProjects === 'function') renderProjects(true);
-        if (typeof showToast === 'function') showToast(window.t('screenshotBoostSaved', {}, lang));
+        if (typeof showToast === 'function') {
+            var refunded = previousPool > 0 && (!enabled || pool === 0);
+            showToast(window.t(refunded ? 'screenshotBoostReturned' : 'screenshotBoostSaved', {}, lang));
+        }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
         if (errorNode) {
@@ -829,7 +844,24 @@ async function saveScreenshotBoostSettings() {
         }
     } finally {
         if (saveButton) saveButton.disabled = false;
+        if (returnButton) returnButton.disabled = false;
     }
+}
+
+function toggleScreenshotBoostReturnConfirm() {
+    var panel = document.getElementById('screenshot-boost-return-panel');
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+}
+
+function returnScreenshotBoostPool() {
+    var enabledNode = document.getElementById('screenshot-boost-enabled');
+    var poolNode = document.getElementById('screenshot-boost-pool');
+    if (enabledNode) enabledNode.checked = false;
+    if (poolNode) poolNode.value = 0;
+    syncScreenshotBoostSettingsToggle();
+    syncScreenshotBoostBudgetPreview();
+    saveScreenshotBoostSettings();
 }
 
 window.openScreenshotBoostSettings = openScreenshotBoostSettings;
@@ -839,6 +871,8 @@ window.syncScreenshotBoostSettingsToggle = syncScreenshotBoostSettingsToggle;
 window.saveScreenshotBoostSettings = saveScreenshotBoostSettings;
 window.changeScreenshotBoostAmount = changeScreenshotBoostAmount;
 window.syncScreenshotBoostBudgetPreview = syncScreenshotBoostBudgetPreview;
+window.toggleScreenshotBoostReturnConfirm = toggleScreenshotBoostReturnConfirm;
+window.returnScreenshotBoostPool = returnScreenshotBoostPool;
 
 function captureProjectViewportAnchor(container) {
     if (!container || !isTabVisible('projects') || window.scrollY <= 0) return null;
@@ -1156,8 +1190,6 @@ function renderProjects(force) {
 
         let testersHtml = '';
         let testerRowsHtml = '';
-        const testerReportIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>';
-        const testerWarningIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.3 4-8 14a2 2 0 0 0 1.7 3h16a2 2 0 0 0 1.7-3l-8-14a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/></svg>';
         // Roster signals surfaced in the collapsed "All testers" summary.
         let attentionCount = 0;
         let mutualDebtCount = 0;
@@ -1227,7 +1259,7 @@ function renderProjects(force) {
                     : '';
                 if (tester.username) {
                     cleanUsername = tester.username.replace('@', '');
-                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label notranslate">@${window.escapeHTML(cleanUsername)}</span>${tester.full_name ? `<span class="tester-fullname">${window.escapeHTML(tester.full_name)}</span>` : ''}</span>`;
+                    nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label notranslate">@${window.escapeHTML(cleanUsername)}</span></span>`;
                 } else if (tester.full_name) {
                     nameHtml = `<span class="tester-name">${testerDayHtml}${testerPrefixHtml}<span class="tester-primary-label">${window.escapeHTML(tester.full_name)}</span></span>`;
                 } else {
@@ -1285,14 +1317,14 @@ function renderProjects(force) {
                 }
                 let warningHtml = '';
                 if (!isLeftSoft && consecutiveSkips >= 3) {
-                    warningHtml = `<button type="button" class="tester-icon-action tester-warn-action" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" aria-label="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${testerWarningIcon}</button>`;
+                    warningHtml = `<span class="tester-icon-action tester-warn-action" role="button" tabindex="0" title="${window.escapeHTML(window.t('kickTesterConsecutiveSkips', { count: consecutiveSkips }, lang))}" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${Number(project.id)}, ${Number(tester.tester_id)}, event)">⚠️</span>`;
                 }
 
                 let brokenHtml = '';
 
                 let screenshotDayHtml = '';
                 if (!isLeftSoft && isMandatoryScreenshotDay(testerDay)) {
-                    screenshotDayHtml = `<button type="button" class="tester-icon-action tester-report-action" aria-label="${window.escapeHTML(window.t('pcControlTitle', {}, lang))}" onclick="event.stopPropagation(); showScreenshotDayAlert()">${testerReportIcon}</button>`;
+                    screenshotDayHtml = `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`;
                 }
 
                 let karmaHtml = '';
@@ -1324,7 +1356,7 @@ function renderProjects(force) {
                     rowHtml = `
                     <li class="tester-row-left-soft">
                         <div class="tester-row-main">
-                            <span class="tester-name">${leftDayHtml}<span class="tester-left-prefix" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span>${tester.username && tester.full_name ? `<span class="tester-fullname">${window.escapeHTML(tester.full_name)}</span>` : ''}</span>
+                            <span class="tester-name">${leftDayHtml}<span class="tester-left-prefix" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span></span>
                         </div>
                         <div class="tester-row-meta">
                             <button type="button" class="tester-leave-chip" onclick="event.stopPropagation(); openLeftTesterLinkStatus(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${window.escapeHTML(window.t('testerLeftChip', {}, lang))}</button>
@@ -1371,13 +1403,13 @@ function renderProjects(force) {
                     ? `<span class="tester-day-badge">[${window.escapeHTML(String(Number(currentDay || 0)))}]</span>`
                     : '';
                 var screenshotDayHtml = isControlToday
-                    ? `<button type="button" class="tester-icon-action tester-report-action" aria-label="${window.escapeHTML(window.t('pcControlTitle', {}, lang))}" onclick="event.stopPropagation(); showScreenshotDayAlert()">${testerReportIcon}</button>`
+                    ? `<span class="tester-icon-action" onclick="event.stopPropagation(); showScreenshotDayAlert()">📸</span>`
                     : '';
                 var statusLabel = controlMeta.label;
                 testerRowsHtml += `
                     <li onclick="openGuestTesterDetailsModal(${project.id}, ${Number(tester.progress_id || 0)}, event)" style="cursor: pointer;">
                         <div class="tester-row-main">
-                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">${window.escapeHTML(guestListPrefix)}</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span>${tester.full_name ? `<span class="tester-fullname">${window.escapeHTML(tester.full_name)}</span>` : ''}</span>
+                            <span class="tester-name">${testerDayHtml}<span class="tester-guest-prefix">${window.escapeHTML(guestListPrefix)}</span><span class="tester-primary-label notranslate">${window.escapeHTML(testerLabel)}</span></span>
                             ${screenshotDayHtml}
                         </div>
                         <div class="tester-row-meta">
@@ -1678,7 +1710,7 @@ function renderProjects(force) {
         const remainingRecruitmentSlots = Math.max(0, testerTargetCount - currentRegularTestersCount);
         const isFullActivity = Number(dailyMeta.teamPercent || 0) >= 100;
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
-        const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line">' +
+        const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line' + (isFullActivity ? ' is-complete' : '') + '">' +
             activityLightning +
             metricFooterPairHtml(
                 window.t('pcMetricToday', {}, lang) || 'Сегодня',

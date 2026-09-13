@@ -1411,10 +1411,11 @@
             : (normalized || text('testingControlFeedbackStatusPending', 'Pending'));
     }
 
-    function feedbackPreviewCard(proofId, feedback) {
+    function feedbackPreviewCard(proofId, feedback, originalMessageUrls) {
         var type = String(feedback && feedback.type || 'unavailable');
         var data = feedback && feedback.feedback || {};
         var message = String(data.message_text || '').trim();
+        var topicUrl = Array.isArray(originalMessageUrls) ? String(originalMessageUrls[0] || '') : '';
         return '<section class="checkin-proof-preview-feedback-card">' +
             '<div class="checkin-proof-preview-feedback-card__top">' +
                 '<span class="checkin-proof-preview-feedback-card__type">' + escape(proofLabel(type)) + '</span>' +
@@ -1424,6 +1425,11 @@
             '<button type="button" class="btn btn-secondary checkin-proof-preview-feedback-card__open" onclick="openFeedbackFromProofPreview(' + Number(data.id || 0) + ')">' +
                 escape(text('testingControlFeedbackOpen', 'Open feedback')) +
             '</button>' +
+            (/^https:\/\/t\.me\//i.test(topicUrl)
+                ? '<button type="button" class="btn btn-secondary checkin-proof-preview-feedback-card__topic" onclick="openCheckinProofOriginal(' + Number(proofId) + ',0,event)">' +
+                    escape(text('pcProofOpenTopic', 'Open in topic')) +
+                '</button>'
+                : '') +
         '</section>';
     }
 
@@ -1458,7 +1464,7 @@
             } else {
                 mediaHtml = '<div class="checkin-proof-preview-no-media" aria-hidden="true">▣</div>';
             }
-            body.innerHTML = '<div class="checkin-proof-preview-content">' + mediaHtml + feedbackPreviewCard(safeProofId, details) + '</div>';
+            body.innerHTML = '<div class="checkin-proof-preview-content">' + mediaHtml + feedbackPreviewCard(safeProofId, details, details.original_message_urls) + '</div>';
             var image = body.querySelector('img');
             if (image) image.onerror = function () { renderPreviewError(safeProofId); };
         } catch (error) {
