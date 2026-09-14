@@ -1396,7 +1396,8 @@
         var reminderState = controlReminderStates.get(Number(appId));
         var sending = controlReminderSending.has(Number(appId));
         var readyCount = reminderState && reminderState.ready_count != null ? Number(reminderState.ready_count) : pendingCount;
-        if (pendingCount > 0) {
+        var showBulkRemind = rows.length > 1 && pendingCount > 0;
+        if (showBulkRemind) {
             if (readyCount > 0 || sending) {
                 bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn' + (sending ? ' is-sending' : '') + '"' + (sending ? ' disabled aria-busy="true"' : '') + ' onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
                     ICONS.remind + esc(sending ? text('pcRemindersSending', 'Sending DMs…') : text('pcControlRemindAll', 'Remind everyone ({count})', { count: readyCount })) + '</button>';
@@ -1407,7 +1408,7 @@
             }
         }
 
-        var summaryHtml = pendingCount > 0 ? '<section class="pc-control-reminder-panel" aria-label="' + esc(text('pcControlRemindAll', 'Bot reminders', {count:readyCount})) + '">' +
+        var summaryHtml = showBulkRemind ? '<section class="pc-control-reminder-panel" aria-label="' + esc(text('pcControlRemindAll', 'Bot reminders', {count:readyCount})) + '">' +
             bulkRemindHtml +
             '<div class="pc-control-reminder-feedback" role="status" aria-live="polite">' + controlReminderFeedbackHtml(reminderState) + '</div>' +
             '<p class="pc-control-reminder-hint">' + esc(text('pcRemindersHint', 'One bot reminder per milestone. Personal reminders remain separate.')) + '</p></section>' : '';
@@ -1604,19 +1605,63 @@
             control: workspaceText('Контроль', 'Control'),
             testers: text('pcFilterAll', 'All'),
         };
-        return '<div class="pc-activity__filters" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
+        return '<div class="pc-activity__filters tabs-row" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
             visible.map(function (key) {
                 var count = filterCount(key, data || {});
-                var countHtml = key === 'testers' || count <= 0
-                    ? ''
-                    : '<span class="pc-activity__count' + (key === 'attention' ? ' is-warn' : '') + '">' + count + '</span>';
-                return '<button type="button" class="pc-activity__filter' + (key === active ? ' is-active' : '') +
-                    '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (key === active ? 'true' : 'false') +
+                var countHtml = '';
+                if (key !== 'testers' && count > 0) {
+                    if (key === 'attention') {
+                        countHtml = '<span class="attention-badge pc-activity__count is-warn">' + count + '</span>';
+                    } else {
+                        countHtml = '<span class="tab-count-badge pc-activity__count">' + count + '</span>';
+                    }
+                }
+                var isActive = key === active;
+                var indicatorHtml = isActive ? '<div class="tab-active-indicator"></div>' : '';
+                return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
+                    '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
                     '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
                     '<span class="pc-activity__filter-label">' + esc(labels[key]) + '</span>' +
                     countHtml +
+                    indicatorHtml +
                     '</button>';
             }).join('') +
+        '</div>';
+    }
+
+    function participantsHeaderHtml(project, context) {
+        var appId = Number(project && project.id || 0);
+        var avail = karmaAvailability(project);
+        var karmaMax = avail.max;
+        var karmaAvail = avail.available;
+        var karmaIcon = typeof window.karmaIconHtml === 'function'
+            ? window.karmaIconHtml('karma-yin-icon--inline')
+            : '<span class="rewards-icon-glyph">☯</span>';
+
+        var roster = (project && project.testers || []).filter(function (t) {
+            return !t.is_left_soft && !t.is_guest_tester && !t.is_external;
+        });
+        var count = roster.length;
+
+        var karmaBtn = '<button type="button" class="rewards-chip-btn pc-activity__karma" ' +
+            'title="' + esc(workspaceText('Наградить тестера', 'Reward a tester')) + '" ' +
+            'aria-label="' + esc(workspaceText('Наградить тестера. Доступно ', 'Reward a tester. Available ') + karmaAvail + '/' + karmaMax) + '" ' +
+            'onclick="event.stopPropagation(); ' +
+            (typeof openKarmaDistribution === 'function'
+                ? ('openKarmaDistribution(' + appId + ')')
+                : 'void 0') +
+            '">' +
+            '<span class="rewards-icon">' + karmaIcon + '</span>' +
+            '<span class="rewards-text">' + esc(workspaceText('Награды', 'Rewards')) + ' <b>' + karmaAvail + '/' + karmaMax + '</b></span>' +
+            '<span class="rewards-arrow" aria-hidden="true">↗</span>' +
+        '</button>';
+
+        return '<div class="participants-header">' +
+            '<div class="participants-title-wrap">' +
+                '<h3 class="participants-title">' + esc(workspaceText('Участники', 'Participants')) + '</h3>' +
+                '<span class="participants-counter-badge">' + count + '</span>' +
+            '</div>' +
+            karmaBtn +
         '</div>';
     }
 
@@ -1651,29 +1696,10 @@
                 isOnlyAll = true;
             }
         }
-        var avail = karmaAvailability(proj);
-        var karmaMax = avail.max;
-        var karmaAvail = avail.available;
-        var karmaIcon = typeof window.karmaIconHtml === 'function'
-            ? window.karmaIconHtml('karma-yin-icon--inline')
-            : '<span class="pc-activity__karma-glyph">☯️</span>';
 
-        var karmaBtn = '<button type="button" class="pc-activity__karma" ' +
-            'title="' + esc(workspaceText('Наградить тестера', 'Reward a tester')) + '" ' +
-            'aria-label="' + esc(workspaceText('Наградить тестера. Доступно ', 'Reward a tester. Available ') + karmaAvail + '/' + karmaMax) + '" ' +
-            'onclick="event.stopPropagation(); ' +
-            (typeof openKarmaDistribution === 'function'
-                ? ('openKarmaDistribution(' + Number(appId) + ')')
-                : 'void 0') +
-            '">' +
-            karmaIcon +
-            '<span>' + esc(workspaceText('Награды', 'Rewards')) + '</span>' +
-            '<span class="pc-activity__karma-count">' + karmaAvail + '/' + karmaMax + '</span><span aria-hidden="true">↗</span>' +
-        '</button>';
-
-        var histBtn = '<div class="pc-activity__mode" role="group" aria-label="' + esc(workspaceText('Период просмотра', 'View period')) + '">' +
+        var histBtn = '<div class="pc-activity__mode pc-activity__mode-pill" role="group" aria-label="' + esc(workspaceText('Период просмотра', 'View period')) + '">' +
             ['now', 'history'].map(function (key) {
-                return '<button type="button" aria-pressed="' + (mode === key) + '" class="' + (mode === key ? 'is-active' : '') +
+                return '<button type="button" aria-pressed="' + (mode === key) + '" class="mode-pill-btn pc-activity__mode-btn' + (mode === key ? ' is-active' : '') +
                     '" onclick="event.stopPropagation(); pcSetActivityMode(' + Number(appId) + ',\'' + key + '\')">' +
                     esc(key === 'now' ? workspaceText('Сейчас', 'Now') : workspaceText('История', 'History')) + '</button>';
             }).join('') + '</div>';
@@ -1686,22 +1712,19 @@
         };
         var hintText = historyOn ? workspaceText('История тестирования участников выбранной группы', 'Testing history for this group') : hints[filter];
         var hintHtml = hintText ? (
-            '<div class="pc-activity__hint-scroll" tabindex="0">' +
+            '<div class="pc-activity__hint-wrap">' +
                 '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
                 '<button type="button" class="pc-activity__info" aria-label="' +
                     esc(text('pcHintInfoAria', 'Filter criteria')) +
                     '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
             '</div>'
-        ) : '';
+        ) : '<div class="pc-activity__hint-wrap"></div>';
 
-        return '<div class="pc-activity__caption' + (isOnlyAll ? ' pc-activity__caption--only-all' : '') + '">' +
-            '<div class="pc-activity__heading"><span class="pc-activity__title">' + esc(workspaceText('Участники', 'Participants')) + '</span>' + karmaBtn + '</div>' +
-            '<div class="pc-activity__toolbar"><div class="pc-activity__hint-wrap">' +
-                hintHtml +
-            '</div>' +
+        return '<div class="pc-activity__caption pc-activity__subbar' + (isOnlyAll ? ' pc-activity__caption--only-all' : '') + '">' +
+            hintHtml +
             '<div class="pc-activity__actions">' +
                 histBtn +
-            '</div></div>' +
+            '</div>' +
         '</div>';
     }
 
@@ -1763,7 +1786,8 @@
         var project = projectById(safeAppId);
         if (!root || !project) return;
         var shell = root.querySelector('.pc-activity');
-        if (!shell) {
+        var insetCard = shell && shell.querySelector('.participants-inset-card');
+        if (!shell || !insetCard) {
             root.innerHTML = innerHtml(project);
             afterPaint(safeAppId);
             return;
@@ -1773,6 +1797,16 @@
         var filter = resolvedFilter(prefs, data);
         var mode = prefs.modes[filter] || 'now';
         var context = contextFor(project);
+
+        var headerEl = shell.querySelector('.participants-header');
+        if (headerEl) {
+            var nextHeader = document.createElement('div');
+            nextHeader.innerHTML = participantsHeaderHtml(project, context);
+            if (nextHeader.firstChild) {
+                headerEl.replaceWith(nextHeader.firstChild);
+            }
+        }
+
         var filtersEl = shell.querySelector('.pc-activity__filters');
         var captionEl = shell.querySelector('.pc-activity__caption');
         var nowEl = document.getElementById('pc-activity-now-' + safeAppId);
@@ -1915,10 +1949,13 @@
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
         return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + '">' +
-            filtersHtml(project.id, visibleFilters(data), filter, data) +
-            captionHtml(project.id, filter, mode, project) +
-            workspaceListHtml(project, filter, mode, data, context) +
-            errorHtml +
+            '<div class="participants-inset-card">' +
+                participantsHeaderHtml(project, context) +
+                filtersHtml(project.id, visibleFilters(data), filter, data) +
+                captionHtml(project.id, filter, mode, project) +
+                workspaceListHtml(project, filter, mode, data, context) +
+                errorHtml +
+            '</div>' +
         '</section>';
     }
 

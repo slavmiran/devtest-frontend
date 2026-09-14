@@ -605,6 +605,12 @@ function closeScreenshotBoostModal(event) {
     if (!modal) return;
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
+    var sheet = modal.querySelector('.screenshot-boost-sheet');
+    if (sheet) {
+        sheet.style.height = '';
+        sheet.style.maxHeight = '';
+        delete sheet.dataset.returnHeightLocked;
+    }
     window.setTimeout(function() {
         var body = document.getElementById('screenshot-boost-modal-body');
         if (body && !modal.classList.contains('active')) body.innerHTML = '';
@@ -669,10 +675,14 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
         <p class="screenshot-boost-sheet__hint">${window.escapeHTML(window.t('screenshotBoostPoolHint', {}, lang))}</p>
         ${campaign.pool_remaining > 0 ? `
         <div class="screenshot-boost-return">
-            <button type="button" class="screenshot-boost-return-link" onclick="toggleScreenshotBoostReturnConfirm()">${window.escapeHTML(window.t('screenshotBoostReturnLink', {}, lang))}</button>
-            <div id="screenshot-boost-return-panel" class="screenshot-boost-return-panel" hidden>
-                <p>${window.escapeHTML(window.t('screenshotBoostReturnText', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</p>
-                <button id="screenshot-boost-return-confirm" type="button" class="screenshot-boost-return-btn" onclick="returnScreenshotBoostPool()">${window.escapeHTML(window.t('screenshotBoostReturnBtn', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</button>
+            <button type="button" class="screenshot-boost-return-link" aria-expanded="false" aria-controls="screenshot-boost-return-panel" onclick="toggleScreenshotBoostReturnConfirm()">${window.escapeHTML(window.t('screenshotBoostReturnLink', {}, lang))}</button>
+            <div id="screenshot-boost-return-panel" class="screenshot-boost-return-panel" aria-hidden="true">
+                <div class="screenshot-boost-return-panel__inner">
+                    <div class="screenshot-boost-return-panel__card">
+                        <p>${window.escapeHTML(window.t('screenshotBoostReturnText', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</p>
+                        <button id="screenshot-boost-return-confirm" type="button" class="screenshot-boost-return-btn" onclick="returnScreenshotBoostPool()">${window.escapeHTML(window.t('screenshotBoostReturnBtn', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</button>
+                    </div>
+                </div>
             </div>
         </div>` : ''}
         <div id="screenshot-boost-settings-error" class="screenshot-boost-settings-error" hidden></div>
@@ -850,8 +860,44 @@ async function saveScreenshotBoostSettings() {
 
 function toggleScreenshotBoostReturnConfirm() {
     var panel = document.getElementById('screenshot-boost-return-panel');
+    var chip = document.querySelector('.screenshot-boost-return-link');
+    var sheet = document.querySelector('#screenshot-boost-modal .screenshot-boost-sheet');
     if (!panel) return;
-    panel.hidden = !panel.hidden;
+    var opening = !panel.classList.contains('is-open');
+    panel.classList.toggle('is-open', opening);
+    panel.setAttribute('aria-hidden', opening ? 'false' : 'true');
+    if (chip) chip.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    if (opening) {
+        followScreenshotBoostReturnReveal(sheet, panel);
+        return;
+    }
+    window.setTimeout(function() {
+        if (!sheet || panel.classList.contains('is-open')) return;
+        sheet.style.height = '';
+        sheet.style.maxHeight = '';
+        delete sheet.dataset.returnHeightLocked;
+    }, 320);
+}
+
+function followScreenshotBoostReturnReveal(sheet, panel) {
+    if (!sheet || !panel) return;
+    var maxHeight = Math.min(window.innerHeight * 0.88, 760);
+    if (!sheet.dataset.returnHeightLocked) {
+        sheet.style.maxHeight = maxHeight + 'px';
+        sheet.style.height = sheet.getBoundingClientRect().height + 'px';
+        sheet.dataset.returnHeightLocked = '1';
+    }
+    var start = performance.now();
+    var duration = 320;
+    function frame(now) {
+        var wrap = panel.closest('.screenshot-boost-return') || panel;
+        var sheetRect = sheet.getBoundingClientRect();
+        var wrapRect = wrap.getBoundingClientRect();
+        var overflow = wrapRect.bottom - (sheetRect.bottom - 18);
+        if (overflow > 0.5) sheet.scrollTop += overflow;
+        if (now - start < duration) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
 }
 
 function returnScreenshotBoostPool() {
@@ -1832,7 +1878,14 @@ function renderProjects(force) {
                     ${recruitPartsHtml.length
                         ? `<button type="button" class="pc-action-footer__summary" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">${recruitPartsHtml.join('<span class="pc-recruit__sep"> · </span>')}</button>`
                         : '<span class="pc-action-footer__summary is-empty">—</span>'}
-                    ${pingSlotHtml}
+                    <div class="pc-action-footer__chips">
+                        <button type="button" class="telegram-community-chip" onclick="openCommunityChat(event)" aria-label="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}" title="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}">
+                            <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.313 4.674c.459 0 .661-.21.918-.46l2.204-2.143 4.585 3.387c.845.466 1.455.226 1.666-.784l3.007-14.167c.309-1.238-.473-1.8-1.471-1.317z"/>
+                            </svg>
+                        </button>
+                        ${pingSlotHtml}
+                    </div>
                 </div>
         `;
 
@@ -3770,6 +3823,27 @@ function copyAndAction(text, target) {
         tg.openTelegramLink('https://t.me/share/url?text=' + encodeURIComponent(decoded));
     }
 }
+
+function openCommunityChat(e) {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (typeof window.openGeneralTopic === 'function') {
+        window.openGeneralTopic();
+        return;
+    }
+    const base = (
+        (window.App && window.App.publicGroupUrl) ||
+        'https://t.me/googleplay_console_12testers'
+    ).replace(/\/+$/, '');
+    const url = base + '/1';
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+        window.Telegram.WebApp.openTelegramLink(url);
+    } else if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+        window.tg.openTelegramLink(url);
+    } else {
+        window.open(url, '_blank');
+    }
+}
+window.openCommunityChat = openCommunityChat;
 
 async function publishProjectToMarketAction(projectId) {
     if (!projectId) return;
