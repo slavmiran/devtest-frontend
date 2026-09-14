@@ -1073,14 +1073,20 @@ button.pc-stage-badge {
 #tab-projects .card .pc-dashboard-body {
     max-height: 2500px;
     opacity: 1;
-    transform: translateY(0);
-    transform-origin: top center;
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.22s ease,
-                transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                padding-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: max-height, opacity, transform;
+    transform: none;
+    transition: max-height 0.28s ease,
+                opacity 0.18s ease,
+                padding-bottom 0.28s ease,
+                margin 0.28s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #tab-projects .card .pc-dashboard-body {
+        transition: none;
+    }
+    #tab-projects .card[id^="project-card-"] .card-expand-chevron {
+        transition: none;
+    }
 }
 
 #tab-projects .card.card-collapsed .pc-dashboard-body {
@@ -1093,7 +1099,7 @@ button.pc-stage-badge {
     border-color: transparent !important;
     border-bottom-width: 0 !important;
     box-shadow: none !important;
-    transform: translateY(-8px) scaleY(0.98);
+    transform: none;
     pointer-events: none !important;
     overflow: hidden !important;
 }
@@ -2793,17 +2799,18 @@ button.pc-stage-badge {
     align-items: center !important;
     justify-content: space-between !important;
     width: auto !important;
-    margin: 10px 8px 4px !important;
+    margin: 2px 8px 2px !important;
     padding: 0 10px !important;
     box-sizing: border-box !important;
     gap: 10px;
+    min-height: 0;
 }
 
 .participants-inset-card {
     background: #151c28;
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 16px;
-    padding: 2px 12px 12px !important;
+    padding: 0 12px 12px !important;
     margin: 0 8px 0 !important;
     display: flex !important;
     flex-direction: column !important;
@@ -5444,12 +5451,12 @@ button.pc-metric-num-btn:active {
     }
 
     .participants-header {
-        margin: 8px 6px 4px !important;
+        margin: 0 6px 2px !important;
         padding: 0 8px !important;
     }
 
     .participants-inset-card {
-        padding: 2px 8px 10px !important;
+        padding: 0 8px 10px !important;
         border-radius: 14px !important;
         margin: 0 6px 0 !important;
         gap: 6px !important;
@@ -6114,6 +6121,11 @@ button.pc-metric-reserve:active {
     margin: 0;
     position: relative;
     background: var(--bg-color, #121214);
+}
+
+#project-lifecycle-modal .pc-lc-sheet::before {
+    content: none;
+    display: none;
 }
 
 .pc-lc-sheet__header {

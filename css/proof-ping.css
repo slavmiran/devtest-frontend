@@ -9,6 +9,7 @@
 
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-state-unified {
     margin-bottom: 0;
+    padding-bottom: 4px;
     border-bottom: 0;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;

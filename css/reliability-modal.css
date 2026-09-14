@@ -37,6 +37,11 @@
     flex-direction: column;
 }
 
+#reliability-alpha-modal .modal-content::before {
+    content: none;
+    display: none;
+}
+
 /* --- Sticky topbar --- */
 .reliability-alpha-topbar {
     position: sticky;

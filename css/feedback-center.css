@@ -732,6 +732,10 @@
     overflow: hidden;
     box-shadow: none;
 }
+#project-feedback-modal .modal-content::before {
+    content: none;
+    display: none;
+}
 #project-feedback-modal.active .modal-content {
     transform: translateX(0);
 }

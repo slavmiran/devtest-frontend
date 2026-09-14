@@ -1782,8 +1782,21 @@
         }
     }
 
-    function refreshActivityWorkspace(appId) {
+    function prefersReducedMotion() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    function flashActivityList(appId) {
+        var listEl = document.getElementById('pc-activity-list-' + Number(appId || 0));
+        if (!listEl || prefersReducedMotion()) return;
+        listEl.classList.remove('pc-activity__list--swap');
+        void listEl.offsetWidth;
+        listEl.classList.add('pc-activity__list--swap');
+    }
+
+    function refreshActivityWorkspace(appId, options) {
         var safeAppId = Number(appId || 0);
+        var animate = !!(options && options.animate);
         var root = document.getElementById('pc-today-' + safeAppId);
         var project = projectById(safeAppId);
         if (!root || !project) return;
@@ -1792,6 +1805,7 @@
         if (!shell || !insetCard) {
             root.innerHTML = innerHtml(project);
             afterPaint(safeAppId);
+            if (animate) flashActivityList(safeAppId);
             return;
         }
         var data = activityCounts(project);
@@ -1845,6 +1859,7 @@
         }
         if (histEl) histEl.hidden = mode !== 'history';
         afterPaint(safeAppId);
+        if (animate) flashActivityList(safeAppId);
     }
 
     function sheetIsOpen() {
@@ -2049,7 +2064,7 @@
             prefs.modes.contribution = 'now';
         }
         writePrefs(appId, prefs);
-        refreshActivityWorkspace(appId);
+        refreshActivityWorkspace(appId, { animate: true });
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
@@ -2072,7 +2087,7 @@
         var filter = resolvedFilter(prefs, activityCounts(project || { testers: [] }));
         prefs.modes[filter] = mode === 'history' ? 'history' : 'now';
         writePrefs(appId, prefs);
-        refreshActivityWorkspace(appId);
+        refreshActivityWorkspace(appId, { animate: true });
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
