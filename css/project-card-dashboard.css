@@ -1070,8 +1070,32 @@ button.pc-stage-badge {
     min-width: 0;
 }
 
+#tab-projects .card .pc-dashboard-body {
+    max-height: 2500px;
+    opacity: 1;
+    transform: translateY(0);
+    transform-origin: top center;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.22s ease,
+                transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                padding-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: max-height, opacity, transform;
+}
+
 #tab-projects .card.card-collapsed .pc-dashboard-body {
-    display: none;
+    max-height: 0 !important;
+    opacity: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    border-color: transparent !important;
+    border-bottom-width: 0 !important;
+    box-shadow: none !important;
+    transform: translateY(-8px) scaleY(0.98);
+    pointer-events: none !important;
+    overflow: hidden !important;
 }
 
 /* Tester roster has its own expand/collapse */
@@ -2601,6 +2625,7 @@ button.pc-stage-badge {
     background: transparent;
     gap: 0;
     z-index: 3;
+    transition: margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #tab-projects .card[id^="project-card-"] .pc-collapse-handle:hover {
@@ -2630,8 +2655,21 @@ button.pc-stage-badge {
     transform: scale(1.08);
 }
 
+#tab-projects .card[id^="project-card-"] .card-expand-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(180deg);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#tab-projects .card[id^="project-card-"] .card-expand-chevron.is-collapsed {
+    transform: rotate(0deg);
+}
+
 #tab-projects .card[id^="project-card-"].card-collapsed .pc-state-unified {
     margin-bottom: 0;
+    padding-bottom: 24px !important;
 }
 
 #tab-projects .card[id^="project-card-"].card-collapsed .pc-action-bar {
@@ -4300,10 +4338,12 @@ button.pc-act-reason {
 
 #tab-projects .card[id^="project-card-"] .pc-state-unified {
     margin-bottom: 12px;
+    padding-bottom: 14px;
     border-color: var(--pc-shell-border);
     border-radius: 18px;
     background: var(--pc-shell-bg);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 12px 28px rgba(0, 0, 0, 0.16);
+    transition: padding-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-unified > .card-header {
@@ -5316,7 +5356,7 @@ button.pc-metric-num-btn:active {
 #tab-projects .card.card-collapsed .pc-action-footer {
     padding-right: 0;
     padding-left: 0;
-    margin-bottom: 8px;
+    margin-bottom: 6px !important;
 }
 
 #tab-projects .card.card-collapsed .pc-action-footer .pc-ping-slot {
@@ -5556,14 +5596,10 @@ button.pc-subtitle-chip:hover,
     color: #f1f5f9;
 }
 
-.pc-subtitle-chip--reviews.is-on {
-    border-color: rgba(56, 189, 248, 0.2);
-    background: rgba(56, 189, 248, 0.06);
-}
-
-.pc-subtitle-chip--reviews.is-on:hover {
-    border-color: rgba(56, 189, 248, 0.32);
-    background: rgba(56, 189, 248, 0.1);
+.pc-subtitle-chip--reviews.is-on,
+.pc-subtitle-chip--reviews.is-off {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.08);
 }
 
 .pc-subtitle-chip--reviews .pc-subtitle-chip__state.is-on,

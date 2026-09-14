@@ -1964,18 +1964,7 @@ function renderProjects(force) {
             </div>
         `;
 
-        /* ── Footer chips: Guest and language stay here; recruitment moved up ── */
-        const footerChipsHtml = (() => {
-            const chips = [];
-            if (guestTesterCount > 0) {
-                chips.push(`<span class="pc-fchip">👽 ${window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang))}</span>`);
-            }
-            if (project.target_lang && project.target_lang !== 'ALL') {
-                chips.push(getLangBadge(project.target_lang));
-            }
-            if (!chips.length) return '';
-            return `<div class="pc-footer" onclick="event.stopPropagation();">${chips.join('')}</div>`;
-        })();
+        /* Footer chips: guest and language chips are now in pc-action-footer */
 
         // With no testers yet the activity workspace has nothing to show, so the
         // notification block takes its slot instead of rendering an empty section.
@@ -2128,7 +2117,6 @@ function renderProjects(force) {
                         ${window.escapeHTML(window.t('pcFinishTestingLink', {}, lang))}
                     </button>
                 ` : ''}
-                ${footerChipsHtml}
             </div>
 
             <div class="card-footer pc-collapse-handle" onclick="toggleProjectCard(${project.id}, event)">
