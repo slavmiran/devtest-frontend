@@ -1951,8 +1951,8 @@
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
         return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + '">' +
+            participantsHeaderHtml(project, context) +
             '<div class="participants-inset-card">' +
-                participantsHeaderHtml(project, context) +
                 filtersHtml(project.id, visibleFilters(data), filter, data) +
                 captionHtml(project.id, filter, mode, project) +
                 workspaceListHtml(project, filter, mode, data, context) +

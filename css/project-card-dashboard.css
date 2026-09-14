@@ -2750,39 +2750,41 @@ button.pc-stage-badge {
     color: var(--text-tertiary);
 }
 
+.participants-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: auto !important;
+    margin: 16px 14px 8px !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    gap: 10px;
+}
+
 .participants-inset-card {
     background: #151c28;
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 20px;
     padding: 16px;
-    margin-top: 14px;
+    margin: 0 14px 0 !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 12px;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.38), inset 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
-.participants-inset-card .participants-header {
-    order: 1 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-    gap: 10px;
-}
-
 .participants-inset-card .tabs-row,
 .participants-inset-card .pc-activity__filters {
-    order: 2 !important;
+    order: 1 !important;
 }
 
 .participants-inset-card .pc-activity__subbar,
 .participants-inset-card .pc-activity__caption {
-    order: 3 !important;
+    order: 2 !important;
 }
 
 .participants-inset-card .pc-activity__list {
-    order: 4 !important;
+    order: 3 !important;
 }
 
 .participants-title-wrap {
@@ -2816,23 +2818,24 @@ button.pc-stage-badge {
 
 .rewards-chip-btn {
     flex: 0 0 auto;
-    background: rgba(255, 255, 255, 0.04);
+    background: #151c28;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 9999px;
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: 5px 12px;
+    font-size: 12.5px;
     color: #f1f5f9;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .rewards-chip-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: #1c2536;
+    border-color: rgba(255, 255, 255, 0.22);
 }
 
 .rewards-chip-btn:active {
@@ -5191,10 +5194,10 @@ button.pc-metric-num-btn:active {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
     flex-wrap: wrap !important;
-    min-height: 32px;
-    margin: 12px 14px 0 !important;
+    min-height: 28px;
+    margin: 10px 14px 0 !important;
     padding: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;
@@ -5202,18 +5205,29 @@ button.pc-metric-num-btn:active {
     box-shadow: none !important;
 }
 
+.pc-action-footer .pc-subtitle-chip,
+.pc-action-footer button.pc-subtitle-chip,
+.pc-action-footer .pc-recruit-chip {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    box-sizing: border-box;
+}
+
 .pc-recruit-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 5px;
-    height: 32px;
-    padding: 0 14px;
-    border-radius: 10px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: rgba(220, 229, 244, 0.9);
-    font-size: 13px;
+    font-size: 11.5px;
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
@@ -5250,10 +5264,10 @@ button.pc-metric-num-btn:active {
 
 .telegram-community-chip,
 .pc-action-footer .pc-ping-mini {
-    height: 32px !important;
-    width: 38px !important;
-    min-width: 38px !important;
-    border-radius: 10px !important;
+    height: 28px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    border-radius: 8px !important;
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     display: inline-flex !important;
@@ -5281,8 +5295,8 @@ button.pc-metric-num-btn:active {
 
 .telegram-community-chip .telegram-icon,
 .pc-action-footer .pc-ping-mini .pc-ping__glyph {
-    width: 16px !important;
-    height: 16px !important;
+    width: 14px !important;
+    height: 14px !important;
     display: block !important;
     fill: currentColor !important;
 }
@@ -5383,15 +5397,21 @@ button.pc-metric-num-btn:active {
     }
 
     .pc-action-footer {
-        margin-right: 10px;
-        margin-left: 10px;
+        margin-right: 10px !important;
+        margin-left: 10px !important;
+        gap: 5px !important;
+    }
+
+    .participants-header {
+        margin: 14px 10px 6px !important;
+        padding: 0 10px !important;
     }
 
     .participants-inset-card {
-        padding: 12px 10px;
-        border-radius: 16px;
-        margin-top: 10px;
-        gap: 10px;
+        padding: 12px 10px !important;
+        border-radius: 16px !important;
+        margin: 0 10px 0 !important;
+        gap: 10px !important;
     }
 
     .participants-title {
@@ -5402,6 +5422,74 @@ button.pc-metric-num-btn:active {
         padding: 4px 8px;
         font-size: 11.5px;
     }
+}
+
+/* Subtitle recruitment counts (Взаимка, Контракты) */
+.pc-sub-recruit-line {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: rgba(191, 204, 224, 0.7);
+}
+
+.pc-sub-recruit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    font-size: 11.5px;
+    color: rgba(191, 204, 224, 0.7);
+    cursor: pointer;
+    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pc-sub-recruit-btn:hover {
+    color: #f1f5f9;
+    text-decoration: underline;
+}
+
+.pc-sub-recruit-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11.5px;
+    color: rgba(191, 204, 224, 0.7);
+}
+
+.pc-sub-recruit-label {
+    font-weight: 500;
+    color: rgba(191, 204, 224, 0.6);
+}
+
+.pc-sub-recruit-count {
+    font-weight: 600;
+    color: #cbd5e1;
+    font-variant-numeric: tabular-nums;
+}
+
+.pc-sub-recruit-btn:hover .pc-sub-recruit-count {
+    color: #38bdf8;
+}
+
+.pc-sub-recruit-check {
+    color: #22c55e;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.pc-sub-recruit-sep {
+    margin: 0 6px;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 10px;
+    user-select: none;
 }
 
 /* Subtitle chips in project card header */

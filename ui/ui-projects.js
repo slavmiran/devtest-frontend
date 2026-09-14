@@ -425,17 +425,68 @@ function buildProjectModeChip(project) {
     return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
 }
 
-/* Header chips under the title: reviews toggle (always), optional email + Android. */
+/* Header subtitle under project title: recruitment counts (Взаимка, Контракты) with secondary font */
 function buildProjectCardSubtitle(project, options) {
     options = options || {};
     if (!project) return '<div class="card-subtitle notranslate"></div>';
+    const interactive = options.interactive !== false;
+    const allTesters = Array.isArray(project.testers) ? project.testers : [];
+    const regularTesters = allTesters.filter(function (t) {
+        return !t.is_guest_tester && !t.is_external && !t.is_left_soft;
+    });
+    const mutualCount = regularTesters.filter(function (t) {
+        return String(t.join_type || 'invite').toLowerCase() !== 'bounty';
+    }).length;
+    const bountyCount = regularTesters.filter(function (t) {
+        return String(t.join_type || '').toLowerCase() === 'bounty';
+    }).length;
+
+    const parts = [];
+    if (project.mode === 'mutual' || project.mode === 'hybrid') {
+        const mutualTarget = Number(project.limit_mutual || 0);
+        const mutualFilled = mutualTarget > 0 && mutualCount >= mutualTarget;
+        const label = window.escapeHTML(window.t('pcRecruitMutualName', {}, lang) || 'Взаимка');
+        const countText = window.escapeHTML(String(mutualCount) + '/' + String(mutualTarget));
+        const checkHtml = mutualFilled ? ' <span class="pc-sub-recruit-check">✓</span>' : '';
+        parts.push(
+            interactive
+                ? `<button type="button" class="pc-sub-recruit-btn${mutualFilled ? ' is-filled' : ''}" onclick="openEditModal(${project.id}, { focusRecruitment: 'mutual' }); event.stopPropagation();"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</button>`
+                : `<span class="pc-sub-recruit-text"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</span>`
+        );
+    }
+    if (project.mode === 'bounty' || project.mode === 'hybrid') {
+        const bountyTarget = Number(project.limit_bounty || 0);
+        const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
+        const label = window.escapeHTML(window.t('pcRecruitContractsName', {}, lang) || 'Контракты');
+        const countText = window.escapeHTML(String(bountyCount) + '/' + String(bountyTarget));
+        const checkHtml = bountyFilled ? ' <span class="pc-sub-recruit-check">✓</span>' : '';
+        parts.push(
+            interactive
+                ? `<button type="button" class="pc-sub-recruit-btn${bountyFilled ? ' is-filled' : ''}" onclick="openEditModal(${project.id}, { focusRecruitment: 'bounty' }); event.stopPropagation();"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</button>`
+                : `<span class="pc-sub-recruit-text"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</span>`
+        );
+    }
+
+    if (parts.length) {
+        return '<div class="card-subtitle notranslate"><span class="pc-sub-recruit-line">' + parts.join('<span class="pc-sub-recruit-sep">•</span>') + '</span></div>';
+    }
+    const packageName = project.package || project.package_name || '';
+    if (packageName) {
+        return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + '</div>';
+    }
+    return '<div class="card-subtitle notranslate"></div>';
+}
+
+/* Feature chips row (formerly under title, now placed in pc-action-footer): reviews toggle, email, screenshot boost, lang, android, guest. */
+function buildProjectCardFeatureChips(project, options) {
+    options = options || {};
+    if (!project) return [];
     const interactive = options.interactive !== false;
     const isEmail = String(project.test_mode || 'google_group') === 'email_list';
     const reviewsOn = project.request_reviews !== false;
     const minAndroid = (typeof normalizeMinAndroidVersion === 'function')
         ? normalizeMinAndroidVersion(project.min_android_version)
         : Number(project.min_android_version || 0);
-    const packageName = project.package || project.package_name || '';
     const chips = [];
 
     const reviewsLabel = window.escapeHTML(window.t('pcCardReviewsLabel', {}, lang) || 'Отзывы Google');
@@ -454,7 +505,7 @@ function buildProjectCardSubtitle(project, options) {
         (interactive
             ? '<button type="button" class="' + reviewsChipClass + '" onclick="toggleProjectRequestReviews(' + Number(project.id || project.app_id || 0) + ', event)">'
             : '<span class="' + reviewsChipClass + '">') +
-            '<span class="pc-subtitle-chip__label">' + reviewsLabel + ':</span>' +
+            '<span class="pc-subtitle-chip__label">' + reviewsLabel + ':</span> ' +
             reviewsStateHtml +
         (interactive ? '</button>' : '</span>')
     );
@@ -509,13 +560,18 @@ function buildProjectCardSubtitle(project, options) {
         );
     }
 
-    if (chips.length) {
-        return '<div class="card-subtitle notranslate"><span class="pc-subtitle-chips">' + chips.join('') + '</span></div>';
+    const allProjectTesters = Array.isArray(project.testers) ? project.testers : [];
+    const guestTesters = allProjectTesters.filter(function (t) { return !!t.is_guest_tester || !!t.is_external; });
+    const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
+    if (guestTesterCount > 0) {
+        chips.push(
+            '<button type="button" class="pc-recruit-chip is-guest" onclick="openEditModal(' + project.id + ', { focusRecruitment: true }); event.stopPropagation();">' +
+                '<span>👽 ' + window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang)) + '</span>' +
+            '</button>'
+        );
     }
-    if (packageName) {
-        return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + '</div>';
-    }
-    return '<div class="card-subtitle notranslate"></div>';
+
+    return chips;
 }
 
 async function toggleProjectRequestReviews(appId, event) {
@@ -1764,38 +1820,7 @@ function renderProjects(force) {
             ) +
             '</span>';
 
-        const mutualCount = activeRegularTesters.filter((tester) => String(tester.join_type || 'invite').toLowerCase() !== 'bounty').length;
-        const bountyCount = activeRegularTesters.filter((tester) => String(tester.join_type || '').toLowerCase() === 'bounty').length;
-        const recruitPartsHtml = [];
-        if (project.mode === 'mutual' || project.mode === 'hybrid') {
-            const mutualTarget = Number(project.limit_mutual || 0);
-            const mutualFilled = mutualTarget > 0 && mutualCount >= mutualTarget;
-            recruitPartsHtml.push(
-                '<button type="button" class="pc-recruit-chip' + (mutualFilled ? ' is-filled' : '') + '" onclick="openEditModal(' + project.id + ', { focusRecruitment: \'mutual\' }); event.stopPropagation();">' +
-                    '<span class="pc-recruit-chip__label">' + window.escapeHTML(window.t('pcRecruitMutualName', {}, lang) || 'Взаимка') + '</span> ' +
-                    '<span class="pc-recruit-chip__count">' + window.escapeHTML(String(mutualCount) + '/' + String(mutualTarget)) + '</span>' +
-                    (mutualFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : '') +
-                '</button>'
-            );
-        }
-        if (project.mode === 'bounty' || project.mode === 'hybrid') {
-            const bountyTarget = Number(project.limit_bounty || 0);
-            const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
-            recruitPartsHtml.push(
-                '<button type="button" class="pc-recruit-chip' + (bountyFilled ? ' is-filled' : '') + '" onclick="openEditModal(' + project.id + ', { focusRecruitment: \'bounty\' }); event.stopPropagation();">' +
-                    '<span class="pc-recruit-chip__label">' + window.escapeHTML(window.t('pcRecruitContractsName', {}, lang) || 'Контракты') + '</span> ' +
-                    '<span class="pc-recruit-chip__count">' + window.escapeHTML(String(bountyCount) + '/' + String(bountyTarget)) + '</span>' +
-                    (bountyFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : '') +
-                '</button>'
-            );
-        }
-        if (guestTesterCount > 0) {
-            recruitPartsHtml.push(
-                '<button type="button" class="pc-recruit-chip is-guest" onclick="openEditModal(' + project.id + ', { focusRecruitment: true }); event.stopPropagation();">' +
-                    '<span>👽 ' + window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang)) + '</span>' +
-                '</button>'
-            );
-        }
+        const featureChipsHtml = buildProjectCardFeatureChips(project).join('');
 
         const massInviteMeta = getProjectMassInviteMeta(project);
         const availableOfferCount = Math.max(0, Number(massInviteMeta.maxRecipients || 0));
@@ -1875,7 +1900,7 @@ function renderProjects(force) {
                     </section>
                 </div>
                 <div class="pc-action-footer" onclick="event.stopPropagation();">
-                    ${recruitPartsHtml.join('')}
+                    ${featureChipsHtml}
                     <span class="pc-ping-slot" data-pc-ping-slot="${project.id}">
                         <button type="button" class="telegram-community-chip pc-ping-mini" data-pc-ping-mini="${project.id}" onclick="if (typeof pcProofPingOpenCommunity === 'function') { pcProofPingOpenCommunity(event); } else { openCommunityChat(event); }" aria-label="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}" title="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}">
                             <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
