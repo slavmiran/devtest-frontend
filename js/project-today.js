@@ -1465,7 +1465,8 @@
                 (finishedAgo ? '<span class="pc-att-tag pc-att-tag--muted">' + esc(finishedAgo) + '</span>' : '');
             desc = text(
                 'pcAttentionDebtDesc',
-                'The partner\'s project has already finished, but they still owe testing yours. Mutual exchange no longer holds them, so they may drop the remaining tests. Remind them to honour the agreement.'
+                'The partner project "' + projectName + '" is already finished. Under the mutual exchange rules, they must finish testing yours.',
+                { name: projectName }
             );
             actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
                 'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'debt\')');

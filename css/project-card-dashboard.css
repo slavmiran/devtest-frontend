@@ -3892,9 +3892,9 @@ button.pc-act-reason {
 }
 .pc-attention-tile__content {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
     padding: 10px 12px 12px;
 }
 .pc-attention-tile__desc {
@@ -3902,22 +3902,25 @@ button.pc-act-reason {
     font-size: 11.5px;
     line-height: 1.45;
     color: var(--text-secondary, #afbac9);
-    flex: 1;
-    min-width: 0;
+    width: 100%;
 }
 .pc-attention-tile__action {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    margin-top: 1px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
 }
 .pc-attention-tile__action .pc-iconact {
     display: inline-flex;
+    flex: 1 1 0;
     flex-direction: row;
     align-items: center;
     justify-content: center;
     gap: 5px;
+    min-width: 0;
     padding: 6px 10px;
     border: 1px solid rgba(102, 156, 240, 0.18);
     border-radius: 8px;
@@ -3927,6 +3930,7 @@ button.pc-act-reason {
     font-weight: 600;
     min-height: 32px;
     cursor: pointer;
+    white-space: nowrap;
     transition: background 0.15s ease, border-color 0.15s ease;
 }
 .pc-attention-tile__action .pc-iconact:hover {

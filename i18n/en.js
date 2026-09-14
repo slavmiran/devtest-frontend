@@ -3197,7 +3197,7 @@
             pcAttentionSkipsMany: "{count} consecutive skips",
             pcAttentionDebt: "Still owes finishing your project",
             pcAttentionDebtLabel: "Your project still needs to be tested",
-            pcAttentionDebtDesc: "The partner's project has already finished, but they still owe testing yours. Mutual exchange no longer holds them, so they may drop the remaining tests. Remind them to honour the agreement.",
+            pcAttentionDebtDesc: "The partner project \"{name}\" is already finished. Under the mutual exchange rules, they must finish testing yours.",
             pcAttentionDirectInvite: "Direct testing · No mutual obligation",
             pcAttentionDirectInviteAction: "Offer mutual test",
             pcAttentionOfferPending: "Offer pending",
