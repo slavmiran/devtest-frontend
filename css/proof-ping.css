@@ -54,6 +54,10 @@
     margin: 10px 14px 0;
 }
 
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-finish-link {
+    margin: 10px 14px 10px;
+}
+
 /* ── Shared shell ───────────────────────────────────────────────────────── */
 
 .pc-ping {

@@ -1277,7 +1277,7 @@
         }).join('') + '</ul>';
     }
 
-    var expandedAttentionTesters = new Set();
+    var expandedAttentionReasons = new Set();
 
     function formatAttentionDate(dateStr) {
         if (!dateStr) return '';
@@ -1307,8 +1307,10 @@
     function getAttentionReasonMeta(reason, tester, appId, testerId) {
         var code = String(reason && reason.code || '').toLowerCase();
         var reasonIcon = ATTENTION_ICONS[code] || ATTENTION_ICONS.not_opened;
-        var badgeLabel = '';
+        var subKey = reason.missedDay ? ('_' + reason.missedDay) : (reason.feedbackId ? ('_' + reason.feedbackId) : '');
+        var key = String(testerId) + '_' + code + subKey;
         var title = '';
+        var summaryHtml = '';
         var desc = '';
         var actionHtml = '';
 
@@ -1318,18 +1320,18 @@
                 (reason.action === 'left_status' ? 'openLeftTesterLinkStatus' : 'openTesterLinkStatusFromRow') +
                 '(' + Number(appId) + ',' + Number(testerId) + ', event)');
             if (code === 'tester_left') {
-                badgeLabel = workspaceText('Тестер вышел', 'Tester left');
                 title = workspaceText('Участник вышел из проекта', 'Participant left project');
+                summaryHtml = '<span class="pc-att-tag pc-att-tag--danger">' + esc(workspaceText('Тестер вышел', 'Tester left')) + '</span>';
                 desc = workspaceText('Тестировщик прервал или закончил участие. Примите решение по освободившемуся месту.', 'Participant ended participation. Review the slot to reassign or close.');
             } else {
-                badgeLabel = workspaceText('Связь нарушена', 'Link broken');
                 title = workspaceText('Связь взаимного теста нарушена', 'Mutual link broken');
+                summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(workspaceText('Связь разорвана', 'Link broken')) + '</span>';
                 desc = workspaceText('Связь между проектами прервана из-за удаления проекта или выхода участника.', 'Connection was interrupted due to project cancellation or leave.');
             }
         } else if (code === 'skips') {
             var skips = Number(reason.skips || tester.consecutive_skips || 0);
-            badgeLabel = workspaceText('Пропуски: ' + skips + ' дн.', 'Skips: ' + skips + ' d.');
-            title = workspaceText('Пропущено дней подряд: ' + skips, 'Consecutive skips: ' + skips);
+            title = workspaceText('Пропуски активности', 'Inactivity skips');
+            summaryHtml = '<span class="pc-att-tag pc-att-tag--skips">' + esc(workspaceText(skips + ' дн. подряд', skips + ' days missed')) + '</span>';
             var lastDate = tester && tester.last_check_date ? formatAttentionDate(tester.last_check_date) : '';
             desc = workspaceText('Тестировщик не заходил уже ' + skips + ' дн. подряд.', 'Tester has skipped ' + skips + ' days consecutively.');
             if (lastDate) {
@@ -1337,22 +1339,22 @@
             } else {
                 desc += ' ' + workspaceText('Входов в приложение не зафиксировано.', 'No app activity recorded.');
             }
-            desc += ' ' + workspaceText('Напомните о необходимости запускать приложение для зачёта.', 'Remind the tester to launch the app daily.');
+            desc += ' ' + workspaceText('Напомните о необходимости запускать приложение для зачёта Google Play.', 'Remind the tester to launch the app for Google Play requirements.');
             actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
                 'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'skips\', { skips: ' + skips + ' })');
         } else if (code === 'not_opened') {
             var curDay = testerDayNumber(tester);
-            badgeLabel = workspaceText('Не запускал', 'Not launched');
             title = workspaceText('Приложение не запущено', 'App not launched');
+            summaryHtml = '<span class="pc-att-tag pc-att-tag--not_opened">' + esc(workspaceText('День ' + curDay + ' · Не запускал', 'Day ' + curDay + ' · Not launched')) + '</span>';
             desc = workspaceText('С момента добавления прошло уже ' + curDay + ' дн., но приложение ни разу не открывалось. Тестирование фактически не начато.', 'Already ' + curDay + ' days in project, but app was never launched. Testing has not started.');
             actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
                 'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'not_opened\')');
         } else if (code === 'missed_control') {
             var missedDay = Number(reason.missedDay || 0);
             if (reason.proofReceived) {
-                badgeLabel = workspaceText('Отчёт получ. (дн. ' + missedDay + ')', 'Proof rec. (d. ' + missedDay + ')');
-                title = workspaceText('Контрольный отчёт за день ' + missedDay + ' получен', 'Proof for day ' + missedDay + ' received');
-                desc = workspaceText('Тестировщик прикрепил скриншот за контрольный день ' + missedDay + '. Ознакомьтесь с подтверждением.', 'Tester submitted screenshot for day ' + missedDay + '. Please review the proof.');
+                title = workspaceText('Контрольный отчёт (день ' + missedDay + ')', 'Control proof (day ' + missedDay + ')');
+                summaryHtml = '<span class="pc-att-tag pc-att-tag--success">' + esc(workspaceText('Скриншот получен ✓', 'Proof received ✓')) + '</span>';
+                desc = workspaceText('Тестировщик прикрепил скриншот за контрольный день ' + missedDay + '. Ознакомьтесь со скриншотом и подтвердите проверку.', 'Tester submitted screenshot for day ' + missedDay + '. Please review the proof.');
                 if (reason.completedProofId > 0) {
                     actionHtml += iconAct('image', text('pcViewProof', 'View proof'),
                         'pcOpenProof(' + Number(appId) + ',' + Number(reason.completedProofId) + ',0)');
@@ -1362,15 +1364,15 @@
                         'pcCloseCatchupProofRequest(' + Number(appId) + ',' + Number(reason.proofRequestId) + ')');
                 }
             } else if (reason.proofRequested) {
-                badgeLabel = workspaceText('Отчёт запр. (дн. ' + missedDay + ')', 'Proof req. (d. ' + missedDay + ')');
-                title = workspaceText('Запрос отчёта за день ' + missedDay + ' ожидает ответа', 'Proof for day ' + missedDay + ' pending');
+                title = workspaceText('Контрольный отчёт (день ' + missedDay + ')', 'Control proof (day ' + missedDay + ')');
+                summaryHtml = '<span class="pc-att-tag pc-att-tag--pending">' + esc(workspaceText('Запрос отправлен · Ожидание', 'Requested · Pending')) + '</span>';
                 var reqTime = reason.requestedAt ? formatAttentionDateTime(reason.requestedAt) : '';
                 desc = workspaceText('Запрос подтверждения за день ' + missedDay + ' отправлен' + (reqTime ? ' (' + reqTime + ')' : '') + '. Ожидаем скриншот от тестировщика.', 'Verification request for day ' + missedDay + ' sent' + (reqTime ? ' (' + reqTime + ')' : '') + '. Awaiting screenshot.');
                 actionHtml = '<span class="pc-iconact pc-iconact--done" title="' + esc(text('pcProofRequested', 'Requested')) + '">' +
                     ICONS.done + '<span class="pc-iconact__label">' + esc(text('pcProofRequested', 'Requested')) + '</span></span>';
             } else {
-                badgeLabel = workspaceText('Нет отчёта (дн. ' + missedDay + ')', 'No proof (d. ' + missedDay + ')') ;
-                title = workspaceText('Пропущен отчёт за день ' + missedDay, 'Missed proof for day ' + missedDay);
+                title = workspaceText('Контрольный день ' + missedDay, 'Control day ' + missedDay);
+                summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(workspaceText('Нет отчёта', 'Missing proof')) + '</span>';
                 desc = workspaceText('В обязательный контрольный день ' + missedDay + ' не был отправлен подтверждающий скриншот.', 'Mandatory control proof was not submitted for day ' + missedDay + '.');
                 if (isCatchupControlDay(missedDay)) {
                     actionHtml = iconAct('image', text('pcRequestProof', 'Request'),
@@ -1378,15 +1380,15 @@
                 }
             }
         } else if (code === 'debt') {
-            badgeLabel = workspaceText('Долг по взаимке', 'Mutual debt');
-            title = workspaceText('Долг по взаимному тестированию', 'Mutual testing debt');
+            title = workspaceText('Долг по взаимному тесту', 'Mutual testing debt');
             var appName = tester && tester.reciprocal_app_name ? ' «' + tester.reciprocal_app_name + '»' : '';
+            summaryHtml = '<span class="pc-att-tag pc-att-tag--debt">' + esc(appName ? tester.reciprocal_app_name : workspaceText('Ответный тест', 'Reciprocal test')) + '</span>';
             desc = workspaceText('Вы не выполнили ответную проверку проекта партнёра' + appName + '. Протестируйте приложение для честного баланса.', 'You owe testing for partner app' + appName + '. Please test it to keep mutual balance.');
             actionHtml = iconAct('process', workspaceText('Связь', 'Link'),
                 'openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(testerId) + ', event)');
         } else if (code === 'direct_invite') {
-            badgeLabel = workspaceText('Прямой инвайт', 'Direct invite');
-            title = workspaceText('Прямое тестирование без взаимки', 'Direct testing without mutual');
+            title = workspaceText('Прямое тестирование', 'Direct testing');
+            summaryHtml = '<span class="pc-att-tag pc-att-tag--neutral">' + esc(workspaceText('Без взаимки', 'No mutual')) + '</span>';
             desc = workspaceText('Тестер выполняет проверку без ответного обязательства. Вы можете предложить протестировать его приложение взаимно.', 'Tester joined via direct link without reciprocal obligation. You can offer a mutual exchange.');
             var isPending = isMutualOfferPending(testerId);
             if (isPending) {
@@ -1398,51 +1400,40 @@
                     esc(text('pcAttentionDirectInviteAction', 'Offer mutual')) + '</button>';
             }
         } else {
-            badgeLabel = esc(reason.label || workspaceText('Внимание', 'Attention'));
             title = esc(reason.label || workspaceText('Требуется внимание', 'Attention needed'));
+            summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(reason.label || workspaceText('Внимание', 'Attention')) + '</span>';
             desc = esc(reason.description || reason.label || '');
             if (reason.actionHtml) actionHtml = reason.actionHtml;
         }
 
         return {
+            key: key,
             code: code,
             icon: reasonIcon,
-            badgeLabel: badgeLabel,
             title: title,
+            summaryHtml: summaryHtml,
             desc: desc,
             actionHtml: actionHtml,
         };
     }
 
-    window.pcToggleAttentionTray = function (el, event) {
+    window.pcToggleAttentionReason = function (el, event) {
         if (event) {
             event.stopPropagation();
             event.preventDefault();
         }
-        var tray = el && el.closest ? el.closest('.pc-attention-tray') : null;
-        if (!tray) return;
-        var testerId = Number(tray.getAttribute('data-tester-id') || 0);
-        var isExpanded = tray.classList.toggle('is-expanded');
-        if (testerId > 0) {
+        var tile = el && el.closest ? el.closest('.pc-attention-tile') : null;
+        if (!tile) return;
+        var key = tile.getAttribute('data-reason-key');
+        var isExpanded = tile.classList.toggle('is-expanded');
+        if (key) {
             if (isExpanded) {
-                expandedAttentionTesters.add(testerId);
+                expandedAttentionReasons.add(key);
             } else {
-                expandedAttentionTesters.delete(testerId);
+                expandedAttentionReasons.delete(key);
             }
         }
-        var toggleLabel = tray.querySelector('.pc-attention-tray__toggle-text');
-        if (toggleLabel) {
-            toggleLabel.textContent = isExpanded
-                ? (typeof workspaceText === 'function' ? workspaceText('Скрыть', 'Hide') : 'Скрыть')
-                : (typeof workspaceText === 'function' ? workspaceText('Детали', 'Details') : 'Детали');
-        }
-        var toggleBtn = tray.querySelector('.pc-attention-tray__toggle');
-        if (toggleBtn) {
-            toggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-            toggleBtn.setAttribute('aria-label', isExpanded
-                ? (typeof workspaceText === 'function' ? workspaceText('Скрыть детали', 'Hide details') : 'Скрыть детали')
-                : (typeof workspaceText === 'function' ? workspaceText('Развернуть детали', 'Expand details') : 'Развернуть детали'));
-        }
+        tile.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
     };
 
     function attentionSheetHtml(appId, items) {
@@ -1460,47 +1451,33 @@
                 '<span class="pc-person__day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>';
 
             var safeTesterId = Number(item.testerId || tester.tester_id || 0);
-            var isExpanded = expandedAttentionTesters.has(safeTesterId);
 
-            var badgesHtml = (item.reasons || []).map(function (reason) {
+            var tilesHtml = '<div class="pc-attention-tiles">' + (item.reasons || []).map(function (reason) {
                 var meta = getAttentionReasonMeta(reason, tester, appId, safeTesterId);
-                return '<span class="pc-att-badge pc-att-badge--' + esc(meta.code) + '">' +
-                    '<span class="pc-att-badge__icon" aria-hidden="true">' + meta.icon + '</span>' +
-                    '<span class="pc-att-badge__text">' + esc(meta.badgeLabel) + '</span>' +
-                '</span>';
-            }).join('');
-
-            var detailsHtml = (item.reasons || []).map(function (reason) {
-                var meta = getAttentionReasonMeta(reason, tester, appId, safeTesterId);
-                return '<div class="pc-attention-detail pc-attention-detail--' + esc(meta.code) + '">' +
-                    '<div class="pc-attention-detail__info">' +
-                        '<div class="pc-attention-detail__header">' +
-                            '<span class="pc-attention-detail__icon" aria-hidden="true">' + meta.icon + '</span>' +
-                            '<span class="pc-attention-detail__title">' + esc(meta.title) + '</span>' +
+                var isExpanded = expandedAttentionReasons.has(meta.key);
+                return '<div class="pc-attention-tile pc-attention-tile--' + esc(meta.code) + (isExpanded ? ' is-expanded' : '') + '" data-reason-key="' + esc(meta.key) + '" onclick="event.stopPropagation()">' +
+                    '<div class="pc-attention-tile__header" onclick="pcToggleAttentionReason(this, event)">' +
+                        '<div class="pc-attention-tile__info">' +
+                            '<span class="pc-attention-tile__icon" aria-hidden="true">' + meta.icon + '</span>' +
+                            '<div class="pc-attention-tile__text">' +
+                                '<div class="pc-attention-tile__title">' + esc(meta.title) + '</div>' +
+                                '<div class="pc-attention-tile__summary">' + meta.summaryHtml + '</div>' +
+                            '</div>' +
                         '</div>' +
-                        '<div class="pc-attention-detail__desc">' + esc(meta.desc) + '</div>' +
+                        '<div class="pc-attention-tile__toggle" aria-hidden="true">' +
+                            '<svg class="pc-attention-tile__chevron" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>' +
+                        '</div>' +
                     '</div>' +
-                    (meta.actionHtml ? '<div class="pc-attention-detail__action">' + meta.actionHtml + '</div>' : '') +
+                    '<div class="pc-attention-tile__drawer">' +
+                        '<div class="pc-attention-tile__drawer-inner">' +
+                            '<div class="pc-attention-tile__content">' +
+                                '<p class="pc-attention-tile__desc">' + esc(meta.desc) + '</p>' +
+                                (meta.actionHtml ? '<div class="pc-attention-tile__action">' + meta.actionHtml + '</div>' : '') +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>';
-            }).join('');
-
-            var toggleText = isExpanded ? workspaceText('Скрыть', 'Hide') : workspaceText('Детали', 'Details');
-            var toggleAria = isExpanded ? workspaceText('Скрыть детали', 'Hide details') : workspaceText('Развернуть детали', 'Expand details');
-
-            var trayHtml = '<div class="pc-attention-tray' + (isExpanded ? ' is-expanded' : '') + '" data-tester-id="' + safeTesterId + '" onclick="event.stopPropagation()">' +
-                '<div class="pc-attention-tray__header" onclick="pcToggleAttentionTray(this, event)">' +
-                    '<div class="pc-attention-tray__badges">' + badgesHtml + '</div>' +
-                    '<button type="button" class="pc-attention-tray__toggle" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" aria-label="' + esc(toggleAria) + '">' +
-                        '<span class="pc-attention-tray__toggle-text">' + esc(toggleText) + '</span>' +
-                        '<svg class="pc-attention-tray__toggle-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>' +
-                    '</button>' +
-                '</div>' +
-                '<div class="pc-attention-tray__drawer">' +
-                    '<div class="pc-attention-tray__drawer-inner">' +
-                        detailsHtml +
-                    '</div>' +
-                '</div>' +
-            '</div>';
+            }).join('') + '</div>';
 
             var sectionLabel = '';
             if (!monitoringShown && Number(item.priority) >= 4) {
@@ -1515,7 +1492,7 @@
                 metaHtml: metaHtml,
                 actionsHtml: '',
                 avatarMarkerHtml: avatarMarkerHtml,
-                extraHtml: trayHtml,
+                extraHtml: tilesHtml,
             });
         }).join('') + '</ul>';
     }
@@ -1865,6 +1842,7 @@
             testers: workspaceText('Все участники текущего теста', 'All participants in this test'),
         };
         var hintText = historyOn ? workspaceText('История тестирования участников выбранной группы', 'Testing history for this group') : hints[filter];
+        if (isOnlyAll && !historyOn) hintText = '';
         var hintHtml = hintText ? (
             '<div class="pc-activity__hint-wrap">' +
                 '<div class="pc-activity__hint-scroll" tabindex="0">' +
