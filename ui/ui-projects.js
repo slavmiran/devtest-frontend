@@ -1771,29 +1771,29 @@ function renderProjects(force) {
             const mutualTarget = Number(project.limit_mutual || 0);
             const mutualFilled = mutualTarget > 0 && mutualCount >= mutualTarget;
             recruitPartsHtml.push(
-                '<span class="pc-recruit__item">' +
-                    window.escapeHTML(window.t('pcRecruitMutualName', {}, lang) || 'Взаимка') +
-                    ' <span class="pc-recruit__count">' + window.escapeHTML(String(mutualCount) + '/' + String(mutualTarget)) + '</span>' +
-                    (mutualFilled ? ' <span class="pc-recruit__check">✓</span>' : '') +
-                '</span>'
+                '<button type="button" class="pc-recruit-chip' + (mutualFilled ? ' is-filled' : '') + '" onclick="openEditModal(' + project.id + ', { focusRecruitment: \'mutual\' }); event.stopPropagation();">' +
+                    '<span class="pc-recruit-chip__label">' + window.escapeHTML(window.t('pcRecruitMutualName', {}, lang) || 'Взаимка') + '</span> ' +
+                    '<span class="pc-recruit-chip__count">' + window.escapeHTML(String(mutualCount) + '/' + String(mutualTarget)) + '</span>' +
+                    (mutualFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : '') +
+                '</button>'
             );
         }
         if (project.mode === 'bounty' || project.mode === 'hybrid') {
             const bountyTarget = Number(project.limit_bounty || 0);
             const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
             recruitPartsHtml.push(
-                '<span class="pc-recruit__item">' +
-                    window.escapeHTML(window.t('pcRecruitContractsName', {}, lang) || 'Контракты') +
-                    ' <span class="pc-recruit__count">' + window.escapeHTML(String(bountyCount) + '/' + String(bountyTarget)) + '</span>' +
-                    (bountyFilled ? ' <span class="pc-recruit__check">✓</span>' : '') +
-                '</span>'
+                '<button type="button" class="pc-recruit-chip' + (bountyFilled ? ' is-filled' : '') + '" onclick="openEditModal(' + project.id + ', { focusRecruitment: \'bounty\' }); event.stopPropagation();">' +
+                    '<span class="pc-recruit-chip__label">' + window.escapeHTML(window.t('pcRecruitContractsName', {}, lang) || 'Контракты') + '</span> ' +
+                    '<span class="pc-recruit-chip__count">' + window.escapeHTML(String(bountyCount) + '/' + String(bountyTarget)) + '</span>' +
+                    (bountyFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : '') +
+                '</button>'
             );
         }
         if (guestTesterCount > 0) {
             recruitPartsHtml.push(
-                '<span class="pc-recruit__item is-guest">👽 ' +
-                window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang)) +
-                '</span>'
+                '<button type="button" class="pc-recruit-chip is-guest" onclick="openEditModal(' + project.id + ', { focusRecruitment: true }); event.stopPropagation();">' +
+                    '<span>👽 ' + window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang)) + '</span>' +
+                '</button>'
             );
         }
 
@@ -1875,17 +1875,14 @@ function renderProjects(force) {
                     </section>
                 </div>
                 <div class="pc-action-footer" onclick="event.stopPropagation();">
-                    ${recruitPartsHtml.length
-                        ? `<button type="button" class="pc-action-footer__summary" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();">${recruitPartsHtml.join('<span class="pc-recruit__sep"> · </span>')}</button>`
-                        : '<span class="pc-action-footer__summary is-empty">—</span>'}
-                    <div class="pc-action-footer__chips">
-                        <button type="button" class="telegram-community-chip" onclick="openCommunityChat(event)" aria-label="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}" title="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}">
+                    ${recruitPartsHtml.join('')}
+                    <span class="pc-ping-slot" data-pc-ping-slot="${project.id}">
+                        <button type="button" class="telegram-community-chip pc-ping-mini" data-pc-ping-mini="${project.id}" onclick="if (typeof pcProofPingOpenCommunity === 'function') { pcProofPingOpenCommunity(event); } else { openCommunityChat(event); }" aria-label="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}" title="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}">
                             <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                 <path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.313 4.674c.459 0 .661-.21.918-.46l2.204-2.143 4.585 3.387c.845.466 1.455.226 1.666-.784l3.007-14.167c.309-1.238-.473-1.8-1.471-1.317z"/>
                             </svg>
                         </button>
-                        ${pingSlotHtml}
-                    </div>
+                    </span>
                 </div>
         `;
 
@@ -2117,7 +2114,7 @@ function renderProjects(force) {
         `;
         if (window.ProofPing) {
             const pingSlot = card.querySelector('[data-pc-ping-slot="' + project.id + '"]');
-            if (pingSlot) pingSlot.innerHTML = window.ProofPing.miniHtml(project);
+            if (pingSlot && !pingSlot.querySelector('.pc-ping-mini')) pingSlot.innerHTML = window.ProofPing.miniHtml(project);
         }
         if (proofPingState === 'mini') card.classList.add('pc-ping-is-mini');
         container.appendChild(card);

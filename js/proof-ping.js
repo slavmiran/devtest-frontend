@@ -360,7 +360,7 @@
         the visual bridge between all three states. */
     function miniHtml(project) {
         var appId = Number(project.id || project.app_id || 0);
-        return '<button type="button" class="pc-ping-mini" data-pc-ping-mini="' + appId + '"' +
+        return '<button type="button" class="telegram-community-chip pc-ping-mini" data-pc-ping-mini="' + appId + '"' +
             ' aria-label="' + esc(text('pcPingCommunityAria', 'Open Community Chat')) + '"' +
             ' onclick="pcProofPingOpenCommunity(event)">' + TELEGRAM_ICON + '</button>';
     }

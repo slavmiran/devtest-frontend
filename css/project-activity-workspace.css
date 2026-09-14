@@ -6,10 +6,16 @@
     padding-top: 10px;
     border-top: 1px solid var(--border-color, rgba(148,163,184,.12));
 }
-.pc-activity--workspace .pc-activity__caption {
+.pc-activity--workspace:has(.participants-inset-card) {
+    padding-top: 0;
+    border-top: none;
+}
+.pc-activity--workspace > .pc-activity__caption,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__caption {
     display: contents;
 }
-.pc-activity--workspace .pc-activity__heading {
+.pc-activity--workspace > .pc-activity__heading,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__heading {
     order: -3;
     display: flex;
     align-items: center;
@@ -33,7 +39,8 @@
     font-weight: 600;
 }
 .pc-activity--workspace .pc-activity__karma-count { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.pc-activity--workspace .pc-activity__filters {
+.pc-activity--workspace > .pc-activity__filters,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__filters {
     order: -2;
     display: flex;
     flex-wrap: nowrap;
@@ -79,15 +86,21 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
-.pc-activity--workspace .pc-activity__toolbar { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-.pc-activity--workspace .pc-activity__hint-wrap { display: block; flex: 1; min-width: 0; overflow: visible; -webkit-mask-image: none; mask-image: none; }
-.pc-activity--workspace .pc-activity__hint-scroll { display: flex; align-items: center; overflow: visible; white-space: normal; padding-right: 0; }
-.pc-activity--workspace .pc-activity__hint-text { white-space: normal; font-size: 11px; line-height: 1.4; color: var(--text-tertiary, #8493a7); }
-.pc-activity--workspace .pc-activity__info { min-width: 32px; min-height: 32px; flex-shrink: 0; }
-.pc-activity--workspace .pc-activity__actions { display: flex; flex-shrink: 0; justify-content: flex-end; margin: 0; }
-.pc-activity--workspace .pc-activity__mode { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(128,145,168,.08); }
-.pc-activity--workspace .pc-activity__mode button { min-height: 40px; padding: 6px 13px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
-.pc-activity--workspace .pc-activity__mode button.is-active { background: var(--bg-surface-2, #24303f); color: var(--text-primary); }
+.pc-activity--workspace > .pc-activity__toolbar,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__toolbar { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.pc-activity--workspace > .pc-activity__hint-wrap,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__hint-wrap { display: block; flex: 1; min-width: 0; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+.pc-activity--workspace > .pc-activity__hint-scroll,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__hint-scroll { display: flex; align-items: center; overflow: visible; white-space: normal; padding-right: 0; }
+.pc-activity--workspace > .pc-activity__hint-text,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__hint-text { white-space: normal; font-size: 11px; line-height: 1.4; color: var(--text-tertiary, #8493a7); }
+.pc-activity--workspace > .pc-activity__info,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__info { min-width: 32px; min-height: 32px; flex-shrink: 0; }
+.pc-activity--workspace > .pc-activity__actions,
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__actions { display: flex; flex-shrink: 0; justify-content: flex-end; margin: 0; }
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__mode { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(128,145,168,.08); }
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__mode button { min-height: 40px; padding: 6px 13px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__mode button.is-active { background: var(--bg-surface-2, #24303f); color: var(--text-primary); }
 .pc-activity--workspace .pc-act-list { border: 0; border-radius: 0; background: transparent; }
 .pc-activity--workspace .pc-person { padding: 12px 0; background: transparent; border-radius: 0; border-bottom: 1px solid rgba(148,163,184,.12); }
 .pc-activity--workspace .pc-person:last-child { border-bottom: 0; }
@@ -190,9 +203,9 @@
 .pc-control-reminder-panel .pc-control-reminder-hint { margin:0; }
 .pc-control-reminder-panel .pc-control-remind-all-btn { width:100%; }
 @media (max-width: 360px) {
-    .pc-activity--workspace .pc-activity__toolbar { flex-wrap: wrap; }
-    .pc-activity--workspace .pc-activity__hint-wrap { flex-basis: 100%; }
-    .pc-activity--workspace .pc-activity__actions { margin-left: auto; }
+    .pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__toolbar { flex-wrap: wrap; }
+    .pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__hint-wrap { flex-basis: 100%; }
+    .pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__actions { margin-left: auto; }
     .pc-activity--workspace .pc-activity__filter { font-size: 11px; gap: 3px; }
     .pc-activity--workspace .pc-person__top { gap: 7px; }
 }

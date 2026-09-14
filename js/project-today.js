@@ -1713,10 +1713,12 @@
         var hintText = historyOn ? workspaceText('История тестирования участников выбранной группы', 'Testing history for this group') : hints[filter];
         var hintHtml = hintText ? (
             '<div class="pc-activity__hint-wrap">' +
-                '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
-                '<button type="button" class="pc-activity__info" aria-label="' +
-                    esc(text('pcHintInfoAria', 'Filter criteria')) +
-                    '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
+                '<div class="pc-activity__hint-scroll" tabindex="0">' +
+                    '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
+                    '<button type="button" class="pc-activity__info" aria-label="' +
+                        esc(text('pcHintInfoAria', 'Filter criteria')) +
+                        '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
+                '</div>' +
             '</div>'
         ) : '<div class="pc-activity__hint-wrap"></div>';
 

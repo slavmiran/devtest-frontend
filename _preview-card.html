@@ -90,8 +90,9 @@ function stateBlock(o) {
     </section>
   </div>
   <div class="pc-action-footer">
-    <span class="pc-recruit__items">Взаимка 4/15 · Контракты 0/6</span>
-    <span class="pc-ping-slot">${o.mini?`<button type="button" class="pc-ping-mini">${TG}</button>`:''}</span>
+    <button type="button" class="pc-recruit-chip"><span class="pc-recruit-chip__label">Взаимка</span> <span class="pc-recruit-chip__count">4/15</span></button>
+    <button type="button" class="pc-recruit-chip"><span class="pc-recruit-chip__label">Контракты</span> <span class="pc-recruit-chip__count">0/6</span></button>
+    <span class="pc-ping-slot"><button type="button" class="telegram-community-chip pc-ping-mini">${TG}</button></span>
   </div>`;
 }
 
