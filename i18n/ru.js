@@ -3205,6 +3205,7 @@
             pcAttentionSkipsMany: "{count} пропусков подряд",
             pcAttentionDebt: "Долг завершить ваш проект",
             pcAttentionDebtLabel: "Ваш проект ещё нужно дотестировать",
+            pcAttentionDebtDesc: "Проект партнёра уже завершён, а ваш он ещё должен дотестировать. Без своей стороны обмена ему меньше причин продолжать — это потенциальный риск, что тесты бросят. Напомните о договорённости.",
             pcAttentionDirectInvite: "Прямое тестирование · Нет взаимного обязательства",
             pcAttentionDirectInviteAction: "Предложить взаимку",
             pcAttentionOfferPending: "Ожидает ответа",

@@ -319,6 +319,25 @@
         return relName + ' · ' + workspaceText('нет данных', 'unavailable');
     }
 
+    function formatTesterKarmaAmount(tester) {
+        if (!tester || tester.karma == null || tester.karma === '') return '';
+        var value = Number(tester.karma);
+        if (!Number.isFinite(value)) return '';
+        if (typeof formatUiAmount === 'function') return formatUiAmount(value, 1);
+        var rounded = Number(value.toFixed(1));
+        return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    }
+
+    function testerKarmaMetaHtml(tester) {
+        var amount = formatTesterKarmaAmount(tester);
+        if (!amount) return '';
+        var icon = typeof window.karmaIconHtml === 'function'
+            ? window.karmaIconHtml('karma-yin-icon--inline')
+            : '☯️';
+        return '<span class="pc-person__karma" title="' + esc(text('dossierKarma', 'Karma: {karma}', { karma: amount })) + '">' +
+            icon + '<span>' + esc(amount) + '</span></span>';
+    }
+
     function skipsLabel(count) {
         var n = Number(count || 0);
         var mod10 = n % 10;
@@ -1304,6 +1323,63 @@
         }
     }
 
+    function parseDayDate(value) {
+        var raw = String(value || '').trim();
+        if (!raw) return null;
+        var iso = raw.length >= 10 ? raw.slice(0, 10) : raw;
+        var parsed = new Date(iso + 'T00:00:00');
+        return Number.isFinite(parsed.getTime()) ? parsed : null;
+    }
+
+    function dateFromCycleMetrics(metrics) {
+        metrics = metrics || {};
+        var start = parseDayDate(metrics.start_date);
+        var days = Math.max(0, Number(metrics.testing_days || 0));
+        if (start && days > 0) {
+            var end = new Date(start.getTime());
+            end.setDate(end.getDate() + days - 1);
+            return end;
+        }
+        return parseDayDate(metrics.last_check_date);
+    }
+
+    function isCompletedExchangeSide(side) {
+        if (!side) return false;
+        var app = String(side.app_status || '').toLowerCase();
+        var leg = String(side.leg_status || '').toLowerCase();
+        return !!side.done || app === 'completed' || app === 'archived' || leg === 'completed';
+    }
+
+    function reciprocalProjectFinishedDate(tester) {
+        var exchange = tester && tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+            ? tester.exchange_state
+            : null;
+        if (!exchange) return null;
+        var left = exchange.left || {};
+        var right = exchange.right || {};
+        // Partner/right is the owner testing the reciprocal app; that freeze
+        // date is the closest available "project finished" day.
+        var sides = [];
+        if (isCompletedExchangeSide(right)) sides.push(right);
+        if (isCompletedExchangeSide(left)) sides.push(left);
+        for (var i = 0; i < sides.length; i++) {
+            var at = dateFromCycleMetrics(sides[i].metrics);
+            if (at) return at;
+        }
+        return null;
+    }
+
+    function formatDaysAgoShort(date) {
+        if (!date || !Number.isFinite(date.getTime())) return '';
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var then = new Date(date.getTime());
+        then.setHours(0, 0, 0, 0);
+        var days = Math.round((today.getTime() - then.getTime()) / 86400000);
+        if (days <= 0) return workspaceText('сегодня', 'today');
+        return workspaceText(days + 'д. назад', days + 'd ago');
+    }
+
     function getAttentionReasonMeta(reason, tester, appId, testerId) {
         var code = String(reason && reason.code || '').toLowerCase();
         var reasonIcon = ATTENTION_ICONS[code] || ATTENTION_ICONS.not_opened;
@@ -1381,10 +1457,19 @@
             }
         } else if (code === 'debt') {
             title = workspaceText('Долг по взаимному тесту', 'Mutual testing debt');
-            var appName = tester && tester.reciprocal_app_name ? ' «' + tester.reciprocal_app_name + '»' : '';
-            summaryHtml = '<span class="pc-att-tag pc-att-tag--debt">' + esc(appName ? tester.reciprocal_app_name : workspaceText('Ответный тест', 'Reciprocal test')) + '</span>';
-            desc = workspaceText('Вы не выполнили ответную проверку проекта партнёра' + appName + '. Протестируйте приложение для честного баланса.', 'You owe testing for partner app' + appName + '. Please test it to keep mutual balance.');
-            actionHtml = iconAct('process', workspaceText('Связь', 'Link'),
+            var projectName = String(tester && tester.reciprocal_app_name || '').trim()
+                || workspaceText('Ответный тест', 'Reciprocal test');
+            var finishedAgo = formatDaysAgoShort(reciprocalProjectFinishedDate(tester));
+            summaryHtml = '<span class="pc-att-tag pc-att-tag--debt">' + esc(projectName) + '</span>' +
+                '<span class="pc-att-chip pc-att-chip--done">' + esc(workspaceText('завершён', 'finished')) + '</span>' +
+                (finishedAgo ? '<span class="pc-att-tag pc-att-tag--muted">' + esc(finishedAgo) + '</span>' : '');
+            desc = text(
+                'pcAttentionDebtDesc',
+                'The partner\'s project has already finished, but they still owe testing yours. Mutual exchange no longer holds them, so they may drop the remaining tests. Remind them to honour the agreement.'
+            );
+            actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
+                'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'debt\')');
+            actionHtml += iconAct('process', workspaceText('Связь', 'Link'),
                 'openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(testerId) + ', event)');
         } else if (code === 'direct_invite') {
             title = workspaceText('Прямое тестирование', 'Direct testing');
@@ -1448,6 +1533,7 @@
                 : '<span class="pc-person__dot" aria-hidden="true"></span>';
 
             var metaHtml = '<span class="pc-person__reliability">' + esc(testerReliabilityLabel(tester)) + '</span>' +
+                testerKarmaMetaHtml(tester) +
                 '<span class="pc-person__day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>';
 
             var safeTesterId = Number(item.testerId || tester.tester_id || 0);

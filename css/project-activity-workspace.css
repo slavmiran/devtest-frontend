@@ -144,6 +144,18 @@
     white-space: nowrap;
 }
 .pc-activity--workspace .pc-person__reliability { padding:0; margin:0; background:transparent; color:var(--text-secondary); font-size:11px; font-weight:500; }
+.pc-activity--workspace .pc-person__karma {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+}
+.pc-activity--workspace .pc-person__karma::before { content:'·'; margin-right:6px; color: var(--text-tertiary, #8493a7); }
+.pc-activity--workspace .pc-person__karma .karma-yin-icon { width: 11px; height: 11px; }
 .pc-activity--workspace .pc-person__day { color:var(--text-tertiary, #8493a7); font-size:11px; }
 .pc-activity--workspace .pc-person__day::before { content:'·'; margin-right:6px; }
 .pc-activity--workspace .pc-person__meta { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; font-weight: 500; }
@@ -294,6 +306,7 @@
 .pc-activity--workspace .pc-attention-tile__summary {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
 }
 .pc-activity--workspace .pc-att-tag {
@@ -304,12 +317,25 @@
     font-weight: 550;
     line-height: 1.2;
 }
+.pc-activity--workspace .pc-att-chip--done {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.10);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    color: rgba(174, 186, 204, 0.78);
+    font-size: 10.5px;
+    font-weight: 550;
+    line-height: 1.35;
+}
 .pc-activity--workspace .pc-att-tag--skips { color: #e5a49f; }
 .pc-activity--workspace .pc-att-tag--not_opened { color: #9bbdf2; }
 .pc-activity--workspace .pc-att-tag--warn { color: #d9c498; }
 .pc-activity--workspace .pc-att-tag--success { color: #85bfa5; }
 .pc-activity--workspace .pc-att-tag--pending { color: #8493a7; }
 .pc-activity--workspace .pc-att-tag--debt { color: #b8c7d9; }
+.pc-activity--workspace .pc-att-tag--muted { color: #8493a7; font-weight: 500; }
 .pc-activity--workspace .pc-att-tag--neutral { color: #8493a7; }
 .pc-activity--workspace .pc-att-tag--danger { color: #f28b82; }
 

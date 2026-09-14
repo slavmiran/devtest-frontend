@@ -2274,6 +2274,7 @@ function _mapProjectsFromApi(data) {
                 reciprocal_app_name: tester.reciprocal_app_name || '',
                 reciprocal_app_status: tester.reciprocal_app_status || '',
                 reciprocal_app_package_name: tester.reciprocal_app_package_name || '',
+                karma: tester.karma == null || tester.karma === '' ? null : Number(tester.karma),
             });
         });
         return {
