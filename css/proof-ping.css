@@ -7,15 +7,17 @@
 
 /* ── Seam: state strip + ping + activity form a single card ─────────────── */
 
+#tab-projects .card:not(.card-collapsed) .pc-state-unified,
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-state-unified {
     margin-bottom: 0;
-    padding-bottom: 4px;
+    padding-bottom: 10px;
     border-bottom: 0;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
+#tab-projects .card .pc-dashboard-body,
 #tab-projects .card[id^="project-card-"] .pc-dashboard-body {
     background: var(--pc-shell-bg, #182332);
     border: 1px solid var(--pc-shell-border, rgba(171, 194, 231, 0.12));
@@ -27,14 +29,70 @@
     padding-bottom: 18px;
 }
 
-#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping,
-#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded,
+#tab-projects .card:not(.card-collapsed) .pc-dashboard-body::before,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body::before {
+    content: '';
+    display: block;
+    height: 1px;
+    margin: 0 14px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#tab-projects .card:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 14px 14px 0 !important;
+    padding: 13px 14px 14px !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, 0.035) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+#tab-projects .card:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded.is-on,
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded.is-on {
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    margin: 0;
-    box-shadow: none;
+    background: rgba(255, 255, 255, 0.035) !important;
+    border-color: rgba(10, 132, 255, 0.22) !important;
+    box-shadow: none !important;
+}
+
+#tab-projects .card .pc-ping--expanded .pc-ping__chat,
+#tab-projects .card[id^="project-card-"] .pc-ping--expanded .pc-ping__chat {
+    background: rgba(0, 0, 0, 0.22) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 11px !important;
+    box-shadow: none !important;
+    padding: 9px 12px !important;
+}
+
+#tab-projects .card .pc-ping--expanded .pc-ping__chat:hover,
+#tab-projects .card[id^="project-card-"] .pc-ping--expanded .pc-ping__chat:hover {
+    background: rgba(0, 0, 0, 0.32) !important;
+    border-color: rgba(10, 132, 255, 0.28) !important;
+}
+
+#tab-projects .card .pc-ping--expanded .pc-ping__chat:active,
+#tab-projects .card[id^="project-card-"] .pc-ping--expanded .pc-ping__chat:active {
+    background: rgba(0, 0, 0, 0.38) !important;
+    transform: scale(0.985);
+}
+
+#tab-projects .card .pc-ping--expanded .pc-ping__chat-badge,
+#tab-projects .card[id^="project-card-"] .pc-ping--expanded .pc-ping__chat-badge,
+#tab-projects .card .pc-ping--expanded .pc-ping__badge,
+#tab-projects .card[id^="project-card-"] .pc-ping--expanded .pc-ping__badge {
+    box-shadow: none !important;
+}
+
+#tab-projects .card:not(.card-collapsed) .pc-dashboard-body > .pc-ping--capsule,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping--capsule {
+    margin: 14px 14px 0 !important;
+    box-shadow: none !important;
 }
 
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-today > .pc-activity,
@@ -51,7 +109,7 @@
 }
 
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-action-bar {
-    margin: 10px 14px 0;
+    margin: 12px 14px 0;
 }
 
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-finish-link {
@@ -71,14 +129,7 @@
 }
 
 .pc-ping::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 12px;
-    right: 12px;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.08);
-    pointer-events: none;
+    display: none !important;
 }
 
 .pc-ping__glyph {

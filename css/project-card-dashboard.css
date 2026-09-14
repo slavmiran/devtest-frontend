@@ -5398,19 +5398,28 @@ button.pc-metric-num-btn:active {
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
+    text-decoration: none;
+    outline: none;
+    box-shadow: none;
     transition: background-color 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
     box-sizing: border-box;
 }
 
-.pc-recruit-chip:hover {
+.pc-recruit-chip:hover,
+.pc-recruit-chip:focus,
+.pc-recruit-chip:focus-visible {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(56, 189, 248, 0.3);
+    text-decoration: none;
+    outline: none;
+    box-shadow: none;
 }
 
 .pc-recruit-chip:active {
     background: rgba(56, 189, 248, 0.15);
     transform: scale(0.96);
+    text-decoration: none;
 }
 
 .pc-recruit-chip .pc-recruit-chip__count {
@@ -5615,13 +5624,21 @@ button.pc-metric-num-btn:active {
     font-size: 11.5px;
     color: rgba(191, 204, 224, 0.7);
     cursor: pointer;
+    text-decoration: none;
+    outline: none;
+    box-shadow: none;
     transition: color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
-.pc-sub-recruit-btn:hover {
+.pc-sub-recruit-btn:hover,
+.pc-sub-recruit-btn:focus,
+.pc-sub-recruit-btn:focus-visible,
+.pc-sub-recruit-btn:active {
     color: #f1f5f9;
-    text-decoration: underline;
+    text-decoration: none;
+    outline: none;
+    box-shadow: none;
 }
 
 .pc-sub-recruit-text {
