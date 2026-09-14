@@ -6,8 +6,9 @@
     padding-top: 10px;
     border-top: 1px solid var(--border-color, rgba(148,163,184,.12));
 }
-.pc-activity--workspace:has(.participants-inset-card) {
-    padding-top: 0;
+.pc-activity--workspace:has(.participants-inset-card),
+.pc-activity:has(.participants-inset-card) {
+    padding: 0 !important;
     border-top: none;
 }
 .pc-activity--workspace > .pc-activity__caption,

@@ -543,11 +543,16 @@ function buildProjectCardFeatureChips(project, options) {
 
     if (project.target_lang && String(project.target_lang).toUpperCase() !== 'ALL') {
         const langCode = String(project.target_lang).toUpperCase();
-        const langLabel = langCode === 'RU' ? '🇷🇺 RU' : (langCode === 'EN' ? '🇬🇧 EN' : langCode);
+        const langFlag = langCode === 'RU' ? '🇷🇺' : (langCode === 'EN' ? '🇬🇧' : langCode);
+        const langToast = (typeof getProjectLanguageToast === 'function')
+            ? getProjectLanguageToast(langCode)
+            : (langCode === 'RU' ? 'Целевой язык: Русский' : (langCode === 'EN' ? 'Target language: English' : ('Язык: ' + langCode)));
         chips.push(
-            '<span class="pc-subtitle-chip pc-subtitle-chip--lang">' +
-                langLabel +
-            '</span>'
+            (interactive
+                ? '<button type="button" class="pc-subtitle-chip pc-subtitle-chip--lang" onclick="event.stopPropagation(); if (typeof showToast === \'function\') showToast(\'' + escapeInlineJsString(langToast) + '\');" title="' + window.escapeHTML(langToast) + '">'
+                : '<span class="pc-subtitle-chip pc-subtitle-chip--lang">') +
+                langFlag +
+            (interactive ? '</button>' : '</span>')
         );
     }
 
