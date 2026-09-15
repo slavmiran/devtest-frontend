@@ -36,14 +36,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260914-debt-layout-v1"></script>
-    <script src="./i18n/en.js?v=20260914-debt-layout-v1"></script>
+<script src="./i18n/ru.js?v=20260914-catchup-cam-v1"></script>
+    <script src="./i18n/en.js?v=20260914-catchup-cam-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260911-screenshot-boost-v1"></script>
+    <script src="./ui/ui-tests.js?v=20260914-catchup-cam-v1"></script>
     <script src="./ui/ui-projects.js?v=20260914-reviews-chip-v1"></script>
-    <script src="./ui/ui-market.js?v=20260913-screenshot-chip-v1"></script>
+    <script src="./ui/ui-market.js?v=20260914-catchup-cam-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
@@ -51,7 +51,7 @@
     <script src="./js/app-api.js?v=20260914-debt-risk-copy-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260913-screenshot-chip-v1"></script>
+    <script src="./js/app-actions.js?v=20260914-catchup-cam-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260913-control-reminders-album-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -98,7 +98,7 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260904-scroll-smooth-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260912-crypto-exit-v1">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260911-screenshot-boost-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260914-catchup-cam-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
     <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260914-debt-layout-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260914-notif-container-v1">
@@ -1696,6 +1696,13 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-checkinOptionsTitle"></h3>
             <p id="t-checkinOptionsSubtitle" style="color: var(--hint-color); font-size: 14px; line-height: 1.5; margin: 8px 0 20px;"></p>
+            <div id="checkin-options-catchup-note" class="checkin-catchup-note" hidden>
+                <span class="checkin-catchup-note__icon" aria-hidden="true"></span>
+                <div class="checkin-catchup-note__copy">
+                    <strong id="checkin-options-catchup-title"></strong>
+                    <p id="checkin-options-catchup-text"></p>
+                </div>
+            </div>
             <div id="checkin-options-screenshot-boost" class="screenshot-boost-offer" hidden></div>
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button class="btn btn-secondary" id="t-checkinOptionsSendScreenshot" style="width: 100%; justify-content: center;" onclick="checkinOptionsScreenshot()"></button>

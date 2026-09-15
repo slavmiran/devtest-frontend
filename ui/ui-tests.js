@@ -2123,12 +2123,21 @@ function restoreTestsViewportAnchor(anchor) {
     if (Math.abs(delta) > 1) window.scrollBy(0, delta);
 }
 
+function getOpenControlProofCatchups(test) {
+    return (Array.isArray(test && test.control_proof_catchups) ? test.control_proof_catchups : [])
+        .map(function(item) { return Number(item && item.missed_testing_day || 0); })
+        .filter(function(day) { return day > 0; })
+        .sort(function(a, b) { return a - b; });
+}
+
+function hasOpenControlProofCatchup(test) {
+    return getOpenControlProofCatchups(test).length > 0;
+}
+
 function renderControlProofCatchupChip(test, testingDay) {
-    const requests = Array.isArray(test && test.control_proof_catchups)
-        ? test.control_proof_catchups.filter(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })
-        : [];
-    if (!requests.length) return '';
-    const count = requests.length;
+    const days = getOpenControlProofCatchups(test);
+    if (!days.length) return '';
+    const count = days.length;
     const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0));
     const label = window.t('catchupTesterChip', { count: count }, lang);
     return '<button type="button" class="meta-chip control-proof-catchup-chip' + (isOfficialDay ? ' is-disabled' : '') + '"' +
@@ -2184,9 +2193,15 @@ function getScreenshotBoostPaperclipContent(appId) {
         return Number(item && item.id || 0) === Number(appId || 0);
     });
     var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
-    if (!offer) return '<span aria-hidden="true">📎</span>';
-    return '<span aria-hidden="true">📎</span><span class="split-btn-options__boost">+' +
-        window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</span>';
+    var html = '<span aria-hidden="true">📎</span>';
+    if (offer) {
+        html += '<span class="split-btn-options__boost">+' +
+            window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</span>';
+    }
+    if (hasOpenControlProofCatchup(test)) {
+        html += '<span class="split-btn-options__catchup-cam" aria-hidden="true"></span>';
+    }
+    return html;
 }
 
 function syncScreenshotBoostOfferUi(appId) {
@@ -2211,9 +2226,34 @@ function syncScreenshotBoostOfferUi(appId) {
     return offer;
 }
 
+function syncCheckinCatchupNoteUi(appId) {
+    var note = document.getElementById('checkin-options-catchup-note');
+    var modal = document.getElementById('checkin-options-modal');
+    var titleEl = document.getElementById('checkin-options-catchup-title');
+    var textEl = document.getElementById('checkin-options-catchup-text');
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    var days = getOpenControlProofCatchups(test);
+    var visible = days.length > 0;
+    if (note) note.hidden = !visible;
+    if (modal) modal.classList.toggle('has-catchup-note', visible);
+    if (!visible) return null;
+    if (titleEl) {
+        titleEl.textContent = days.length === 1
+            ? window.t('checkinOptionsCatchupTitleOne', { day: days[0] }, lang)
+            : window.t('checkinOptionsCatchupTitleMany', { days: days.join(', ') }, lang);
+    }
+    if (textEl) textEl.textContent = window.t('checkinOptionsCatchupText', {}, lang);
+    return days;
+}
+
+window.getOpenControlProofCatchups = getOpenControlProofCatchups;
+window.hasOpenControlProofCatchup = hasOpenControlProofCatchup;
 window.getScreenshotBoostOffer = getScreenshotBoostOffer;
 window.getScreenshotBoostPaperclipContent = getScreenshotBoostPaperclipContent;
 window.syncScreenshotBoostOfferUi = syncScreenshotBoostOfferUi;
+window.syncCheckinCatchupNoteUi = syncCheckinCatchupNoteUi;
 
 function removeControlProofCatchupInfoDialog() {
     const dialog = document.getElementById('pc-catchup-tester-dialog');
@@ -2232,10 +2272,7 @@ window.openControlProofCatchupInfo = function(appId) {
         return Number(item && item.id || 0) === Number(appId || 0);
     });
     if (!test) return;
-    const days = (Array.isArray(test.control_proof_catchups) ? test.control_proof_catchups : [])
-        .map(function(item) { return Number(item && item.missed_testing_day || 0); })
-        .filter(function(day) { return day > 0; })
-        .sort(function(a, b) { return a - b; });
+    const days = getOpenControlProofCatchups(test);
     if (!days.length) return;
     const today = getResolvedTestingDay(test);
     const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(today || 0));
@@ -2718,7 +2755,7 @@ function renderTests(force) {
                             <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
                                 ${window.escapeHTML(isFeedbackCheckinPending ? feedbackPendingBtnLabel : (window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed'))}
                             </button>
-                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${getScreenshotBoostOffer(test, testingDay) ? ' has-screenshot-boost' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang))}">
+                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${getScreenshotBoostOffer(test, testingDay) ? ' has-screenshot-boost' : ''}${hasOpenControlProofCatchup(test) ? ' has-catchup-proof' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang) + (hasOpenControlProofCatchup(test) ? ' · ' + window.t('checkinOptionsCatchupAria', {}, lang) : ''))}">
                                 ${getScreenshotBoostPaperclipContent(test.id)}
                             </button>`}
                         </div>

@@ -1105,6 +1105,7 @@ function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
 function _syncScreenshotBoostPaperclip(button, appId) {
     if (!button) return;
     var offer = null;
+    var hasCatchup = false;
     var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
     if (test && typeof window.getScreenshotBoostOffer === 'function') {
         var testingDay = typeof window.getUserTestingDay === 'function'
@@ -1112,10 +1113,21 @@ function _syncScreenshotBoostPaperclip(button, appId) {
             : Number(test.testing_days || 0);
         offer = window.getScreenshotBoostOffer(test, testingDay);
     }
+    if (test && typeof window.hasOpenControlProofCatchup === 'function') {
+        hasCatchup = !!window.hasOpenControlProofCatchup(test);
+    }
     button.classList.toggle('has-screenshot-boost', !!offer);
+    button.classList.toggle('has-catchup-proof', hasCatchup);
     button.innerHTML = typeof window.getScreenshotBoostPaperclipContent === 'function'
         ? window.getScreenshotBoostPaperclipContent(appId)
         : '<span aria-hidden="true">📎</span>';
+    var title = String(button.getAttribute('title') || window.t('checkinOptionsTitle', {}, lang));
+    var catchupHint = window.t('checkinOptionsCatchupAria', {}, lang);
+    if (hasCatchup && catchupHint && title.indexOf(catchupHint) === -1) {
+        title = title + ' · ' + catchupHint;
+    }
+    button.title = title;
+    button.setAttribute('aria-label', title);
 }
 
 function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
@@ -1266,9 +1278,9 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             existingOptionsBtn.className = isExternalTest
                 ? 'btn btn-success split-btn-options external-tests-attach-btn'
                 : 'btn btn-success split-btn-options';
-            _syncScreenshotBoostPaperclip(existingOptionsBtn, finishedId);
             existingOptionsBtn.title = window.t('checkinOptionsTitle', {}, lang);
             existingOptionsBtn.setAttribute('aria-label', window.t('checkinOptionsTitle', {}, lang));
+            _syncScreenshotBoostPaperclip(existingOptionsBtn, finishedId);
             existingOptionsBtn.onclick = function(event) {
                 if (event) {
                     event.preventDefault();
@@ -1359,9 +1371,9 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
         }
         optionsBtn.disabled = false;
         optionsBtn.className = 'btn split-btn-options split-btn-options--timer';
-        _syncScreenshotBoostPaperclip(optionsBtn, appId);
         optionsBtn.title = optionsTitle;
         optionsBtn.setAttribute('aria-label', optionsTitle);
+        _syncScreenshotBoostPaperclip(optionsBtn, appId);
         optionsBtn.onclick = function(event) {
             if (event) {
                 event.preventDefault();

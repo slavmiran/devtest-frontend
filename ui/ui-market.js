@@ -3328,6 +3328,9 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (typeof window.syncScreenshotBoostOfferUi === 'function') {
         window.syncScreenshotBoostOfferUi(appId);
     }
+    if (typeof window.syncCheckinCatchupNoteUi === 'function') {
+        window.syncCheckinCatchupNoteUi(appId);
+    }
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -3373,6 +3376,9 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
             node.textContent = '';
         }
     });
+    var catchupNote = document.getElementById('checkin-options-catchup-note');
+    if (catchupNote) catchupNote.hidden = true;
+    modal.classList.remove('has-catchup-note');
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
