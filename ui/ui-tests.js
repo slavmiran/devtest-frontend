@@ -2139,7 +2139,8 @@ function renderControlProofCatchupChip(test, testingDay) {
     if (!days.length) return '';
     const count = days.length;
     const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0));
-    const label = window.t('catchupTesterChip', { count: count }, lang);
+    const labelKey = count === 1 ? 'catchupTesterChipOne' : 'catchupTesterChipMany';
+    const label = window.t(labelKey, { count: count }, lang);
     return '<button type="button" class="meta-chip control-proof-catchup-chip' + (isOfficialDay ? ' is-disabled' : '') + '"' +
         ' onclick="event.stopPropagation(); openControlProofCatchupInfo(' + Number(test.id || 0) + ')">' +
         window.escapeHTML(label) + '</button>';
