@@ -1,0 +1,119 @@
+/* Integrated footer: quiet when closed, readable settings when expanded. */
+.pc-project-params {
+    grid-column: 1 / -1;
+    min-width: 0;
+    margin: 8px 0 -6px;
+    border-top: 1px solid rgba(188, 206, 238, .09);
+    border-radius: 0 0 13px 13px;
+    background: rgba(2, 7, 15, .37);
+    overflow: hidden;
+}
+.pc-project-params__head { display: flex; align-items: center; min-height: 40px; padding-right: 7px; }
+.pc-project-params__toggle {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 9px;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 9px 0 11px;
+    border: 0;
+    color: #a6b4ca;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.pc-project-params__title { flex: 1; min-width: 0; color: #aebbd0; font-size: 11.5px; font-weight: 650; line-height: 1.2; }
+.pc-project-params__count { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; color: #728299; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.pc-project-params__count i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+.pc-project-params__chevron { display: flex; flex: 0 0 10px; color: #73839b; transition: transform 200ms ease; }
+.pc-project-params__chevron svg { width: 10px; height: 6px; }
+.pc-project-params.is-expanded .pc-project-params__chevron { transform: rotate(180deg); }
+.pc-project-params .pc-ping-slot { flex: 0 0 30px; }
+.pc-project-params .pc-ping-mini { min-width: 30px !important; width: 30px; height: 28px; }
+.pc-project-params .pc-ping-mini .telegram-icon { width: 14px; height: 14px; }
+.pc-project-params__body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 240ms cubic-bezier(.2,.7,.2,1); }
+.pc-project-params.is-expanded .pc-project-params__body { grid-template-rows: 1fr; }
+.pc-project-params__clip { min-height: 0; overflow: hidden; }
+.pc-project-params__content { padding: 0 9px 10px; }
+.pc-project-params__grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
+.pc-project-param {
+    position: relative;
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 7px;
+    min-width: 0;
+    min-height: 67px;
+    margin: 0;
+    padding: 9px 10px;
+    border: 1px solid rgba(174, 195, 226, .08);
+    border-radius: 9px;
+    color: #c6d1e1;
+    background: rgba(191, 211, 243, .035);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.pc-project-param__label { display: flex; align-items: flex-start; gap: 5px; color: #7f90a9; font-size: 10px; font-weight: 500; line-height: 1.25; }
+.pc-project-param__label svg { width: 12px; height: 12px; flex: 0 0 12px; }
+.pc-project-param__value { color: #c5d1e3; font-size: 12px; font-weight: 650; line-height: 1.2; }
+.pc-project-param__value--state { padding: 3px 7px; margin: -3px 0; border-radius: 5px; color: #8290a5; background: rgba(174,195,226,.05); font-size: 11px; }
+.pc-project-param.is-active .pc-project-param__value { color: #9ebef0; }
+.pc-project-param.is-active .pc-project-param__value--state { background: rgba(93,146,226,.11); }
+.pc-project-param__edit { position: absolute; right: 9px; bottom: 11px; display: flex; color: #526580; }
+.pc-project-param__edit svg { width: 8px; height: 5px; }
+.pc-project-param:disabled { opacity: .58; cursor: wait; }
+.pc-project-boost {
+    position: relative;
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 100%;
+    min-width: 0;
+    min-height: 65px;
+    margin: 7px 0 0;
+    padding: 10px 23px 10px 10px;
+    border: 1px solid rgba(174,195,226,.08);
+    border-radius: 9px;
+    color: #8596ae;
+    background: rgba(191,211,243,.035);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+.pc-project-boost.is-active { border-color: rgba(205,173,106,.16); background: rgba(205,173,106,.045); }
+.pc-project-boost__heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.pc-project-boost__label { display: inline-flex; align-items: center; gap: 6px; color: #91a2ba; font-size: 11px; font-weight: 550; }
+.pc-project-boost__label svg { width: 14px; height: 14px; }
+.pc-project-boost__reward { flex: 0 0 auto; color: #8596ae; font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.pc-project-boost.is-active .pc-project-boost__reward { color: #d5b874; }
+.pc-project-boost__details { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: #75869e; font-size: 10px; font-weight: 500; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.pc-project-boost__status { color: #65778f; }
+.pc-project-boost__chevron { position: absolute; top: calc(50% - 3px); right: 9px; display: flex; transform: rotate(-90deg); color: #667995; }
+.pc-project-boost__chevron svg { width: 10px; height: 6px; }
+.pc-project-params__access { appearance: none; display: flex; align-items: center; gap: 6px; width: 100%; margin: 7px 0 0; padding: 7px 2px 0; border: 0; background: transparent; color: #7a8ba3; font: inherit; font-size: 10px; text-align: left; cursor: pointer; }
+.pc-project-params__access svg:first-child { width: 12px; height: 12px; }
+.pc-project-params__access span { flex: 1; }
+.pc-project-params__access svg:last-child { width: 8px; height: 5px; transform: rotate(-90deg); }
+.pc-project-params button:focus-visible { outline: 2px solid #749fde; outline-offset: -2px; }
+.pc-project-param:active, .pc-project-boost:active { background: rgba(120,157,213,.08); }
+.pc-project-params__toggle:active { background: rgba(120,157,213,.035); }
+.project-language-hint { margin: -3px 0 14px; color: var(--hint-color,#8191a9); font-size: 12px; line-height: 1.4; }
+@media (max-width: 360px) {
+    .pc-project-params__title { font-size: 10.5px; }
+    .pc-project-params__toggle { gap: 6px; padding-left: 9px; }
+    .pc-project-params__count { font-size: 9px; gap: 4px; }
+    .pc-project-param { padding: 9px 8px; }
+    .pc-project-boost__heading { gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .pc-project-params__body, .pc-project-params__chevron { transition: none; }
+}

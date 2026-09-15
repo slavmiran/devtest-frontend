@@ -2444,6 +2444,7 @@ function _markPostSyncRefreshCooldown() {
 }
 
 async function _loadProjectsImpl(options) {
+    var parametersRequestedAt = Date.now();
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
     var wasProjectsLoadedBeforeRequest = _projectsLoadedOnce;
     if (shouldMarkBackgroundSync) {
@@ -2462,6 +2463,7 @@ async function _loadProjectsImpl(options) {
             }
         }
         var nextProjects = _mapProjectsFromApi(data);
+        if (window.ProjectParameters) window.ProjectParameters.reconcile(nextProjects, parametersRequestedAt);
         var nextStats = _mapStatsFromApi(data);
 
         // Diff the project records so only the cards that actually changed get

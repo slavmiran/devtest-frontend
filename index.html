@@ -36,19 +36,20 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260915-ppc-tight-buffer-v1"></script>
-    <script src="./i18n/en.js?v=20260915-ppc-tight-buffer-v1"></script>
+<script src="./i18n/ru.js?v=20260915-project-parameters-v1"></script>
+    <script src="./i18n/en.js?v=20260915-project-parameters-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-tests.js?v=20260915-catchup-chip-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260915-ppc-slider-plus1-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260915-project-parameters-v1"></script>
+    <script src="./js/project-parameters.js?v=20260915-project-parameters-v1"></script>
     <script src="./ui/ui-market.js?v=20260915-market-chips-neutral-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20260903-card-polish-v1"></script>
-    <script src="./js/app-api.js?v=20260915-ppc-tight-buffer-v2"></script>
+    <script src="./js/app-api.js?v=20260915-project-parameters-v1"></script>
     <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20260914-catchup-cam-v1"></script>
@@ -103,6 +104,7 @@
     <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260915-recruit-guest-right-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260915-no-chip-divider-v1">
     <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20260915-debt-redesign-v1">
+    <link rel="stylesheet" href="./css/project-parameters.css?v=20260915-project-parameters-v1">
 </head>
 <body>
 
@@ -901,6 +903,16 @@
             <div class="android-version-picker-sheet__handle" aria-hidden="true"></div>
             <div class="android-version-picker-sheet__title" id="android-version-picker-title" data-i18n="androidVersionPickerTitle">Минимальная версия Android</div>
             <div class="android-version-picker-list" id="android-version-picker-list"></div>
+        </div>
+    </div>
+
+    <!-- Project communication language: focused picker from the metrics footer. -->
+    <div id="project-language-modal" class="android-version-picker-overlay modal-overlay" onclick="ProjectParameters.closeLanguage(event)">
+        <div class="android-version-picker-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="project-language-title" aria-describedby="project-language-hint">
+            <div class="android-version-picker-sheet__handle" aria-hidden="true"></div>
+            <div class="android-version-picker-sheet__title" id="project-language-title"></div>
+            <p class="project-language-hint" id="project-language-hint"></p>
+            <div class="android-version-picker-list" id="project-language-options" role="group" aria-labelledby="project-language-title"></div>
         </div>
     </div>
 

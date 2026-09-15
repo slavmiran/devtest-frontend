@@ -750,6 +750,7 @@ function buildProjectCardFeatureChips(project, options) {
 }
 
 async function toggleProjectRequestReviews(appId, event) {
+    if (window.ProjectParameters) return window.ProjectParameters.toggleReviews(appId, event);
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -976,6 +977,7 @@ async function openScreenshotBoostSettings(appId, event) {
         if (_screenshotBoostModalAppId !== Number(appId || 0) || !modal.classList.contains('active')) return;
         _screenshotBoostModalBalance = Number(payload.balance_bust || 0);
         project.screenshot_boost_campaign = normalizeScreenshotBoostCampaign(payload.campaign, project.id, project.run_iteration);
+        if (window.ProjectParameters) window.ProjectParameters.recordSaved(project, 'screenshot_boost_campaign');
         _screenshotBoostSettingsLoaded = true;
         renderScreenshotBoostSettings(project, project.screenshot_boost_campaign, _screenshotBoostModalBalance);
     } catch (error) {
@@ -1062,6 +1064,7 @@ async function saveScreenshotBoostSettings() {
         var payload = await response.json().catch(function() { return {}; });
         if (!response.ok || payload.status !== 'success') throw new Error(response.status === 422 ? 'invalid_amount' : (payload.code || payload.error || 'save_failed'));
         project.screenshot_boost_campaign = normalizeScreenshotBoostCampaign(payload.campaign, appId, project.run_iteration);
+        if (window.ProjectParameters) window.ProjectParameters.recordSaved(project, 'screenshot_boost_campaign');
         _screenshotBoostModalBalance = Number(payload.balance_bust || 0);
         if (visibilityStats) visibilityStats.balance_bust = _screenshotBoostModalBalance;
         if (typeof setProjectsCache === 'function') {
@@ -2000,8 +2003,6 @@ function renderProjects(force) {
             ) +
             '</span>';
 
-        const featureChipsHtml = buildProjectCardFeatureChips(project).join('');
-
         const massInviteMeta = getProjectMassInviteMeta(project);
         const availableOfferCount = Math.max(0, Number(massInviteMeta.maxRecipients || 0));
         const inviteCtaLabel = availableOfferCount > 0
@@ -2042,6 +2043,11 @@ function renderProjects(force) {
                 '<span class="pc-stage-badge__count">' + window.escapeHTML('+' + String(testersToMinimum)) + '</span>';
         }
         const closedTestStageHtml = window.escapeHTML(closedTestStageLabel) + closedTestStageExtraHtml;
+        const recruitExpandedVal = localStorage.getItem('project_recruit_expanded_' + project.id);
+        const isRecruitExpanded = recruitExpandedVal === 'true';
+        const recruitToggleTitle = (typeof lang !== 'undefined' && lang === 'ru')
+            ? (isRecruitExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора')
+            : (isRecruitExpanded ? 'Collapse recruitment breakdown' : 'Expand recruitment breakdown');
         const dayLifecycleAria = window.escapeHTML(window.t('pcLifecycleTitle', {}, lang) || 'Жизненный цикл проекта');
         const recruitToggleAria = window.escapeHTML(recruitToggleTitle);
         const testersValueClass = 'pc-metric-team__value';
@@ -2049,12 +2055,6 @@ function renderProjects(force) {
         const stageBadgeHtml = needSyncPrompt
             ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});" title="${window.escapeHTML(window.t('pcSyncAction', {}, lang))}">${closedTestStageHtml}</button>`
             : `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id}, event);" title="${dayLifecycleAria}">${closedTestStageHtml}</button>`;
-
-        const recruitExpandedVal = localStorage.getItem('project_recruit_expanded_' + project.id);
-        const isRecruitExpanded = recruitExpandedVal === 'true';
-        const recruitToggleTitle = (typeof lang !== 'undefined' && lang === 'ru')
-            ? (isRecruitExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора')
-            : (isRecruitExpanded ? 'Collapse recruitment breakdown' : 'Expand recruitment breakdown');
 
         const stateBlockHtml = `
                 <div class="pc-metrics-grid${isRecruitExpanded ? ' is-recruit-expanded' : ''}" id="project-metrics-${project.id}">
@@ -2091,16 +2091,7 @@ function renderProjects(force) {
                             ${buildProjectRecruitBreakdownHtml(project)}
                         </div>
                     </div>
-                </div>
-                <div class="pc-action-footer" onclick="event.stopPropagation();">
-                    ${featureChipsHtml}
-                    <span class="pc-ping-slot" data-pc-ping-slot="${project.id}">
-                        <button type="button" class="telegram-community-chip pc-ping-mini" data-pc-ping-mini="${project.id}" onclick="if (typeof pcProofPingOpenCommunity === 'function') { pcProofPingOpenCommunity(event); } else { openCommunityChat(event); }" aria-label="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}" title="${window.escapeHTML(window.t('pulseChat', {}, lang) || 'Чат сообщества')}">
-                            <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.313 4.674c.459 0 .661-.21.918-.46l2.204-2.143 4.585 3.387c.845.466 1.455.226 1.666-.784l3.007-14.167c.309-1.238-.473-1.8-1.471-1.317z"/>
-                            </svg>
-                        </button>
-                    </span>
+                    ${window.ProjectParameters ? window.ProjectParameters.build(project) : ''}
                 </div>
         `;
 
@@ -2248,21 +2239,6 @@ function renderProjects(force) {
                                 </button>
                             </div>
                         </div>
-                        <button type="button" class="pc-quick-tile pc-quick-tile--screenshot-bust ${project.screenshot_boost_campaign && project.screenshot_boost_campaign.enabled ? 'is-on' : 'is-off'}" onclick="openScreenshotBoostSettings(${project.id}, event)">
-                            <span class="pc-quick-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg></span>
-                            <span class="pc-quick-tile__copy">
-                                <span class="pc-quick-tile__label">${window.escapeHTML(window.t('screenshotBoostQuickTitle', {}, lang))}</span>
-                                <span class="pc-quick-tile__value">${window.escapeHTML(
-                                    project.screenshot_boost_campaign && project.screenshot_boost_campaign.enabled
-                                        ? window.t('screenshotBoostQuickOn', {
-                                            amount: formatScreenshotBoostAmount(project.screenshot_boost_campaign.reward_bust),
-                                            pool: formatScreenshotBoostAmount(project.screenshot_boost_campaign.pool_remaining),
-                                        }, lang)
-                                        : window.t('screenshotBoostQuickOff', {}, lang)
-                                )}</span>
-                            </span>
-                            <svg class="pc-quick-tile__chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </button>
                         <div class="pc-quick-settings__actions">
                             <button type="button" class="pc-quick-action" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
                                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -4825,6 +4801,7 @@ function openIconPickerSheet() {
 }
 
 var _androidVersionPickerScope = 'add';
+var _androidVersionPickerCallback = null;
 var ANDROID_VERSION_PICKER_VALUES = [0, 8, 9, 10, 11, 12, 13, 14, 15];
 
 function normalizeMinAndroidVersion(value) {
@@ -4851,14 +4828,16 @@ function setMinAndroidVersion(scope, value) {
     return normalized;
 }
 
-function openAndroidVersionPicker(scope) {
+function openAndroidVersionPicker(scope, options) {
+    options = options || {};
+    _androidVersionPickerCallback = typeof options.onSelect === 'function' ? options.onSelect : null;
     _androidVersionPickerScope = scope === 'edit' ? 'edit' : 'add';
     var overlay = document.getElementById('android-version-picker-overlay');
     var list = document.getElementById('android-version-picker-list');
     var title = document.getElementById('android-version-picker-title');
     if (!overlay || !list) return;
     var inputId = _androidVersionPickerScope === 'edit' ? 'edit-min-android-version' : 'app-min-android-version';
-    var current = normalizeMinAndroidVersion((document.getElementById(inputId) || {}).value || 0);
+    var current = normalizeMinAndroidVersion(_androidVersionPickerCallback ? options.value : (document.getElementById(inputId) || {}).value || 0);
     if (title) {
         title.textContent = window.t('androidVersionPickerTitle', {}, lang) || 'Минимальная версия Android';
     }
@@ -4882,11 +4861,15 @@ function closeAndroidVersionPicker(event) {
     var overlay = document.getElementById('android-version-picker-overlay');
     if (!overlay) return;
     overlay.classList.remove('active');
+    _androidVersionPickerCallback = null;
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
 function selectAndroidVersion(version) {
-    setMinAndroidVersion(_androidVersionPickerScope, version);
+    var callback = _androidVersionPickerCallback;
+    _androidVersionPickerCallback = null;
+    if (callback) callback(normalizeMinAndroidVersion(version));
+    else setMinAndroidVersion(_androidVersionPickerScope, version);
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     var overlay = document.getElementById('android-version-picker-overlay');
     if (overlay) overlay.classList.remove('active');
