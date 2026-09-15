@@ -563,7 +563,7 @@
         var dimensions = media.width && media.height ? media.width + '×' + media.height : '';
         var detail = [device, dimensions, galleryDateLabel(item && item.created_at)].filter(Boolean).join(' • ');
         return '<article class="testing-control-gallery-card" data-proof-id="' + proofId + '">' +
-            '<button type="button" class="testing-control-gallery-image" onclick="openCheckinProofPreview(' + proofId + ')">' +
+            '<button type="button" class="testing-control-gallery-image" onclick="openCheckinProofOverview(' + proofId + ',{imageCount:' + imageCount + '})">' +
                 '<span class="testing-control-gallery-placeholder">' + escape(text('testingControlGalleryImageLoading', 'Loading preview…')) + '</span>' +
                 '<img alt="" data-proof-thumb="' + proofId + '" data-src="' + escape(secureMediaUrl(item.thumbnail_url)) + '" onload="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-loaded\')" onerror="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-error\')">' +
                 (imageCount > 1 ? '<span class="testing-control-gallery-count" aria-label="' + escape(text('testingControlAlbumCount', '{count} images', { count: imageCount })) + '">▣ ' + imageCount + '</span>' : '') +
@@ -1296,6 +1296,11 @@
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
         if (options) state.previewFallback = { proofId: id, imageCount: Number(options.imageCount || 1), title: String(options.title || ''), subtitle: String(options.subtitle || '') };
+        // An overview is useful only for an album. A single screenshot should
+        // open directly in the viewer, no matter where this action originated.
+        if (proofImageCount(id) <= 1) {
+            return openCheckinProofPreview(id, 0, options);
+        }
         state.previewProofId = id;
         state.previewMode = 'overview';
         body.classList.remove('is-proof-album');
@@ -1312,6 +1317,9 @@
             if (state.previewProofId !== id || state.previewMode !== 'overview' || !modal.classList.contains('active')) return;
             var count = Math.max(1, Math.min(5, Number(details.image_count || 1)));
             if (state.previewFallback && state.previewFallback.proofId === id) state.previewFallback.imageCount = count;
+            if (count <= 1) {
+                return openCheckinProofPreview(id, 0, state.previewFallback || options);
+            }
             renderProofOverview(body, id, count);
             body.querySelectorAll('.checkin-proof-overview-tile').forEach(function(tile) {
                 var index = Number(tile.dataset.mediaIndex);
@@ -1368,7 +1376,7 @@
             hydrateAlbumFull(safeProofId, safeIndex);
         }
         var album = body.querySelector('.checkin-proof-preview-album');
-        if (album && !album.querySelector('.checkin-proof-album-overview-link')) {
+        if (imageCount > 1 && album && !album.querySelector('.checkin-proof-album-overview-link')) {
             album.insertAdjacentHTML('beforeend', '<button type="button" class="checkin-proof-album-overview-link" onclick="openCheckinProofOverview(' + safeProofId + ')">▦ ' + escape(text('pcProofOverviewTitle', 'All screenshots')) + '</button>');
         }
         var title = document.getElementById('checkin-proof-preview-title');
@@ -1505,7 +1513,9 @@
         var type = String(proof.type || 'unavailable');
         var feedbackId = Number(proof.source_feedback_id || 0);
         if (type === 'screenshot' && Number(proof.id || 0) > 0 && galleryEnabled()) {
-            openCheckinProofPreview(Number(proof.id));
+            openCheckinProofOverview(Number(proof.id), {
+                imageCount: Math.max(1, Math.min(5, Number(proof.image_count || 1))),
+            });
             return;
         }
         if ((type === 'bug' || type === 'idea' || type === 'play_review') && feedbackId > 0) {

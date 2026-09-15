@@ -1140,7 +1140,10 @@
             var requestableMissedDay = Number(catchup && catchup.requestableMissedDay || 0);
             var requestedDays = (catchup && catchup.requestedDays || []).map(Number);
             var yesterdayDay = testerDayNumber(tester) - 1;
-            var candidateMissedDay = requestableMissedDay || yesterdayDay;
+            var requestedCatchupDay = requestedDays.filter(isCatchupControlDay).sort(function (left, right) {
+                return right - left;
+            })[0] || 0;
+            var candidateMissedDay = requestableMissedDay || requestedCatchupDay || yesterdayDay;
             var candidateState = String(catchup && catchup.states && catchup.states[String(candidateMissedDay)] || '').toLowerCase();
             var candidateRequest = catchupRequestForDay(catchup, candidateMissedDay);
             var proofRequested = candidateState === 'requested'
@@ -1160,7 +1163,7 @@
             }
 
             // Real issue: missed_control
-            if (!catchupResolved && (requestableMissedDay > 0 || (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
+            if (!catchupResolved && (requestableMissedDay > 0 || requestedCatchupDay > 0 || (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
                 reasons.push({
                     code: 'missed_control',
                     label: proofReceived
