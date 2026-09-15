@@ -29,15 +29,6 @@
     padding-bottom: 18px;
 }
 
-#tab-projects .card:not(.card-collapsed) .pc-dashboard-body::before,
-#tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body::before {
-    content: '';
-    display: block;
-    height: 1px;
-    margin: 0 14px;
-    background: rgba(255, 255, 255, 0.08);
-}
-
 #tab-projects .card:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded,
 #tab-projects .card[id^="project-card-"]:not(.card-collapsed) .pc-dashboard-body > .pc-ping--expanded {
     display: flex;

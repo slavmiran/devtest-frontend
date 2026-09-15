@@ -612,10 +612,12 @@ function buildProjectRecruitBreakdownHtml(project) {
     let guestHtml = '';
     if (guestTesterCount > 0) {
         const guestLabel = uiLang === 'ru' ? 'Гости' : 'Guests';
-        const guestToast = window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, uiLang) || `Guests: ${guestTesterCount}`);
+        const guestTooltip = uiLang === 'ru'
+            ? `Гостевые тестеры: ${guestTesterCount}. Нажмите для перехода на витрину в раздел «Гостевые проекты»`
+            : `Guest testers: ${guestTesterCount}. Click to open Guest Projects on the marketplace`;
         guestHtml = `
             <span class="pc-recruit-group-sep" aria-hidden="true"></span>
-            <button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();" title="${guestToast}">
+            <button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" onclick="if (typeof openGuestProjectsTesterSearch === 'function') { openGuestProjectsTesterSearch(${project.id}); } else if (window.openGuestProjectsTesterSearch) { window.openGuestProjectsTesterSearch(${project.id}); } event.stopPropagation();" title="${window.escapeHTML(guestTooltip)}">
                 <span class="pc-recruit-chip__label">👽 ${guestLabel}</span>
                 <span class="pc-recruit-chip__count">${guestTesterCount}</span>
             </button>

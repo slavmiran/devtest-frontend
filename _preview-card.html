@@ -173,7 +173,7 @@ function recruitBreakdown(o) {
   if (o.guests) {
     html += `
       <span class="pc-recruit-group-sep" aria-hidden="true"></span>
-      <button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" title="Гостевые тестеры: ${o.guests}">
+      <button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" onclick="alert('Переход на витрину в раздел «Гостевые проекты»'); event.stopPropagation();" title="Гостевые тестеры: ${o.guests}. Нажмите для перехода на витрину в раздел «Гостевые проекты»">
         <span class="pc-recruit-chip__label">👽 Гости</span>
         <span class="pc-recruit-chip__count">${o.guests}</span>
       </button>

@@ -5188,17 +5188,26 @@ button.pc-recruit-toggle-btn {
     -webkit-appearance: none;
     background: transparent;
     border: none;
-    padding: 1px 4px;
+    padding: 0;
     margin: 0;
     border-radius: 4px;
-    font: inherit;
-    color: inherit;
+    font-family: inherit;
+    font-size: 9.5px;
+    font-weight: 400;
+    line-height: 1.2;
+    color: rgba(197, 211, 233, 0.60);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 3px;
     transition: color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+button.pc-recruit-toggle-btn .pc-metric-footer__value {
+    font-size: inherit;
+    font-weight: 700;
+    color: inherit;
 }
 
 button.pc-recruit-toggle-btn:hover {
@@ -5361,12 +5370,15 @@ button.pc-recruit-toggle-btn:focus-visible {
     box-sizing: border-box;
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-top: 0;
+    transition: grid-template-rows 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+                margin-top 0.24s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit,
 .pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit {
     grid-template-rows: 1fr;
+    margin-top: 9px;
 }
 
 .pc-metrics-recruit__inner {
@@ -5386,7 +5398,7 @@ button.pc-recruit-toggle-btn:focus-visible {
 
 #tab-projects .card[id^="project-card-"] .pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit__inner,
 .pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit__inner {
-    padding: 7px 10px 2px;
+    padding: 9px 10px 4px;
     border-top: 1px solid rgba(188, 206, 238, 0.08);
     opacity: 1;
     transform: translateY(0);
@@ -5767,7 +5779,8 @@ button.pc-recruit-toggle-btn:focus-visible {
     .pc-metric-team__value { font-size: 21px; }
     .pc-metric-day__total { font-size: 11px; }
     .pc-metric-reserve { padding: 2px 3px; font-size: 8px; }
-    .pc-metric-footer__line { font-size: 8.5px; }
+    .pc-metric-footer__line,
+    button.pc-recruit-toggle-btn { font-size: 8.5px; }
 
     .pc-metric-ring {
         min-height: 0;
