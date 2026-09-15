@@ -4275,16 +4275,12 @@ input::placeholder,
     vertical-align: middle;
 }
 
-/* Android Version chip on Market Cards */
-.meta-chip--android {
-    background: rgba(36, 180, 126, 0.15) !important;
-    color: #2bd99b !important;
-    border: 1px solid rgba(43, 217, 155, 0.3) !important;
-    font-weight: 600;
-}
-
-.meta-chip-android-svg {
+/* Android chip matches other market chips; only the logo stays green */
+.meta-chip--android .meta-chip-android-svg {
+    color: #3DDC84;
+    fill: currentColor;
     vertical-align: -1.5px;
+    flex-shrink: 0;
 }
 
 #custom-toast {

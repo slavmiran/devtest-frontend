@@ -811,16 +811,16 @@ function renderFeedCard(item, kind) {
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
     const minAndroidVer = Number(item.min_android_version || 0);
     const androidChip = minAndroidVer > 0
-        ? `<span class="meta-chip meta-chip--android accent-teal" title="Android ${minAndroidVer}+">${ANDROID_CHIP_LOGO_SVG}${minAndroidVer}+</span>`
+        ? `<span class="meta-chip meta-chip--android" title="Android ${minAndroidVer}+">${ANDROID_CHIP_LOGO_SVG}${minAndroidVer}+</span>`
         : '';
     const syncChip = isProjectSynced(item)
-        ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
+        ? `<span class="meta-chip">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
     const emailChip = (
         (typeof _isDossierEmailTestProject === 'function' && _isDossierEmailTestProject(item))
         || String(item.test_mode || 'google_group') === 'email_list'
     )
-        ? `<span class="meta-chip accent-orange">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
+        ? `<span class="meta-chip">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
         : '';
     const bountyChip = (function() {
         if (kind !== 'bounty') return '';
@@ -830,10 +830,10 @@ function renderFeedCard(item, kind) {
         const amountLabel = typeof formatAmountValue === 'function'
             ? formatAmountValue(possible.total, 1)
             : String(Number(possible.total || 0));
-        return `<span class="meta-chip accent-purple notranslate" title="${window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang))}">💎~${amountLabel} $BUST</span>`;
+        return `<span class="meta-chip notranslate" title="${window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang))}">💎~${amountLabel} $BUST</span>`;
     })();
     const kindChip = kind === 'mutual-prelaunch'
-        ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
+        ? `<span class="meta-chip">${window.t('tabPreLaunch', {}, lang)}</span>`
         : '';
     const testerChipCount = kind === 'bounty'
         ? Number(item.bounty_testers_count || 0)
@@ -849,9 +849,6 @@ function renderFeedCard(item, kind) {
     let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
     const isOwnProject = !!item.is_own_project;
     const hasAccessIssue = !!item.has_access_issue;
-    const ownProjectChip = isOwnProject
-        ? `<span class="meta-chip accent-blue">${window.escapeHTML(window.t('ownProjectBadge', {}, lang))}</span>`
-        : '';
     const accessIssueChip = hasAccessIssue
         ? `<span class="meta-chip accent-red" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</span>`
         : '';
@@ -969,7 +966,6 @@ function renderFeedCard(item, kind) {
                 ${emailChip}
                 ${bountyChip}
                 ${syncChip}
-                ${ownProjectChip}
                 ${accessIssueChip}
             </div>
             <button class="${buttonClass}" ${buttonDisabledAttr} ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>

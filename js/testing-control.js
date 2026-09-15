@@ -1296,11 +1296,6 @@
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
         if (options) state.previewFallback = { proofId: id, imageCount: Number(options.imageCount || 1), title: String(options.title || ''), subtitle: String(options.subtitle || '') };
-        // An overview is useful only for an album. A single screenshot should
-        // open directly in the viewer, no matter where this action originated.
-        if (proofImageCount(id) <= 1) {
-            return openCheckinProofPreview(id, 0, options);
-        }
         state.previewProofId = id;
         state.previewMode = 'overview';
         body.classList.remove('is-proof-album');
@@ -1309,7 +1304,10 @@
         document.getElementById('checkin-proof-preview-title').textContent = meta.title;
         document.getElementById('checkin-proof-preview-subtitle').textContent = meta.subtitle;
         syncProofPreviewViewport();
-        renderProofOverview(body, id, proofImageCount(id));
+        // Card data can be stale while an album is still being reconciled.
+        // Decide between the one-image viewer and the album only after the
+        // proof endpoint returns its authoritative media count.
+        body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
         try {
