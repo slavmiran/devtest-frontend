@@ -2524,13 +2524,9 @@ window._ppcSwitchTab = _ppcSwitchTab;
  * @param {number} alreadyPaidDays - days already covered by paid protection
  * @returns {number} $BUST cost (0 if within free buffer)
  */
-function _ppcExtraProtectionDays(gapDays, extraProtectDays) {
-    return Math.max(0, Number(gapDays || 0) - 2, Number(extraProtectDays || 0));
-}
-
-function _calcProtectionCost(gapDays, alreadyPaidDays, extraProtectDays) {
-    // Gap 0-2: free Pending Release buffer, unless the owner explicitly adds extra days.
-    const extraDays = _ppcExtraProtectionDays(gapDays, extraProtectDays);
+function _calcProtectionCost(gapDays, alreadyPaidDays) {
+    // Gap 0-2: free Pending Release buffer
+    const extraDays = Math.max(0, gapDays - 2);
     if (extraDays <= 0) return 0;
     const targetLevel = Math.min(8, extraDays);
     const currentLevel = Math.min(8, Math.max(0, alreadyPaidDays || 0));
@@ -2649,11 +2645,10 @@ function _ppcUpdateCalculations() {
     const alreadyPaid = Number(slider.getAttribute('data-already-paid') || 0);
     const balance = Number(slider.getAttribute('data-balance') || 0);
     const consumedPendingHours = Number(slider.getAttribute('data-consumed-pending-hours') || 0);
-    const extraProtectDays = Number(slider.getAttribute('data-extra-protect-days') || 0);
 
     const gap = Math.max(0, platformDay - googleDay);
-    const extraDays = _ppcExtraProtectionDays(gap, extraProtectDays);
-    const protectionCost = _calcProtectionCost(gap, alreadyPaid, extraProtectDays);
+    const extraDays = Math.max(0, gap - 2);
+    const protectionCost = _calcProtectionCost(gap, alreadyPaid);
     const tipAmount = tipEl ? Number(tipEl.textContent) || 0 : 0;
     const totalCost = protectionCost + tipAmount;
     const insufficient = totalCost > balance;
@@ -2685,7 +2680,7 @@ function _ppcUpdateCalculations() {
     if (legendMain) legendMain.textContent = preview.main;
 
     let state = 'A';
-    if (extraDays > 0) {
+    if (gap > 2) {
         state = 'C';
     } else if (gap === 2) {
         state = 'B';
@@ -2716,7 +2711,8 @@ function _ppcUpdateCalculations() {
         } else if (state === 'B') {
             statusBlock.className = 'ppc-status-block state-warning';
             const fillPct = Math.round((preview.modeledHours / 48) * 100);
-            const addDayCost = _calcProtectionCost(gap, alreadyPaid, 1);
+            const addDayCost = _calcProtectionCost(gap + 1, alreadyPaid);
+            const canShiftSlider = googleDay > sliderMin;
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateBWarningTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateBWarningText'))}</div>
@@ -2726,9 +2722,9 @@ function _ppcUpdateCalculations() {
                         <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
                     </div>
                 </div>
-                <button type="button" class="ppc-status-add-day-btn" onclick="_ppcRecommendExtraDay(); event.stopPropagation();">
+                ${canShiftSlider ? `<button type="button" class="ppc-status-add-day-btn" onclick="_ppcRecommendExtraDay(); event.stopPropagation();">
                     ${window.escapeHTML(T('ppcStateBAddDayBtn', { amount: addDayCost }))}
-                </button>
+                </button>` : ''}
             `;
         } else {
             statusBlock.className = 'ppc-status-block state-required';
@@ -2803,17 +2799,12 @@ function _ppcUpdateCalculations() {
     }
 }
 
-function _ppcOnSliderInput() {
-    const slider = document.getElementById('ppc-slider');
-    if (slider) slider.setAttribute('data-extra-protect-days', '0');
-    _ppcUpdateCalculations();
-}
-window._ppcOnSliderInput = _ppcOnSliderInput;
-
 function _ppcRecommendExtraDay() {
     const slider = document.getElementById('ppc-slider');
     if (!slider) return;
-    slider.setAttribute('data-extra-protect-days', '1');
+    const nextDay = Math.max(Number(slider.min), Number(slider.value) - 1);
+    if (nextDay === Number(slider.value)) return;
+    slider.value = String(nextDay);
     if (window.tg && window.tg.HapticFeedback) {
         window.tg.HapticFeedback.selectionChanged();
     }
@@ -2942,8 +2933,7 @@ function _renderProtectionCenterState1(project, platformDay) {
                         data-already-paid="${alreadyPaid}"
                         data-balance="${balance}"
                         data-consumed-pending-hours="${project.consumed_pending_hours || 0}"
-                        data-extra-protect-days="0"
-                        oninput="_ppcOnSliderInput()"
+                        oninput="_ppcUpdateCalculations()"
                     />
                 </div>
                 <div class="ppc-slider-tick-row">
