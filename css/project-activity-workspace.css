@@ -303,11 +303,55 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.pc-activity--workspace .pc-attention-tile--debt .pc-attention-tile__title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+}
+.pc-activity--workspace .pc-attention-tile__subtitle {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--text-secondary, #afbac9);
+}
+.pc-activity--workspace .pc-attention-debt {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+.pc-activity--workspace .pc-attention-debt__project {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.pc-activity--workspace .pc-attention-debt__name {
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--text-primary, #e6edf3);
+    line-height: 1.3;
+}
+.pc-activity--workspace .pc-attention-debt__meta {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary, #afbac9);
+    line-height: 1.4;
+}
+.pc-activity--workspace .pc-attention-debt__warn {
+    color: #d9c498;
+}
 .pc-activity--workspace .pc-attention-tile__summary {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
+}
+.pc-activity--workspace .pc-attention-tile--debt .pc-attention-tile__summary {
+    display: block;
 }
 .pc-activity--workspace .pc-att-tag {
     display: inline-flex;
@@ -375,7 +419,11 @@
 }
 .pc-activity--workspace .pc-attention-tile__drawer-inner {
     overflow: hidden;
+    min-height: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.pc-activity--workspace .pc-attention-tile.is-expanded .pc-attention-tile__drawer-inner {
+    min-height: min-content;
 }
 .pc-activity--workspace .pc-attention-tile__content {
     display: flex;

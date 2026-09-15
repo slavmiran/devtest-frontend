@@ -133,6 +133,70 @@ function projectNeedsConsoleSync(project, options) {
 
 var GOOGLE_CLOSED_TEST_QUOTA = 12;
 
+function interpolateColor(hex1, hex2, factor) {
+    const r1 = parseInt(hex1.slice(1, 3), 16);
+    const g1 = parseInt(hex1.slice(3, 5), 16);
+    const b1 = parseInt(hex1.slice(5, 7), 16);
+    const r2 = parseInt(hex2.slice(1, 3), 16);
+    const g2 = parseInt(hex2.slice(3, 5), 16);
+    const b2 = parseInt(hex2.slice(5, 7), 16);
+    const f = Math.max(0, Math.min(1, factor));
+    const r = Math.round(r1 + f * (r2 - r1));
+    const g = Math.round(g1 + f * (g2 - g1));
+    const b = Math.round(b1 + f * (b2 - b1));
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+const DAILY_PROGRESS_COLOR_STOPS = [
+    { count: 1,  color: '#f97316' }, // 1 test: warm coral/amber alert (start of day)
+    { count: 4,  color: '#f59e0b' }, // 4 tests: warming amber
+    { count: 7,  color: '#eab308' }, // 7 tests: warm gold / yellow (halfway)
+    { count: 9,  color: '#84cc16' }, // 9 tests: lively lime green
+    { count: 12, color: '#30d158' }, // 12 tests: base quota reached! Emerald green
+    { count: 15, color: '#00c7ff' }, // 15 tests: overachievement! Electric cyan
+    { count: 18, color: '#a855f7' }, // 18 tests: overachievement! Luminous violet
+    { count: 22, color: '#f43f5e' }  // 22+ tests: cosmic neon fuchsia
+];
+
+function getDailyActivityProgressColor(count) {
+    const c = Number(count) || 0;
+    if (c <= 0) return '#8e8e93';
+    const stops = DAILY_PROGRESS_COLOR_STOPS;
+    if (c <= stops[0].count) return stops[0].color;
+    if (c >= stops[stops.length - 1].count) return stops[stops.length - 1].color;
+    for (let i = 0; i < stops.length - 1; i++) {
+        const s1 = stops[i];
+        const s2 = stops[i + 1];
+        if (c >= s1.count && c <= s2.count) {
+            const factor = (c - s1.count) / (s2.count - s1.count);
+            return interpolateColor(s1.color, s2.color, factor);
+        }
+    }
+    return stops[stops.length - 1].color;
+}
+
+function buildDailyProgressGradientStops(countStart, countEnd) {
+    if (countStart >= countEnd) {
+        const c = getDailyActivityProgressColor(countEnd);
+        return `<stop offset="0%" stop-color="${c}" /><stop offset="100%" stop-color="${c}" />`;
+    }
+    const stops = DAILY_PROGRESS_COLOR_STOPS;
+    const startCol = getDailyActivityProgressColor(countStart);
+    const endCol = getDailyActivityProgressColor(countEnd);
+    let stopsHtml = `<stop offset="0%" stop-color="${startCol}" />`;
+    for (let i = 0; i < stops.length; i++) {
+        const s = stops[i];
+        if (s.count > countStart && s.count < countEnd) {
+            const offset = Math.round(((s.count - countStart) / (countEnd - countStart)) * 100);
+            stopsHtml += `<stop offset="${offset}%" stop-color="${s.color}" />`;
+        }
+    }
+    stopsHtml += `<stop offset="100%" stop-color="${endCol}" />`;
+    return stopsHtml;
+}
+
+window.getDailyActivityProgressColor = getDailyActivityProgressColor;
+
 function getProjectDailyProgressMeta(project) {
     const today = typeof getLocalDate === 'function' ? getLocalDate() : new Date().toISOString().slice(0, 10);
     const testers = Array.isArray(project && project.testers) ? project.testers : [];
@@ -226,6 +290,7 @@ function getProjectDailyProgressMeta(project) {
     }
 
     const isOverachieved = todayDone > 12;
+    const peakColor = getDailyActivityProgressColor(todayDone);
 
     return {
         totalTesters: totalTesters,
@@ -243,6 +308,7 @@ function getProjectDailyProgressMeta(project) {
         subtext: subtext,
         statusChip: statusChip,
         isOverachieved: isOverachieved,
+        peakColor: peakColor,
     };
 }
 
@@ -259,16 +325,18 @@ function buildProjectDailyProgressRingHtml(project, options) {
     const googlePinDeg = meta.googlePinDeg;
     const progressAngle = meta.fillProgressDeg;
 
-    // SVG coordinate math (Center 50, 50, Radius 37.5, Stroke 7.5 (+50% thicker))
+    // SVG coordinate math (Center 50, 50, Radius 37.5, Stroke 7.5)
     const cx = 50;
     const cy = 50;
     const r = 37.5;
+    const strokeW = 7.5;
+    const capR = strokeW / 2; // 3.75
 
     // 1. Deficit smooth track (if totalTesters < 12)
     let deficitPathHtml = '';
     if (totalTesters < 12) {
         if (totalTesters <= 0) {
-            deficitPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7.5" />`;
+            deficitPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${strokeW}" />`;
         } else {
             const startAngle = (totalTesters / 12) * 360;
             // Arc from startAngle to 360 (top)
@@ -279,21 +347,67 @@ function buildProjectDailyProgressRingHtml(project, options) {
             const y2 = cy - r; // (50, 12.5)
             const deltaAngle = 360 - startAngle;
             const largeArc = deltaAngle > 180 ? 1 : 0;
-            deficitPathHtml = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7.5" stroke-linecap="round" />`;
+            deficitPathHtml = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${strokeW}" stroke-linecap="round" />`;
         }
     }
 
-    // 2. Progress fill arc (smooth linecap)
+    // 2. Dynamic gradient progress arc
     let progressPathHtml = '';
-    const progressStroke = todayDone > 12 ? '#b882ee' : '#49c99b';
-    if (progressAngle >= 359.5) {
-        progressPathHtml = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${progressStroke}" stroke-width="7.5" stroke-linecap="round" />`;
-    } else if (progressAngle > 0) {
-        const radP = (progressAngle - 90) * Math.PI / 180;
-        const px = cx + r * Math.cos(radP);
-        const py = cy + r * Math.sin(radP);
-        const largeArcP = progressAngle > 180 ? 1 : 0;
-        progressPathHtml = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 ${largeArcP} 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="${progressStroke}" stroke-width="7.5" stroke-linecap="round" />`;
+    let gradientDefsHtml = '';
+
+    if (todayDone > 0 && progressAngle > 0) {
+        const uid = 'dpr-g-' + (appId || Math.floor(Math.random() * 10000)) + '-' + Math.floor(Math.random() * 100000);
+        const gradId1 = `${uid}-1`;
+        const gradId2 = `${uid}-2`;
+
+        const endCount = todayDone;
+        const startCount = todayDone > 12 ? Math.max(1, todayDone - 11) : 1;
+        const startColor = getDailyActivityProgressColor(startCount);
+        const peakColor = meta.peakColor || getDailyActivityProgressColor(endCount);
+
+        if (progressAngle <= 180) {
+            // Single segment in right semicircle (0° to progressAngle)
+            const radP = (progressAngle - 90) * Math.PI / 180;
+            const px = cx + r * Math.cos(radP);
+            const py = cy + r * Math.sin(radP);
+            const stops1 = buildDailyProgressGradientStops(startCount, endCount);
+            gradientDefsHtml = `<linearGradient id="${gradId1}" x1="${cx}" y1="${cy - r}" x2="${px.toFixed(2)}" y2="${py.toFixed(2)}" gradientUnits="userSpaceOnUse">${stops1}</linearGradient>`;
+            progressPathHtml = `
+                <path d="M ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId1})" stroke-width="${strokeW}" stroke-linecap="butt" />
+                <circle cx="${cx}" cy="${cy - r}" r="${capR}" fill="${startColor}" />
+                <circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${capR}" fill="${peakColor}" />
+            `;
+        } else {
+            // Two segments:
+            // Segment 1: from top (50, 12.5) to bottom (50, 87.5) [0° to 180°]
+            // Segment 2: from bottom (50, 87.5) to (px, py) [180° to progressAngle]
+            const fraction180 = 180 / progressAngle;
+            const midCount = startCount + fraction180 * (endCount - startCount);
+
+            const stops1 = buildDailyProgressGradientStops(startCount, midCount);
+            const stops2 = buildDailyProgressGradientStops(midCount, endCount);
+
+            const isFullCircle = progressAngle >= 359.5;
+            let px = cx;
+            let py = cy - r;
+            if (!isFullCircle) {
+                const radP = (progressAngle - 90) * Math.PI / 180;
+                px = cx + r * Math.cos(radP);
+                py = cy + r * Math.sin(radP);
+            }
+
+            gradientDefsHtml = `
+                <linearGradient id="${gradId1}" x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" gradientUnits="userSpaceOnUse">${stops1}</linearGradient>
+                <linearGradient id="${gradId2}" x1="${cx}" y1="${cy + r}" x2="${px.toFixed(2)}" y2="${py.toFixed(2)}" gradientUnits="userSpaceOnUse">${stops2}</linearGradient>
+            `;
+
+            progressPathHtml = `
+                <path d="M ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${cx} ${cy + r}" fill="none" stroke="url(#${gradId1})" stroke-width="${strokeW}" stroke-linecap="butt" />
+                <path d="M ${cx} ${cy + r} A ${r} ${r} 0 0 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId2})" stroke-width="${strokeW}" stroke-linecap="butt" />
+                <circle cx="${cx}" cy="${cy - r}" r="${capR}" fill="${startColor}" />
+                ${!isFullCircle ? `<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${capR}" fill="${peakColor}" />` : ''}
+            `;
+        }
     }
 
     // 3. Google Pin
@@ -321,12 +435,13 @@ function buildProjectDailyProgressRingHtml(project, options) {
                     <filter id="${glowId}" x="-50%" y="-50%" width="200%" height="200%">
                         <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#30d158" flood-opacity="0.8"/>
                     </filter>
+                    ${gradientDefsHtml}
                 </defs>
                 <!-- Background track -->
                 <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#24232c" stroke-width="7.5" />
                 <!-- Deficit track (if needed) -->
                 ${deficitPathHtml}
-                <!-- Progress fill -->
+                <!-- Progress fill with dynamic gradient -->
                 ${progressPathHtml}
                 <!-- Google Pin -->
                 ${pinHtml}
@@ -425,11 +540,19 @@ function buildProjectModeChip(project) {
     return `<button class="meta-chip accent-green" onclick="void(0)">${window.escapeHTML(t.modeMutual)}</button>`;
 }
 
-/* Header subtitle under project title: recruitment counts (Взаимка, Контракты) with secondary font */
+/* Header subtitle under project title (for archive cards or fallback) */
 function buildProjectCardSubtitle(project, options) {
-    options = options || {};
     if (!project) return '<div class="card-subtitle notranslate"></div>';
-    const interactive = options.interactive !== false;
+    const packageName = project.package || project.package_name || '';
+    if (packageName) {
+        return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + '</div>';
+    }
+    return '<div class="card-subtitle notranslate"></div>';
+}
+
+function buildProjectRecruitBreakdownHtml(project) {
+    if (!project) return '';
+    const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
     const allTesters = Array.isArray(project.testers) ? project.testers : [];
     const regularTesters = allTesters.filter(function (t) {
         return !t.is_guest_tester && !t.is_external && !t.is_left_soft;
@@ -441,41 +564,94 @@ function buildProjectCardSubtitle(project, options) {
         return String(t.join_type || '').toLowerCase() === 'bounty';
     }).length;
 
+    const mutualTarget = Number(project.limit_mutual || 0);
+    const bountyTarget = Number(project.limit_bounty || 0);
+    const mutualFilled = mutualTarget > 0 && mutualCount >= mutualTarget;
+    const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
+
+    const guestTesters = allTesters.filter(function (t) { return !!t.is_guest_tester || !!t.is_external; });
+    const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
+
+    const mode = String(project.mode || 'mutual').toLowerCase();
     const parts = [];
-    if (project.mode === 'mutual' || project.mode === 'hybrid') {
-        const mutualTarget = Number(project.limit_mutual || 0);
-        const mutualFilled = mutualTarget > 0 && mutualCount >= mutualTarget;
-        const label = window.escapeHTML(window.t('pcRecruitMutualName', {}, lang) || 'Взаимка');
-        const countText = window.escapeHTML(String(mutualCount) + '/' + String(mutualTarget));
-        const checkHtml = mutualFilled ? ' <span class="pc-sub-recruit-check">✓</span>' : '';
+
+    const mutualLabel = window.escapeHTML(window.t('pcRecruitMutualName', {}, uiLang) || 'Взаимка');
+    const contractsLabel = window.escapeHTML(window.t('pcRecruitContractsName', {}, uiLang) || 'Контракты');
+
+    if (mode === 'mutual' || mode === 'hybrid') {
+        const countStr = mutualTarget > 0 ? `${mutualCount}/${mutualTarget}` : String(mutualCount);
+        const checkHtml = mutualFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : '';
         parts.push(
-            interactive
-                ? `<button type="button" class="pc-sub-recruit-btn${mutualFilled ? ' is-filled' : ''}" onclick="openEditModal(${project.id}, { focusRecruitment: 'mutual' }); event.stopPropagation();"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</button>`
-                : `<span class="pc-sub-recruit-text"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</span>`
-        );
-    }
-    if (project.mode === 'bounty' || project.mode === 'hybrid') {
-        const bountyTarget = Number(project.limit_bounty || 0);
-        const bountyFilled = bountyTarget > 0 && bountyCount >= bountyTarget;
-        const label = window.escapeHTML(window.t('pcRecruitContractsName', {}, lang) || 'Контракты');
-        const countText = window.escapeHTML(String(bountyCount) + '/' + String(bountyTarget));
-        const checkHtml = bountyFilled ? ' <span class="pc-sub-recruit-check">✓</span>' : '';
-        parts.push(
-            interactive
-                ? `<button type="button" class="pc-sub-recruit-btn${bountyFilled ? ' is-filled' : ''}" onclick="openEditModal(${project.id}, { focusRecruitment: 'bounty' }); event.stopPropagation();"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</button>`
-                : `<span class="pc-sub-recruit-text"><span class="pc-sub-recruit-label">${label}:</span> <span class="pc-sub-recruit-count">${countText}</span>${checkHtml}</span>`
+            `<button type="button" class="pc-recruit-chip pc-recruit-chip--mutual${mutualFilled ? ' is-filled' : ''}" onclick="openEditModal(${project.id}, { focusRecruitment: 'mutual' }); event.stopPropagation();">` +
+                `<span class="pc-recruit-chip__label">${mutualLabel}</span> ` +
+                `<span class="pc-recruit-chip__count">${countStr}</span>${checkHtml}` +
+            `</button>`
         );
     }
 
-    if (parts.length) {
-        return '<div class="card-subtitle notranslate"><span class="pc-sub-recruit-line">' + parts.join('<span class="pc-sub-recruit-sep">•</span>') + '</span></div>';
+    if (mode === 'bounty' || mode === 'hybrid') {
+        const countStr = bountyTarget > 0 ? `${bountyCount}/${bountyTarget}` : String(bountyCount);
+        const checkHtml = bountyFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : '';
+        parts.push(
+            `<button type="button" class="pc-recruit-chip pc-recruit-chip--bounty${bountyFilled ? ' is-filled' : ''}" onclick="openEditModal(${project.id}, { focusRecruitment: 'bounty' }); event.stopPropagation();">` +
+                `<span class="pc-recruit-chip__label">${contractsLabel}</span> ` +
+                `<span class="pc-recruit-chip__count">${countStr}</span>${checkHtml}` +
+            `</button>`
+        );
     }
-    const packageName = project.package || project.package_name || '';
-    if (packageName) {
-        return '<div class="card-subtitle notranslate">' + window.escapeHTML(packageName) + '</div>';
+
+    if (parts.length === 0) {
+        parts.push(
+            `<button type="button" class="pc-recruit-chip pc-recruit-chip--mutual" onclick="openEditModal(${project.id}, { focusRecruitment: 'mutual' }); event.stopPropagation();">` +
+                `<span class="pc-recruit-chip__label">${mutualLabel}</span> ` +
+                `<span class="pc-recruit-chip__count">${mutualCount}</span>` +
+            `</button>`
+        );
     }
-    return '<div class="card-subtitle notranslate"></div>';
+
+    let guestHtml = '';
+    if (guestTesterCount > 0) {
+        const guestLabel = uiLang === 'ru' ? 'Гости' : 'Guests';
+        const guestToast = window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, uiLang) || `Guests: ${guestTesterCount}`);
+        guestHtml = `
+            <span class="pc-recruit-group-sep" aria-hidden="true"></span>
+            <button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" onclick="openEditModal(${project.id}, { focusRecruitment: true }); event.stopPropagation();" title="${guestToast}">
+                <span class="pc-recruit-chip__label">👽 ${guestLabel}</span>
+                <span class="pc-recruit-chip__count">${guestTesterCount}</span>
+            </button>
+        `;
+    }
+
+    return parts.join('') + guestHtml;
 }
+window.buildProjectRecruitBreakdownHtml = buildProjectRecruitBreakdownHtml;
+
+function toggleProjectRecruitDetails(projectId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const safeId = Number(projectId || 0);
+    if (safeId <= 0) return;
+    const gridEl = document.getElementById('project-metrics-' + safeId);
+    if (!gridEl) return;
+    const isExpanded = gridEl.classList.toggle('is-recruit-expanded');
+    try {
+        localStorage.setItem('project_recruit_expanded_' + safeId, isExpanded ? 'true' : 'false');
+    } catch (e) {}
+    const btn = gridEl.querySelector('.pc-recruit-toggle-btn');
+    if (btn) {
+        btn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
+        btn.title = uiLang === 'ru'
+            ? (isExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора')
+            : (isExpanded ? 'Collapse recruitment breakdown' : 'Expand recruitment breakdown');
+    }
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.impactOccurred('light');
+    }
+}
+window.toggleProjectRecruitDetails = toggleProjectRecruitDetails;
 
 /* Feature chips row (formerly under title, now placed in pc-action-footer): reviews toggle, email, screenshot boost, lang, android, guest. */
 function buildProjectCardFeatureChips(project, options) {
@@ -562,17 +738,6 @@ function buildProjectCardFeatureChips(project, options) {
             '<span class="pc-subtitle-chip pc-subtitle-chip--android" title="Android ' + minAndroid + '+">' +
                 androidSvg + minAndroid + '+' +
             '</span>'
-        );
-    }
-
-    const allProjectTesters = Array.isArray(project.testers) ? project.testers : [];
-    const guestTesters = allProjectTesters.filter(function (t) { return !!t.is_guest_tester || !!t.is_external; });
-    const guestTesterCount = Math.max(Number(project.guest_testers_count || 0), guestTesters.length);
-    if (guestTesterCount > 0) {
-        chips.push(
-            '<button type="button" class="pc-recruit-chip is-guest" onclick="openEditModal(' + project.id + ', { focusRecruitment: true }); event.stopPropagation();">' +
-                '<span>👽 ' + window.escapeHTML(window.t('projectGuestCountChip', { count: guestTesterCount }, lang)) + '</span>' +
-            '</button>'
         );
     }
 
@@ -1248,7 +1413,6 @@ function renderProjects(force) {
         const projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
         const isPendingCompletion = projectStatus === 'pending_completion';
         const safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
-        const projectCardSubtitleHtml = buildProjectCardSubtitle(project);
 
         const platformDays = getProjectPlatformDay(project.created_at, project.restarted_at || project.last_restarted_at);
         const rawGoogleDay = _isProjectSyncedSafe(project)
@@ -1780,9 +1944,10 @@ function renderProjects(force) {
             ? Math.max(0, Math.round(Number(bufferHoursLeft || 0)))
             : 0;
 
-        const metricFooterPairHtml = function(label, value) {
+        const metricFooterPairHtml = function(label, value, valueStyle) {
+            const styleAttr = valueStyle ? ' style="' + valueStyle + '"' : '';
             return window.escapeHTML(String(label || '')) +
-                ' <span class="pc-metric-footer__value">' + window.escapeHTML(String(value || '')) + '</span>';
+                ' <span class="pc-metric-footer__value"' + styleAttr + '>' + window.escapeHTML(String(value || '')) + '</span>';
         };
         const totalDaysHtml = (function() {
             const n = Math.max(0, Math.floor(Number(platformDays) || 0));
@@ -1817,11 +1982,16 @@ function renderProjects(force) {
         const remainingRecruitmentSlots = Math.max(0, testerTargetCount - currentRegularTestersCount);
         const isFullActivity = Number(dailyMeta.teamPercent || 0) >= 100;
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
+        const peakColor = dailyMeta.peakColor || (typeof getDailyActivityProgressColor === 'function' ? getDailyActivityProgressColor(dailyMeta.todayDone) : '#30d158');
+        const valueStyle = (isFullActivity || Number(dailyMeta.todayDone || 0) >= 12)
+            ? 'color: ' + peakColor + '; font-weight: 700;'
+            : '';
         const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line' + (isFullActivity ? ' is-complete' : '') + '">' +
             activityLightning +
             metricFooterPairHtml(
                 window.t('pcMetricToday', {}, lang) || 'Сегодня',
-                String(Number(dailyMeta.teamPercent || 0)) + '%'
+                String(Number(dailyMeta.teamPercent || 0)) + '%',
+                valueStyle
             ) +
             '</span>';
 
@@ -1872,14 +2042,17 @@ function renderProjects(force) {
         const testersValueClass = 'pc-metric-team__value';
 
         const stageBadgeHtml = needSyncPrompt
-            ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});">${closedTestStageHtml}</button>`
-            : `<span class="pc-stage-badge pc-stage-badge--${closedTestStage}">${closedTestStageHtml}</span>`;
+            ? `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProtectionCenter(${project.id});" title="${window.escapeHTML(window.t('pcSyncAction', {}, lang))}">${closedTestStageHtml}</button>`
+            : `<button type="button" class="pc-stage-badge pc-stage-badge--${closedTestStage}" onclick="event.stopPropagation(); openProjectLifecycleModal(${project.id}, event);" title="${dayLifecycleAria}">${closedTestStageHtml}</button>`;
+
+        const recruitExpandedVal = localStorage.getItem('project_recruit_expanded_' + project.id);
+        const isRecruitExpanded = recruitExpandedVal === 'true';
+        const recruitToggleTitle = (typeof lang !== 'undefined' && lang === 'ru')
+            ? (isRecruitExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора')
+            : (isRecruitExpanded ? 'Collapse recruitment breakdown' : 'Expand recruitment breakdown');
 
         const stateBlockHtml = `
-                <div class="pc-closed-head">
-                    ${stageBadgeHtml}
-                </div>
-                <div class="pc-metrics-grid">
+                <div class="pc-metrics-grid${isRecruitExpanded ? ' is-recruit-expanded' : ''}" id="project-metrics-${project.id}">
                     <section class="pc-metric-card pc-metric-card--term">
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcDayWord', {}, lang))}</div>
                         <button type="button" class="pc-metric-num-btn pc-metric-main pc-metric-day" onclick="openProjectLifecycleModal(${project.id}, event); event.stopPropagation();" aria-label="${dayLifecycleAria}">
@@ -1893,16 +2066,26 @@ function renderProjects(force) {
                             <span class="${testersValueClass}">${window.escapeHTML(String(teamTesterCount))}</span>
                             ${testersMicrobarHtml}
                         </button>
-                        <div class="pc-metric-footer"><span class="pc-metric-footer__line">${metricFooterPairHtml(
-                            lang === 'ru' ? 'Набор:' : 'Recruiting:',
-                            lang === 'ru' ? (remainingRecruitmentSlots + ' чел.') : String(remainingRecruitmentSlots)
-                        )}</span></div>
+                        <div class="pc-metric-footer">
+                            <button type="button" class="pc-metric-footer__line pc-recruit-toggle-btn" onclick="toggleProjectRecruitDetails(${project.id}, event);" aria-expanded="${isRecruitExpanded ? 'true' : 'false'}" title="${window.escapeHTML(recruitToggleTitle)}">
+                                ${metricFooterPairHtml(
+                                    lang === 'ru' ? 'Набор:' : 'Recruiting:',
+                                    lang === 'ru' ? (remainingRecruitmentSlots + ' чел.') : String(remainingRecruitmentSlots)
+                                )}
+                                <svg class="pc-recruit-toggle-chevron" viewBox="0 0 12 12" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5L6 8L9.5 4.5"/></svg>
+                            </button>
+                        </div>
                     </section>
                     <section class="pc-metric-card pc-metric-card--google">
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcActivityWord', {}, lang) || 'Активность')}</div>
                         <div class="pc-metric-ring">${testersRingHtml}</div>
                         <div class="pc-metric-footer">${dailyActivityHtml}</div>
                     </section>
+                    <div class="pc-metrics-recruit" id="project-metrics-recruit-${project.id}">
+                        <div class="pc-metrics-recruit__inner">
+                            ${buildProjectRecruitBreakdownHtml(project)}
+                        </div>
+                    </div>
                 </div>
                 <div class="pc-action-footer" onclick="event.stopPropagation();">
                     ${featureChipsHtml}
@@ -2023,7 +2206,7 @@ function renderProjects(force) {
                 </div>
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
-                    ${projectCardSubtitleHtml}
+                    <div class="card-subtitle notranslate">${stageBadgeHtml}</div>
                 </div>
                 <div class="project-header-actions">
                     <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">

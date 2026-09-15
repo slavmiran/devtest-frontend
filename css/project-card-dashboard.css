@@ -824,7 +824,7 @@ button.pc-stage-badge {
 }
 
 .pc-ring.is-over .pc-ring__label {
-    color: #ff9f0a;
+    color: #c084fc;
 }
 
 .pc-ring.is-done .pc-ring__label {
@@ -4960,6 +4960,10 @@ button.pc-act-reason {
     border-right: 1px solid rgba(188, 206, 238, 0.08);
 }
 
+#tab-projects .card[id^="project-card-"] .pc-metric-card--google {
+    border-right: none !important;
+}
+
 .pc-metric-title {
     display: flex;
     align-items: center;
@@ -5179,6 +5183,57 @@ button.pc-metric-num-btn:active {
     color: inherit;
 }
 
+button.pc-recruit-toggle-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    padding: 1px 4px;
+    margin: 0;
+    border-radius: 4px;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+button.pc-recruit-toggle-btn:hover {
+    color: rgba(224, 236, 255, 0.95);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+button.pc-recruit-toggle-btn:active {
+    transform: scale(0.96);
+}
+
+button.pc-recruit-toggle-btn:focus-visible {
+    outline: 1px solid rgba(148, 190, 255, 0.5);
+    outline-offset: 1px;
+}
+
+.pc-recruit-toggle-chevron {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    color: rgba(188, 206, 238, 0.45);
+    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s ease;
+}
+
+.pc-recruit-toggle-btn:hover .pc-recruit-toggle-chevron {
+    color: rgba(210, 226, 252, 0.85);
+}
+
+.pc-metrics-grid.is-recruit-expanded .pc-recruit-toggle-chevron,
+.pc-recruit-toggle-btn[aria-expanded="true"] .pc-recruit-toggle-chevron {
+    transform: rotate(180deg);
+    color: rgba(160, 194, 246, 0.9);
+}
+
 .pc-metric-footer__line--buffer {
     color: rgba(160, 194, 246, 0.74);
 }
@@ -5290,12 +5345,173 @@ button.pc-metric-num-btn:active {
 }
 
 .pc-daily-activity-line.is-complete {
-    color: rgba(126, 224, 163, 0.88);
+    color: rgba(197, 211, 233, 0.60);
 }
 
 .pc-daily-activity-line.is-complete .pc-metric-footer__value {
-    color: #7ee0a3;
+    color: #30d158;
     font-weight: 700;
+}
+
+/* ───────────────── Expandable Recruitment Breakdown ───── */
+
+.pc-metrics-recruit {
+    grid-column: 1 / -1;
+    width: 100%;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit,
+.pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit {
+    grid-template-rows: 1fr;
+}
+
+.pc-metrics-recruit__inner {
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 10px;
+    border-top: 1px solid transparent;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity 0.2s ease, transform 0.24s ease, padding 0.24s ease, border-color 0.24s ease;
+}
+
+#tab-projects .card[id^="project-card-"] .pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit__inner,
+.pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit__inner {
+    padding: 7px 10px 2px;
+    border-top: 1px solid rgba(188, 206, 238, 0.08);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.pc-metrics-recruit .pc-recruit-chip {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(188, 206, 238, 0.12);
+    background: rgba(255, 255, 255, 0.035);
+    color: rgba(210, 224, 245, 0.88);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    box-sizing: border-box;
+}
+
+.pc-metrics-recruit .pc-recruit-chip:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(188, 206, 238, 0.22);
+    color: #ffffff;
+}
+
+.pc-metrics-recruit .pc-recruit-chip:active {
+    transform: scale(0.96);
+}
+
+.pc-metrics-recruit .pc-recruit-chip__label {
+    color: rgba(188, 206, 238, 0.65);
+    font-weight: 550;
+    font-size: 10px;
+}
+
+.pc-metrics-recruit .pc-recruit-chip__count {
+    color: #e2edff;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.pc-metrics-recruit .pc-recruit-chip__check {
+    color: #30d158;
+    font-weight: 800;
+    font-size: 10px;
+    margin-left: 1px;
+}
+
+.pc-metrics-recruit .pc-recruit-chip--mutual.is-filled {
+    border-color: rgba(48, 209, 88, 0.24);
+    background: rgba(48, 209, 88, 0.06);
+}
+
+.pc-metrics-recruit .pc-recruit-chip--mutual.is-filled .pc-recruit-chip__count {
+    color: #6ee7a0;
+}
+
+.pc-metrics-recruit .pc-recruit-chip--bounty.is-filled {
+    border-color: rgba(168, 85, 247, 0.25);
+    background: rgba(168, 85, 247, 0.06);
+}
+
+.pc-metrics-recruit .pc-recruit-chip--bounty.is-filled .pc-recruit-chip__count {
+    color: #c084fc;
+}
+
+.pc-recruit-group-sep {
+    display: inline-block;
+    width: 1px;
+    height: 14px;
+    background: rgba(188, 206, 238, 0.16);
+    margin: 0 2px;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.pc-metrics-recruit .pc-recruit-chip--guest {
+    border-color: rgba(168, 192, 238, 0.16);
+    background: rgba(120, 160, 230, 0.06);
+    color: rgba(200, 220, 250, 0.9);
+}
+
+.pc-metrics-recruit .pc-recruit-chip--guest:hover {
+    border-color: rgba(168, 192, 238, 0.32);
+    background: rgba(120, 160, 230, 0.12);
+    color: #ffffff;
+}
+
+#tab-projects .card[id^="project-card-"] .card-subtitle button.pc-stage-badge {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent !important;
+    border: none !important;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    text-align: left;
+    transition: opacity 0.16s ease;
+}
+
+#tab-projects .card[id^="project-card-"] .card-subtitle button.pc-stage-badge:hover {
+    opacity: 0.82;
+}
+
+#tab-projects .card[id^="project-card-"] .card-subtitle button.pc-stage-badge:active {
+    transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pc-metrics-recruit,
+    .pc-metrics-recruit__inner,
+    .pc-recruit-toggle-chevron {
+        transition: none !important;
+    }
 }
 
 #tab-projects .card[id^="project-card-"] .pc-action-bar {
@@ -5388,6 +5604,13 @@ button.pc-metric-num-btn:active {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
+}
+
+.pc-action-footer:empty {
+    display: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .pc-action-footer .pc-subtitle-chip,

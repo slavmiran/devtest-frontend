@@ -991,13 +991,37 @@
 
     /* ────────────────── activity block: contribution / attention ──────────── */
 
+    // Same source order as the roster day badge in ui-projects.js:
+    // exchange_state.left.metrics.testing_days → tester.testing_days → start_date.
+    var TESTING_CYCLE_DAYS = 14;
+
     function testerDayNumber(tester) {
+        var exchange = tester && tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+            ? tester.exchange_state
+            : null;
+        var metrics = exchange && exchange.left && exchange.left.metrics || null;
+        if (metrics && Number(metrics.testing_days || 0) > 0) {
+            return Number(metrics.testing_days);
+        }
         var day = Number(tester && tester.testing_days || 0);
         if (day > 0) return day;
         if (tester && tester.start_date && typeof getUserTestingDay === 'function') {
             return Number(getUserTestingDay(tester.start_date, tester.testing_days) || 0);
         }
         return 0;
+    }
+
+    function testerDaysRemaining(tester) {
+        return Math.max(0, TESTING_CYCLE_DAYS - testerDayNumber(tester));
+    }
+
+    function daysSince(date) {
+        if (!date || !Number.isFinite(date.getTime())) return null;
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var then = new Date(date.getTime());
+        then.setHours(0, 0, 0, 0);
+        return Math.round((today.getTime() - then.getTime()) / 86400000);
     }
 
     function dossierUsername(tester) {
@@ -1046,6 +1070,7 @@
                     kind: 'screenshots',
                     label: contributionScreenshotsLabel(item.screenshotCount),
                     proofId: item.screenshotRow.proofId,
+                    imageCount: item.screenshotCount,
                     feedbackId: 0,
                 });
             }
@@ -1271,7 +1296,7 @@
                     }
                 } else if (reason.proofId > 0) {
                     actionHtml = iconAct('image', text('pcViewProof', 'View proof'),
-                        'pcOpenProof(' + Number(appId) + ',' + Number(reason.proofId) + ',0)');
+                        'pcOpenProofOverview(' + Number(appId) + ',' + Number(reason.proofId) + ',' + Number(reason.imageCount || 0) + ')');
                 }
 
                 return '<div class="pc-contribution-subrow pc-contribution-subrow--' + esc(reason.kind) + '">' +
@@ -1369,17 +1394,6 @@
         return null;
     }
 
-    function formatDaysAgoShort(date) {
-        if (!date || !Number.isFinite(date.getTime())) return '';
-        var today = new Date();
-        today.setHours(0, 0, 0, 0);
-        var then = new Date(date.getTime());
-        then.setHours(0, 0, 0, 0);
-        var days = Math.round((today.getTime() - then.getTime()) / 86400000);
-        if (days <= 0) return workspaceText('сегодня', 'today');
-        return workspaceText(days + 'д. назад', days + 'd ago');
-    }
-
     function getAttentionReasonMeta(reason, tester, appId, testerId) {
         var code = String(reason && reason.code || '').toLowerCase();
         var reasonIcon = ATTENTION_ICONS[code] || ATTENTION_ICONS.not_opened;
@@ -1388,6 +1402,7 @@
         var title = '';
         var summaryHtml = '';
         var desc = '';
+        var bodyHtml = '';
         var actionHtml = '';
 
         if (reason.action === 'left_status' || reason.action === 'link_status') {
@@ -1456,18 +1471,38 @@
                 }
             }
         } else if (code === 'debt') {
-            title = workspaceText('Долг по взаимному тесту', 'Mutual testing debt');
+            title = text('pcAttentionDebtTitle', 'Partner finished their project.');
+            summaryHtml = '<span class="pc-attention-tile__subtitle">' +
+                esc(text('pcAttentionDebtSubtitle', 'Must finish testing your app')) + '</span>';
             var projectName = String(tester && tester.reciprocal_app_name || '').trim()
                 || workspaceText('Ответный тест', 'Reciprocal test');
-            var finishedAgo = formatDaysAgoShort(reciprocalProjectFinishedDate(tester));
-            summaryHtml = '<span class="pc-att-tag pc-att-tag--debt">' + esc(projectName) + '</span>' +
-                '<span class="pc-att-chip pc-att-chip--done">' + esc(workspaceText('завершён', 'finished')) + '</span>' +
-                (finishedAgo ? '<span class="pc-att-tag pc-att-tag--muted">' + esc(finishedAgo) + '</span>' : '');
-            desc = text(
-                'pcAttentionDebtDesc',
-                'The partner project "' + projectName + '" is already finished. Under the mutual exchange rules, they must finish testing yours.',
-                { name: projectName }
-            );
+            var finishedDaysAgo = daysSince(reciprocalProjectFinishedDate(tester));
+            var statusLine = finishedDaysAgo == null
+                ? workspaceText('Завершён', 'Finished')
+                : (finishedDaysAgo <= 0
+                    ? text('pcAttentionDebtProjectStatusToday', 'Finished today')
+                    : text('pcAttentionDebtProjectStatus', 'Finished {days} d. ago', { days: finishedDaysAgo }));
+            var debtDay = testerDayNumber(tester);
+            var remainingDays = testerDaysRemaining(tester);
+            bodyHtml = '<div class="pc-attention-debt">' +
+                '<div class="pc-attention-debt__project">' +
+                    '<div class="pc-attention-debt__name">' + esc(projectName) + '</div>' +
+                    '<div class="pc-attention-debt__meta">' + esc(statusLine) + '</div>' +
+                    '<div class="pc-attention-debt__meta">' + esc(text(
+                        'pcAttentionDebtTimeline',
+                        'Still need to test you: {remaining} d. (day {day} of 14)',
+                        { remaining: remainingDays, day: debtDay }
+                    )) + '</div>' +
+                '</div>' +
+                '<p class="pc-attention-tile__desc">' + esc(text(
+                    'pcAttentionDebtDesc',
+                    'The partner no longer has a direct reciprocal incentive — testing continues under mutual-obligation rules. Watch check-ins and send reminders on time.'
+                )) + '</p>' +
+                '<p class="pc-attention-tile__desc pc-attention-debt__warn">' + esc(text(
+                    'pcAttentionDebtWarn',
+                    'Most important — do not let them uninstall the app: if the tester removes it and the active tester base drops below 12 people, Google Play will reset the project\'s entire 14-day progress.'
+                )) + '</p>' +
+            '</div>';
             actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
                 'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'debt\')');
             actionHtml += iconAct('process', workspaceText('Связь', 'Link'),
@@ -1499,6 +1534,7 @@
             title: title,
             summaryHtml: summaryHtml,
             desc: desc,
+            bodyHtml: bodyHtml,
             actionHtml: actionHtml,
         };
     }
@@ -1548,7 +1584,7 @@
                             '<span class="pc-attention-tile__icon" aria-hidden="true">' + meta.icon + '</span>' +
                             '<div class="pc-attention-tile__text">' +
                                 '<div class="pc-attention-tile__title">' + esc(meta.title) + '</div>' +
-                                '<div class="pc-attention-tile__summary">' + meta.summaryHtml + '</div>' +
+                                (meta.summaryHtml ? '<div class="pc-attention-tile__summary">' + meta.summaryHtml + '</div>' : '') +
                             '</div>' +
                         '</div>' +
                         '<div class="pc-attention-tile__toggle" aria-hidden="true">' +
@@ -1558,7 +1594,7 @@
                     '<div class="pc-attention-tile__drawer">' +
                         '<div class="pc-attention-tile__drawer-inner">' +
                             '<div class="pc-attention-tile__content">' +
-                                '<p class="pc-attention-tile__desc">' + esc(meta.desc) + '</p>' +
+                                (meta.bodyHtml || (meta.desc ? '<p class="pc-attention-tile__desc">' + esc(meta.desc) + '</p>' : '')) +
                                 (meta.actionHtml ? '<div class="pc-attention-tile__action">' + meta.actionHtml + '</div>' : '') +
                             '</div>' +
                         '</div>' +
@@ -2627,11 +2663,12 @@
         });
     };
 
-    window.pcOpenProofOverview = function(appId, proofId) {
+    window.pcOpenProofOverview = function(appId, proofId, fallbackCount) {
         var row = findRow(appId, proofId);
         if (typeof openCheckinProofOverview !== 'function') return;
         openCheckinProofOverview(Number(proofId), {
-            imageCount: Number(row && row.imageCount || 1), title: row ? handleOf(row.tester) : '',
+            imageCount: Number(row && row.imageCount || fallbackCount || 1),
+            title: row ? handleOf(row.tester) : '',
             subtitle: row ? workspaceText('День ', 'Day ') + row.day : '',
         });
     };
