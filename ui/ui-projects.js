@@ -615,16 +615,16 @@ function buildProjectRecruitBreakdownHtml(project) {
         const guestTooltip = uiLang === 'ru'
             ? `Гостевые тестеры: ${guestTesterCount}. Нажмите для перехода на витрину в раздел «Гостевые проекты»`
             : `Guest testers: ${guestTesterCount}. Click to open Guest Projects on the marketplace`;
-        guestHtml = `
-            <span class="pc-recruit-group-sep" aria-hidden="true"></span>
-            <button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" onclick="if (typeof openGuestProjectsTesterSearch === 'function') { openGuestProjectsTesterSearch(${project.id}); } else if (window.openGuestProjectsTesterSearch) { window.openGuestProjectsTesterSearch(${project.id}); } event.stopPropagation();" title="${window.escapeHTML(guestTooltip)}">
-                <span class="pc-recruit-chip__label">👽 ${guestLabel}</span>
-                <span class="pc-recruit-chip__count">${guestTesterCount}</span>
-            </button>
-        `;
+        guestHtml =
+            '<div class="pc-recruit-guest">' +
+                '<button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" onclick="if (typeof openGuestProjectsTesterSearch === \'function\') { openGuestProjectsTesterSearch(' + project.id + '); } else if (window.openGuestProjectsTesterSearch) { window.openGuestProjectsTesterSearch(' + project.id + '); } event.stopPropagation();" title="' + window.escapeHTML(guestTooltip) + '">' +
+                    '<span class="pc-recruit-chip__label">👽 ' + guestLabel + '</span> ' +
+                    '<span class="pc-recruit-chip__count">' + guestTesterCount + '</span>' +
+                '</button>' +
+            '</div>';
     }
 
-    return parts.join('') + guestHtml;
+    return '<div class="pc-recruit-primary">' + parts.join('') + '</div>' + guestHtml;
 }
 window.buildProjectRecruitBreakdownHtml = buildProjectRecruitBreakdownHtml;
 
@@ -641,14 +641,17 @@ function toggleProjectRecruitDetails(projectId, event) {
     try {
         localStorage.setItem('project_recruit_expanded_' + safeId, isExpanded ? 'true' : 'false');
     } catch (e) {}
-    const btn = gridEl.querySelector('.pc-recruit-toggle-btn');
-    if (btn) {
+    const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
+    const toggleTitle = uiLang === 'ru'
+        ? (isExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора')
+        : (isExpanded ? 'Collapse recruitment breakdown' : 'Expand recruitment breakdown');
+    gridEl.querySelectorAll('.pc-recruit-toggle-btn, .pc-metric-card--testers .pc-metric-num-btn').forEach(function (btn) {
         btn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-        const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
-        btn.title = uiLang === 'ru'
-            ? (isExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора')
-            : (isExpanded ? 'Collapse recruitment breakdown' : 'Expand recruitment breakdown');
-    }
+        btn.title = toggleTitle;
+        if (btn.classList.contains('pc-metric-num-btn')) {
+            btn.setAttribute('aria-label', toggleTitle);
+        }
+    });
     if (window.tg && window.tg.HapticFeedback) {
         window.tg.HapticFeedback.impactOccurred('light');
     }
@@ -2040,7 +2043,7 @@ function renderProjects(force) {
         }
         const closedTestStageHtml = window.escapeHTML(closedTestStageLabel) + closedTestStageExtraHtml;
         const dayLifecycleAria = window.escapeHTML(window.t('pcLifecycleTitle', {}, lang) || 'Жизненный цикл проекта');
-        const testersPlanAria = window.escapeHTML(window.t('dprModalTitle', {}, lang) || 'Суточный план и рекомендации');
+        const recruitToggleAria = window.escapeHTML(recruitToggleTitle);
         const testersValueClass = 'pc-metric-team__value';
 
         const stageBadgeHtml = needSyncPrompt
@@ -2064,7 +2067,7 @@ function renderProjects(force) {
                     </section>
                     <section class="pc-metric-card pc-metric-card--testers">
                         <div class="pc-metric-title">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</div>
-                        <button type="button" class="pc-metric-num-btn pc-metric-main" onclick="openDailyProgressDetailsModal(${project.id}, event); event.stopPropagation();" aria-label="${testersPlanAria}">
+                        <button type="button" class="pc-metric-num-btn pc-metric-main" onclick="toggleProjectRecruitDetails(${project.id}, event);" aria-expanded="${isRecruitExpanded ? 'true' : 'false'}" aria-label="${recruitToggleAria}" title="${recruitToggleAria}">
                             <span class="${testersValueClass}">${window.escapeHTML(String(teamTesterCount))}</span>
                             ${testersMicrobarHtml}
                         </button>
@@ -2319,7 +2322,10 @@ function renderProjects(force) {
             const pingSlot = card.querySelector('[data-pc-ping-slot="' + project.id + '"]');
             if (pingSlot && !pingSlot.querySelector('.pc-ping-mini')) pingSlot.innerHTML = window.ProofPing.miniHtml(project);
         }
+        card.classList.add('pc-ping-state-' + proofPingState);
         if (proofPingState === 'mini') card.classList.add('pc-ping-is-mini');
+        if (proofPingState === 'expanded') card.classList.add('pc-ping-is-expanded');
+        if (proofPingState === 'compact') card.classList.add('pc-ping-is-compact');
         container.appendChild(card);
         requestAnimationFrame(function () {
             fitClosedTestAttractButton(card.querySelector('.pc-cta--testers'));
@@ -2518,9 +2524,13 @@ window._ppcSwitchTab = _ppcSwitchTab;
  * @param {number} alreadyPaidDays - days already covered by paid protection
  * @returns {number} $BUST cost (0 if within free buffer)
  */
-function _calcProtectionCost(gapDays, alreadyPaidDays) {
-    // Gap 0-2: free Pending Release buffer
-    const extraDays = Math.max(0, gapDays - 2);
+function _ppcExtraProtectionDays(gapDays, extraProtectDays) {
+    return Math.max(0, Number(gapDays || 0) - 2, Number(extraProtectDays || 0));
+}
+
+function _calcProtectionCost(gapDays, alreadyPaidDays, extraProtectDays) {
+    // Gap 0-2: free Pending Release buffer, unless the owner explicitly adds extra days.
+    const extraDays = _ppcExtraProtectionDays(gapDays, extraProtectDays);
     if (extraDays <= 0) return 0;
     const targetLevel = Math.min(8, extraDays);
     const currentLevel = Math.min(8, Math.max(0, alreadyPaidDays || 0));
@@ -2614,15 +2624,18 @@ function _ppcBufferPreviewCopy(T, gapDays, remainingBufferHours) {
     const modeledHours = Math.max(0, Math.round(remainingBufferHours - usedHours));
     const attached = gapDays > remainingDays + 1e-9;
 
+    const tight = Number(gapDays) === 2 && modeledHours === 0;
     let main;
-    if (gapDays <= 0) {
+    if (tight) {
+        main = T('ppcBufferPreviewTight', { hours: modeledHours, total: remainingBufferHours });
+    } else if (gapDays <= 0) {
         main = T('ppcBufferPreviewFull', { hours: remainingBufferHours });
     } else if (!attached) {
         main = T('ppcBufferPreviewInside', { hours: modeledHours, total: remainingBufferHours });
     } else {
         main = T('ppcBufferPreviewAttached', { hours: remainingBufferHours });
     }
-    return { main, modeledHours, attached };
+    return { main, modeledHours, attached, tight };
 }
 
 /** Updates all live-calculation UI elements in State #1 after slider/tip changes. */
@@ -2636,9 +2649,11 @@ function _ppcUpdateCalculations() {
     const alreadyPaid = Number(slider.getAttribute('data-already-paid') || 0);
     const balance = Number(slider.getAttribute('data-balance') || 0);
     const consumedPendingHours = Number(slider.getAttribute('data-consumed-pending-hours') || 0);
+    const extraProtectDays = Number(slider.getAttribute('data-extra-protect-days') || 0);
 
     const gap = Math.max(0, platformDay - googleDay);
-    const protectionCost = _calcProtectionCost(gap, alreadyPaid);
+    const extraDays = _ppcExtraProtectionDays(gap, extraProtectDays);
+    const protectionCost = _calcProtectionCost(gap, alreadyPaid, extraProtectDays);
     const tipAmount = tipEl ? Number(tipEl.textContent) || 0 : 0;
     const totalCost = protectionCost + tipAmount;
     const insufficient = totalCost > balance;
@@ -2662,7 +2677,6 @@ function _ppcUpdateCalculations() {
     // Math Logic for States
     const remainingBuffer = Math.max(0, 48 - consumedPendingHours);
     _ppcUpdateBufferBand(slider, sliderTrack, googleDay, platformDay, remainingBuffer);
-    const requiredBuffer = gap * 24;
     const T = (key, vars) => window.t(key, vars || {}, lang) || key;
     const preview = _ppcBufferPreviewCopy(T, gap, remainingBuffer);
 
@@ -2671,10 +2685,15 @@ function _ppcUpdateCalculations() {
     if (legendMain) legendMain.textContent = preview.main;
 
     let state = 'A';
-    if (gap > 2) {
+    if (extraDays > 0) {
         state = 'C';
-    } else if (remainingBuffer < requiredBuffer) {
+    } else if (gap === 2) {
         state = 'B';
+    }
+
+    const legendRow = legendMain && legendMain.closest('.ppc-slider-buffer-legend-row');
+    if (legendRow) {
+        legendRow.classList.toggle('is-tight', !!(preview.tight || state === 'B'));
     }
 
     // Update Smart Status Block
@@ -2697,6 +2716,7 @@ function _ppcUpdateCalculations() {
         } else if (state === 'B') {
             statusBlock.className = 'ppc-status-block state-warning';
             const fillPct = Math.round((preview.modeledHours / 48) * 100);
+            const addDayCost = _calcProtectionCost(gap, alreadyPaid, 1);
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateBWarningTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateBWarningText'))}</div>
@@ -2706,17 +2726,22 @@ function _ppcUpdateCalculations() {
                         <div class="ppc-status-progress-fill" style="width: ${fillPct}%;"></div>
                     </div>
                 </div>
+                <button type="button" class="ppc-status-add-day-btn" onclick="_ppcRecommendExtraDay(); event.stopPropagation();">
+                    ${window.escapeHTML(T('ppcStateBAddDayBtn', { amount: addDayCost }))}
+                </button>
             `;
         } else {
             statusBlock.className = 'ppc-status-block state-required';
-            const extraDays = Math.max(0, gap - 2);
             const bufferDays = remainingBuffer / 24;
-            const totalLife = Math.round((14 + bufferDays + extraDays) * 10) / 10;
-            const lifeDetailHtml = [
-                window.escapeHTML(T('ppcStateCLifeBase', { days: 14 })),
-                `<span class="ppc-life-buffer">${window.escapeHTML(T('ppcStateCLifeBuffer', { hours: remainingBuffer }))}</span>`,
-                `<span class="ppc-life-paid">${window.escapeHTML(T('ppcStateCLifePaid', { days: extraDays }))}</span>`
-            ].join(' + ');
+            const totalLife = Math.round((14 + extraDays + bufferDays) * 10) / 10;
+            const lifeDetailParts = [
+                window.escapeHTML(T('ppcStateCLifeBase', { days: 14 }))
+            ];
+            if (extraDays > 0) {
+                lifeDetailParts.push(`<span class="ppc-life-paid">${window.escapeHTML(T('ppcStateCLifePaid', { days: extraDays }))}</span>`);
+            }
+            lifeDetailParts.push(`<span class="ppc-life-buffer">${window.escapeHTML(T('ppcStateCLifeBuffer', { hours: remainingBuffer }))}</span>`);
+            const lifeDetailHtml = lifeDetailParts.join(' + ');
             html = `
                 <div class="ppc-status-title">${window.escapeHTML(T('ppcStateCRequiredTitle'))}</div>
                 <div class="ppc-status-text">${window.escapeHTML(T('ppcStateCRequiredText'))}</div>
@@ -2777,6 +2802,24 @@ function _ppcUpdateCalculations() {
         submitBtn.textContent = btnText;
     }
 }
+
+function _ppcOnSliderInput() {
+    const slider = document.getElementById('ppc-slider');
+    if (slider) slider.setAttribute('data-extra-protect-days', '0');
+    _ppcUpdateCalculations();
+}
+window._ppcOnSliderInput = _ppcOnSliderInput;
+
+function _ppcRecommendExtraDay() {
+    const slider = document.getElementById('ppc-slider');
+    if (!slider) return;
+    slider.setAttribute('data-extra-protect-days', '1');
+    if (window.tg && window.tg.HapticFeedback) {
+        window.tg.HapticFeedback.selectionChanged();
+    }
+    _ppcUpdateCalculations();
+}
+window._ppcRecommendExtraDay = _ppcRecommendExtraDay;
 
 /** Changes the tip counter value by `delta` (step of 5). */
 function _ppcChangeTip(delta) {
@@ -2899,14 +2942,15 @@ function _renderProtectionCenterState1(project, platformDay) {
                         data-already-paid="${alreadyPaid}"
                         data-balance="${balance}"
                         data-consumed-pending-hours="${project.consumed_pending_hours || 0}"
-                        oninput="_ppcUpdateCalculations()"
+                        data-extra-protect-days="0"
+                        oninput="_ppcOnSliderInput()"
                     />
                 </div>
                 <div class="ppc-slider-tick-row">
                     ${tickLabels.join('')}
                 </div>
                 <div class="ppc-slider-buffer-legend">
-                    <div class="ppc-slider-buffer-legend-row">
+                    <div class="ppc-slider-buffer-legend-row${initPreview.tight ? ' is-tight' : ''}">
                         <span class="ppc-slider-buffer-swatch"></span>
                         <span id="ppc-buffer-legend-main">${window.escapeHTML(initPreview.main)}</span>
                     </div>

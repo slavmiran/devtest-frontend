@@ -225,7 +225,7 @@ function stateBlock(o) {
     </div>
   </div>
   <div class="pc-action-footer">
-    ${o.pingMini ? `<span class="pc-ping-slot"><button type="button" class="telegram-community-chip pc-ping-mini">${TG}</button></span>` : ''}
+    <span class="pc-ping-slot"><button type="button" class="telegram-community-chip pc-ping-mini">${TG}</button></span>
   </div>`;
 }
 
@@ -353,7 +353,10 @@ function collapseHandle(collapsed, attention) {
 
 function card(id, opts) {
   opts.id = id;
-  return `<div class="card${opts.collapsed ? ' card-collapsed' : ''}" id="project-card-${id}">
+  const pingClass = opts.ping && opts.ping.includes('pc-ping--expanded')
+    ? ' pc-ping-is-expanded'
+    : (opts.ping && opts.ping.includes('pc-ping--compact') ? ' pc-ping-is-compact' : ' pc-ping-is-mini');
+  return `<div class="card${opts.collapsed ? ' card-collapsed' : ''}${pingClass}" id="project-card-${id}">
     <section class="pc-state-unified">${header(opts)}${opts.quickSettings ? quickSettings() : ''}${stateBlock(opts)}</section>
     <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}${opts.collapsed ? '' : actionBar(opts)}${opts.feedback ? feedbackStub() : ''}</div>
     ${collapseHandle(!!opts.collapsed, !!opts.attention)}

@@ -5386,7 +5386,7 @@ button.pc-recruit-toggle-btn:focus-visible {
     overflow: hidden;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 6px;
     padding: 0 10px;
@@ -5394,6 +5394,19 @@ button.pc-recruit-toggle-btn:focus-visible {
     opacity: 0;
     transform: translateY(-2px);
     transition: opacity 0.2s ease, transform 0.24s ease, padding 0.24s ease, border-color 0.24s ease;
+}
+
+.pc-metrics-recruit .pc-recruit-primary {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pc-metrics-recruit .pc-recruit-guest {
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-metrics-grid.is-recruit-expanded .pc-metrics-recruit__inner,
@@ -5486,15 +5499,21 @@ button.pc-recruit-toggle-btn:focus-visible {
     align-self: center;
 }
 
-.pc-metrics-recruit .pc-recruit-chip--guest {
-    border-color: rgba(168, 192, 238, 0.16);
-    background: rgba(120, 160, 230, 0.06);
+.pc-metrics-recruit .pc-recruit-chip--guest,
+.pc-metrics-recruit .pc-recruit-chip--guest:hover,
+.pc-metrics-recruit .pc-recruit-chip--guest:focus,
+.pc-metrics-recruit .pc-recruit-chip--guest:focus-visible {
+    border: none;
+    background: transparent;
+    box-shadow: none;
     color: rgba(200, 220, 250, 0.9);
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
-.pc-metrics-recruit .pc-recruit-chip--guest:hover {
-    border-color: rgba(168, 192, 238, 0.32);
-    background: rgba(120, 160, 230, 0.12);
+.pc-metrics-recruit .pc-recruit-chip--guest:hover,
+.pc-metrics-recruit .pc-recruit-chip--guest:focus,
+.pc-metrics-recruit .pc-recruit-chip--guest:focus-visible {
     color: #ffffff;
 }
 
@@ -5748,11 +5767,32 @@ button.pc-recruit-toggle-btn:focus-visible {
     margin-bottom: 6px !important;
 }
 
+/* In collapsed card state, always show telegram button in chips row */
 #tab-projects .card.card-collapsed .pc-action-footer .pc-ping-slot {
     display: inline-flex !important;
 }
 
-#tab-projects .card[id^="project-card-"]:not(.card-collapsed):not(.pc-ping-is-mini) .pc-action-footer .pc-ping-slot {
+/* In expanded card state, when the large notification panel is shown (expanded),
+   hide the telegram button in the chips row to prevent duplication */
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed).pc-ping-is-expanded .pc-action-footer .pc-ping-slot,
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed):has(.pc-ping--expanded) .pc-action-footer .pc-ping-slot {
+    display: none !important;
+}
+
+/* If the chips row only contains the hidden telegram slot, collapse the entire row */
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed).pc-ping-is-expanded .pc-action-footer:has(> .pc-ping-slot:only-child),
+#tab-projects .card[id^="project-card-"]:not(.card-collapsed):has(.pc-ping--expanded) .pc-action-footer:has(> .pc-ping-slot:only-child) {
+    display: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* When the big notification panel is absent (mini state) or in the intermediate state
+   when user hasn't joined telegram (compact capsule), show the telegram button in the chips row */
+#tab-projects .card[id^="project-card-"].pc-ping-is-mini .pc-action-footer .pc-ping-slot,
+#tab-projects .card[id^="project-card-"].pc-ping-is-compact .pc-action-footer .pc-ping-slot,
+#tab-projects .card[id^="project-card-"]:has(.pc-ping--compact) .pc-action-footer .pc-ping-slot {
     display: inline-flex !important;
 }
 

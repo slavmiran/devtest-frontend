@@ -682,7 +682,10 @@
 
         function finish() {
             if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
-            if (card) card.classList.add('pc-ping-is-mini');
+            if (card) {
+                card.classList.remove('pc-ping-is-expanded', 'pc-ping-is-compact', 'pc-ping-state-expanded', 'pc-ping-state-compact');
+                card.classList.add('pc-ping-is-mini', 'pc-ping-state-mini');
+            }
             if (slot && project && !slot.querySelector('.pc-ping-mini')) {
                 slot.innerHTML = miniHtml(project);
                 var mini = slot.querySelector('.pc-ping-mini');

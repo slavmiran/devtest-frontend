@@ -2647,10 +2647,11 @@ async function saveProjectSync() {
     // Calculate protection_cost to include in the payload
     var platformDay = sliderEl ? Number(sliderEl.getAttribute('data-platform-day') || 0) : day;
     var alreadyPaid = sliderEl ? Number(sliderEl.getAttribute('data-already-paid') || 0) : 0;
+    var extraProtectDays = sliderEl ? Number(sliderEl.getAttribute('data-extra-protect-days') || 0) : 0;
     var gap = Math.max(0, platformDay - day);
     var protectionCost = 0;
     if (typeof _calcProtectionCost === 'function') {
-        protectionCost = _calcProtectionCost(gap, alreadyPaid);
+        protectionCost = _calcProtectionCost(gap, alreadyPaid, extraProtectDays);
     }
 
     _pendingActions.add(actionKey);
