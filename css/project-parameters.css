@@ -166,6 +166,25 @@
 .project-email-settings-note p { margin: 0; }
 .project-email-settings-save { width: 100%; min-height: 43px; margin-top: 14px; border: 1px solid rgba(106,163,240,.4); border-radius: 11px; color: #e8f1ff; background: rgba(55,119,211,.7); font: 650 13px/1 inherit; cursor: pointer; }
 .project-email-settings-save:disabled { opacity: .58; cursor: wait; }
+/* The direct instructions editor reuses the project's canonical instructions
+   field, without sending the owner through the full project wizard. */
+.project-instructions-overlay { align-items: flex-end; padding: 14px 10px calc(14px + env(safe-area-inset-bottom, 0px)); }
+.project-instructions-sheet { width: min(100%, 440px); margin: 0 auto; padding: 8px 15px 15px; border: 1px solid rgba(153,180,220,.14); border-radius: 20px; background: #121b29; box-shadow: 0 -12px 38px rgba(0,0,0,.32); }
+.project-instructions-sheet__handle { width: 32px; height: 4px; margin: 1px auto 13px; border-radius: 10px; background: rgba(190,207,233,.2); }
+.project-instructions-sheet__head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 13px; }
+.project-instructions-sheet__head > div { min-width: 0; flex: 1; }
+.project-instructions-sheet__head h3 { margin: 0; color: #e8effb; font-size: 17px; line-height: 1.2; }
+.project-instructions-sheet__head p { margin: 5px 0 0; color: #8394ac; font-size: 12px; line-height: 1.42; }
+.project-instructions-sheet__close { appearance: none; display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; padding: 0; border: 1px solid rgba(178,198,229,.1); border-radius: 9px; color: #94a5bc; background: rgba(180,202,233,.045); font: 400 22px/1 Arial,sans-serif; cursor: pointer; }
+.project-instructions-field { display: grid; gap: 7px; color: #91a2ba; font-size: 11px; font-weight: 550; }
+.project-instructions-field textarea { width: 100%; min-height: 142px; box-sizing: border-box; padding: 10px 11px; border: 1px solid rgba(174,195,226,.13); border-radius: 10px; outline: none; resize: vertical; color: #dce7f8; background: rgba(4,10,19,.42); font: inherit; font-size: 13px; font-weight: 500; line-height: 1.45; }
+.project-instructions-field textarea:focus { border-color: rgba(102,158,235,.66); box-shadow: 0 0 0 3px rgba(80,142,229,.12); }
+.project-instructions-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 8px 1px 0; color: #70829a; font-size: 10.5px; line-height: 1.35; }
+.project-instructions-meta span { max-width: 78%; }
+.project-instructions-meta output { flex: 0 0 auto; color: #8295ae; font-variant-numeric: tabular-nums; }
+.project-instructions-error { margin: 8px 2px 0; color: #e98a8d; font-size: 11px; line-height: 1.35; }
+.project-instructions-save { width: 100%; min-height: 43px; margin-top: 14px; border: 1px solid rgba(106,163,240,.4); border-radius: 11px; color: #e8f1ff; background: rgba(55,119,211,.7); font: 650 13px/1 inherit; cursor: pointer; }
+.project-instructions-save:disabled { opacity: .58; cursor: wait; }
 @media (max-width: 360px) {
     .pc-project-params__title { font-size: 10.5px; }
     .pc-project-params__toggle { gap: 6px; padding-left: 9px; }

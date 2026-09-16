@@ -8,6 +8,8 @@
     var languageProjectKey = '';
     var languageTrigger = null;
     var emailSettingsTrigger = null;
+    var instructionsProjectKey = '';
+    var instructionsTrigger = null;
     var CHEVRON = '<svg viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var ICONS = {
         reviews: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
@@ -262,7 +264,85 @@
     }
     function openInstructions(id, event) {
         stop(event);
-        if (typeof openEditModal === 'function') openEditModal(Number(id), { focusInstructions: true });
+        var project = projectById(id);
+        if (!project || pending(project, 'instructions')) return;
+        instructionsProjectKey = projectKey(project);
+        instructionsTrigger = event && event.currentTarget || document.activeElement;
+        var modal = ensureInstructionsModal();
+        renderInstructionsModal(project);
+        modal.classList.add('active');
+        var input = document.getElementById('project-instructions-input');
+        if (input) input.focus({ preventScroll: true });
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    }
+    function ensureInstructionsModal() {
+        var modal = document.getElementById('project-instructions-modal');
+        if (modal) return modal;
+        document.body.insertAdjacentHTML('beforeend',
+            '<div id="project-instructions-modal" class="modal-overlay project-instructions-overlay" onclick="ProjectParameters.closeInstructions(event)">' +
+                '<section class="project-instructions-sheet" role="dialog" aria-modal="true" aria-labelledby="project-instructions-title" aria-describedby="project-instructions-description" onclick="event.stopPropagation()">' +
+                    '<div class="project-instructions-sheet__handle" aria-hidden="true"></div>' +
+                    '<header class="project-instructions-sheet__head"><div><h3 id="project-instructions-title"></h3><p id="project-instructions-description"></p></div><button type="button" class="project-instructions-sheet__close" onclick="ProjectParameters.closeInstructions()" aria-label="Close">×</button></header>' +
+                    '<label class="project-instructions-field" for="project-instructions-input"><span id="project-instructions-label"></span><textarea id="project-instructions-input" rows="6" maxlength="1000" oninput="ProjectParameters.onInstructionsInput()"></textarea></label>' +
+                    '<div class="project-instructions-meta"><span id="project-instructions-note"></span><output id="project-instructions-count" for="project-instructions-input"></output></div>' +
+                    '<p id="project-instructions-error" class="project-instructions-error" role="alert" hidden></p>' +
+                    '<button id="project-instructions-save" type="button" class="project-instructions-save" onclick="ProjectParameters.saveInstructions()"></button>' +
+                '</section>' +
+            '</div>'
+        );
+        return document.getElementById('project-instructions-modal');
+    }
+    function setInstructionsError(message) {
+        var error = document.getElementById('project-instructions-error');
+        if (!error) return;
+        error.hidden = !message;
+        error.textContent = message || '';
+    }
+    function renderInstructionsModal(project) {
+        var input = document.getElementById('project-instructions-input');
+        if (!input) return;
+        document.getElementById('project-instructions-title').textContent = text('pcParamsInstructionsModalTitle');
+        document.getElementById('project-instructions-description').textContent = text('pcParamsInstructionsModalDescription');
+        document.getElementById('project-instructions-label').textContent = text('pcParamsInstructionsModalLabel');
+        document.getElementById('project-instructions-note').textContent = text('pcParamsInstructionsModalNote');
+        document.getElementById('project-instructions-save').textContent = text('pcParamsInstructionsSave');
+        input.placeholder = text('instPlaceholder');
+        input.value = String(project.instructions || '');
+        setInstructionsError('');
+        onInstructionsInput();
+    }
+    function onInstructionsInput() {
+        var input = document.getElementById('project-instructions-input');
+        var count = document.getElementById('project-instructions-count');
+        if (!input || !count) return;
+        count.textContent = text('pcParamsInstructionsCount', { count: String(input.value || '').length, max: 1000 });
+        setInstructionsError('');
+    }
+    function closeInstructions(event) {
+        var modal = document.getElementById('project-instructions-modal');
+        if (!modal || !modal.classList.contains('active') || (event && event.target !== modal)) return;
+        modal.classList.remove('active');
+        if (instructionsTrigger && document.body.contains(instructionsTrigger)) instructionsTrigger.focus({ preventScroll: true });
+        instructionsProjectKey = '';
+        instructionsTrigger = null;
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    }
+    async function saveInstructions() {
+        var project = projectByKey(instructionsProjectKey);
+        var input = document.getElementById('project-instructions-input');
+        var button = document.getElementById('project-instructions-save');
+        if (!project || !input || !button || pending(project, 'instructions')) return;
+        var value = String(input.value || '').trim();
+        button.disabled = true;
+        var saved = await save(project.id || project.app_id, 'instructions', value);
+        button.disabled = false;
+        if (!saved) {
+            setInstructionsError(text('pcParamsSaveError'));
+            return;
+        }
+        closeInstructions();
+        if (typeof showToast === 'function') showToast(text('pcParamsInstructionsSaved'));
     }
     function syncEmailPreference(email, enabled) {
         var effective = !!enabled;
@@ -391,17 +471,22 @@
         }
     }
     document.addEventListener('keydown', function (event) {
-        var modal = document.querySelector('#project-email-settings-modal.active, #project-language-modal.active');
+        var modal = document.querySelector('#project-email-settings-modal.active, #project-language-modal.active, #project-instructions-modal.active');
         if (!modal) return;
-        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); modal.id === 'project-email-settings-modal' ? closeEmailSettings() : closeLanguage(); }
+        if (event.key === 'Escape') {
+            event.preventDefault(); event.stopPropagation();
+            if (modal.id === 'project-email-settings-modal') closeEmailSettings();
+            else if (modal.id === 'project-instructions-modal') closeInstructions();
+            else closeLanguage();
+        }
         if (event.key === 'Tab') {
-            var buttons = Array.from(modal.querySelectorAll('button:not(:disabled)'));
-            var index = buttons.indexOf(document.activeElement);
-            if (index < 0 || (!event.shiftKey && index === buttons.length - 1) || (event.shiftKey && index === 0)) {
+            var focusable = Array.from(modal.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled)'));
+            var index = focusable.indexOf(document.activeElement);
+            if (index < 0 || (!event.shiftKey && index === focusable.length - 1) || (event.shiftKey && index === 0)) {
                 event.preventDefault();
-                buttons[event.shiftKey ? buttons.length - 1 : 0].focus();
+                focusable[event.shiftKey ? focusable.length - 1 : 0].focus();
             }
         }
     });
-    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
+    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
 })();
