@@ -348,9 +348,10 @@
             checkpointTestingDayText: "Вы тестируете это приложение {day}-й день из 14.",
             checkpointScheduleText: "Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).",
             checkpointScheduleTextProof: "Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни загрузите скриншот запущенного приложения в Mini App или отправьте баг/рекомендацию. Переходить в личные сообщения владельцу не нужно.",
-            checkpointCheckinDoneTitle: "Чекин уже выполнен",
+            checkpointCheckinDoneTitle: "Чекин засчитан",
             checkpointCheckinDoneHint: "Если по какой-то причине скриншот ещё не отправляли, его необходимо отправить сейчас!",
-            checkpointCheckinDoneHintProof: "Чекин уже засчитан. Если скриншот ещё не загружен, откройте подтверждение в Mini App.",
+            checkpointCheckinDoneHintProof: "Скрин-отчёт уже в топике Testing Proofs.",
+            checkpointOpenReportBtn: "Открыть отчёт",
             testDayModalTitleControl: "Контрольный день",
             testDayModalTitleRegular: "День тестирования",
             testDayModalTestingProgress: "Вы тестируете это приложение <b>{day}-й день из 14</b>.",
@@ -3365,7 +3366,7 @@
             pcKarmaAvailableShort: "Доступно {available}/{max}",
             pcHintContribution: "Сегодня сделали больше обычного: отчёты, баги, рекомендации или 3+ скриншота.",
             pcHintAttention: "Здесь тестеры, из-за которых может прерваться тестирование или от которых сейчас ожидается действие / подтверждение.",
-            pcHintControl: "Сегодня должны подтвердить тестирование контрольным отчётом.",
+            pcHintControl: "Контрольные отчёты сегодня",
             pcHintAll: "Все участники текущего тестирования.",
             pcHintInfoAria: "Критерии фильтра",
             pcHintCriteriaContribution: "Вклад: сегодня отправили баг, идею, ревью или 3+ скриншота.",
@@ -3377,6 +3378,10 @@
             pcProjectRefreshingShort: "Обновляем",
             myTestsRefreshing: "Обновляем данные тестов",
             myTestsRefreshingShort: "Обновляем",
+            pcReceivedToggleShow: "Показать полученные",
+            pcReceivedToggleHide: "Скрыть полученные",
+            pcProofOpenTopicInline: "Открыть в топике",
+            pcControlRemindAllSuccess: "Напоминания отправлены",
 
     };
     window.I18N_RU = window.I18NRU;

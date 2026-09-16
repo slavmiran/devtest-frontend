@@ -1026,6 +1026,59 @@ function toggleCheckpointAccordion(element, event) {
     } catch (e) {}
 }
 
+function resolveProofsTopicUrl() {
+    var configured = String((window.App && window.App.proofsTopicUrl) || '').trim().replace(/\/+$/, '');
+    if (configured && configured.indexOf('/joinchat/') === -1 && configured.indexOf('t.me/+') === -1) {
+        return configured;
+    }
+    return String(
+        (window.App && window.App.publicGroupUrl)
+        || window.FEEDBACK_PUBLIC_LINK_BASE
+        || 'https://t.me/googleplay_console_12testers'
+    ).trim().replace(/\/+$/, '');
+}
+
+function openTelegramDeepLink(url) {
+    var target = String(url || '').trim();
+    if (!target) return false;
+    try {
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(target);
+            return true;
+        }
+        if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+            window.tg.openTelegramLink(target);
+            return true;
+        }
+    } catch (error) {}
+    window.open(target, '_blank', 'noopener');
+    return true;
+}
+
+async function openTodayCheckinReport(proofId, event) {
+    if (event) {
+        event.stopPropagation();
+        if (typeof event.preventDefault === 'function') event.preventDefault();
+    }
+    var id = Number(proofId || 0);
+    if (id > 0) {
+        try {
+            var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
+            var request = (typeof fetchWithRetry === 'function')
+                ? fetchWithRetry(API_BASE + '/checkin-proofs/' + id + '/details?init_data=' + encodeURIComponent(initData), { timeoutMs: 20000 }, 1)
+                : fetch(API_BASE + '/checkin-proofs/' + id + '/details?init_data=' + encodeURIComponent(initData));
+            var response = await request;
+            var payload = await response.json().catch(function () { return {}; });
+            var urls = payload && payload.proof && payload.proof.original_message_urls;
+            var target = Array.isArray(urls) ? String(urls[0] || '') : '';
+            if (/^https:\/\/t\.me\//i.test(target) && openTelegramDeepLink(target)) {
+                return;
+            }
+        } catch (error) {}
+    }
+    openTelegramDeepLink(resolveProofsTopicUrl());
+}
+
 function getScreenshotReminderHtml(test) {
     const testingDay = getResolvedTestingDay(test);
     if (!isMandatoryScreenshotDay(testingDay)) {
@@ -1041,16 +1094,38 @@ function getScreenshotReminderHtml(test) {
     const schedKey = usesProofUpload ? 'checkpointScheduleTextProof' : 'checkpointScheduleText';
     const schedText = (typeof window.t === 'function' ? window.t(schedKey, {}, currentLang) : null)
         || 'Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).';
-    const doneTitle = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneTitle', {}, currentLang) : null) || 'Чекин уже выполнен';
+    const doneTitle = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneTitle', {}, currentLang) : null) || 'Чекин засчитан';
     const doneHintKey = usesProofUpload ? 'checkpointCheckinDoneHintProof' : 'checkpointCheckinDoneHint';
     const doneHint = (typeof window.t === 'function' ? window.t(doneHintKey, {}, currentLang) : null)
         || 'Если по какой-то причине скриншот ещё не отправляли, его необходимо отправить сейчас!';
     const btnLabel = (typeof window.t === 'function' ? window.t('screenshotReminderBtn', {}, currentLang) : null) || '💬 Отправить скриншот';
+    const reportBtnLabel = (typeof window.t === 'function' ? window.t('checkpointOpenReportBtn', {}, currentLang) : null) || 'Открыть отчёт';
+    const todayProofId = Number(test && test.today_proof_id || 0);
 
     const safeOwner = test && test.owner_username ? escapeInlineJsString(test.owner_username) : '';
-    const dmButton = (!usesProofUpload && safeOwner)
-        ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openTelegramProfile('${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
-        : '';
+    const actionButton = usesProofUpload
+        ? `<button type="button" class="btn checkpoint-accordion__topic-btn" onclick="openTodayCheckinReport(${todayProofId}, event)"><span class="checkpoint-accordion__btn-icon" aria-hidden="true">↗</span> ${window.escapeHTML(reportBtnLabel)}</button>`
+        : (safeOwner
+            ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openTelegramProfile('${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
+            : '');
+
+    const bodyHtml = usesProofUpload
+        ? `<div class="checkpoint-accordion__status-box">
+                        <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
+                        <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
+                    </div>
+                    ${actionButton}`
+        : `<div class="checkpoint-accordion__progress">
+                        ${window.escapeHTML(dayText)}
+                    </div>
+                    <div class="checkpoint-accordion__rules">
+                        ${window.escapeHTML(schedText).replace(/\n/g, '<br>')}
+                    </div>
+                    <div class="checkpoint-accordion__status-box">
+                        <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
+                        <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
+                    </div>
+                    ${actionButton}`;
 
     return `
         <div class="checkpoint-accordion" onclick="event.stopPropagation()">
@@ -1072,17 +1147,7 @@ function getScreenshotReminderHtml(test) {
             </div>
             <div class="checkpoint-accordion__content">
                 <div class="checkpoint-accordion__body">
-                    <div class="checkpoint-accordion__progress">
-                        ${window.escapeHTML(dayText)}
-                    </div>
-                    <div class="checkpoint-accordion__rules">
-                        ${window.escapeHTML(schedText).replace(/\n/g, '<br>')}
-                    </div>
-                    <div class="checkpoint-accordion__status-box">
-                        <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
-                        <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
-                    </div>
-                    ${dmButton}
+                    ${bodyHtml}
                 </div>
             </div>
         </div>
@@ -3253,6 +3318,7 @@ Object.assign(window, {
     getActiveContractPossibleTotal,
     getContractPossibleTotalReward,
     getScreenshotReminderHtml,
+    openTodayCheckinReport,
     dismissProjectUpdateTip,
     renderCompactMeta,
     openTelegramProfile,

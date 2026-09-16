@@ -20,6 +20,8 @@
     var controlReminderSending = new Set();
     var observer = null;
     var expandedOthers = new Set();
+    var expandedReceived = new Set();
+    var lastSeenReceivedCounts = new Map();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
@@ -880,34 +882,22 @@
             return iconAct('remind', text('pcRemindBtn', 'Remind'),
                 'pcRemindTester(' + Number(appId) + ',' + Number(row.testerId) + ', \'control\', { day: ' + Number(row.day || 0) + ' })');
         }
-        if (row.proofId > 0) {
-            html += iconAct('image', '',
-                (row.proofType === 'screenshot' ? 'pcOpenProofOverview' : 'pcOpenProof') + '(' + Number(appId) + ',' + Number(row.proofId) + ',0)',
-                { title: controlProofLabel(row) });
-            if (row.proofType === 'screenshot') {
-                html += iconAct('topic', '', 'openCheckinProofOriginal(' + Number(row.proofId) + ',0,event)',
-                    { title: text('pcProofOpenTopic', 'Open in topic') });
-            }
-        }
         if (row.feedbackId > 0 && !isProcessed(row)) {
             html += iconAct('process', '',
                 'pcOpenFeedback(' + Number(appId) + ',' + Number(row.feedbackId) + ')',
                 { title: text('pcProcessBtn', 'Process') });
-        }
-        if (context.rewardedTesterIds.indexOf(Number(row.testerId)) !== -1) {
-            html += awardedRewardBadgeHtml(context, row.testerId);
-        } else if (context.rewardsLeft > 0) {
-            html += iconAct('reward', text('pcRewardBtn', 'Reward'),
-                'pcRewardTester(' + Number(appId) + ',' + Number(row.testerId) + ')');
         }
         return html;
     }
 
     function controlRowHtml(appId, row, context) {
         var dayNum = Number(row && row.day || 0);
-        var meta = '<span class="pc-pstate ' + (row.received ? 'is-received' : 'is-pending') + '">' +
-            esc(row.received ? text('pcControlReceived', 'Received') : text('pcControlPending', 'Pending')) +
-            '</span>';
+        var meta = '';
+        if (!row.received) {
+            meta += '<span class="pc-pstate is-pending">' +
+                esc(text('pcControlPending', 'Pending')) +
+                '</span>';
+        }
         if (dayNum > 0) {
             meta += '<span class="pc-person__day">' +
                 esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
@@ -919,7 +909,7 @@
         }
         var devText = formatDeviceInfo(row.device);
         if (devText) {
-            meta += '<span class="pc-person__device">• ' + esc(devText) + '</span>';
+            meta += '<span class="pc-person__device">' + (meta ? '• ' : '') + esc(devText) + '</span>';
         }
         var receipts = controlReminderStates.get(Number(appId));
         var receipt = receipts && (receipts.items || []).find(function(item) {
@@ -935,6 +925,21 @@
                 esc(text('pcReminderPersonalOpenedAt', 'Personal DM opened in Telegram at {time}', { time: reminderTime(receipt.personal_dm_opened_at) })) +
             '</span>';
         }
+        var extraHtml = '';
+        if (row.received && row.proofType === 'screenshot' && row.proofId > 0) {
+            extraHtml = '<div class="pc-proof-album-card pc-proof-album-launch">' +
+                '<div class="pc-proof-album-card__main" onclick="event.stopPropagation(); pcOpenProofOverview(' + Number(appId) + ',' + Number(row.proofId) + ')" role="button" tabindex="0">' +
+                    '<span class="pc-proof-album-launch__icon" aria-hidden="true">' + ICONS.image + (row.imageCount > 1 ? '<b>' + Number(row.imageCount) + '</b>' : '') + '</span>' +
+                    '<span class="pc-proof-album-card__info"><strong>' + esc(text('pcProofAlbumCount', '{count} screenshots', { count: row.imageCount })) + '</strong><small>' + esc(text('pcProofAlbumOverview', 'Quick overview of all images')) + '</small></span>' +
+                    '<span class="pc-proof-album-card__chev" aria-hidden="true">›</span>' +
+                '</div>' +
+                '<div class="pc-proof-album-card__divider" aria-hidden="true"></div>' +
+                '<button type="button" class="pc-proof-album-card__topic-btn" onclick="event.stopPropagation(); openCheckinProofOriginal(' + Number(row.proofId) + ',0,event)">' +
+                    ICONS.topic +
+                    '<span>' + esc(text('pcProofOpenTopicInline', 'Open in topic')) + '</span>' +
+                '</button>' +
+            '</div>';
+        }
         return personRowHtml({
             appId: appId,
             tester: row.tester,
@@ -943,10 +948,7 @@
             waiting: !row.received,
             metaHtml: meta,
             actionsHtml: controlActionsHtml(appId, row, context),
-            extraHtml: row.received && row.proofType === 'screenshot' && row.proofId > 0
-                ? '<button type="button" class="pc-proof-album-launch" onclick="event.stopPropagation(); pcOpenProofOverview(' + Number(appId) + ',' + Number(row.proofId) + ')">' +
-                    '<span class="pc-proof-album-launch__icon" aria-hidden="true">' + ICONS.image + (row.imageCount > 1 ? '<b>' + Number(row.imageCount) + '</b>' : '') + '</span>' +
-                    '<span><strong>' + esc(text('pcProofAlbumCount', '{count} screenshots', { count: row.imageCount })) + '</strong><small>' + esc(text('pcProofAlbumOverview', 'Quick overview of all images')) + '</small></span><span aria-hidden="true">›</span></button>' : '',
+            extraHtml: extraHtml,
         });
     }
 
@@ -1711,6 +1713,7 @@
         var pendingRows = rows.filter(function (row) { return !row.received; });
         var receivedRows = rows.filter(function (row) { return row.received; });
         var pendingCount = pendingRows.length;
+        var receivedCount = receivedRows.length;
 
         var bulkRemindHtml = '';
         var reminderState = controlReminderStates.get(Number(appId));
@@ -1748,18 +1751,30 @@
 
         var receivedSectionHtml = '';
         if (receivedRows.length > 0) {
-            receivedSectionHtml = '<div class="pc-control-section pc-control-section--received">' +
-                '<div class="pc-control-section-title">' +
-                    '<span>' + esc(text('pcControlSectionReceived', 'Received')) + '</span>' +
-                    '<span class="pc-control-section-count">(' + receivedRows.length + ')</span>' +
-                '</div>' +
-                '<ul class="pc-act-list pc-activity-control">' +
+            var isReceivedExpanded = expandedReceived.has(Number(appId));
+            if (isReceivedExpanded) {
+                lastSeenReceivedCounts.set(Number(appId), receivedCount);
+            }
+            var lastSeen = lastSeenReceivedCounts.get(Number(appId));
+            var hasNewReceived = !isReceivedExpanded && receivedCount > 0 && (lastSeen == null ? true : receivedCount > lastSeen);
+
+            receivedSectionHtml = '<div class="pc-control-section pc-control-section--received' + (isReceivedExpanded ? ' is-expanded' : ' is-collapsed') + '">' +
+                '<button type="button" class="pc-control-section-title pc-control-section-toggle" onclick="event.stopPropagation(); pcToggleReceivedSection(' + Number(appId) + ')" aria-expanded="' + isReceivedExpanded + '">' +
+                    '<span class="pc-control-section-toggle__left">' +
+                        '<span>' + esc(text('pcControlSectionReceived', 'Received')) + '</span>' +
+                        '<span class="pc-control-section-count' + (hasNewReceived ? ' is-highlight' : '') + '">(' + receivedCount + ')</span>' +
+                    '</span>' +
+                    '<span class="pc-control-section-chevron' + (isReceivedExpanded ? ' is-expanded' : '') + '" aria-hidden="true">' +
+                        '<svg viewBox="0 0 12 12" width="10" height="10"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
+                    '</span>' +
+                '</button>' +
+                '<ul class="pc-act-list pc-activity-control"' + (isReceivedExpanded ? '' : ' hidden style="display:none"') + '>' +
                     receivedRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
                 '</ul>' +
             '</div>';
         }
 
-        return pendingSectionHtml + receivedSectionHtml + summaryHtml;
+        return pendingSectionHtml + summaryHtml + receivedSectionHtml;
     }
 
     function nowHtmlForFilter(project, filter, data, context) {
@@ -2018,7 +2033,7 @@
         var hints = {
             contribution: workspaceText('Больше обычного чекина', 'Beyond a regular check-in'),
             attention: workspaceText('Требуется ваше решение', 'Needs your decision'),
-            control: workspaceText('Отчёты за сегодня', 'Reports due today'),
+            control: workspaceText('Контрольные отчёты сегодня', 'Control reports today'),
             testers: workspaceText('Текущий состав команды', 'Current team'),
         };
         var hintText = historyOn ? workspaceText('Выбранная категория за всё время', 'Selected category over time') : hints[filter];
@@ -2028,7 +2043,7 @@
                     '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
                     '<button type="button" class="pc-activity__info" aria-label="' +
                         esc(text('pcHintInfoAria', 'Filter criteria')) +
-                        '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')">ⓘ</button>' +
+                        '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')"><svg viewBox="0 0 16 16" width="11" height="11"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.4"/><path fill="currentColor" d="M7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM8.5 11.5h-1V7h1v4.5Z"/></svg></button>' +
                 '</div>' +
             '</div>'
         ) : '<div class="pc-activity__hint-wrap"></div>';
@@ -2540,6 +2555,61 @@
         }
     }
 
+    function playBellRemindAnimation(appId) {
+        var safeAppId = Number(appId || 0);
+        var container = document.getElementById('pc-today-' + safeAppId) || document.getElementById('project-card-' + safeAppId);
+        if (!container) return;
+        var existing = container.querySelector('.pc-bell-anim-overlay');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+        var overlay = document.createElement('div');
+        overlay.className = 'pc-bell-anim-overlay';
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.innerHTML = '<div class="pc-bell-anim-card">' +
+            '<div class="pc-bell-anim-ripple"></div>' +
+            '<div class="pc-bell-anim-ripple pc-bell-anim-ripple--2"></div>' +
+            '<div class="pc-bell-anim-icon">' +
+                '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>' +
+            '</div>' +
+            '<span class="pc-bell-anim-text">' + esc(text('pcControlRemindAllSuccess', 'Reminders sent')) + '</span>' +
+        '</div>';
+        if (!container.style.position) container.style.position = 'relative';
+        container.appendChild(overlay);
+
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.notificationOccurred('success');
+            setTimeout(function () {
+                if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('medium');
+            }, 180);
+            setTimeout(function () {
+                if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+            }, 360);
+        }
+
+        setTimeout(function () {
+            overlay.classList.add('is-fade-out');
+            setTimeout(function () {
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            }, 360);
+        }, 1400);
+    }
+
+    window.pcToggleReceivedSection = function (appId) {
+        var safeAppId = Number(appId || 0);
+        if (expandedReceived.has(safeAppId)) {
+            expandedReceived.delete(safeAppId);
+        } else {
+            expandedReceived.add(safeAppId);
+            var data = cache.get(safeAppId);
+            var count = (data && data.controlRows || []).filter(function (r) { return r.received; }).length;
+            lastSeenReceivedCounts.set(safeAppId, count);
+        }
+        refreshActivityWorkspace(safeAppId);
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+    };
+
     window.pcRemindAllPendingControl = async function (appId) {
         var safeAppId = Number(appId || 0);
         var project = projectById(safeAppId);
@@ -2553,6 +2623,7 @@
             var payload = await response.json();
             if (!response.ok || payload.status !== 'success') throw new Error('reminders_failed');
             controlReminderStates.set(safeAppId, Object.assign({}, payload, { loadedAt: Date.now() }));
+            playBellRemindAnimation(safeAppId);
             if (typeof showToast === 'function') showToast(text('pcRemindersResultToast', 'DMs sent: {count}', { count: Number(payload.sent_count || 0) }));
         } catch (_) {
             var previous = controlReminderStates.get(safeAppId) || {};

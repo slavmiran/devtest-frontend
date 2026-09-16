@@ -1728,6 +1728,7 @@ function _mapTestsFromApi(data) {
             consumed_pending_hours: Number(app.consumed_pending_hours || 0),
             pending_completion_started_at: app.pending_completion_started_at || null,
             last_check_date: resolvedLastCheckDate,
+            today_proof_id: Number(app.today_proof_id || 0) || null,
             issue_reported_at: app.issue_reported_at || null,
             issue_reason: app.issue_reason || '',
             issue_fixed_at: app.issue_fixed_at || null,

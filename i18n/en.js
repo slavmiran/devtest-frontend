@@ -349,9 +349,10 @@
             checkpointTestingDayText: "You've been testing this app for {day} of 14 days.",
             checkpointScheduleText: "Control days: 1, 4, 7, 10, and 14.\nOn these days, you need to send the developer a launch screenshot via direct message (you can also attach a bug report or recommendation).",
             checkpointScheduleTextProof: "Control days: 1, 4, 7, 10, and 14.\nOn these days, upload a launch screenshot in the Mini App or send a bug/idea. You do not need to message the owner.",
-            checkpointCheckinDoneTitle: "Check-in already completed",
+            checkpointCheckinDoneTitle: "Check-in counted",
             checkpointCheckinDoneHint: "If for any reason you haven't sent the screenshot yet, please send it now!",
-            checkpointCheckinDoneHintProof: "Check-in is already counted. If the screenshot is not uploaded yet, open confirmation in the Mini App.",
+            checkpointCheckinDoneHintProof: "Your screenshot report is already in the Testing Proofs topic.",
+            checkpointOpenReportBtn: "Open report",
             testDayModalTitleControl: "Control Day",
             testDayModalTitleRegular: "Testing Day",
             testDayModalTestingProgress: "You've been testing this app for <b>{day} of 14 days</b>.",
@@ -3359,7 +3360,7 @@
             pcKarmaAvailableShort: "Available {available}/{max}",
             pcHintContribution: "Today they did more than a regular check-in: reports, bugs, recommendations, or 3+ screenshots.",
             pcHintAttention: "Testers who may stall the test or from whom an action / confirmation is currently expected.",
-            pcHintControl: "Today they must confirm testing with a control report.",
+            pcHintControl: "Control reports today",
             pcHintAll: "Everyone in the current test.",
             pcHintInfoAria: "Filter criteria",
             pcHintCriteriaContribution: "Value: testers who sent a bug, idea, review, or 3+ screenshots today.",
@@ -3371,6 +3372,10 @@
             pcProjectRefreshingShort: "Updating",
             myTestsRefreshing: "Updating test data",
             myTestsRefreshingShort: "Updating",
+            pcReceivedToggleShow: "Show received",
+            pcReceivedToggleHide: "Hide received",
+            pcProofOpenTopicInline: "Open in topic",
+            pcControlRemindAllSuccess: "Reminders sent",
 
     };
     window.I18N_EN = window.I18NEN;
