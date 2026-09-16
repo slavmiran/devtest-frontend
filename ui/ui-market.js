@@ -6048,6 +6048,8 @@ function getKarmaSourceLabel(sourceType) {
         karma_burn: 'karmaSrc_karma_burn',
         checkin_reset: 'karmaSrc_checkin_reset',
         penalty: 'karmaSrc_penalty',
+        screenshot_bonus: 'karmaSrc_screenshot_bonus',
+        extra_screenshot: 'karmaSrc_screenshot_bonus',
         other: 'karmaSrc_other',
         good: 'karmaSrc_good_test',
         bug: 'karmaSrc_bug_report',
@@ -6061,8 +6063,9 @@ function formatKarmaAmount(amount) {
     const num = Number(amount || 0);
     const sign = num >= 0 ? '+' : '';
     const value = `${sign}${num.toFixed(1)}`;
-    if (typeof window.withKarmaIcon === 'function') return window.withKarmaIcon(value);
-    return `${value} ☯️`;
+    const safeValue = typeof window.escapeHTML === 'function' ? window.escapeHTML(value) : value;
+    if (typeof window.withKarmaIcon === 'function') return window.withKarmaIcon(safeValue);
+    return `${safeValue} ☯️`;
 }
 
 function closeKarmaInfoModal(event) {
@@ -6114,16 +6117,19 @@ async function showKarmaInfo() {
         });
 
     const rows = (Array.isArray(result && result.breakdown) ? result.breakdown : [])
-        .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0)
-        .map((item) => {
+        .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0);
+    if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'screenshot_bonus')) {
+        rows.push({ source_type: 'screenshot_bonus', amount: 0, count: 0 });
+    }
+    const rowHtml = rows.map((item) => {
             const sourceLabel = window.escapeHTML(getKarmaSourceLabel(item.source_type));
             const amount = Number(item && item.amount) || 0;
-            const amountText = window.escapeHTML(formatKarmaAmount(amount));
-            return `<div class="dashboard-row"><span class="dashboard-label">${sourceLabel}</span><span class="dashboard-label" style="font-weight:700;">${amountText}</span></div>`;
+            const amountHtml = formatKarmaAmount(amount);
+            return `<div class="dashboard-row"><span class="dashboard-label">${sourceLabel}</span><span class="dashboard-label" style="font-weight:700;">${amountHtml}</span></div>`;
         });
 
-    if (rows.length > 0) {
-        breakdownEl.innerHTML = rows.join('');
+    if (rowHtml.length > 0) {
+        breakdownEl.innerHTML = rowHtml.join('');
         breakdownSection.style.display = '';
     } else {
         breakdownEl.innerHTML = '';

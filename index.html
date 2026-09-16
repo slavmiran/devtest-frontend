@@ -36,23 +36,23 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260916-done-proof-topic-v1"></script>
-    <script src="./i18n/en.js?v=20260916-done-proof-topic-v1"></script>
+<script src="./i18n/ru.js?v=20260916-earn-karma-v1"></script>
+    <script src="./i18n/en.js?v=20260916-earn-karma-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
-    <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
+    <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-tests.js?v=20260916-done-proof-topic-v1"></script>
     <script src="./ui/ui-projects.js?v=20260916-instructions-sheet-v1"></script>
     <script src="./js/project-parameters.js?v=20260916-instructions-sheet-v1"></script>
-    <script src="./ui/ui-market.js?v=20260916-tester-profile-gate-v1"></script>
+    <script src="./ui/ui-market.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
-    <script src="./js/app-config.js?v=20260903-card-polish-v1"></script>
+    <script src="./js/app-config.js?v=20260916-earn-karma-v1"></script>
     <script src="./js/app-api.js?v=20260916-done-proof-topic-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260916-buffer-test-focus-v1"></script>
+    <script src="./js/app-actions.js?v=20260916-earn-karma-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260915-authoritative-album-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -2468,6 +2468,15 @@
 
             <div class="card" style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🙌</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnDeveloperRewardsTitle">Награды от разработчиков</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnDeveloperRewardsDesc">Когда разработчик закрывает ваш баг, рекомендацию или идею, он может начислить $BUST. Отдельная выплата приходит за дополнительные отчёты со скриншотом, если в проекте включены бонусы за скриншоты.</p>
+                <div id="earn-developer-rewards-status" class="earn-chip-row"></div>
+            </div>
+
+            <div class="card" style="margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                     <span style="font-size: 20px;">⭐</span>
                     <span style="font-weight: 700; font-size: 15px;" data-i18n="earnPlayReviewTitle">Google Play отзывы</span>
                 </div>
@@ -2502,8 +2511,8 @@
                 </div>
                 <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnSprintDesc">Участвуйте в 10-дневных спринтах: баги, идеи и Play-отзывы дают баллы. Топ-10 делят призовой пул ~2000 $BUST.</p>
                 <div id="earn-sprint-status" class="earn-chip-row">
-                    <span class="meta-chip accent-blue" id="earn-sprint-joined">🏁 Участий: 0</span>
-                    <span class="meta-chip accent-green" id="earn-sprint-bust">💎 Заработано: 0.0 $BUST</span>
+                    <span class="meta-chip accent-green" id="earn-sprint-joined">🏁 Участий: 0</span>
+                    <span class="meta-chip accent-purple" id="earn-sprint-bust">💎 0.0 $BUST</span>
                 </div>
                 <button type="button" class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="closeEarnBustModal(); showContributionInfo();" data-i18n="earnSprintOpenBtn">Открыть спринт</button>
             </div>

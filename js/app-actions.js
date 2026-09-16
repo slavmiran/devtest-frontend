@@ -2898,8 +2898,16 @@ function renderEarnBustDynamic() {
     `;
     document.getElementById('earn-feedback-status').innerHTML = `
         <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
-        <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
     `;
+    var developerRewardsStatus = document.getElementById('earn-developer-rewards-status');
+    if (developerRewardsStatus) {
+        var developerTotalBust = Number(_earnTicketRewardBust || 0) + Number(_earnScreenshotBoostBust || 0);
+        developerRewardsStatus.innerHTML = `
+            <span class="meta-chip accent-green">🐞 ${window.escapeHTML(window.t('earnDeveloperTicketChip', { count: Number(_earnTicketRewardCount || 0) }, lang))}</span>
+            <span class="meta-chip accent-green">📸 ${window.escapeHTML(window.t('earnDeveloperBoostChip', { count: Number(_earnScreenshotBoostCount || 0) }, lang))}</span>
+            <span class="meta-chip accent-purple">💎 ${formatBustAmount(developerTotalBust)}</span>
+        `;
+    }
     var playReviewStatus = document.getElementById('earn-play-review-status');
     if (playReviewStatus) {
         playReviewStatus.innerHTML = `
@@ -2915,7 +2923,7 @@ function renderEarnBustDynamic() {
         sprintJoinedEl.innerText = `🏁 ${window.t('earnSprintJoinedChip', { count: Number(_earnSprintJoined || 0) }, lang)}`;
     }
     if (sprintBustEl) {
-        sprintBustEl.innerText = `💎 ${window.t('earnSprintBustChip', { amount: formatBustAmount(_earnSprintBust) }, lang)}`;
+        sprintBustEl.innerText = `💎 ${formatBustAmount(_earnSprintBust)}`;
     }
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
@@ -2957,6 +2965,10 @@ async function openEarnBustModal() {
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
         _earnFeedbackCount = Number(data.feedback_sent_count || 0);
         _earnFeedbackBust = Number(data.feedback_bust_earned || 0);
+        _earnTicketRewardCount = Number(data.developer_ticket_count || 0);
+        _earnTicketRewardBust = Number(data.developer_ticket_bust_earned || 0);
+        _earnScreenshotBoostCount = Number(data.screenshot_boost_count || 0);
+        _earnScreenshotBoostBust = Number(data.screenshot_boost_bust_earned || 0);
         _earnPlayReviewCount = Number(data.play_review_count || 0);
         _earnPlayReviewBust = Number(data.play_review_bust_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
