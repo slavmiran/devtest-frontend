@@ -36,23 +36,23 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260915-project-parameters-v1"></script>
-    <script src="./i18n/en.js?v=20260915-project-parameters-v1"></script>
+<script src="./i18n/ru.js?v=20260916-tester-profile-required-v1"></script>
+    <script src="./i18n/en.js?v=20260916-tester-profile-required-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-tests.js?v=20260915-catchup-chip-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260915-project-parameters-v1"></script>
-    <script src="./js/project-parameters.js?v=20260915-project-parameters-v1"></script>
-    <script src="./ui/ui-market.js?v=20260915-market-chips-neutral-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260916-tester-profile-required-v1"></script>
+    <script src="./js/project-parameters.js?v=20260916-project-parameters-v2"></script>
+    <script src="./ui/ui-market.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20260903-card-polish-v1"></script>
-    <script src="./js/app-api.js?v=20260915-project-parameters-v1"></script>
-    <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
+    <script src="./js/app-api.js?v=20260916-tester-profile-gate-v1"></script>
+    <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260914-catchup-cam-v1"></script>
+    <script src="./js/app-actions.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260915-authoritative-album-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -60,7 +60,7 @@
     <script src="./js/project-today.js?v=20260915-catchup-buffer-notify-v1"></script>
     <script src="./js/proof-ping.js?v=20260910-quick-ping-explain-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260903-ping-master-v1"></script>
+<script src="./js/app-features.js?v=20260916-tester-profile-required-v1"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260827-balance-actions-v17"></script>
 <script src="./js/termination-sheet.js?v=20260824-kick-confirm-v8"></script>
 <script src="./js/bounty-applications.js?v=20260904-my-tests-refresh-v1"></script>
@@ -75,7 +75,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260910-proof-bonus-chip-v1">
     <link rel="stylesheet" href="./css/testing-control.css?v=20260913-control-reminders-album-v1">
-    <link rel="stylesheet" href="./css/wizard.css?v=20260915-market-chips-neutral-v1">
+    <link rel="stylesheet" href="./css/wizard.css?v=20260916-email-preference-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260827-dossier-layout-v15">
@@ -104,7 +104,7 @@
     <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260915-recruit-guest-right-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260915-no-chip-divider-v1">
     <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20260915-debt-redesign-v1">
-    <link rel="stylesheet" href="./css/project-parameters.css?v=20260915-project-parameters-v1">
+    <link rel="stylesheet" href="./css/project-parameters.css?v=20260916-project-parameters-v2">
 </head>
 <body>
 
@@ -840,7 +840,8 @@
                 </div>
                 </div>
             </div>
-            <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="add-email-testers-box">
+            <!-- Email-test consent is account-wide and is configured in Settings / the project parameters sheet. -->
+            <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="add-email-testers-box" hidden>
                 <label class="review-checkbox-row add-email-testers-box__toggle">
                     <input type="checkbox" id="app-accepts-email-testers" onchange="onAcceptsEmailTestersChange()">
                     <span>
@@ -1024,11 +1025,11 @@
     <div id="device-profile-required-modal" class="modal-overlay" onclick="closeDeviceProfileRequiredModal(event)">
         <div class="modal-content device-profile-required-modal-content" onclick="event.stopPropagation()">
             <div style="font-size: 36px; margin-bottom: 8px;">📱</div>
-            <h3 data-i18n="massInviteDeviceProfileRequiredTitle" style="margin-bottom: 8px;">Профиль тестового устройства</h3>
-            <p data-i18n="massInviteDeviceProfileRequiredAlert" style="font-size: 13px; line-height: 1.45; color: var(--hint-color, #8e8e93); margin-bottom: 20px;">Для запуска массовой рассылки заполните профиль вашего тестового устройства. Это необходимо для повышения качества взаимного тестирования.</p>
+            <h3 id="device-profile-required-title" data-i18n="massInviteDeviceProfileRequiredTitle" style="margin-bottom: 8px;">Профиль тестировщика</h3>
+            <p id="device-profile-required-text" data-i18n="massInviteDeviceProfileRequiredAlert" style="font-size: 13px; line-height: 1.45; color: var(--hint-color, #8e8e93); margin-bottom: 20px;">Для запуска массовой рассылки заполните профиль тестировщика.</p>
             <div class="action-row" style="display: flex; gap: 10px;">
-                <button type="button" class="btn btn-secondary" onclick="closeDeviceProfileRequiredModal()" data-i18n="btnCancel" style="flex: 1;">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="proceedToDeviceProfileFromRequiredModal()" data-i18n="massInviteDeviceProfileRequiredBtn" style="flex: 1.3;">Заполнить профиль</button>
+                <button type="button" class="btn btn-secondary" id="device-profile-required-secondary" onclick="closeDeviceProfileRequiredModal()" data-i18n="btnCancel" style="flex: 1;">Отмена</button>
+                <button type="button" class="btn btn-primary" id="device-profile-required-primary" onclick="proceedToDeviceProfileFromRequiredModal()" data-i18n="massInviteDeviceProfileRequiredBtn" style="flex: 1.3;">Заполнить профиль</button>
             </div>
         </div>
     </div>
@@ -1529,7 +1530,8 @@
                 </div>
 
                 <!-- Card 6: Email Testers Outreach -->
-                <div class="wizard-outreach-card add-email-testers-box" id="edit-add-email-testers-box">
+                <!-- Kept structurally for legacy form readers; the visible control is now global. -->
+                <div class="wizard-outreach-card add-email-testers-box" id="edit-add-email-testers-box" hidden>
                     <label class="review-checkbox-row add-email-testers-box__toggle">
                         <input type="checkbox" id="edit-app-accepts-email-testers" onchange="onEditAcceptsEmailTestersChange()">
                         <span>

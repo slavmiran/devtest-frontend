@@ -5862,6 +5862,20 @@ function openEditModal(projectId, options) {
             }, 4000);
         }, 300);
     }
+    if (options && options.focusInstructions) {
+        setTimeout(function() {
+            var input = document.getElementById('edit-description');
+            var section = input && input.closest ? input.closest('.form-group') : null;
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                section.classList.add('highlight-pulse');
+                setTimeout(function() {
+                    section.classList.remove('highlight-pulse');
+                }, 4000);
+            }
+            if (input) input.focus({ preventScroll: true });
+        }, 300);
+    }
 }
 
 function renderEditGroupSection() {
@@ -8655,9 +8669,31 @@ function closeAttractTestersSheet(event) {
     overlay.classList.remove('is-active');
 }
 
-function openDeviceProfileRequiredModal() {
+let _deviceProfileGateCtx = null;
+
+function openDeviceProfileRequiredModal(opts) {
+    opts = opts || {};
+    _deviceProfileGateCtx = opts;
     var modal = document.getElementById('device-profile-required-modal');
     if (!modal) return;
+    var titleEl = document.getElementById('device-profile-required-title');
+    var textEl = document.getElementById('device-profile-required-text');
+    var primaryBtn = document.getElementById('device-profile-required-primary');
+    var secondaryBtn = document.getElementById('device-profile-required-secondary');
+    if (titleEl) titleEl.textContent = opts.title || window.t('deviceGateMassTitle', {}, lang);
+    if (textEl) textEl.textContent = opts.text || window.t('deviceGateMassText', {}, lang);
+    if (primaryBtn) primaryBtn.textContent = opts.primaryLabel || window.t('deviceGateFillBtn', {}, lang);
+    if (secondaryBtn) {
+        if (opts.skippable) {
+            secondaryBtn.style.display = '';
+            secondaryBtn.textContent = opts.secondaryLabel || window.t('deviceGateSkipBtn', {}, lang);
+            secondaryBtn.onclick = skipDeviceProfileRequiredModal;
+        } else {
+            secondaryBtn.style.display = '';
+            secondaryBtn.textContent = window.t('btnCancel', {}, lang);
+            secondaryBtn.onclick = function() { closeDeviceProfileRequiredModal(); };
+        }
+    }
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
@@ -8668,17 +8704,41 @@ function closeDeviceProfileRequiredModal(event) {
     if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
     var modal = document.getElementById('device-profile-required-modal');
     if (modal) modal.classList.remove('active');
+    if (!event || event.target === event.currentTarget) {
+        _deviceProfileGateCtx = null;
+    }
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 window.closeDeviceProfileRequiredModal = closeDeviceProfileRequiredModal;
 
+function skipDeviceProfileRequiredModal() {
+    var ctx = _deviceProfileGateCtx || {};
+    _deviceProfileGateCtx = null;
+    var modal = document.getElementById('device-profile-required-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    if (typeof ctx.onSkip === 'function') ctx.onSkip();
+}
+window.skipDeviceProfileRequiredModal = skipDeviceProfileRequiredModal;
+
 function proceedToDeviceProfileFromRequiredModal() {
-    closeDeviceProfileRequiredModal();
+    var ctx = _deviceProfileGateCtx;
+    var modal = document.getElementById('device-profile-required-modal');
+    if (modal) modal.classList.remove('active');
+    _deviceProfileGateCtx = ctx || null;
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     if (typeof openDeviceInfoEditorModal === 'function') {
         openDeviceInfoEditorModal();
     }
 }
 window.proceedToDeviceProfileFromRequiredModal = proceedToDeviceProfileFromRequiredModal;
+
+function consumeDeviceProfileGateCtx() {
+    var ctx = _deviceProfileGateCtx;
+    _deviceProfileGateCtx = null;
+    return ctx;
+}
+window.consumeDeviceProfileGateCtx = consumeDeviceProfileGateCtx;
 
 function handleLeadsRadarAction() {
     if (window.tg) {
@@ -8723,10 +8783,15 @@ function openMassInviteModal(projectId) {
     
     // Close Action Sheet first if open
     closeAttractTestersSheet();
-    
-    // Device Profile check for mutual testing quality
+
     if (typeof isDeviceProfileComplete === 'function' && !isDeviceProfileComplete()) {
-        openDeviceProfileRequiredModal();
+        openDeviceProfileRequiredModal({
+            skippable: false,
+            title: window.t('massInviteDeviceProfileRequiredTitle', {}, lang),
+            text: window.t('massInviteDeviceProfileRequiredAlert', {}, lang),
+            primaryLabel: window.t('massInviteDeviceProfileRequiredBtn', {}, lang),
+            onSavedComplete: function() { openMassInviteModal(projectId); },
+        });
         return;
     }
 

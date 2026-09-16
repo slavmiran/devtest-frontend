@@ -8429,6 +8429,11 @@ function joinTesterOwnedProjectFromDossier(testerId, project, event) {
         });
         return;
     }
+    if (typeof window.gateTesterProfileForMinAndroid === 'function' && window.gateTesterProfileForMinAndroid(project, {
+        onSavedComplete: function() { joinTesterOwnedProjectFromDossier(testerId, project); },
+    })) {
+        return;
+    }
 
     closeDossierModal();
     setTimeout(function() {

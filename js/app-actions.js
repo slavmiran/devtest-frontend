@@ -2068,12 +2068,22 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
             title: window.t('emailGateOfferTitle', {}, lang),
             text: window.t('emailGateOfferText', {}, lang),
             primaryLabel: window.t('emailGateSaveContinue', {}, lang),
-            onSave: function() { _continueMutualOffer(targetAppId, targetOwnerId, sourceButton); },
+            onSave: function() { _continueMutualOfferAfterDeviceGate(targetAppId, targetOwnerId, sourceButton); },
         });
         return;
     }
 
-    await _continueMutualOffer(targetAppId, targetOwnerId, sourceButton);
+    _continueMutualOfferAfterDeviceGate(targetAppId, targetOwnerId, sourceButton);
+}
+
+function _continueMutualOfferAfterDeviceGate(targetAppId, targetOwnerId, sourceButton) {
+    var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
+    if (typeof window.gateTesterProfileForMinAndroid === 'function' && window.gateTesterProfileForMinAndroid(target, {
+        onSavedComplete: function() { _continueMutualOffer(targetAppId, targetOwnerId, sourceButton); },
+    })) {
+        return;
+    }
+    _continueMutualOffer(targetAppId, targetOwnerId, sourceButton);
 }
 
 async function openPrelaunchJoinModal(targetAppId, targetOwnerId, event) {
@@ -2096,6 +2106,11 @@ async function openPrelaunchJoinModal(targetAppId, targetOwnerId, event) {
             primaryLabel: window.t('emailGateSaveContinue', {}, lang),
             onSave: function() { openPrelaunchJoinModal(targetAppId, targetOwnerId); },
         });
+        return;
+    }
+    if (typeof window.gateTesterProfileForMinAndroid === 'function' && window.gateTesterProfileForMinAndroid(target, {
+        onSavedComplete: function() { openPrelaunchJoinModal(targetAppId, targetOwnerId); },
+    })) {
         return;
     }
 

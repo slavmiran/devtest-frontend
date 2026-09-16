@@ -7,6 +7,7 @@
     var emailPending = false;
     var languageProjectKey = '';
     var languageTrigger = null;
+    var emailSettingsTrigger = null;
     var CHEVRON = '<svg viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var ICONS = {
         reviews: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
@@ -14,6 +15,7 @@
         android: '<path d="m7 6-2-3m12 3 2-3M4 14v-3a8 8 0 0 1 16 0v3zM8 9h.01M16 9h.01M7 14v6m10-6v6M4 17h16"/>',
         email: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 6 8 7 8-7"/>',
         camera: '<path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/>',
+        instructions: '<path d="M7 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2V6a2 2 0 0 1 2-2z"/><path d="M9 9h7M9 13h7M9 17h4"/>',
     };
 
     function text(key, params) {
@@ -29,7 +31,13 @@
     function userEmail() {
         return String(typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : (window.App && window.App.userEmail || '')).trim();
     }
-    function emailOn(project) { return !!userEmail() || project.accepts_email_testers === true; }
+    function emailPreferenceOn() {
+        if (window.App && typeof window.App.emailProjectsEnabled === 'boolean') return window.App.emailProjectsEnabled;
+        return projects().some(emailOn);
+    }
+    // Email-project consent belongs to the account, not to a particular card.
+    // The API mirrors the effective account preference to every own project.
+    function emailOn(project) { return project.accepts_email_testers === true; }
     function androidVersion(project) {
         return typeof normalizeMinAndroidVersion === 'function' ? normalizeMinAndroidVersion(project.min_android_version) : Number(project.min_android_version || 0);
     }
@@ -67,6 +75,15 @@
             '<span class="pc-project-param__value' + (toggle ? ' pc-project-param__value--state' : '') + '">' + esc(value) + '</span>' +
             (!toggle ? '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' : '') + '</button>';
     }
+    function emailPreference(project, id, onLabel, offLabel) {
+        var enabled = emailOn(project);
+        var busy = pending(project, 'accepts_email_testers');
+        return '<button type="button" class="pc-project-email-preference' + (enabled ? ' is-active' : '') + '" data-project-param="accepts_email_testers" onclick="ProjectParameters.openEmailSettings(' + id + ',event)" aria-haspopup="dialog"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
+            '<span class="pc-project-email-preference__heading">' + icon('email') + '<span><strong>' + esc(text('pcParamsEmail')) + '</strong><small>' + esc(text('pcParamsEmailGlobal')) + '</small></span></span>' +
+            '<span class="pc-project-email-preference__state">' + esc(enabled ? onLabel : offLabel) + '</span>' +
+            '<span class="pc-project-email-preference__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
+        '</button>';
+    }
     function content(project) {
         var id = Number(project.id || project.app_id);
         var open = expanded.has(projectKey(project));
@@ -98,8 +115,9 @@
                 tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + id + ',event)', true) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + id + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
-                tile(project, 'accepts_email_testers', 'pcParamsEmail', emailOn(project) ? onLabel : offLabel, 'email', emailOn(project), 'ProjectParameters.toggleEmail(' + id + ',event)', true) +
+                tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
             '</div>' +
+            emailPreference(project, id, onLabel, offLabel) +
             '<button type="button" class="pc-project-boost' + (boost.on ? ' is-active' : '') + '" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog">' +
                 '<span class="pc-project-boost__heading"><span class="pc-project-boost__label">' + icon('camera') + esc(text('pcParamsBoost')) + '</span><span class="pc-project-boost__reward">' + esc(boostValue) + '</span></span>' +
                 '<span class="pc-project-boost__details"><span>' + esc(text('pcParamsBoostPool', { amount: amount(boost.pool) })) + '</span>' +
@@ -242,46 +260,140 @@
         closeLanguage();
         if (project && language(project) !== code) return save(project.id || project.app_id, 'target_lang', code);
     }
-    function syncEmail(email) {
+    function openInstructions(id, event) {
+        stop(event);
+        if (typeof openEditModal === 'function') openEditModal(Number(id), { focusInstructions: true });
+    }
+    function syncEmailPreference(email, enabled) {
+        var effective = !!enabled;
         window.App = window.App || {};
         window.App.userEmail = email;
+        window.App.emailProjectsEnabled = effective;
         if (window.App.state) window.App.state._userEmail = email;
         if (typeof _userEmail !== 'undefined') _userEmail = email;
         projects().forEach(function (project) {
-            project.accepts_email_testers = !!email;
-            remember(project, 'accepts_email_testers', !!email, false);
+            project.accepts_email_testers = effective;
+            remember(project, 'accepts_email_testers', effective, false);
             update(project);
         });
         if (typeof syncSettingsEmailRowUi === 'function') syncSettingsEmailRowUi();
         cache();
     }
-    async function toggleEmail(id, event) {
+    function ensureEmailSettingsModal() {
+        var modal = document.getElementById('project-email-settings-modal');
+        if (modal) return modal;
+        document.body.insertAdjacentHTML('beforeend',
+            '<div id="project-email-settings-modal" class="modal-overlay project-email-settings-overlay" onclick="ProjectParameters.closeEmailSettings(event)">' +
+                '<section class="project-email-settings-sheet" role="dialog" aria-modal="true" aria-labelledby="project-email-settings-title" onclick="event.stopPropagation()">' +
+                    '<div class="project-email-settings-sheet__handle" aria-hidden="true"></div>' +
+                    '<header class="project-email-settings-sheet__head"><div><h3 id="project-email-settings-title"></h3><p id="project-email-settings-description"></p></div><button type="button" class="project-email-settings-sheet__close" onclick="ProjectParameters.closeEmailSettings()" aria-label="Close">×</button></header>' +
+                    '<label class="project-email-settings-switch"><span><strong id="project-email-settings-toggle-label"></strong><small id="project-email-settings-scope"></small></span><input id="project-email-settings-enabled" type="checkbox" onchange="ProjectParameters.onEmailSettingsToggle()"><i aria-hidden="true"></i></label>' +
+                    '<label class="project-email-settings-field" for="project-email-settings-input"><span id="project-email-settings-email-label"></span><input id="project-email-settings-input" type="email" autocomplete="email" inputmode="email" oninput="ProjectParameters.clearEmailSettingsError()"></label>' +
+                    '<p id="project-email-settings-error" class="project-email-settings-error" role="alert" hidden></p>' +
+                    '<div class="project-email-settings-note"><span aria-hidden="true">i</span><p id="project-email-settings-note"></p></div>' +
+                    '<button id="project-email-settings-save" type="button" class="project-email-settings-save" onclick="ProjectParameters.saveEmailSettings()"></button>' +
+                '</section>' +
+            '</div>'
+        );
+        return document.getElementById('project-email-settings-modal');
+    }
+    function setEmailSettingsError(message) {
+        var error = document.getElementById('project-email-settings-error');
+        if (!error) return;
+        error.hidden = !message;
+        error.textContent = message || '';
+    }
+    function renderEmailSettings() {
+        var modal = document.getElementById('project-email-settings-modal');
+        if (!modal) return;
+        var input = document.getElementById('project-email-settings-input');
+        var enabled = document.getElementById('project-email-settings-enabled');
+        document.getElementById('project-email-settings-title').textContent = text('pcParamsEmailSettingsTitle');
+        document.getElementById('project-email-settings-description').textContent = text('pcParamsEmailSettingsDescription');
+        document.getElementById('project-email-settings-toggle-label').textContent = text('pcParamsEmailSettingsToggle');
+        document.getElementById('project-email-settings-scope').textContent = text('pcParamsEmailGlobal');
+        document.getElementById('project-email-settings-email-label').textContent = text('pcParamsEmailAddress');
+        document.getElementById('project-email-settings-note').textContent = text('pcParamsEmailSettingsNote');
+        document.getElementById('project-email-settings-save').textContent = text('pcParamsEmailSettingsSave');
+        input.value = userEmail();
+        enabled.checked = emailPreferenceOn();
+        setEmailSettingsError('');
+    }
+    function openEmailSettings(id, event) {
         stop(event);
         var project = projectById(id);
-        if (!project || emailPending) return;
-        if (emailOn(project)) {
-            var confirmed = await new Promise(function (resolve) {
-                if (window.tg && typeof window.tg.showConfirm === 'function') window.tg.showConfirm(text('pcParamsEmailDisableConfirm'), resolve);
-                else resolve(window.confirm(text('pcParamsEmailDisableConfirm')));
-            });
-            if (!confirmed || emailPending) return;
-            return save(id, 'accepts_email_testers', false, { defer: true, onSuccess: function () { syncEmail(''); } });
+        if (Number(id || 0) > 0 && !project) return;
+        if (emailPending) return;
+        emailSettingsTrigger = event && event.currentTarget || document.activeElement;
+        var modal = ensureEmailSettingsModal();
+        renderEmailSettings();
+        modal.classList.add('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    }
+    function closeEmailSettings(event) {
+        var modal = document.getElementById('project-email-settings-modal');
+        if (!modal || !modal.classList.contains('active') || (event && event.target !== modal)) return;
+        modal.classList.remove('active');
+        if (emailSettingsTrigger && document.body.contains(emailSettingsTrigger)) emailSettingsTrigger.focus({ preventScroll: true });
+        emailSettingsTrigger = null;
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    }
+    function clearEmailSettingsError() { setEmailSettingsError(''); }
+    function onEmailSettingsToggle() {
+        var enabled = document.getElementById('project-email-settings-enabled');
+        var input = document.getElementById('project-email-settings-input');
+        if (enabled && enabled.checked && input && !String(input.value || '').trim()) {
+            setEmailSettingsError(text('pcParamsEmailRequired'));
         }
-        var key = projectKey(project);
-        if (typeof openEmailCollectModal === 'function') {
-            openEmailCollectModal({
-                title: text('pcParamsEmailTitle'), text: text('pcParamsEmailHint'), primaryLabel: text('pcParamsEmailEnable'),
-                onSave: function (email) {
-                    syncEmail(email);
-                    if (projectByKey(key)) save(id, 'accepts_email_testers', true, { extra: { tester_email: email } });
-                },
-            });
+    }
+    async function saveEmailSettings() {
+        var modal = document.getElementById('project-email-settings-modal');
+        var input = document.getElementById('project-email-settings-input');
+        var enabledInput = document.getElementById('project-email-settings-enabled');
+        var button = document.getElementById('project-email-settings-save');
+        if (!modal || !input || !enabledInput || emailPending) return;
+        var email = String(input.value || '').trim();
+        var enabled = !!enabledInput.checked;
+        if (enabled && !email) {
+            setEmailSettingsError(text('pcParamsEmailRequired'));
+            input.focus();
+            return;
+        }
+        if (email && typeof isValidEmail === 'function' && !isValidEmail(email)) {
+            setEmailSettingsError(text('pcParamsEmailInvalid'));
+            input.focus();
+            return;
+        }
+        emailPending = true;
+        if (button) button.disabled = true;
+        projects().forEach(update);
+        try {
+            if (email && email !== userEmail()) {
+                var emailResult = typeof saveTesterEmail === 'function' ? await saveTesterEmail(email) : { ok: false };
+                if (!emailResult || !emailResult.ok) throw new Error(emailResult && emailResult.message || 'email_save_failed');
+                email = String(emailResult.email || email).trim();
+            }
+            var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || (typeof API_BASE !== 'undefined' ? API_BASE : '');
+            var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((window.tg && window.tg.initData) || '');
+            var response = await fetch(String(apiBase).replace(/\/+$/, '') + '/users/me/email-projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ init_data: initData, enabled: enabled }) });
+            var result = await response.json().catch(function () { return {}; });
+            if (!response.ok || result.status !== 'success') throw new Error(result.message || result.code || 'save_failed');
+            syncEmailPreference(String(result.email || email || userEmail()).trim(), result.enabled === true);
+            closeEmailSettings();
+            if (typeof showToast === 'function') showToast(text('pcParamsEmailSettingsSaved'));
+        } catch (error) {
+            setEmailSettingsError(String(error && error.message || text('pcParamsSaveError')));
+        } finally {
+            emailPending = false;
+            if (button) button.disabled = false;
+            projects().forEach(update);
         }
     }
     document.addEventListener('keydown', function (event) {
-        var modal = document.getElementById('project-language-modal');
-        if (!modal || !modal.classList.contains('active')) return;
-        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeLanguage(); }
+        var modal = document.querySelector('#project-email-settings-modal.active, #project-language-modal.active');
+        if (!modal) return;
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); modal.id === 'project-email-settings-modal' ? closeEmailSettings() : closeLanguage(); }
         if (event.key === 'Tab') {
             var buttons = Array.from(modal.querySelectorAll('button:not(:disabled)'));
             var index = buttons.indexOf(document.activeElement);
@@ -291,5 +403,5 @@
             }
         }
     });
-    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, toggleEmail: toggleEmail, reconcile: reconcile };
+    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
 })();

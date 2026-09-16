@@ -1947,6 +1947,12 @@ function populateSettingsEmail() {
 }
 
 function openSettingsEmailModal() {
+    // Email projects are an account-level choice.  Reuse the focused sheet so
+    // the address and consent are managed together instead of in two places.
+    if (window.ProjectParameters && typeof window.ProjectParameters.openEmailSettings === 'function') {
+        window.ProjectParameters.openEmailSettings(0, null);
+        return;
+    }
     var modal = document.getElementById('settings-email-modal');
     if (!modal) return;
     populateSettingsEmail();
@@ -2489,6 +2495,17 @@ async function startMassInvite(projectId) {
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
         return null;
     }
+    if (typeof isDeviceProfileComplete === 'function' && !isDeviceProfileComplete()) {
+        if (typeof openDeviceProfileRequiredModal === 'function') {
+            openDeviceProfileRequiredModal({
+                skippable: false,
+                title: window.t('massInviteDeviceProfileRequiredTitle', {}, lang),
+                text: window.t('massInviteDeviceProfileRequiredAlert', {}, lang),
+                primaryLabel: window.t('massInviteDeviceProfileRequiredBtn', {}, lang),
+            });
+        }
+        return null;
+    }
 
     var actionKey = 'mass_invite_start_' + projectId;
     if (_pendingActions.has(actionKey)) return null;
@@ -2591,17 +2608,32 @@ async function startMassInvite(projectId) {
                         || skipCode === 'target_owner_has_access_issue'
                         || skipCode === 'access_issue'
                         || (sendData && sendData.outcome === 'access_issue');
-                    if (isAccessIssue) {
-                        // Soft skip: warn in UI, keep blast running.
+                    var isSlotCap = skipCode === 'mutual_limit_reached'
+                        || skipCode === 'source_mutual_limit_reached';
+                    if (isAccessIssue || isSlotCap) {
+                        // Soft skip: warn in UI, keep blast running unless the source is already full.
                         if (typeof MassInviteSession !== 'undefined') {
-                            if (MassInviteSession.markAccessIssue) {
+                            if (MassInviteSession.markAccessIssue && isAccessIssue) {
                                 MassInviteSession.markAccessIssue(projectId, candidate.owner_id, skipCode || 'access_issue');
                             } else {
-                                MassInviteSession.markFailed(projectId, candidate.owner_id, skipCode || 'access_issue');
+                                MassInviteSession.markFailed(projectId, candidate.owner_id, skipCode || 'skipped');
                             }
                         }
                         if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'access_issue');
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, isAccessIssue ? 'access_issue' : 'error');
+                        }
+                        if (skipCode === 'source_mutual_limit_reached') {
+                            for (var rest = i + 1; rest < totalCount; rest++) {
+                                var restOwnerId = candidates[rest] && candidates[rest].owner_id;
+                                if (!restOwnerId) continue;
+                                if (typeof MassInviteSession !== 'undefined' && MassInviteSession.markFailed) {
+                                    MassInviteSession.markFailed(projectId, restOwnerId, 'source_mutual_limit_reached');
+                                }
+                                if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
+                                    MassInviteProgressOverlay.setCandidateStatus(restOwnerId, 'error');
+                                }
+                            }
+                            break;
                         }
                     } else {
                         failedCount++;
@@ -4614,4 +4646,3 @@ window.submitBanAppeal = submitBanAppeal;
 window.openBanUserModal = openBanUserModal;
 window.closeBanUserModal = closeBanUserModal;
 window.submitBanUser = submitBanUser;
-

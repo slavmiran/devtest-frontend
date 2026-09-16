@@ -138,6 +138,42 @@ function getStoredDeviceInfoData() {
     return parseDeviceInfoData(_deviceInfo);
 }
 
+function getStoredAndroidMajorVersion() {
+    var data = getStoredDeviceInfoData();
+    var match = String((data && data.android_version) || '').match(/(\d+)/);
+    return match ? Number(match[1]) : 0;
+}
+
+function gateTesterProfileForMinAndroid(target, opts) {
+    opts = opts || {};
+    var minAndroid = Number(target && target.min_android_version || 0);
+    if (minAndroid <= 0) return false;
+
+    if (typeof isDeviceProfileComplete === 'function' && isDeviceProfileComplete()) {
+        var major = getStoredAndroidMajorVersion();
+        if (major > 0 && major < minAndroid) {
+            var versionMsg = window.t('deviceGateOfferVersionText', { version: minAndroid }, lang);
+            if (window.tg && window.tg.showAlert) window.tg.showAlert(versionMsg);
+            else if (typeof showToast === 'function') showToast(versionMsg);
+            else alert(versionMsg);
+            return true;
+        }
+        return false;
+    }
+
+    if (typeof openDeviceProfileRequiredModal === 'function') {
+        openDeviceProfileRequiredModal({
+            skippable: false,
+            title: window.t('deviceGateOfferTitle', {}, lang),
+            text: window.t('deviceGateOfferText', { version: minAndroid }, lang),
+            primaryLabel: window.t('deviceGateFillBtn', {}, lang),
+            onSavedComplete: opts.onSavedComplete,
+        });
+        return true;
+    }
+    return false;
+}
+
 function detectAndroidVersionFromBrowser() {
     var ua = String(navigator.userAgent || '');
     var androidMatch = ua.match(/Android\s+([\d.]+)/i);
@@ -529,7 +565,16 @@ async function saveDeviceInfoFromModal() {
         } else {
             showToast(window.t('deviceInfoSavedToast', {}, lang));
         }
+        var gateCtx = typeof window.consumeDeviceProfileGateCtx === 'function'
+            ? window.consumeDeviceProfileGateCtx()
+            : null;
+        if (gateCtx && typeof gateCtx.onSavedComplete === 'function') {
+            gateCtx.onSavedComplete();
+        }
     } else {
+        if (typeof window.consumeDeviceProfileGateCtx === 'function') {
+            window.consumeDeviceProfileGateCtx();
+        }
         showToast(window.t('deviceProfileSavedIncompleteToast', {}, lang));
     }
 }
@@ -646,3 +691,4 @@ function copyFeedbackDeviceLine(btnEl) {
 window.copyFeedbackDeviceLine = copyFeedbackDeviceLine;
 window.isDeviceProfileComplete = isDeviceProfileComplete;
 window.openDeviceInfoEditorModal = openDeviceInfoEditorModal;
+window.gateTesterProfileForMinAndroid = gateTesterProfileForMinAndroid;

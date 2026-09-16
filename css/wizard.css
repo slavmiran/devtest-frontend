@@ -1382,6 +1382,7 @@ body.wizard-open .bottom-nav {
     overflow: hidden;
     transition: padding 0.35s ease;
 }
+.add-email-testers-box[hidden] { display: none !important; }
 
 .add-email-testers-box__toggle {
     margin-bottom: 0;

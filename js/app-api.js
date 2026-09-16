@@ -1275,6 +1275,9 @@ function handleApiError(code, details = {}) {
         email_required: 'reportIssueEmailRequired',
         access_checklist_required: 'reportIssueChecklistIncomplete',
         auto_accept_reliability_required: 'auto_accept_reliability_required',
+        tester_profile_required: 'err_tester_profile_required',
+        android_version_too_low: 'err_android_version_too_low',
+        mutual_limit_reached: 'err_mutual_limit_reached',
     };
 
     var normalizedCode = String(code || '').trim();
@@ -1797,6 +1800,9 @@ async function _loadTasksImpl(options) {
         var data = await response.json();
         _userEmail = String(data.user_email || '').trim();
         window.App.userEmail = _userEmail;
+        if (typeof data.email_projects_enabled === 'boolean') {
+            window.App.emailProjectsEnabled = data.email_projects_enabled;
+        }
         if (typeof syncSettingsEmailRowUi === 'function') {
             try { syncSettingsEmailRowUi(); } catch (e) {}
         }

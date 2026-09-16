@@ -3,9 +3,10 @@
     grid-column: 1 / -1;
     min-width: 0;
     margin: 8px 0 -6px;
-    border-top: 1px solid rgba(188, 206, 238, .09);
+    border-top: 1px solid rgba(188, 206, 238, .075);
     border-radius: 0 0 13px 13px;
-    background: rgba(2, 7, 15, .37);
+    /* A quiet footer, distinct from the metrics but never a second dark card. */
+    background: rgba(7, 14, 25, .14);
     overflow: hidden;
 }
 .pc-project-params__head { display: flex; align-items: center; min-height: 40px; padding-right: 7px; }
@@ -26,10 +27,10 @@
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
-.pc-project-params__title { flex: 1; min-width: 0; color: #aebbd0; font-size: 11.5px; font-weight: 650; line-height: 1.2; }
+.pc-project-params__title { min-width: 0; overflow: hidden; color: #aebbd0; font-size: 11.5px; font-weight: 650; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .pc-project-params__count { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; color: #728299; font-size: 10px; font-weight: 500; white-space: nowrap; }
 .pc-project-params__count i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
-.pc-project-params__chevron { display: flex; flex: 0 0 10px; color: #73839b; transition: transform 200ms ease; }
+.pc-project-params__chevron { display: flex; flex: 0 0 10px; margin-right: auto; color: #73839b; transition: transform 200ms ease; }
 .pc-project-params__chevron svg { width: 10px; height: 6px; }
 .pc-project-params.is-expanded .pc-project-params__chevron { transform: rotate(180deg); }
 .pc-project-params .pc-ping-slot { flex: 0 0 30px; }
@@ -70,6 +71,36 @@
 .pc-project-param__edit { position: absolute; right: 9px; bottom: 11px; display: flex; color: #526580; }
 .pc-project-param__edit svg { width: 8px; height: 5px; }
 .pc-project-param:disabled { opacity: .58; cursor: wait; }
+.pc-project-email-preference {
+    position: relative;
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 50px;
+    margin: 7px 0 0;
+    padding: 8px 23px 8px 10px;
+    border: 1px solid rgba(174,195,226,.08);
+    border-radius: 9px;
+    color: #8496af;
+    background: rgba(191,211,243,.025);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.pc-project-email-preference.is-active { border-color: rgba(90,150,229,.15); background: rgba(90,150,229,.045); }
+.pc-project-email-preference__heading { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+.pc-project-email-preference__heading > svg { width: 14px; height: 14px; flex: 0 0 14px; }
+.pc-project-email-preference__heading > span { display: grid; min-width: 0; gap: 2px; }
+.pc-project-email-preference__heading strong { overflow: hidden; color: #91a2ba; font-size: 11px; font-weight: 550; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.pc-project-email-preference__heading small { overflow: hidden; color: #667992; font-size: 9.5px; font-weight: 500; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.pc-project-email-preference__state { flex: 0 0 auto; color: #78899f; font-size: 11px; font-weight: 650; }
+.pc-project-email-preference.is-active .pc-project-email-preference__state { color: #91b7ef; }
+.pc-project-email-preference__chevron { position: absolute; display: flex; right: 18px; color: #536781; transform: rotate(-90deg); }
+.pc-project-email-preference__chevron svg { width: 9px; height: 5px; }
+.pc-project-email-preference:disabled { opacity: .58; cursor: wait; }
 .pc-project-boost {
     position: relative;
     appearance: none;
@@ -107,6 +138,34 @@
 .pc-project-param:active, .pc-project-boost:active { background: rgba(120,157,213,.08); }
 .pc-project-params__toggle:active { background: rgba(120,157,213,.035); }
 .project-language-hint { margin: -3px 0 14px; color: var(--hint-color,#8191a9); font-size: 12px; line-height: 1.4; }
+/* Account-level choice for manual Email-list projects.  It shares the visual
+   language of the project sheets, while clearly describing its global scope. */
+.project-email-settings-overlay { align-items: flex-end; padding: 14px 10px calc(14px + env(safe-area-inset-bottom, 0px)); }
+.project-email-settings-sheet { width: min(100%, 440px); margin: 0 auto; padding: 8px 15px 15px; border: 1px solid rgba(153,180,220,.14); border-radius: 20px; background: #121b29; box-shadow: 0 -12px 38px rgba(0,0,0,.32); }
+.project-email-settings-sheet__handle { width: 32px; height: 4px; margin: 1px auto 13px; border-radius: 10px; background: rgba(190,207,233,.2); }
+.project-email-settings-sheet__head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 13px; }
+.project-email-settings-sheet__head > div { min-width: 0; flex: 1; }
+.project-email-settings-sheet__head h3 { margin: 0; color: #e8effb; font-size: 17px; line-height: 1.2; }
+.project-email-settings-sheet__head p { margin: 5px 0 0; color: #8394ac; font-size: 12px; line-height: 1.42; }
+.project-email-settings-sheet__close { appearance: none; display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; padding: 0; border: 1px solid rgba(178,198,229,.1); border-radius: 9px; color: #94a5bc; background: rgba(180,202,233,.045); font: 400 22px/1 Arial,sans-serif; cursor: pointer; }
+.project-email-settings-switch { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 10px 11px; border: 1px solid rgba(174,195,226,.1); border-radius: 12px; background: rgba(180,202,233,.04); cursor: pointer; }
+.project-email-settings-switch > span { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.project-email-settings-switch strong { color: #d5dfef; font-size: 13px; line-height: 1.2; }
+.project-email-settings-switch small { color: #72849c; font-size: 10.5px; line-height: 1.2; }
+.project-email-settings-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.project-email-settings-switch i { position: relative; flex: 0 0 38px; width: 38px; height: 22px; border-radius: 999px; background: #37475e; transition: background 160ms ease; }
+.project-email-settings-switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #dce7f8; box-shadow: 0 1px 3px rgba(0,0,0,.26); transition: transform 160ms ease; }
+.project-email-settings-switch input:checked + i { background: #3978d6; }
+.project-email-settings-switch input:checked + i::after { transform: translateX(16px); background: #fff; }
+.project-email-settings-field { display: grid; gap: 6px; margin-top: 11px; color: #91a2ba; font-size: 11px; font-weight: 550; }
+.project-email-settings-field input { width: 100%; min-height: 42px; box-sizing: border-box; padding: 0 11px; border: 1px solid rgba(174,195,226,.13); border-radius: 10px; outline: none; color: #dce7f8; background: rgba(4,10,19,.42); font: inherit; font-size: 13px; }
+.project-email-settings-field input:focus { border-color: rgba(102,158,235,.66); box-shadow: 0 0 0 3px rgba(80,142,229,.12); }
+.project-email-settings-error { margin: 8px 2px 0; color: #e98a8d; font-size: 11px; line-height: 1.35; }
+.project-email-settings-note { display: flex; gap: 7px; align-items: flex-start; margin: 11px 1px 0; color: #74869e; font-size: 10.5px; line-height: 1.4; }
+.project-email-settings-note span { display: grid; place-items: center; flex: 0 0 14px; width: 14px; height: 14px; margin-top: 1px; border: 1px solid rgba(139,166,204,.25); border-radius: 50%; color: #8ba4c6; font: 700 9px/1 Arial,sans-serif; }
+.project-email-settings-note p { margin: 0; }
+.project-email-settings-save { width: 100%; min-height: 43px; margin-top: 14px; border: 1px solid rgba(106,163,240,.4); border-radius: 11px; color: #e8f1ff; background: rgba(55,119,211,.7); font: 650 13px/1 inherit; cursor: pointer; }
+.project-email-settings-save:disabled { opacity: .58; cursor: wait; }
 @media (max-width: 360px) {
     .pc-project-params__title { font-size: 10.5px; }
     .pc-project-params__toggle { gap: 6px; padding-left: 9px; }
