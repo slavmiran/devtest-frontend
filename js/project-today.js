@@ -237,11 +237,11 @@
 
     /* Compact Material-style glyphs for filtered-tab actions. */
     var ICONS = {
-        topic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21 3-7 18-4-7-7-4 18-7Z"/><path d="m10 14 11-11"/></svg>',
+        topic: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>',
         remind: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>',
         reward: (typeof window.karmaIconHtml === 'function'
             ? window.karmaIconHtml('karma-yin-icon--inline')
-            : '<svg viewBox="-40 -40 80 80" aria-hidden="true"><circle r="39" fill="currentColor"/><path fill="#fff" fill-opacity="0.92" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"/><circle r="5" cy="19" fill="#fff" fill-opacity="0.92"/><circle r="5" cy="-19" fill="currentColor"/></svg>'),
+            : '<svg viewBox="-40 -40 80 80" aria-hidden="true"><circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle><path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path><circle r="5.5" cy="19" fill="#ffffff"></circle><circle r="5.5" cy="-19" fill="#000000"></circle></svg>'),
         link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
         image: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>',
         process: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm4-4H6v-2h10v2zm0-4H6V7h10v2z"/></svg>',
@@ -622,9 +622,11 @@
     }
 
     function buildProofRow(item, proof, thumbnailByProofId) {
-        var totalImages = String(proof && proof.type || '') === 'screenshot'
+        var isScreenshot = String(proof && proof.type || '') === 'screenshot';
+        var hasProofMedia = Boolean(proof && (proof.has_media || (proof.image_count && Number(proof.image_count) > 0) || (proof.feedback && proof.feedback.has_media)));
+        var totalImages = isScreenshot
             ? Math.max(1, Math.min(5, Number(proof.image_count || 1)))
-            : (proof ? 1 : 0);
+            : (hasProofMedia ? Math.max(1, Number(proof && proof.image_count || 1)) : 0);
         return {
             progressId: Number(item.progress_id || 0),
             testerId: Number(item.tester && item.tester.id || 0),
@@ -637,6 +639,8 @@
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: '',
+            hasMedia: hasProofMedia,
+            feedbackText: String(proof && proof.feedback && (proof.feedback.message_text || proof.feedback.text || proof.feedback.summary || proof.feedback.title) || ''),
             slots: buildSlots(proof, thumbnailByProofId),
         };
     }
@@ -646,9 +650,11 @@
         var state = String(entry && entry.state || '');
         var checked = state === 'checked' || state === 'checked_overtime' || state === 'external_checked';
         var proof = checked && entry.proof && entry.proof.type !== 'legacy' ? entry.proof : null;
-        var totalImages = String(proof && proof.type || '') === 'screenshot'
+        var isScreenshot = String(proof && proof.type || '') === 'screenshot';
+        var hasProofMedia = Boolean(proof && (proof.has_media || (proof.image_count && Number(proof.image_count) > 0) || (proof.feedback && proof.feedback.has_media)));
+        var totalImages = isScreenshot
             ? Math.max(1, Math.min(5, Number(proof.image_count || 1)))
-            : (proof ? 1 : 0);
+            : (hasProofMedia ? Math.max(1, Number(proof && proof.image_count || 1)) : 0);
         return {
             progressId: Number(item.progress_id || 0),
             testerId: Number(item.tester && item.tester.id || 0),
@@ -662,6 +668,8 @@
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: '',
+            hasMedia: hasProofMedia,
+            feedbackText: String(proof && proof.feedback && (proof.feedback.message_text || proof.feedback.text || proof.feedback.summary || proof.feedback.title) || ''),
             slots: buildSlots(proof, thumbnailByProofId),
         };
     }
@@ -674,13 +682,23 @@
         await Promise.all(targets.map(async function (row) {
             try {
                 var proof = await requestProofDetails(row.proofId);
-                row.feedbackStatus = String(proof && proof.feedback && proof.feedback.status || '').toLowerCase();
+                var fb = proof && proof.feedback;
+                row.feedbackStatus = String(fb && fb.status || '').toLowerCase();
+                if (fb) {
+                    if (fb.has_media != null) row.hasMedia = Boolean(fb.has_media);
+                    row.feedbackText = String(fb.message_text || fb.text || fb.summary || fb.title || '').replace(/\s+/g, ' ').trim();
+                }
+                if (proof && proof.image_count != null) {
+                    row.imageCount = Number(proof.image_count);
+                    if (row.imageCount > 0) row.hasMedia = true;
+                }
                 row.feedbackTitle = String(
-                    (proof && proof.feedback && (proof.feedback.title || proof.feedback.summary || proof.feedback.text)) || ''
+                    (fb && (fb.title || fb.summary || fb.text || fb.message_text)) || ''
                 ).replace(/\s+/g, ' ').trim().slice(0, 80);
             } catch (_) {
                 row.feedbackStatus = '';
                 row.feedbackTitle = '';
+                row.feedbackText = '';
             }
         }));
     }
@@ -876,13 +894,119 @@
         return received + '<span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
     }
 
+    function activityCardHtml(appId, item, opts) {
+        opts = opts || {};
+        var safeAppId = Number(appId || 0);
+        var type = String(item && (item.kind || item.proofType) || '');
+        if (type === 'screenshots') type = 'screenshot';
+        if (!type && item && item.proofId > 0) type = 'screenshot';
+        var proofId = Number(item && item.proofId || 0);
+        var feedbackId = Number(item && item.feedbackId || 0);
+        var imageCount = Number(item && item.imageCount || 0);
+        var hasMedia = item && item.hasMedia != null ? Boolean(item.hasMedia) : (type === 'screenshot' ? imageCount > 0 : false);
+
+        var iconSvg = ICONS.image;
+        var iconMod = 'screenshot';
+        var subBadgeHtml = '';
+
+        if (type === 'bug') {
+            iconSvg = CONTRIBUTION_ICONS.bug;
+            iconMod = 'bug';
+            if (hasMedia) {
+                subBadgeHtml = '<span class="pc-proof-album-launch__sub-badge" aria-hidden="true">' + ICONS.image + '</span>';
+            }
+        } else if (type === 'idea') {
+            iconSvg = CONTRIBUTION_ICONS.idea;
+            iconMod = 'idea';
+            if (hasMedia) {
+                subBadgeHtml = '<span class="pc-proof-album-launch__sub-badge" aria-hidden="true">' + ICONS.image + '</span>';
+            }
+        } else if (type === 'play_review') {
+            iconSvg = CONTRIBUTION_ICONS.play_review;
+            iconMod = 'play_review';
+        } else {
+            iconSvg = ICONS.image;
+            iconMod = 'screenshot';
+            if (imageCount > 1) {
+                subBadgeHtml = '<b>' + imageCount + '</b>';
+            }
+        }
+
+        var title = '';
+        if (type === 'bug') {
+            title = hasMedia ? text('pcBugWithScreenshot', 'Баг + Скриншот') : text('pcProofBug', 'Баг');
+        } else if (type === 'idea') {
+            title = hasMedia ? text('pcIdeaWithScreenshot', 'Рекомендация + Скриншот') : text('pcContributionIdea', 'Рекомендация');
+        } else if (type === 'play_review') {
+            title = text('pcProofPlayReview', 'Отзыв Google Play');
+        } else {
+            title = text('pcProofAlbumCount', '{count} screenshots', { count: imageCount || 1 });
+        }
+
+        var processedHtml = '';
+        if (feedbackId > 0 && isProcessed(item)) {
+            processedHtml = ' <span class="pc-badge-processed">' + esc(text('pcContributionProcessed', '✓ Processed')) + '</span>';
+        }
+
+        var subtitle = '';
+        if (type === 'screenshot') {
+            subtitle = text('pcProofAlbumOverview', 'Quick overview of all images');
+        } else {
+            var rawText = String(item && (item.feedbackText || item.feedbackTitle || item.label || '')).trim();
+            if (rawText === text('pcProofBug', 'Bug') || rawText === text('pcContributionIdea', 'Recommendation') || rawText === text('pcProofReview', 'Review')) {
+                rawText = '';
+            }
+            if (rawText) {
+                subtitle = rawText.length > 90 ? (rawText.slice(0, 87) + '...') : rawText;
+            } else {
+                if (type === 'bug') subtitle = text('pcBugDetailsHint', 'Нажмите для обработки бага');
+                else if (type === 'idea') subtitle = text('pcIdeaDetailsHint', 'Нажмите для обработки рекомендации');
+                else if (type === 'play_review') subtitle = text('pcReviewDetailsHint', 'Нажмите для просмотра отзыва');
+                else subtitle = text('pcProofAlbumOverview', 'Quick overview of all images');
+            }
+        }
+
+        var mainClick = '';
+        if (feedbackId > 0) {
+            mainClick = 'pcOpenFeedback(' + safeAppId + ',' + feedbackId + ')';
+        } else if (proofId > 0) {
+            mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount ? ',' + imageCount : '') + ')';
+        }
+
+        var topHtml = '<button type="button" class="pc-proof-album-card__main" onclick="event.stopPropagation(); ' + mainClick + '">' +
+            '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--' + esc(iconMod) + '" aria-hidden="true">' +
+                iconSvg +
+                subBadgeHtml +
+            '</span>' +
+            '<span class="pc-proof-album-card__info">' +
+                '<strong>' + esc(title) + processedHtml + '</strong>' +
+                '<small>' + esc(subtitle) + '</small>' +
+            '</span>' +
+            '<span class="pc-proof-album-card__chev" aria-hidden="true">›</span>' +
+        '</button>';
+
+        var bottomHtml = '';
+        if (type !== 'play_review' && proofId > 0) {
+            bottomHtml = '<div class="pc-proof-album-card__divider" aria-hidden="true"></div>' +
+                '<button type="button" class="pc-proof-album-card__topic-btn" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
+                    ICONS.topic +
+                    '<span>' + esc(text('pcProofOpenTopicInline', 'Открыть в топике')) + '</span>' +
+                '</button>';
+        }
+
+        return '<div class="pc-proof-album-card pc-proof-album-launch pc-proof-album-card--' + esc(iconMod) + '">' +
+            topHtml +
+            bottomHtml +
+        '</div>';
+    }
+
     function controlActionsHtml(appId, row, context) {
         var html = '';
         if (!row.received) {
             return iconAct('remind', text('pcRemindBtn', 'Remind'),
                 'pcRemindTester(' + Number(appId) + ',' + Number(row.testerId) + ', \'control\', { day: ' + Number(row.day || 0) + ' })');
         }
-        if (row.feedbackId > 0 && !isProcessed(row)) {
+        if (row.proofId <= 0 && row.feedbackId > 0 && !isProcessed(row)) {
             html += iconAct('process', '',
                 'pcOpenFeedback(' + Number(appId) + ',' + Number(row.feedbackId) + ')',
                 { title: text('pcProcessBtn', 'Process') });
@@ -926,19 +1050,8 @@
             '</span>';
         }
         var extraHtml = '';
-        if (row.received && row.proofType === 'screenshot' && row.proofId > 0) {
-            extraHtml = '<div class="pc-proof-album-card pc-proof-album-launch">' +
-                '<div class="pc-proof-album-card__main" onclick="event.stopPropagation(); pcOpenProofOverview(' + Number(appId) + ',' + Number(row.proofId) + ')" role="button" tabindex="0">' +
-                    '<span class="pc-proof-album-launch__icon" aria-hidden="true">' + ICONS.image + (row.imageCount > 1 ? '<b>' + Number(row.imageCount) + '</b>' : '') + '</span>' +
-                    '<span class="pc-proof-album-card__info"><strong>' + esc(text('pcProofAlbumCount', '{count} screenshots', { count: row.imageCount })) + '</strong><small>' + esc(text('pcProofAlbumOverview', 'Quick overview of all images')) + '</small></span>' +
-                    '<span class="pc-proof-album-card__chev" aria-hidden="true">›</span>' +
-                '</div>' +
-                '<div class="pc-proof-album-card__divider" aria-hidden="true"></div>' +
-                '<button type="button" class="pc-proof-album-card__topic-btn" onclick="event.stopPropagation(); openCheckinProofOriginal(' + Number(row.proofId) + ',0,event)">' +
-                    ICONS.topic +
-                    '<span>' + esc(text('pcProofOpenTopicInline', 'Open in topic')) + '</span>' +
-                '</button>' +
-            '</div>';
+        if (row.received && row.proofId > 0) {
+            extraHtml = activityCardHtml(appId, row);
         }
         return personRowHtml({
             appId: appId,
@@ -1148,6 +1261,9 @@
                     proofId: item.bug.proofId,
                     feedbackId: item.bug.feedbackId,
                     feedbackStatus: item.bug.feedbackStatus,
+                    feedbackText: item.bug.feedbackText || item.bug.feedbackTitle || '',
+                    hasMedia: Boolean(item.bug.hasMedia || Number(item.bug.imageCount || 0) > 0),
+                    imageCount: Number(item.bug.imageCount || 0),
                 });
             }
             if (item.idea) {
@@ -1157,6 +1273,9 @@
                     proofId: item.idea.proofId,
                     feedbackId: item.idea.feedbackId,
                     feedbackStatus: item.idea.feedbackStatus,
+                    feedbackText: item.idea.feedbackText || item.idea.feedbackTitle || '',
+                    hasMedia: Boolean(item.idea.hasMedia || Number(item.idea.imageCount || 0) > 0),
+                    imageCount: Number(item.idea.imageCount || 0),
                 });
             }
             if (item.play_review) {
@@ -1166,6 +1285,9 @@
                     proofId: item.play_review.proofId,
                     feedbackId: item.play_review.feedbackId,
                     feedbackStatus: item.play_review.feedbackStatus,
+                    feedbackText: item.play_review.feedbackText || item.play_review.feedbackTitle || '',
+                    hasMedia: Boolean(item.play_review.hasMedia || Number(item.play_review.imageCount || 0) > 0),
+                    imageCount: Number(item.play_review.imageCount || 0),
                 });
             }
             item.reasons = reasons;
@@ -1335,6 +1457,21 @@
         return 2;
     }
 
+    function rewardAccentButtonHtml(appId, testerId) {
+        var karmaIcon = typeof window.karmaIconHtml === 'function'
+            ? window.karmaIconHtml('karma-yin-icon--inline')
+            : (ICONS.reward || '<span class="rewards-icon-glyph">☯</span>');
+        return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward" ' +
+            'title="' + esc(text('pcRewardBtn', 'Reward')) + '" ' +
+            'aria-label="' + esc(text('pcRewardBtn', 'Reward')) + '" ' +
+            'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')">' +
+            '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
+            '<span class="pc-reward-accent-btn__orbit" aria-hidden="true">' +
+                '<span class="pc-reward-accent-btn__sparkle"></span>' +
+            '</span>' +
+        '</button>';
+    }
+
     function contributionSheetHtml(appId, items, context) {
         if (!items.length) return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
 
@@ -1348,32 +1485,11 @@
             if (rewarded) {
                 headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId);
             } else if (context.rewardsLeft > 0) {
-                headerActionsHtml = iconAct('reward', text('pcRewardBtn', 'Reward'),
-                    'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')');
+                headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId);
             }
 
-            var subrowsHtml = '<div class="pc-contribution-subrows">' + item.reasons.map(function (reason) {
-                var reasonIcon = CONTRIBUTION_ICONS[reason.kind] || CONTRIBUTION_ICONS.screenshots;
-                var actionHtml = '';
-                if (reason.feedbackId > 0) {
-                    if (isProcessed(reason)) {
-                        actionHtml = '<span class="pc-badge-processed">' + esc(text('pcContributionProcessed', '✓ Processed')) + '</span>';
-                    } else {
-                        actionHtml = iconAct('process', text('pcProcessBtn', 'Process'),
-                            'pcOpenFeedback(' + Number(appId) + ',' + Number(reason.feedbackId) + ')');
-                    }
-                } else if (reason.proofId > 0) {
-                    actionHtml = iconAct('image', text('pcViewProof', 'View proof'),
-                        'pcOpenProofOverview(' + Number(appId) + ',' + Number(reason.proofId) + ',' + Number(reason.imageCount || 0) + ')');
-                }
-
-                return '<div class="pc-contribution-subrow pc-contribution-subrow--' + esc(reason.kind) + '">' +
-                    '<div class="pc-contribution-subrow__info">' +
-                        '<span class="pc-contribution-subrow__icon" aria-hidden="true">' + reasonIcon + '</span>' +
-                        '<span class="pc-contribution-subrow__label">' + esc(reason.label) + '</span>' +
-                    '</div>' +
-                    '<div class="pc-contribution-subrow__action">' + actionHtml + '</div>' +
-                '</div>';
+            var subrowsHtml = '<div class="pc-contribution-cards">' + item.reasons.map(function (reason) {
+                return activityCardHtml(appId, reason);
             }).join('') + '</div>';
 
             return personRowHtml({
@@ -1741,7 +1857,7 @@
             pendingSectionHtml = '<div class="pc-control-section pc-control-section--pending">' +
                 '<div class="pc-control-section-title">' +
                     '<span>' + esc(text('pcControlSectionPending', 'Pending')) + '</span>' +
-                    '<span class="pc-control-section-count">(' + pendingRows.length + ')</span>' +
+                    '<span class="pc-control-section-badge pc-control-section-count">' + pendingRows.length + '</span>' +
                 '</div>' +
                 '<ul class="pc-act-list pc-activity-control">' +
                     pendingRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
@@ -1762,7 +1878,7 @@
                 '<button type="button" class="pc-control-section-title pc-control-section-toggle" onclick="event.stopPropagation(); pcToggleReceivedSection(' + Number(appId) + ')" aria-expanded="' + isReceivedExpanded + '">' +
                     '<span class="pc-control-section-toggle__left">' +
                         '<span>' + esc(text('pcControlSectionReceived', 'Received')) + '</span>' +
-                        '<span class="pc-control-section-count' + (hasNewReceived ? ' is-highlight' : '') + '">(' + receivedCount + ')</span>' +
+                        '<span class="pc-control-section-badge pc-control-section-count' + (hasNewReceived ? ' is-highlight' : '') + '">' + receivedCount + '</span>' +
                     '</span>' +
                     '<span class="pc-control-section-chevron' + (isReceivedExpanded ? ' is-expanded' : '') + '" aria-hidden="true">' +
                         '<svg viewBox="0 0 12 12" width="10" height="10"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
@@ -1944,6 +2060,41 @@
         return '<svg class="pc-activity__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[key] + '</svg>';
     }
 
+    var lastSeenTabSignatures = new Map();
+
+    function computeTabSignature(key, data) {
+        if (!data) return '';
+        if (key === 'contribution') {
+            var items = data.contribution || [];
+            return items.length + ':' + items.map(function (item) {
+                return (item.testerId || 0) + '-' + (item.reasons || []).map(function (r) {
+                    return (r.kind || '') + (r.proofId || 0) + (r.feedbackId || 0);
+                }).join(',');
+            }).join(';');
+        }
+        if (key === 'attention') {
+            var items = data.attention || [];
+            return items.length + ':' + items.map(function (item) {
+                return (item.tester_id || 0) + '-' + (item.reasons || []).map(function (r) {
+                    return r.code || '';
+                }).join(',');
+            }).join(';');
+        }
+        if (key === 'control') {
+            var control = data.control || [];
+            var received = control.filter(function (r) { return r.received; });
+            return control.length + ':' + received.length + ':' + received.map(function (r) {
+                return (r.testerId || 0) + '-' + (r.proofId || 0);
+            }).join(',');
+        }
+        return '';
+    }
+
+    function markTabSeen(appId, key, data) {
+        var sig = computeTabSignature(key, data);
+        lastSeenTabSignatures.set(Number(appId) + ':' + key, sig);
+    }
+
     function filtersHtml(appId, visible, active, data) {
         visible = visible && visible.length ? visible : ['testers'];
         var labels = {
@@ -1955,8 +2106,24 @@
         return '<div class="pc-activity__filters tabs-row" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
             visible.map(function (key) {
                 var count = filterCount(key, data || {});
-                var countHtml = '<span class="pc-activity__count' + (key === 'attention' ? ' is-warn' : '') + '">' + count + '</span>';
                 var isActive = key === active;
+                if (isActive) {
+                    markTabSeen(appId, key, data);
+                }
+                var hasUnread = false;
+                if (key !== 'testers' && !isActive && count > 0) {
+                    var tabKey = Number(appId) + ':' + key;
+                    if (!lastSeenTabSignatures.has(tabKey)) {
+                        hasUnread = true;
+                    } else {
+                        var prevSig = lastSeenTabSignatures.get(tabKey);
+                        var curSig = computeTabSignature(key, data);
+                        if (prevSig !== curSig) {
+                            hasUnread = true;
+                        }
+                    }
+                }
+                var countHtml = '<span class="pc-activity__count' + (key === 'attention' ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + count + '</span>';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
                     '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
@@ -2373,6 +2540,15 @@
             prefs.modes.contribution = 'now';
         }
         writePrefs(appId, prefs);
+        var entry = getCacheEntry(appId);
+        if (entry) {
+            markTabSeen(appId, prefs.filter, {
+                control: entry.control || [],
+                others: entry.others || [],
+                contribution: collectContribution(entry.control, entry.others),
+                attention: collectAttention(projectById(appId)),
+            });
+        }
         refreshActivityWorkspace(appId, { animate: true });
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
