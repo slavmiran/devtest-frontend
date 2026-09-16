@@ -622,24 +622,52 @@ async function handleAutoAcceptMutualToggle(input) {
     }
 }
 
-function _ensureTestCardExpanded(card) {
+function _expandCollapsedTestSection(section, toggleFnName, collapsedClass) {
+    if (!section || typeof window[toggleFnName] !== 'function') return false;
+    var isCollapsed = collapsedClass === 'active'
+        ? !section.classList.contains('active')
+        : section.classList.contains(collapsedClass || 'is-collapsed');
+    if (!isCollapsed) return false;
+    window[toggleFnName]();
+    return true;
+}
+
+function _scrollTestCardIntoCarousel(card) {
     if (!card) return;
-    var doneList = document.getElementById('done-list');
-    var doneSection = document.getElementById('done-section');
-    if (!doneList || !doneSection || !doneList.contains(card)) return;
-    if (!doneSection.classList.contains('active') && typeof window.toggleAccordion === 'function') {
-        window.toggleAccordion();
+    var wrap = card.closest('#pending-release-list, #external-tests-list, .pending-release-scroll, .horizontal-scroll');
+    if (!wrap || wrap.scrollWidth <= wrap.clientWidth + 4) return;
+    var wrapRect = wrap.getBoundingClientRect();
+    var cardRect = card.getBoundingClientRect();
+    var nextLeft = wrap.scrollLeft + (cardRect.left - wrapRect.left) - Math.max(0, (wrap.clientWidth - cardRect.width) / 2);
+    if (typeof wrap.scrollTo === 'function') {
+        wrap.scrollTo({ left: Math.max(0, nextLeft), behavior: 'smooth' });
+    } else {
+        wrap.scrollLeft = Math.max(0, nextLeft);
     }
 }
 
-function _highlightTestCard(appId) {
-    var normalizedId = Number(appId || 0);
-    if (!normalizedId) return false;
-    var card = document.getElementById('test-card-' + normalizedId);
-    if (!card) return false;
+function _ensureTestCardExpanded(card) {
+    if (!card) return;
+    var doneSection = document.getElementById('done-section');
+    if (doneSection && doneSection.contains(card)) {
+        _expandCollapsedTestSection(doneSection, 'toggleAccordion', 'active');
+        return;
+    }
+    var pendingSection = document.getElementById('pending-release-section');
+    if (pendingSection && pendingSection.contains(card)) {
+        _expandCollapsedTestSection(pendingSection, 'togglePendingReleaseSection', 'is-collapsed');
+        return;
+    }
+    var externalSection = document.getElementById('external-tests-section');
+    if (externalSection && externalSection.contains(card)) {
+        _expandCollapsedTestSection(externalSection, 'toggleExternalTestsSection', 'is-collapsed');
+    }
+}
 
-    _ensureTestCardExpanded(card);
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+function _paintTestCardHighlight(card) {
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    _scrollTestCardIntoCarousel(card);
     card.classList.remove('test-card-highlight-pulse');
     void card.offsetWidth;
     card.classList.add('test-card-highlight-pulse');
@@ -650,6 +678,25 @@ function _highlightTestCard(appId) {
         card.classList.remove('test-card-highlight-pulse');
         _highlightTestTimerId = null;
     }, 3600);
+}
+
+function _highlightTestCard(appId) {
+    var normalizedId = Number(appId || 0);
+    if (!normalizedId) return false;
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (!card) return false;
+
+    _ensureTestCardExpanded(card);
+    var hidden = !(card.offsetWidth || card.offsetHeight || (card.getClientRects && card.getClientRects().length));
+    if (hidden) {
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                _paintTestCardHighlight(card);
+            });
+        });
+    } else {
+        _paintTestCardHighlight(card);
+    }
     return true;
 }
 

@@ -2016,12 +2016,12 @@
             }).join('') + '</div>';
 
         var hints = {
-            contribution: workspaceText('Вклад: больше обычного чекина', 'Contribution: beyond a regular check-in'),
-            attention: workspaceText('Внимание: требуется ваше решение', 'Attention: needs your decision'),
-            control: workspaceText('Контроль: отчёты за сегодня', 'Control: reports due today'),
-            testers: workspaceText('Все: текущий состав команды', 'All: current team'),
+            contribution: workspaceText('Больше обычного чекина', 'Beyond a regular check-in'),
+            attention: workspaceText('Требуется ваше решение', 'Needs your decision'),
+            control: workspaceText('Отчёты за сегодня', 'Reports due today'),
+            testers: workspaceText('Текущий состав команды', 'Current team'),
         };
-        var hintText = historyOn ? workspaceText('История: выбранная категория', 'History: selected category') : hints[filter];
+        var hintText = historyOn ? workspaceText('Выбранная категория за всё время', 'Selected category over time') : hints[filter];
         var hintHtml = hintText ? (
             '<div class="pc-activity__hint-wrap">' +
                 '<div class="pc-activity__hint-scroll" tabindex="0">' +

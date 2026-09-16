@@ -585,7 +585,7 @@
     align-items: flex-end;
     gap: 7px;
     min-width: 0;
-    padding: 0 4px;
+    padding: 0;
 }
 
 .pc-activity--workspace .participants-inset-card .pc-activity__filters {
@@ -611,12 +611,12 @@
     gap: 4px !important;
     min-width: 36px !important;
     min-height: 34px !important;
-    margin: 0 0 5px !important;
+    margin: 0 0 -1px !important;
     padding: 7px 8px !important;
     overflow: hidden;
     border: 1px solid rgba(150, 169, 197, .09) !important;
-    border-bottom-color: rgba(150, 169, 197, .13) !important;
-    border-radius: 11px 11px 7px 7px !important;
+    border-bottom-color: #151c28 !important;
+    border-radius: 11px 11px 0 0 !important;
     background: rgba(127, 146, 174, .055) !important;
     box-shadow: none !important;
     color: var(--text-tertiary, #8493a7) !important;
@@ -650,6 +650,17 @@
     background: #151c28 !important;
     color: var(--text-primary, #eff4fb) !important;
     box-shadow: 0 -5px 16px rgba(3, 8, 16, .12) !important;
+}
+
+.pc-activity--workspace .participants-inset-card .pc-activity__filter.is-active::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -3px;
+    left: 0;
+    height: 4px;
+    background: #151c28;
+    pointer-events: none;
 }
 
 .pc-activity--workspace .pc-activity__filter-icon {
@@ -760,7 +771,7 @@
     border: 1px solid rgba(150, 169, 197, .13);
     border-radius: 0 15px 15px 15px;
     background: #151c28;
-    box-shadow: inset 0 1px rgba(255, 255, 255, .015), 0 7px 22px rgba(3, 8, 16, .09);
+    box-shadow: inset 0 1px 3px rgba(2, 7, 14, .2), inset 0 1px rgba(255, 255, 255, .012), 0 7px 22px rgba(3, 8, 16, .07);
 }
 
 .pc-activity--workspace .pc-activity__folder-body[data-active-filter]:not([data-active-filter="testers"]) {
@@ -814,7 +825,7 @@
 
 @media (max-width: 360px) {
     .pc-activity--workspace .participants-inset-card { margin-inline: 6px !important; }
-    .pc-activity--workspace .pc-activity__filterbar { gap: 4px; padding-inline: 2px; }
+    .pc-activity--workspace .pc-activity__filterbar { gap: 4px; padding-inline: 0; }
     .pc-activity--workspace .participants-inset-card .pc-activity__filters { gap: 2px !important; }
     .pc-activity--workspace .participants-inset-card .pc-activity__filter {
         min-width: 31px !important;
