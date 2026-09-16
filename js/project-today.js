@@ -22,7 +22,8 @@
     var expandedOthers = new Set();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
-    var ACTIVITY_FILTERS = ['contribution', 'attention', 'control', 'testers'];
+    var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
+    var ACTIVITY_FILTERS = ['testers', 'contribution', 'attention', 'control'];
 
     function text(key, fallback, params) {
         if (typeof window.t === 'function') {
@@ -50,6 +51,69 @@
 
     function todayString() {
         return typeof getLocalDate === 'function' ? getLocalDate() : new Date().toISOString().slice(0, 10);
+    }
+
+    function thumbKey(proofId, mediaIndex) {
+        return Number(proofId || 0) + ':' + Number(mediaIndex || 0);
+    }
+
+    function getCacheEntry(appId) {
+        var safeId = Number(appId || 0);
+        if (safeId <= 0) return null;
+        if (cache.has(safeId)) return cache.get(safeId);
+        try {
+            var raw = localStorage.getItem(ACTIVITY_CACHE_PREFIX + safeId);
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object' && Array.isArray(parsed.control)) {
+                if (parsed.date && parsed.date !== todayString()) {
+                    parsed.loadedAt = 0;
+                }
+                cache.set(safeId, parsed);
+                (parsed.control || []).concat(parsed.others || []).forEach(function (row) {
+                    (row.slots || []).forEach(function (slot) {
+                        if (slot && slot.url && slot.proofId) {
+                            thumbnailCache.set(thumbKey(slot.proofId, slot.mediaIndex || 0), slot.url);
+                        }
+                    });
+                });
+                return parsed;
+            }
+        } catch (_) {}
+        return null;
+    }
+
+    function setCacheEntry(appId, entry) {
+        var safeId = Number(appId || 0);
+        if (safeId <= 0) return;
+        cache.set(safeId, entry);
+        if (!entry || entry.error) return;
+        try {
+            var toStore = {
+                loadedAt: entry.loadedAt || Date.now(),
+                control: entry.control || [],
+                others: entry.others || [],
+                catchupByProgress: entry.catchupByProgress || {},
+                date: todayString(),
+            };
+            localStorage.setItem(ACTIVITY_CACHE_PREFIX + safeId, JSON.stringify(toStore));
+        } catch (e) {
+            try {
+                localStorage.removeItem('market_cache_v1');
+                localStorage.removeItem('incoming_offers_cache_v1');
+                localStorage.removeItem('guest_projects_cache_v2');
+                localStorage.setItem(ACTIVITY_CACHE_PREFIX + safeId, JSON.stringify(toStore));
+            } catch (_) {}
+        }
+    }
+
+    function deleteCacheEntry(appId) {
+        var safeId = Number(appId || 0);
+        if (safeId <= 0) return;
+        cache.delete(safeId);
+        try {
+            localStorage.removeItem(ACTIVITY_CACHE_PREFIX + safeId);
+        } catch (_) {}
     }
 
     function shiftDateString(iso, days) {
@@ -102,7 +166,7 @@
     }
 
     function catchupStateFor(project, tester) {
-        var entry = cache.get(Number(project && project.id || 0));
+        var entry = getCacheEntry(Number(project && project.id || 0));
         if (!entry || !entry.catchupByProgress) return null;
         return entry.catchupByProgress[Number(tester && tester.progress_id || 0)] || null;
     }
@@ -507,10 +571,6 @@
         return null;
     }
 
-    function thumbKey(proofId, mediaIndex) {
-        return Number(proofId || 0) + ':' + Number(mediaIndex || 0);
-    }
-
     function cachedThumb(proofId, mediaIndex) {
         return thumbnailCache.get(thumbKey(proofId, mediaIndex)) || '';
     }
@@ -519,17 +579,20 @@
         var value = String(url || '').trim();
         if (!value) return;
         thumbnailCache.set(thumbKey(proofId, mediaIndex), value);
-        var entry = cache.get(Number(appId || 0));
+        var entry = getCacheEntry(Number(appId || 0));
         if (!entry) return;
+        var touched = false;
         [entry.control, entry.others].forEach(function (rows) {
             (rows || []).forEach(function (row) {
                 (row.slots || []).forEach(function (slot) {
                     if (Number(slot.proofId) === Number(proofId) && Number(slot.mediaIndex) === Number(mediaIndex)) {
                         slot.url = value;
+                        touched = true;
                     }
                 });
             });
         });
+        if (touched) setCacheEntry(Number(appId || 0), entry);
     }
 
     function buildSlots(proof, thumbnailByProofId) {
@@ -622,7 +685,7 @@
 
     async function hydrate(appId) {
         var safeAppId = Number(appId || 0);
-        var current = cache.get(safeAppId);
+        var current = getCacheEntry(safeAppId);
         if (current && current.loading) return;
         if (current && !current.error && (Date.now() - current.loadedAt) < CACHE_TTL_MS) return;
         var previous = current && !current.error ? current : null;
@@ -705,7 +768,7 @@
                 || JSON.stringify(previous.control || []) !== JSON.stringify(control)
                 || JSON.stringify(previous.others || []) !== JSON.stringify(others)
                 || JSON.stringify(previous.catchupByProgress || {}) !== JSON.stringify(catchupByProgress);
-            cache.set(safeAppId, {
+            setCacheEntry(safeAppId, {
                 loadedAt: Date.now(), loading: false, error: false,
                 control: control, others: others, catchupByProgress: catchupByProgress,
             });
@@ -728,7 +791,7 @@
     }
 
     function findRow(appId, proofId) {
-        var entry = cache.get(Number(appId || 0));
+        var entry = getCacheEntry(Number(appId || 0));
         if (!entry) return null;
         var match = function (row) { return Number(row.proofId) === Number(proofId || 0); };
         return entry.control.find(match) || entry.others.find(match) || null;
@@ -1713,7 +1776,7 @@
     }
 
     function activityCounts(project) {
-        var entry = cache.get(Number(project.id));
+        var entry = getCacheEntry(Number(project.id));
         // A background refresh keeps the last complete snapshot in `control` /
         // `others`. Continue using it until the new response is complete: the
         // activity filters must not briefly disappear while a card is refreshed.
@@ -1724,6 +1787,9 @@
             hydrated: hydrated,
             loading: !!(entry && entry.loading),
             error: !!(entry && entry.error),
+            rosterCount: (project && project.testers || []).filter(function (tester) {
+                return tester && !tester.is_left_soft && !tester.is_guest_tester && !tester.is_external;
+            }).length,
             controlRows: controlRows,
             controlDone: controlRows.filter(function (row) { return row.received; }).length,
             contribution: collectContribution(
@@ -1781,11 +1847,10 @@
     }
 
     function visibleFilters(data) {
-        var list = [];
+        var list = ['testers'];
         if (data.contribution && data.contribution.length) list.push('contribution');
         if (data.attention && data.attention.length) list.push('attention');
         if (data.controlRows && data.controlRows.length) list.push('control');
-        list.push('testers');
         return list;
     }
 
@@ -1851,11 +1916,21 @@
         if (key === 'contribution') return (data && data.contribution || []).length;
         if (key === 'attention') return (data && data.attention || []).length;
         if (key === 'control') return (data && data.controlRows || []).length;
-        return 0;
+        return Math.max(0, Number(data && data.rosterCount || 0));
+    }
+
+    function filterIcon(key) {
+        var paths = {
+            testers: '<circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="8" r="2.5"/><path d="M2.8 19c.4-3.4 2.2-5.2 5.2-5.2s4.8 1.8 5.2 5.2M13 14.2c1-.9 2.2-1.3 3.6-1.3 2.6 0 4.1 1.7 4.5 4.6"/>',
+            contribution: '<path d="M13.2 2.8 5.9 13h5.5l-.7 8.2L18.2 10h-5.6z"/>',
+            attention: '<path d="M12 3.2 21 19H3z"/><path d="M12 8.3v5.3M12 16.9h.01"/>',
+            control: '<rect x="5" y="4.5" width="14" height="16" rx="2.3"/><path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h4.5"/><path d="m14.5 17 1.3 1.3 2.7-3"/>',
+        };
+        return '<svg class="pc-activity__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[key] + '</svg>';
     }
 
     function filtersHtml(appId, visible, active, data) {
-        if (!visible || visible.length <= 1) return '';
+        visible = visible && visible.length ? visible : ['testers'];
         var labels = {
             contribution: text('pcFilterContribution', 'Contribution'),
             attention: text('pcFilterAttention', 'Attention'),
@@ -1865,28 +1940,22 @@
         return '<div class="pc-activity__filters tabs-row" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
             visible.map(function (key) {
                 var count = filterCount(key, data || {});
-                var countHtml = '';
-                if (key !== 'testers' && count > 0) {
-                    if (key === 'attention') {
-                        countHtml = '<span class="attention-badge pc-activity__count is-warn">' + count + '</span>';
-                    } else {
-                        countHtml = '<span class="tab-count-badge pc-activity__count">' + count + '</span>';
-                    }
-                }
+                var countHtml = '<span class="pc-activity__count' + (key === 'attention' ? ' is-warn' : '') + '">' + count + '</span>';
                 var isActive = key === active;
-                var indicatorHtml = isActive ? '<div class="tab-active-indicator"></div>' : '';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
+                    '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
+                    '" aria-label="' + esc(labels[key] + ' ' + count) +
                     '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
+                    filterIcon(key) +
                     '<span class="pc-activity__filter-label">' + esc(labels[key]) + '</span>' +
                     countHtml +
-                    indicatorHtml +
                     '</button>';
             }).join('') +
         '</div>';
     }
 
-    function participantsHeaderHtml(project, context) {
+    function karmaButtonHtml(project) {
         var appId = Number(project && project.id || 0);
         var avail = karmaAvailability(project);
         var karmaMax = avail.max;
@@ -1895,12 +1964,7 @@
             ? window.karmaIconHtml('karma-yin-icon--inline')
             : '<span class="rewards-icon-glyph">☯</span>';
 
-        var roster = (project && project.testers || []).filter(function (t) {
-            return !t.is_left_soft && !t.is_guest_tester && !t.is_external;
-        });
-        var count = roster.length;
-
-        var karmaBtn = '<button type="button" class="rewards-chip-btn pc-activity__karma" ' +
+        return '<button type="button" class="rewards-chip-btn pc-activity__karma" ' +
             'title="' + esc(workspaceText('Наградить тестера', 'Reward a tester')) + '" ' +
             'aria-label="' + esc(workspaceText('Наградить тестера. Доступно ', 'Reward a tester. Available ') + karmaAvail + '/' + karmaMax) + '" ' +
             'onclick="event.stopPropagation(); ' +
@@ -1909,16 +1973,15 @@
                 : 'void 0') +
             '">' +
             '<span class="rewards-icon">' + karmaIcon + '</span>' +
-            '<span class="rewards-text">' + esc(workspaceText('Награды', 'Rewards')) + ' <b>' + karmaAvail + '/' + karmaMax + '</b></span>' +
+            '<span class="rewards-text"><b>' + karmaAvail + '/' + karmaMax + '</b></span>' +
             '<span class="rewards-arrow" aria-hidden="true">↗</span>' +
         '</button>';
+    }
 
-        return '<div class="participants-header">' +
-            '<div class="participants-title-wrap">' +
-                '<h3 class="participants-title">' + esc(workspaceText('Участники', 'Participants')) + '</h3>' +
-                '<span class="participants-counter-badge">' + count + '</span>' +
-            '</div>' +
-            karmaBtn +
+    function filterbarHtml(appId, visible, active, data, project) {
+        return '<div class="pc-activity__filterbar">' +
+            filtersHtml(appId, visible, active, data) +
+            karmaButtonHtml(project) +
         '</div>';
     }
 
@@ -1944,15 +2007,6 @@
 
     function captionHtml(appId, filter, mode, project) {
         var historyOn = mode === 'history';
-        var proj = project || projectById(appId);
-        var isOnlyAll = false;
-        if (proj) {
-            var data = activityCounts(proj);
-            var visible = visibleFilters(data);
-            if (visible.length === 1 && visible[0] === 'testers') {
-                isOnlyAll = true;
-            }
-        }
 
         var histBtn = '<div class="pc-activity__mode pc-activity__mode-pill" role="group" aria-label="' + esc(workspaceText('Период просмотра', 'View period')) + '">' +
             ['now', 'history'].map(function (key) {
@@ -1962,13 +2016,12 @@
             }).join('') + '</div>';
 
         var hints = {
-            contribution: workspaceText('Сверх обычного чекина', 'Beyond a check-in'),
-            attention: workspaceText('Пропуски, отчёты и взаимные обязательства', 'Missed days, reports and mutual commitments'),
-            control: workspaceText('Контрольные отчёты', 'Milestone reports'),
-            testers: workspaceText('Все участники текущего теста', 'All participants in this test'),
+            contribution: workspaceText('Вклад: больше обычного чекина', 'Contribution: beyond a regular check-in'),
+            attention: workspaceText('Внимание: требуется ваше решение', 'Attention: needs your decision'),
+            control: workspaceText('Контроль: отчёты за сегодня', 'Control: reports due today'),
+            testers: workspaceText('Все: текущий состав команды', 'All: current team'),
         };
-        var hintText = historyOn ? workspaceText('История тестирования участников выбранной группы', 'Testing history for this group') : hints[filter];
-        if (isOnlyAll && !historyOn) hintText = '';
+        var hintText = historyOn ? workspaceText('История: выбранная категория', 'History: selected category') : hints[filter];
         var hintHtml = hintText ? (
             '<div class="pc-activity__hint-wrap">' +
                 '<div class="pc-activity__hint-scroll" tabindex="0">' +
@@ -1980,7 +2033,7 @@
             '</div>'
         ) : '<div class="pc-activity__hint-wrap"></div>';
 
-        return '<div class="pc-activity__caption pc-activity__subbar' + (isOnlyAll ? ' pc-activity__caption--only-all' : '') + '">' +
+        return '<div class="pc-activity__caption pc-activity__subbar">' +
             hintHtml +
             '<div class="pc-activity__actions">' +
                 histBtn +
@@ -2072,38 +2125,19 @@
         var mode = prefs.modes[filter] || 'now';
         var context = contextFor(project);
 
-        var headerEl = shell.querySelector('.participants-header');
-        if (headerEl) {
-            var nextHeader = document.createElement('div');
-            nextHeader.innerHTML = participantsHeaderHtml(project, context);
-            if (nextHeader.firstChild) {
-                headerEl.replaceWith(nextHeader.firstChild);
-            }
-        }
-
-        var filtersEl = shell.querySelector('.pc-activity__filters');
+        var filterbarEl = shell.querySelector('.pc-activity__filterbar');
+        var folderBodyEl = shell.querySelector('.pc-activity__folder-body');
         var captionEl = shell.querySelector('.pc-activity__caption');
         var nowEl = document.getElementById('pc-activity-now-' + safeAppId);
         var histEl = document.getElementById('pc-activity-history-' + safeAppId);
         var visible = visibleFilters(data);
-        var newFiltersMarkup = filtersHtml(safeAppId, visible, filter, data);
-        if (filtersEl) {
-            if (newFiltersMarkup) {
-                var nextFilters = document.createElement('div');
-                nextFilters.innerHTML = newFiltersMarkup;
-                if (nextFilters.firstChild) {
-                    filtersEl.replaceWith(nextFilters.firstChild);
-                }
-            } else {
-                filtersEl.remove();
-            }
-        } else if (newFiltersMarkup && captionEl) {
-            var nextFilters = document.createElement('div');
-            nextFilters.innerHTML = newFiltersMarkup;
-            if (nextFilters.firstChild) {
-                captionEl.before(nextFilters.firstChild);
-            }
+        var newFilterbarMarkup = filterbarHtml(safeAppId, visible, filter, data, project);
+        if (filterbarEl) {
+            var nextFilterbar = document.createElement('div');
+            nextFilterbar.innerHTML = newFilterbarMarkup;
+            if (nextFilterbar.firstChild) filterbarEl.replaceWith(nextFilterbar.firstChild);
         }
+        if (folderBodyEl) folderBodyEl.setAttribute('data-active-filter', filter);
         if (captionEl) {
             var nextCaption = document.createElement('div');
             nextCaption.innerHTML = captionHtml(safeAppId, filter, mode, project);
@@ -2224,12 +2258,13 @@
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
         return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + '">' +
-            participantsHeaderHtml(project, context) +
             '<div class="participants-inset-card">' +
-                filtersHtml(project.id, visibleFilters(data), filter, data) +
-                captionHtml(project.id, filter, mode, project) +
-                workspaceListHtml(project, filter, mode, data, context) +
-                errorHtml +
+                filterbarHtml(project.id, visibleFilters(data), filter, data, project) +
+                '<div class="pc-activity__folder-body" data-active-filter="' + filter + '">' +
+                    captionHtml(project.id, filter, mode, project) +
+                    workspaceListHtml(project, filter, mode, data, context) +
+                    errorHtml +
+                '</div>' +
             '</div>' +
         '</section>';
     }
@@ -2276,7 +2311,7 @@
         if (!window.App || window.App.testingControlEnabled !== true) return;
         var status = String(project.app_status || project.status || 'active').toLowerCase();
         if (status !== 'active' && status !== 'pending_completion') return;
-        var entry = cache.get(Number(project.id));
+        var entry = getCacheEntry(Number(project.id));
         if (entry && !entry.loading && !entry.error && (Date.now() - entry.loadedAt) < CACHE_TTL_MS) {
             loadPendingThumbnails(Number(project.id), { scope: '.pc-activity__list' });
             return;
@@ -2290,11 +2325,12 @@
         buildSection: buildSection,
         mount: mount,
         isControlDay: isControlDay,
+        getCacheEntry: getCacheEntry,
         invalidate: function (appId) {
             var safeAppId = Number(appId || 0);
             var current = cache.get(safeAppId);
             if (current && current.loading) return;
-            cache.delete(safeAppId);
+            deleteCacheEntry(safeAppId);
         },
         refresh: function (appId, options) {
             var safeAppId = Number(appId || 0);
@@ -2303,7 +2339,7 @@
             var project = projectById(safeAppId);
             var status = String(project && (project.app_status || project.status) || 'active').toLowerCase();
             if (!project || (status !== 'active' && status !== 'pending_completion')) return;
-            var current = cache.get(safeAppId);
+            var current = getCacheEntry(safeAppId);
             if (current && current.loading) return;
             var maxAgeMs = Math.max(0, Number(options && options.maxAgeMs || 0));
             if (current && !current.error && maxAgeMs > 0 && (Date.now() - current.loadedAt) < maxAgeMs) return;
@@ -2399,7 +2435,7 @@
     };
 
     window.pcRetryToday = function (appId) {
-        cache.delete(Number(appId || 0));
+        deleteCacheEntry(Number(appId || 0));
         hydrate(appId);
     };
 
@@ -2625,7 +2661,7 @@
             if (!response.ok || payload.status !== 'success') throw new Error(payload.error || payload.detail || 'catchup_request_failed');
             if (typeof showToast === 'function') showToast(text('pcCatchupRequestSent', 'Proof request sent'));
             window.pcCloseCatchupProofRequestDialog();
-            cache.delete(Number(appId));
+            deleteCacheEntry(Number(appId));
             hydrate(appId);
         } catch (_) {
             if (typeof showToast === 'function') showToast(text('pcCatchupRequestFailed', 'Could not request proof'));
@@ -2649,7 +2685,7 @@
             var payload = await response.json();
             if (!response.ok || payload.status !== 'success') throw new Error(payload.error || payload.detail || 'catchup_close_failed');
             if (typeof showToast === 'function') showToast(text('pcCatchupClosed', 'Proof request closed'));
-            cache.delete(Number(appId));
+            deleteCacheEntry(Number(appId));
             hydrate(appId);
         } catch (_) {
             if (typeof showToast === 'function') showToast(text('pcCatchupCloseFailed', 'Could not close proof request'));

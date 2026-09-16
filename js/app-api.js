@@ -679,15 +679,57 @@ function getProjectsCache() {
     }
 }
 
+function persistProjectsCacheSnapshot() {
+    if (typeof myProjects !== 'undefined' && Array.isArray(myProjects)) {
+        setProjectsCache({
+            projects: myProjects,
+            visibilityStats: (typeof visibilityStats !== 'undefined') ? visibilityStats : {},
+            is_community_member: window.isCommunityMember,
+            ts: Date.now(),
+        });
+    }
+}
+window.persistProjectsCacheSnapshot = persistProjectsCacheSnapshot;
+
 function setProjectsCache(nextCache) {
     myProjectsCache = nextCache || null;
-    try {
-        if (myProjectsCache) {
-            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(myProjectsCache));
-        } else {
+    if (!myProjectsCache) {
+        try {
             localStorage.removeItem(PROJECTS_CACHE_KEY);
+        } catch (_) {}
+        return;
+    }
+    try {
+        localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(myProjectsCache));
+    } catch (e) {
+        console.warn('Failed to set projects cache, attempting storage cleanup:', e);
+        try {
+            localStorage.removeItem(MARKET_CACHE_KEY);
+            localStorage.removeItem('market_cache_v1');
+            localStorage.removeItem('incoming_offers_cache_v1');
+            localStorage.removeItem('guest_projects_cache_v2');
+            localStorage.removeItem('external_counts_cache_v2');
+            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(myProjectsCache));
+            return;
+        } catch (retryError) {
+            console.warn('Retry setProjectsCache after cleanup failed:', retryError);
         }
-    } catch (e) {}
+        try {
+            var compact = {
+                projects: (myProjectsCache.projects || []).map(function (p) {
+                    return Object.assign({}, p, {
+                        instructions: (p.instructions || '').slice(0, 300),
+                    });
+                }),
+                visibilityStats: myProjectsCache.visibilityStats,
+                is_community_member: myProjectsCache.is_community_member,
+                ts: myProjectsCache.ts || Date.now(),
+            };
+            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(compact));
+        } catch (finalError) {
+            console.error('Final fallback setProjectsCache failed:', finalError);
+        }
+    }
 }
 
 function hasProjectsCache() {
@@ -3048,6 +3090,12 @@ async function confirmDeleteProject() {
             feedback_total_count: deletedProject.feedback_total_count || 0,
             archive_reason: null,
         });
+        if (typeof persistProjectsCacheSnapshot === 'function') {
+            persistProjectsCacheSnapshot();
+        }
+        if (window.ProjectToday && typeof window.ProjectToday.invalidate === 'function') {
+            window.ProjectToday.invalidate(id);
+        }
     }
 
     const applyOptimisticRender = function() {

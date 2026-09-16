@@ -1132,6 +1132,9 @@ async function unlinkGuestRelationship(progressId, options) {
             }
             return Object.assign({}, project, { testers: nextTesters });
         });
+        if (typeof persistProjectsCacheSnapshot === 'function') {
+            persistProjectsCacheSnapshot();
+        }
     }
 
     const refreshPromises = [];
@@ -4348,6 +4351,9 @@ function _markProjectAccessIssueResolved(projectId, progressId) {
         });
     });
     _recomputeProjectAccessErrorState(project);
+    if (updated && typeof persistProjectsCacheSnapshot === 'function') {
+        persistProjectsCacheSnapshot();
+    }
     return updated;
 }
 
@@ -4369,6 +4375,9 @@ function _markAllProjectAccessIssuesResolved(projectId) {
         });
     });
     _recomputeProjectAccessErrorState(project);
+    if (updated && typeof persistProjectsCacheSnapshot === 'function') {
+        persistProjectsCacheSnapshot();
+    }
     return updated;
 }
 
@@ -4384,6 +4393,9 @@ function _removeProjectAccessTester(projectId, progressId) {
     });
     var updated = project.testers.length !== beforeCount;
     _recomputeProjectAccessErrorState(project);
+    if (updated && typeof persistProjectsCacheSnapshot === 'function') {
+        persistProjectsCacheSnapshot();
+    }
     return updated;
 }
 

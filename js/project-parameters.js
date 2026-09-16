@@ -370,7 +370,7 @@
                     '<label class="project-email-settings-switch"><span><strong id="project-email-settings-toggle-label"></strong><small id="project-email-settings-scope"></small></span><input id="project-email-settings-enabled" type="checkbox" onchange="ProjectParameters.onEmailSettingsToggle()"><i aria-hidden="true"></i></label>' +
                     '<label class="project-email-settings-field" for="project-email-settings-input"><span id="project-email-settings-email-label"></span><input id="project-email-settings-input" type="email" autocomplete="email" inputmode="email" oninput="ProjectParameters.clearEmailSettingsError()"></label>' +
                     '<p id="project-email-settings-error" class="project-email-settings-error" role="alert" hidden></p>' +
-                    '<div class="project-email-settings-note"><span aria-hidden="true">i</span><p id="project-email-settings-note"></p></div>' +
+                    '<div class="project-email-settings-note"><span aria-hidden="true">i</span><div><strong id="project-email-settings-note-title"></strong><ul><li id="project-email-settings-note-offers"></li><li id="project-email-settings-note-manual"></li></ul></div></div>' +
                     '<button id="project-email-settings-save" type="button" class="project-email-settings-save" onclick="ProjectParameters.saveEmailSettings()"></button>' +
                 '</section>' +
             '</div>'
@@ -393,7 +393,9 @@
         document.getElementById('project-email-settings-toggle-label').textContent = text('pcParamsEmailSettingsToggle');
         document.getElementById('project-email-settings-scope').textContent = text('pcParamsEmailGlobal');
         document.getElementById('project-email-settings-email-label').textContent = text('pcParamsEmailAddress');
-        document.getElementById('project-email-settings-note').textContent = text('pcParamsEmailSettingsNote');
+        document.getElementById('project-email-settings-note-title').textContent = text('pcParamsEmailSettingsNoteTitle');
+        document.getElementById('project-email-settings-note-offers').textContent = text('pcParamsEmailSettingsNoteOffers');
+        document.getElementById('project-email-settings-note-manual').textContent = text('pcParamsEmailSettingsNoteManual');
         document.getElementById('project-email-settings-save').textContent = text('pcParamsEmailSettingsSave');
         input.value = userEmail();
         enabled.checked = emailPreferenceOn();

@@ -226,6 +226,7 @@ Object.assign(window, {
     loadBountyFeed,
     loadEvents,
     loadProjects,
+    persistProjectsCacheSnapshot,
     forceRefreshMarket,
     getLocalDate,
     getRuDaysWord,

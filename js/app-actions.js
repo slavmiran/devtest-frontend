@@ -4140,6 +4140,9 @@ async function sendKarmaReward(appId, testerId, rewardType) {
                     project.special_used = (project.special_used || 0) + 1;
                 }
             }
+            if (typeof persistProjectsCacheSnapshot === 'function') {
+                persistProjectsCacheSnapshot();
+            }
             renderProjects();
             if (window._karmaDistributionProjectId === appId && window.openKarmaDistribution) {
                 window.openKarmaDistribution(appId);

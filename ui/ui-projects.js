@@ -9039,6 +9039,9 @@ async function dismissLeftTesterRow(appId, testerId) {
                 project.testers = project.testers.filter(function(item) {
                     return Number(item.tester_id) !== safeTesterId;
                 });
+                if (typeof persistProjectsCacheSnapshot === 'function') {
+                    persistProjectsCacheSnapshot();
+                }
             }
         }
         if (window.tg && window.tg.HapticFeedback) {
