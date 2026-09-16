@@ -22,6 +22,7 @@
     var expandedOthers = new Set();
     var expandedReceived = new Set();
     var lastSeenReceivedCounts = new Map();
+    var karmaSparkleSessionSeed = Math.floor(Math.random() * 1000) + 1;
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
@@ -945,11 +946,6 @@
                 : text('pcScreenshotSingle', 'Скриншот');
         }
 
-        var processedHtml = '';
-        if (feedbackId > 0 && isProcessed(item)) {
-            processedHtml = ' <span class="pc-badge-processed">' + esc(text('pcContributionProcessed', '✓ Processed')) + '</span>';
-        }
-
         var subtitle = '';
         if (type === 'screenshot') {
             subtitle = text('pcProofAlbumOverview', 'Quick overview of all images');
@@ -981,7 +977,7 @@
                 subBadgeHtml +
             '</span>' +
             '<span class="pc-proof-album-card__info">' +
-                '<strong>' + esc(title) + processedHtml + '</strong>' +
+                '<strong>' + esc(title) + '</strong>' +
                 '<small>' + esc(subtitle) + '</small>' +
             '</span>' +
             '<span class="pc-proof-album-card__chev" aria-hidden="true">›</span>' +
@@ -1038,9 +1034,12 @@
             if (!type) type = 'screenshot';
             var isDone = isItemActionDone(item);
             var cardHtml = activityCardHtml(appId, item, opts);
+            var nodeIcon = isDone
+                ? '<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                : '';
             return '<div class="pc-activity-timeline-step pc-activity-timeline-step--' + esc(type) +
                 (isDone ? ' is-completed' : ' is-pending') + '">' +
-                '<span class="pc-activity-timeline-node" aria-hidden="true"></span>' +
+                '<span class="pc-activity-timeline-node" aria-hidden="true">' + nodeIcon + '</span>' +
                 cardHtml +
             '</div>';
         }).join('');
@@ -1548,11 +1547,12 @@
         });
         var sparkleTesterIds = new Set();
         if (unrewardedTesters.length > 0) {
-            var seedBase = Math.abs(Number(appId || 0) * 19 + unrewardedTesters.length * 7);
+            var rotation = Math.floor(Date.now() / 15000);
+            var seedBase = Math.abs(Number(appId || 0) * 19 + karmaSparkleSessionSeed + rotation);
             var idx1 = seedBase % unrewardedTesters.length;
             sparkleTesterIds.add(Number(unrewardedTesters[idx1].testerId));
             if (unrewardedTesters.length >= 4) {
-                var idx2 = (idx1 + 2) % unrewardedTesters.length;
+                var idx2 = (idx1 + 1 + Math.floor((unrewardedTesters.length - 1) / 2)) % unrewardedTesters.length;
                 sparkleTesterIds.add(Number(unrewardedTesters[idx2].testerId));
             }
         }
@@ -1917,8 +1917,14 @@
         var showBulkRemind = rows.length > 1 && pendingCount > 0;
         if (showBulkRemind) {
             if (readyCount > 0 || sending) {
-                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn' + (sending ? ' is-sending' : '') + '"' + (sending ? ' disabled aria-busy="true"' : '') + ' onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
-                    ICONS.remind + esc(sending ? text('pcRemindersSending', 'Sending DMs…') : text('pcControlRemindAll', 'Remind everyone ({count})', { count: readyCount })) + '</button>';
+                var remindLabel = sending
+                    ? text('pcRemindersSending', 'Sending DMs…')
+                    : text('pcControlRemindAll', 'Remind everyone');
+                var remindCountHtml = (!sending && readyCount > 0)
+                    ? '<span class="pc-control-remind-all-count' + (String(readyCount).length <= 1 ? ' is-circle' : '') + '" aria-hidden="true">' + readyCount + '</span>'
+                    : '';
+                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn' + (sending ? ' is-sending' : '') + '"' + (sending ? ' disabled aria-busy="true"' : '') + ' aria-label="' + esc(remindLabel) + (sending || readyCount < 1 ? '' : ' ' + readyCount) + '" onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
+                    ICONS.remind + '<span class="pc-control-remind-all-label">' + esc(remindLabel) + '</span>' + remindCountHtml + '</button>';
             } else {
                 bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn is-done" disabled>' +
                     esc(text('pcRemindersAttempted', 'Reminders processed')) +
@@ -1926,7 +1932,7 @@
             }
         }
 
-        var summaryHtml = showBulkRemind ? '<section class="pc-control-reminder-panel" aria-label="' + esc(text('pcControlRemindAll', 'Bot reminders', {count:readyCount})) + '">' +
+        var summaryHtml = showBulkRemind ? '<section class="pc-control-reminder-panel" aria-label="' + esc(text('pcControlRemindAll', 'Remind everyone')) + '">' +
             bulkRemindHtml +
             '<div class="pc-control-reminder-feedback" role="status" aria-live="polite">' + controlReminderFeedbackHtml(reminderState) + '</div>' +
             '<p class="pc-control-reminder-hint">' + esc(text('pcRemindersHint', 'One bot reminder per milestone. Personal reminders remain separate.')) + '</p></section>' : '';

@@ -4981,52 +4981,83 @@ function resetProjectFeedbackFilters(preferUnprocessed) {
     _projectFeedbackCardNodes = null;
 }
 
-function toggleFeedbackUnprocessedOnly(checked) {
-    _projectFeedbackStatusFilter = checked ? 'new' : 'all';
-    if (!checked && typeof _activeProjectFeedbackFullLoaded !== 'undefined' && !_activeProjectFeedbackFullLoaded) {
-        var project = null;
-        if (typeof getFeedbackRewardProject === 'function') {
-            project = getFeedbackRewardProject();
-        }
-        if (!project && Number(_activeProjectFeedbackAppId || 0) > 0) {
-            var appId = Number(_activeProjectFeedbackAppId);
-            project = (myProjects || []).find(function(item) {
-                return Number(item.app_id || item.id) === appId;
-            }) || (archivedProjects || []).find(function(item) {
-                return Number(item.app_id || item.id) === appId;
-            }) || null;
-        }
-        var toggleEl = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
-        if (toggleEl) toggleEl.disabled = true;
-        var loadPromise = (typeof ensureFullProjectFeedbackLoaded === 'function')
-            ? ensureFullProjectFeedbackLoaded()
-            : Promise.resolve(_activeProjectFeedbackItems || []);
-        loadPromise.then(function(items) {
-            if (toggleEl) toggleEl.disabled = false;
-            if (!_isProjectFeedbackModalOpenSafe()) return;
-            if (window.showProjectFeedbackModal && project) {
-                window.showProjectFeedbackModal(project, items || _activeProjectFeedbackItems || [], {
-                    preferUnprocessed: false,
-                    partialLoad: false
-                });
-            } else {
-                applyProjectFeedbackFilters();
-            }
-        }).catch(function(error) {
-            if (toggleEl) toggleEl.disabled = false;
-            console.error('Full feedback load on uncheck failed:', error);
-            _projectFeedbackStatusFilter = 'new';
-            if (toggleEl) toggleEl.checked = true;
-            applyProjectFeedbackFilters();
-            if (typeof showToast === 'function') {
-                showToast(window.t('networkError', {}, lang) || 'Network error');
-            }
+function resolveActiveFeedbackProject() {
+    var appId = Number(typeof _activeProjectFeedbackAppId !== 'undefined' ? _activeProjectFeedbackAppId : window._activeProjectFeedbackAppId || 0);
+    var project = typeof getFeedbackRewardProject === 'function' ? getFeedbackRewardProject() : null;
+    if (project) return project;
+    if (appId <= 0) return null;
+    function match(item) {
+        return Number(item && (item.app_id || item.id) || 0) === appId;
+    }
+    return ((typeof myProjects !== 'undefined' && myProjects) || []).find(match)
+        || ((typeof archivedProjects !== 'undefined' && archivedProjects) || []).find(match)
+        || null;
+}
+
+function activeFeedbackItems() {
+    if (typeof _activeProjectFeedbackItems !== 'undefined' && Array.isArray(_activeProjectFeedbackItems)) {
+        return _activeProjectFeedbackItems;
+    }
+    return Array.isArray(window._activeProjectFeedbackItems) ? window._activeProjectFeedbackItems : [];
+}
+
+function feedbackItemsIncludeProcessed(items) {
+    return (items || []).some(function(item) {
+        return item && !isOpenFeedbackStatus(item.status);
+    });
+}
+
+function rerenderActiveFeedbackList(preferUnprocessed, items, partialLoad) {
+    var project = resolveActiveFeedbackProject();
+    _projectFeedbackCardNodes = null;
+    if (typeof window.showProjectFeedbackModal === 'function' && project) {
+        window.showProjectFeedbackModal(project, items || activeFeedbackItems(), {
+            preferUnprocessed: !!preferUnprocessed,
+            partialLoad: !!partialLoad
         });
-        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
-        return;
+        return true;
     }
     applyProjectFeedbackFilters();
+    return false;
+}
+
+function toggleFeedbackUnprocessedOnly(checked) {
+    _projectFeedbackStatusFilter = checked ? 'new' : 'all';
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    if (checked) {
+        applyProjectFeedbackFilters();
+        return;
+    }
+
+    var items = activeFeedbackItems();
+    var fullLoaded = typeof _activeProjectFeedbackFullLoaded !== 'undefined'
+        ? !!_activeProjectFeedbackFullLoaded
+        : !!window._activeProjectFeedbackFullLoaded;
+    var needsFetch = !fullLoaded || !feedbackItemsIncludeProcessed(items);
+    if (!needsFetch) {
+        rerenderActiveFeedbackList(false, items, false);
+        return;
+    }
+
+    var toggleEl = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
+    if (toggleEl) toggleEl.disabled = true;
+    var loadPromise = (typeof ensureFullProjectFeedbackLoaded === 'function')
+        ? ensureFullProjectFeedbackLoaded({ force: !!fullLoaded })
+        : Promise.resolve(items);
+    loadPromise.then(function(loaded) {
+        if (toggleEl) toggleEl.disabled = false;
+        if (!_isProjectFeedbackModalOpenSafe()) return;
+        rerenderActiveFeedbackList(false, loaded || activeFeedbackItems(), false);
+    }).catch(function(error) {
+        if (toggleEl) toggleEl.disabled = false;
+        console.error('Full feedback load on uncheck failed:', error);
+        _projectFeedbackStatusFilter = 'new';
+        if (toggleEl) toggleEl.checked = true;
+        applyProjectFeedbackFilters();
+        if (typeof showToast === 'function') {
+            showToast(window.t('networkError', {}, lang) || 'Network error');
+        }
+    });
 }
 window.toggleFeedbackUnprocessedOnly = toggleFeedbackUnprocessedOnly;
 
@@ -5828,26 +5859,20 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
     }
 
     if (Array.isArray(window._activeProjectFeedbackItems)) {
-        if (statusFilter === 'all') {
-            window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
-                if (Number(item && item.id) === safeId) {
-                    item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
-                    item.replied_at = new Date().toISOString();
-                    if (nextStatus === 'rejected' && rejectionReason) {
-                        item.rejection_reason = rejectionReason;
-                    }
-                    if (rewardBust > 0) item.reward_bust = rewardBust;
-                    if (rewardKarma > 0) item.reward_karma = rewardKarma;
-                    item.processed_at = new Date().toISOString();
-                    item.replied_at = item.processed_at;
+        window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
+            if (Number(item && item.id) === safeId) {
+                item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
+                item.replied_at = new Date().toISOString();
+                if (nextStatus === 'rejected' && rejectionReason) {
+                    item.rejection_reason = rejectionReason;
                 }
-                return item;
-            });
-        } else {
-            window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.filter(function(item) {
-                return Number(item && item.id) !== safeId;
-            });
-        }
+                if (rewardBust > 0) item.reward_bust = rewardBust;
+                if (rewardKarma > 0) item.reward_karma = rewardKarma;
+                item.processed_at = new Date().toISOString();
+                item.replied_at = item.processed_at;
+            }
+            return item;
+        });
     }
 
     if (Array.isArray(window._projectFeedbackCardNodes) && statusFilter !== 'all') {

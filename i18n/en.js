@@ -3306,7 +3306,7 @@
             pcControlSummaryPending: "Pending {count}",
             pcControlSectionPending: "Pending",
             pcControlSectionReceived: "Received",
-            pcControlRemindAll: "Remind everyone ({count})",
+            pcControlRemindAll: "Remind everyone",
             pcControlRemindAllConfirm: "Send private reminders to testers whose milestone report has not been received ({count})?",
             pcRemindersSending: "Bot is sending…",
             pcRemindersAttempted: "Sending complete",
@@ -3404,6 +3404,7 @@
             pcScreenshotSingle: "Screenshot",
             pcProofOpenVerb: "Open",
             pcProofOpenTopicTail: "in topic",
+            pcTopicSwipeDownToast: "Message highlighted in topic. Swipe the bot down to view.",
 
     };
     window.I18N_EN = window.I18NEN;

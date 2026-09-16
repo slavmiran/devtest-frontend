@@ -3406,9 +3406,13 @@ function setFeedbackRewardKarma(amount) {
 }
 
 function getFeedbackRewardProject() {
-    var activeProject = myProjects.find(function(p) { return Number(p.id) === Number(_activeProjectFeedbackAppId); });
-    if (activeProject) return activeProject;
-    return archivedProjects.find(function(p) { return Number(p.app_id) === Number(_activeProjectFeedbackAppId); }) || null;
+    var appId = Number(_activeProjectFeedbackAppId || 0);
+    function match(project) {
+        return Number(project && (project.app_id || project.id) || 0) === appId;
+    }
+    return ((typeof myProjects !== 'undefined' && myProjects) || []).find(match)
+        || ((typeof archivedProjects !== 'undefined' && archivedProjects) || []).find(match)
+        || null;
 }
 
 function getFeedbackRewardItem() {
@@ -3579,7 +3583,7 @@ function refreshProjectFeedbackInBackground(project, loadSeq, options) {
 
 async function ensureFullProjectFeedbackLoaded(options) {
     options = options || {};
-    if (_activeProjectFeedbackFullLoaded) return _activeProjectFeedbackItems || [];
+    if (_activeProjectFeedbackFullLoaded && !options.force) return _activeProjectFeedbackItems || [];
     var appId = Number(_activeProjectFeedbackAppId || options.appId || 0);
     if (!appId) return _activeProjectFeedbackItems || [];
     var loadSeq = Number(options.loadSeq || _activeProjectFeedbackLoadSeq || 0);

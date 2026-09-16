@@ -518,8 +518,31 @@
 .pc-activity--workspace .pc-control-summary { flex-wrap: wrap; background: transparent; border: 0; padding: 4px 0 12px; }
 .pc-activity--workspace .pc-control-summary__text { white-space: normal; overflow: visible; text-overflow: clip; font-size: 12px; }
 .pc-activity--workspace .pc-control-remind-all-btn { min-height: 44px; border: 1px solid rgba(128,145,168,.2); background: transparent; color: var(--text-secondary); box-shadow: none; font-size: 12px; }
-.pc-activity--workspace .pc-control-remind-all-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; color:#a4caff; border-color:rgba(116,164,231,.26); background:rgba(98,152,230,.09); }
+.pc-activity--workspace .pc-control-remind-all-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; color:#a4caff; border-color:rgba(116,164,231,.26); background:rgba(98,152,230,.09); }
 .pc-control-remind-all-btn svg { width:17px; height:17px; }
+.pc-control-remind-all-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #d7e7ff;
+    color: #1e4f96;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+}
+.pc-control-remind-all-count.is-circle {
+    width: 22px;
+    min-width: 22px;
+    padding: 0;
+    border-radius: 50%;
+}
 .pc-control-remind-all-btn.is-sending svg { animation:testing-control-pulse 1s infinite; }
 .pc-control-reminder-feedback { display:flex; flex-wrap:wrap; gap:6px 12px; font-size:11px; }
 .pc-control-reminder-feedback:empty { display:none; }
@@ -548,56 +571,67 @@
     width: 100%;
     margin-top: 0;
 }
-/* Timeline vertical connector line and step dots */
+/* Timeline step and indicator node */
 .pc-activity-timeline-step {
     position: relative;
     width: 100%;
-}
-.pc-activity-timeline-step::before {
-    content: '';
-    position: absolute;
-    left: -25px;
-    width: 2px;
-    background: rgba(148, 163, 184, 0.16);
-    top: -8px;
-    bottom: -8px;
-    transform: translateX(-50%);
-    pointer-events: none;
-    z-index: 1;
-}
-.pc-activity-timeline-step:first-child::before {
-    top: -14px;
-}
-.pc-activity-timeline-step:last-child::before {
-    bottom: calc(100% - 24px);
-}
-.pc-activity-timeline-step:only-child::before {
-    top: -14px;
-    bottom: calc(100% - 24px);
 }
 .pc-activity-timeline-node {
     position: absolute;
     left: -25px;
     top: 24px;
-    width: 9px;
-    height: 9px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     background: var(--bg-surface-2, #15202e);
-    border: 1.5px solid rgba(148, 163, 184, 0.35);
+    border: 1.5px solid rgba(148, 163, 184, 0.38);
     box-sizing: border-box;
     z-index: 2;
-    transition: all .2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .25s ease;
+}
+.pc-activity-timeline-step.is-pending .pc-activity-timeline-node::after {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--node-color, rgba(148, 163, 184, 0.65));
+    opacity: 0.85;
 }
 .pc-activity-timeline-step.is-completed .pc-activity-timeline-node {
-    border-color: transparent;
+    border-color: var(--node-color, #60a5fa);
     background: var(--node-color, #60a5fa);
-    box-shadow: 0 0 7px var(--node-color, #60a5fa);
+    color: var(--node-text, #ffffff);
+    box-shadow: 0 0 8px var(--node-glow, rgba(96, 165, 250, 0.35));
 }
-.pc-activity-timeline-step--bug { --node-color: #f87171; }
-.pc-activity-timeline-step--idea { --node-color: #fbbf24; }
-.pc-activity-timeline-step--play_review { --node-color: #c084fc; }
-.pc-activity-timeline-step--screenshot { --node-color: #60a5fa; }
+.pc-activity-timeline-step.is-completed .pc-activity-timeline-node svg {
+    display: block;
+    width: 10px;
+    height: 10px;
+}
+.pc-activity-timeline-step--bug {
+    --node-color: #f87171;
+    --node-glow: rgba(248, 113, 113, 0.35);
+    --node-text: #ffffff;
+}
+.pc-activity-timeline-step--idea {
+    --node-color: #fbbf24;
+    --node-glow: rgba(251, 191, 36, 0.35);
+    --node-text: #1e293b;
+}
+.pc-activity-timeline-step--play_review {
+    --node-color: #c084fc;
+    --node-glow: rgba(192, 132, 252, 0.35);
+    --node-text: #ffffff;
+}
+.pc-activity-timeline-step--screenshot {
+    --node-color: #60a5fa;
+    --node-glow: rgba(96, 165, 250, 0.35);
+    --node-text: #0f172a;
+}
 
 .pc-proof-album-card,
 .pc-proof-album-launch { display:flex; flex-direction:column; margin-top:8px; border:1px solid rgba(132,164,207,.17); border-radius:12px; color:var(--text-secondary,#afbac9); background:rgba(99,139,194,.055); text-align:left; overflow:hidden; }
@@ -670,8 +704,7 @@
     52%, 100% { opacity:0; }
 }
 .pc-activity__count { position:relative; }
-.pc-activity__count.has-unread::after { content:''; position:absolute; top:-2px; right:-2px; width:6px; height:6px; border-radius:50%; background:#60a5fa; box-shadow:0 0 6px #38bdf8; border:1px solid var(--bg-surface-2,#1b2635); animation:pc-tab-unread-pulse 2s ease-in-out infinite; }
-@keyframes pc-tab-unread-pulse { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.3);opacity:0.75;} }
+.pc-activity__count.has-unread::after { content:''; position:absolute; top:-2px; right:-2px; width:5px; height:5px; border-radius:50%; background:#60a5fa; border:1px solid var(--bg-surface-2,#1b2635); opacity:0.85; }
 .pc-activity--workspace .pc-attention-section-label { list-style: none; padding: 16px 0 4px; color: var(--text-secondary); font-size: 11px; font-weight: 600; }
 .pc-activity--workspace .pc-control-section-title { padding-left: 0; font-size: 11px; }
 .pc-control-section-toggle { width:100%; display:flex; align-items:center; justify-content:space-between; background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,.05); padding:4px 0 6px; margin-bottom:4px; cursor:pointer; color:var(--text-tertiary); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; text-align:left; transition:color .15s ease; }

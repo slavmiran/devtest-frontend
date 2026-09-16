@@ -1250,8 +1250,16 @@
         setAlbumIndex(album, proofId, target, imageCount, true);
     }
 
+    var lastTopicClickTime = 0;
+    var lastTopicProofId = 0;
+
     async function openCheckinProofOriginal(proofId, mediaIndex, event) {
         if (event) event.stopPropagation();
+        var now = Date.now();
+        var isRepeated = (lastTopicProofId === Number(proofId) && (now - lastTopicClickTime < 15000));
+        lastTopicClickTime = now;
+        lastTopicProofId = Number(proofId);
+
         try {
             var details = await requestProofDetails(proofId);
             var urls = details && details.original_message_urls;
@@ -1263,6 +1271,9 @@
                 window.tg.openTelegramLink(targetUrl);
             } else {
                 window.open(targetUrl, '_blank', 'noopener');
+            }
+            if (isRepeated && typeof showToast === 'function') {
+                showToast(text('pcTopicSwipeDownToast', 'Сообщение выделено в топике. Смахните бота вниз, чтобы увидеть его.'));
             }
         } catch (_) {
             if (typeof showToast === 'function') {

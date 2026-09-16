@@ -3312,7 +3312,7 @@
             pcControlSummaryPending: "Ожидаются {count}",
             pcControlSectionPending: "Отчёт ещё не получен",
             pcControlSectionReceived: "Получены",
-            pcControlRemindAll: "Напомнить всем ({count})",
+            pcControlRemindAll: "Напомнить всем",
             pcControlRemindAllConfirm: "Отправить в ЛС напоминание тем, от кого ещё не получен контрольный отчёт тестирования ({count})?",
             pcRemindersSending: "Бот отправляет…",
             pcRemindersAttempted: "Рассылка завершена",
@@ -3410,6 +3410,7 @@
             pcScreenshotSingle: "Скриншот",
             pcProofOpenVerb: "Открыть",
             pcProofOpenTopicTail: "в топике",
+            pcTopicSwipeDownToast: "Сообщение выделено в топике. Смахните бота вниз, чтобы увидеть его.",
 
     };
     window.I18N_RU = window.I18NRU;
