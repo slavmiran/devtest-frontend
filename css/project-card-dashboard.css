@@ -6867,6 +6867,8 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .pc-quick-tile--screenshot-bust.is-on .pc-quick-tile__icon { color:#f6c85f; }
 
 .screenshot-boost-modal.modal-overlay { align-items:flex-end; padding:12px 10px max(12px,env(safe-area-inset-bottom)); }
+.screenshot-boost-sheet.modal-content::before,
+#screenshot-boost-modal .modal-content::before { content:none !important; display:none !important; }
 .screenshot-boost-sheet.modal-content { width:min(100%,520px); max-height:min(88dvh,760px); margin:0 auto; padding:11px 18px 18px; overflow-y:auto; border:1px solid rgba(148,163,184,.18); border-radius:24px; background:#171d27; box-shadow:0 24px 72px rgba(0,0,0,.5); }
 .screenshot-boost-sheet__handle { width:48px; height:5px; margin:0 auto 14px; border-radius:99px; background:rgba(148,163,184,.36); }
 .screenshot-boost-sheet__head { display:flex; align-items:center; gap:11px; }

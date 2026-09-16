@@ -89,8 +89,13 @@
         var onLabel = text('pcParamsOn');
         var offLabel = text('pcParamsOff');
         var countLabel = plural(count, 'pcParamsCountOne', 'pcParamsCountFew', 'pcParamsCountMany');
-        var boostValue = boost.reward > 0 ? '+' + amount(boost.reward) + ' $BUST' : offLabel;
-        var boostStatus = !boost.on ? text(boost.pool <= 0 && boost.reward > 0 ? 'pcParamsBoostEmpty' : 'pcParamsBoostOff') : '';
+        var campaign = project.screenshot_boost_campaign || {};
+        var isEnabled = campaign.enabled === true;
+        var badgeModifier = boost.on ? 'active' : (boost.pool <= 0 && boost.reward > 0 && isEnabled) ? 'paused' : 'off';
+        var badgeText = boost.on ? text('pcParamsBoostActive') : (badgeModifier === 'paused' ? text('pcParamsBoostPaused') : text('pcParamsBoostOff'));
+        var rewardChipText = boost.reward > 0 ? text('pcParamsBoostRewardChip', { amount: amount(boost.reward) }) : text('pcParamsBoostRewardChipZero', { amount: '0' });
+        var poolChipText = text('pcParamsBoostPoolChip', { amount: amount(boost.pool) });
+        var leftChipText = boost.pool > 0 && boost.reward > 0 ? plural(boost.reports, 'pcParamsReportsOne', 'pcParamsReportsFew', 'pcParamsReportsMany') : text('pcParamsBoostEmpty');
         return '<div class="pc-project-params__head">' +
             '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '">' +
                 '<span class="pc-project-params__title">' + esc(text('pcParamsTitle')) + '</span>' +
@@ -111,10 +116,22 @@
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
             '</div>' +
             '<button type="button" class="pc-project-boost' + (boost.on ? ' is-active' : '') + '" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog">' +
-                '<span class="pc-project-boost__heading"><span class="pc-project-boost__label">' + icon('camera') + esc(text('pcParamsBoost')) + '</span><span class="pc-project-boost__reward">' + esc(boostValue) + '</span></span>' +
-                '<span class="pc-project-boost__details"><span>' + esc(text('pcParamsBoostPool', { amount: amount(boost.pool) })) + '</span>' +
-                    (boost.on ? '<span>' + esc(plural(boost.reports, 'pcParamsReportsOne', 'pcParamsReportsFew', 'pcParamsReportsMany')) + '</span>' : '<span class="pc-project-boost__status">' + esc(boostStatus) + '</span>') +
-                '</span><span class="pc-project-boost__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
+                '<div class="pc-project-boost__head">' +
+                    '<span class="pc-project-boost__title-group">' +
+                        '<span class="pc-project-boost__icon" aria-hidden="true">' + icon('camera') + '</span>' +
+                        '<span class="pc-project-boost__title">' + esc(text('pcParamsBoost')) + '</span>' +
+                    '</span>' +
+                    '<span class="pc-project-boost__badge pc-project-boost__badge--' + badgeModifier + '">' + esc(badgeText) + '</span>' +
+                '</div>' +
+                '<div class="pc-project-boost__divider" aria-hidden="true"></div>' +
+                '<div class="pc-project-boost__chips">' +
+                    '<span class="pc-project-boost__chip pc-project-boost__chip--reward">' + esc(rewardChipText) + '</span>' +
+                    '<span class="pc-project-boost__dot" aria-hidden="true">•</span>' +
+                    '<span class="pc-project-boost__chip pc-project-boost__chip--pool">' + esc(poolChipText) + '</span>' +
+                    '<span class="pc-project-boost__dot" aria-hidden="true">•</span>' +
+                    '<span class="pc-project-boost__chip pc-project-boost__chip--left">' + esc(leftChipText) + '</span>' +
+                '</div>' +
+                '<div class="pc-project-boost__note">' + esc(text('pcParamsBoostNote')) + '</div>' +
             '</button>' +
             (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email') + '<span>' + esc(text('pcParamsEmailAccess')) + '</span>' + CHEVRON + '</button>' : '') +
         '</div></div></div>';

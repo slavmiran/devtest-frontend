@@ -774,8 +774,8 @@
     box-shadow: inset 0 1px 3px rgba(2, 7, 14, .2), inset 0 1px rgba(255, 255, 255, .012), 0 7px 22px rgba(3, 8, 16, .07);
 }
 
-.pc-activity--workspace .pc-activity__folder-body[data-active-filter]:not([data-active-filter="testers"]) {
-    border-radius: 15px;
+.pc-activity--workspace .participants-inset-card .pc-activity__filter:first-child {
+    border-bottom-left-radius: 0 !important;
 }
 
 .pc-activity--workspace .pc-activity__folder-body .pc-activity__caption {
