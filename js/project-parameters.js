@@ -62,7 +62,7 @@
     }
     function activeCount(project) {
         return Number(project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
-            + Number(emailOn(project)) + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list');
+            + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list');
     }
     function icon(name) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>'; }
     function pending(project, field) {
@@ -76,15 +76,6 @@
             '<span class="pc-project-param__label">' + icon(iconName) + '<span>' + esc(text(label)) + '</span></span>' +
             '<span class="pc-project-param__value' + (toggle ? ' pc-project-param__value--state' : '') + '">' + esc(value) + '</span>' +
             (!toggle ? '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' : '') + '</button>';
-    }
-    function emailPreference(project, id, onLabel, offLabel) {
-        var enabled = emailOn(project);
-        var busy = pending(project, 'accepts_email_testers');
-        return '<button type="button" class="pc-project-email-preference' + (enabled ? ' is-active' : '') + '" data-project-param="accepts_email_testers" onclick="ProjectParameters.openEmailSettings(' + id + ',event)" aria-haspopup="dialog"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
-            '<span class="pc-project-email-preference__heading">' + icon('email') + '<span><strong>' + esc(text('pcParamsEmail')) + '</strong><small>' + esc(text('pcParamsEmailGlobal')) + '</small></span></span>' +
-            '<span class="pc-project-email-preference__state">' + esc(enabled ? onLabel : offLabel) + '</span>' +
-            '<span class="pc-project-email-preference__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
-        '</button>';
     }
     function content(project) {
         var id = Number(project.id || project.app_id);
@@ -119,7 +110,6 @@
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
             '</div>' +
-            emailPreference(project, id, onLabel, offLabel) +
             '<button type="button" class="pc-project-boost' + (boost.on ? ' is-active' : '') + '" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog">' +
                 '<span class="pc-project-boost__heading"><span class="pc-project-boost__label">' + icon('camera') + esc(text('pcParamsBoost')) + '</span><span class="pc-project-boost__reward">' + esc(boostValue) + '</span></span>' +
                 '<span class="pc-project-boost__details"><span>' + esc(text('pcParamsBoostPool', { amount: amount(boost.pool) })) + '</span>' +
@@ -460,7 +450,13 @@
             var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((window.tg && window.tg.initData) || '');
             var response = await fetch(String(apiBase).replace(/\/+$/, '') + '/users/me/email-projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ init_data: initData, enabled: enabled }) });
             var result = await response.json().catch(function () { return {}; });
-            if (!response.ok || result.status !== 'success') throw new Error(result.message || result.code || 'save_failed');
+            if (!response.ok || result.status !== 'success') {
+                var errorCode = String(result.code || result.detail || '');
+                var errorMessage = errorCode === 'tester_email_required'
+                    ? text('pcParamsEmailRequired')
+                    : String(result.message || (result.details && result.details.message) || '');
+                throw new Error(errorMessage || text('pcParamsSaveError'));
+            }
             syncEmailPreference(String(result.email || email || userEmail()).trim(), result.enabled === true);
             closeEmailSettings();
             if (typeof showToast === 'function') showToast(text('pcParamsEmailSettingsSaved'));
