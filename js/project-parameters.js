@@ -91,11 +91,13 @@
         var countLabel = plural(count, 'pcParamsCountOne', 'pcParamsCountFew', 'pcParamsCountMany');
         var campaign = project.screenshot_boost_campaign || {};
         var isEnabled = campaign.enabled === true;
-        var badgeModifier = boost.on ? 'active' : (boost.pool <= 0 && boost.reward > 0 && isEnabled) ? 'paused' : 'off';
-        var badgeText = boost.on ? text('pcParamsBoostActive') : (badgeModifier === 'paused' ? text('pcParamsBoostPaused') : text('pcParamsBoostOff'));
+        var isPoolActive = boost.on;
+        var badgeModifier = isPoolActive ? 'active' : 'off';
+        var badgeText = isPoolActive ? text('pcParamsBoostActive') : text('pcParamsBoostOff');
         var rewardChipText = boost.reward > 0 ? text('pcParamsBoostRewardChip', { amount: amount(boost.reward) }) : text('pcParamsBoostRewardChipZero', { amount: '0' });
         var poolChipText = text('pcParamsBoostPoolChip', { amount: amount(boost.pool) });
         var leftChipText = boost.pool > 0 && boost.reward > 0 ? plural(boost.reports, 'pcParamsReportsOne', 'pcParamsReportsFew', 'pcParamsReportsMany') : text('pcParamsBoostEmpty');
+        var noteText = isPoolActive ? text('pcParamsBoostNoteActive') : text('pcParamsBoostNoteInactive');
         return '<div class="pc-project-params__head">' +
             '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '">' +
                 '<span class="pc-project-params__title">' + esc(text('pcParamsTitle')) + '</span>' +
@@ -115,7 +117,7 @@
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
             '</div>' +
-            '<button type="button" class="pc-project-boost' + (boost.on ? ' is-active' : '') + '" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog">' +
+            '<button type="button" class="pc-project-boost' + (isPoolActive ? ' is-active' : '') + '" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog">' +
                 '<div class="pc-project-boost__head">' +
                     '<span class="pc-project-boost__title-group">' +
                         '<span class="pc-project-boost__icon" aria-hidden="true">' + icon('camera') + '</span>' +
@@ -131,7 +133,7 @@
                     '<span class="pc-project-boost__dot" aria-hidden="true">•</span>' +
                     '<span class="pc-project-boost__chip pc-project-boost__chip--left">' + esc(leftChipText) + '</span>' +
                 '</div>' +
-                '<div class="pc-project-boost__note">' + esc(text('pcParamsBoostNote')) + '</div>' +
+                '<div class="pc-project-boost__note">' + esc(noteText) + '</div>' +
             '</button>' +
             (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email') + '<span>' + esc(text('pcParamsEmailAccess')) + '</span>' + CHEVRON + '</button>' : '') +
         '</div></div></div>';
@@ -290,8 +292,9 @@
             '<div id="project-instructions-modal" class="modal-overlay project-instructions-overlay" onclick="ProjectParameters.closeInstructions(event)">' +
                 '<section class="project-instructions-sheet" role="dialog" aria-modal="true" aria-labelledby="project-instructions-title" aria-describedby="project-instructions-description" onclick="event.stopPropagation()">' +
                     '<div class="project-instructions-sheet__handle" aria-hidden="true"></div>' +
-                    '<header class="project-instructions-sheet__head"><div><h3 id="project-instructions-title"></h3><p id="project-instructions-description"></p></div><button type="button" class="project-instructions-sheet__close" onclick="ProjectParameters.closeInstructions()" aria-label="Close">×</button></header>' +
+                    '<header class="project-instructions-sheet__head"><div><h3 id="project-instructions-title"></h3><p id="project-instructions-description"></p></div></header>' +
                     '<label class="project-instructions-field" for="project-instructions-input"><span id="project-instructions-label"></span><textarea id="project-instructions-input" rows="6" maxlength="1000" oninput="ProjectParameters.onInstructionsInput()"></textarea></label>' +
+                    '<div id="chips-project-instructions" class="chip-scroll"></div>' +
                     '<div class="project-instructions-meta"><span id="project-instructions-note"></span><output id="project-instructions-count" for="project-instructions-input"></output></div>' +
                     '<p id="project-instructions-error" class="project-instructions-error" role="alert" hidden></p>' +
                     '<button id="project-instructions-save" type="button" class="project-instructions-save" onclick="ProjectParameters.saveInstructions()"></button>' +
@@ -316,8 +319,38 @@
         document.getElementById('project-instructions-save').textContent = text('pcParamsInstructionsSave');
         input.placeholder = text('instPlaceholder');
         input.value = String(project.instructions || '');
+        renderInstructionChips();
         setInstructionsError('');
         onInstructionsInput();
+    }
+    function instructionChipTexts() {
+        return [
+            text('chipBrowse'),
+            text('chipScreenshot3'),
+            text('chipJustOpen'),
+            text('chipTryFeatures'),
+            text('chipLeaveReview')
+        ];
+    }
+    function renderInstructionChips() {
+        var element = document.getElementById('chips-project-instructions');
+        if (!element) return;
+        element.innerHTML = instructionChipTexts().map(function (chipText) {
+            return '<button type="button" class="chip" onclick="ProjectParameters.insertInstructionChip(this.dataset.text)" data-text="' + String(chipText).replace(/"/g, '&quot;') + '">' + esc(chipText) + '</button>';
+        }).join('');
+    }
+    function insertInstructionChip(chipText) {
+        var input = document.getElementById('project-instructions-input');
+        var addition = String(chipText || '');
+        if (!input || !addition) return;
+        var next = String(input.value || '');
+        if (next.length > 0 && !next.endsWith('\n')) next += '\n';
+        next += addition;
+        if (next.length > 1000) next = next.slice(0, 1000);
+        input.value = next;
+        input.focus({ preventScroll: true });
+        onInstructionsInput();
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     }
     function onInstructionsInput() {
         var input = document.getElementById('project-instructions-input');
@@ -373,7 +406,7 @@
             '<div id="project-email-settings-modal" class="modal-overlay project-email-settings-overlay" onclick="ProjectParameters.closeEmailSettings(event)">' +
                 '<section class="project-email-settings-sheet" role="dialog" aria-modal="true" aria-labelledby="project-email-settings-title" onclick="event.stopPropagation()">' +
                     '<div class="project-email-settings-sheet__handle" aria-hidden="true"></div>' +
-                    '<header class="project-email-settings-sheet__head"><div><h3 id="project-email-settings-title"></h3><p id="project-email-settings-description"></p></div><button type="button" class="project-email-settings-sheet__close" onclick="ProjectParameters.closeEmailSettings()" aria-label="Close">×</button></header>' +
+                    '<header class="project-email-settings-sheet__head"><div><h3 id="project-email-settings-title"></h3><p id="project-email-settings-description"></p></div></header>' +
                     '<label class="project-email-settings-switch"><span><strong id="project-email-settings-toggle-label"></strong><small id="project-email-settings-scope"></small></span><input id="project-email-settings-enabled" type="checkbox" onchange="ProjectParameters.onEmailSettingsToggle()"><i aria-hidden="true"></i></label>' +
                     '<label class="project-email-settings-field" for="project-email-settings-input"><span id="project-email-settings-email-label"></span><input id="project-email-settings-input" type="email" autocomplete="email" inputmode="email" oninput="ProjectParameters.clearEmailSettingsError()"></label>' +
                     '<p id="project-email-settings-error" class="project-email-settings-error" role="alert" hidden></p>' +
@@ -503,5 +536,5 @@
             }
         }
     });
-    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
+    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
 })();

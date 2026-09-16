@@ -22,7 +22,10 @@ function isScreenshotProofUploadEnabled() {
     return !!(window.App && window.App.screenshotProofUploadEnabled === true);
 }
 
-function isInternalScreenshotProofUploadEnabled(test) {
+function isInternalScreenshotProofUploadEnabled(testOrAppId) {
+    var test = (testOrAppId && typeof testOrAppId === 'object')
+        ? testOrAppId
+        : (typeof _checkinProofTest === 'function' ? _checkinProofTest(testOrAppId) : null);
     if (test && (test.is_external === true || test.is_guest === true || String(test.flow || '') === 'external')) return false;
     return isScreenshotProofUploadEnabled();
 }

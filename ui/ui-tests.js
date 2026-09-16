@@ -2313,8 +2313,6 @@ window.openControlProofCatchupInfo = function(appId) {
                 '<div class="pc-catchup-request-sheet__icon" aria-hidden="true">📸</div>' +
                 '<div><h3 id="pc-catchup-tester-title">' + window.escapeHTML(window.t('catchupTesterTitle', {}, lang)) + '</h3>' +
                 '<p>' + window.escapeHTML(dayLabel) + '</p></div>' +
-                '<button class="pc-catchup-request-sheet__close" type="button" aria-label="' +
-                    window.escapeHTML(window.t('pcCloseDialog', {}, lang) || 'Close') + '" onclick="closeControlProofCatchupInfo()">×</button>' +
             '</div>' +
             '<p class="pc-catchup-request-sheet__lead">' + window.escapeHTML(lead) + '</p>' +
             '<ul class="pc-catchup-request-sheet__facts">' +

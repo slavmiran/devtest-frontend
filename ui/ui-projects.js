@@ -862,7 +862,6 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
                 <h3>${window.escapeHTML(window.t('screenshotBoostSettingsTitle', {}, lang))}</h3>
                 <p class="notranslate">${safeName}</p>
             </div>
-            <button type="button" class="screenshot-boost-sheet__close" onclick="closeScreenshotBoostModal()" aria-label="Close">×</button>
         </div>
         <p class="screenshot-boost-sheet__intro">${window.escapeHTML(window.t('screenshotBoostSettingsIntro', {}, lang))}</p>
         <label class="screenshot-boost-switch-row">
@@ -1006,7 +1005,6 @@ function openScreenshotBoostInfo(appId, event) {
         <div class="screenshot-boost-sheet__head">
             <div class="screenshot-boost-sheet__icon" aria-hidden="true">${screenshotBoostCameraIconHtml('screenshot-boost-sheet__camera', 22)}</div>
             <div class="screenshot-boost-sheet__heading"><h3>${window.escapeHTML(window.t('screenshotBoostInfoTitle', {}, lang))}</h3></div>
-            <button type="button" class="screenshot-boost-sheet__close" onclick="closeScreenshotBoostModal()" aria-label="Close">×</button>
         </div>
         <div class="screenshot-boost-info-card">
             <p>${window.escapeHTML(window.t('screenshotBoostInfoText', {}, lang))}</p>

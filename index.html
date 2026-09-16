@@ -36,14 +36,14 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260916-tester-profile-required-v1"></script>
-    <script src="./i18n/en.js?v=20260916-tester-profile-required-v1"></script>
+<script src="./i18n/ru.js?v=20260916-instructions-sheet-v1"></script>
+    <script src="./i18n/en.js?v=20260916-instructions-sheet-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260829-feedback-fast-open-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260915-catchup-chip-v1"></script>
-    <script src="./ui/ui-projects.js?v=20260916-tester-profile-required-v1"></script>
-    <script src="./js/project-parameters.js?v=20260916-project-parameters-v2"></script>
+    <script src="./ui/ui-tests.js?v=20260916-instructions-sheet-v1"></script>
+    <script src="./ui/ui-projects.js?v=20260916-instructions-sheet-v1"></script>
+    <script src="./js/project-parameters.js?v=20260916-instructions-sheet-v1"></script>
     <script src="./ui/ui-market.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
@@ -57,10 +57,10 @@
     <script src="./js/testing-control.js?v=20260915-authoritative-album-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20260912-workspace-v1"></script>
-    <script src="./js/project-today.js?v=20260915-catchup-buffer-notify-v1"></script>
+    <script src="./js/project-today.js?v=20260916-instructions-sheet-v1"></script>
     <script src="./js/proof-ping.js?v=20260910-quick-ping-explain-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260916-tester-profile-required-v1"></script>
+<script src="./js/app-features.js?v=20260916-instructions-sheet-v1"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260827-balance-actions-v17"></script>
 <script src="./js/termination-sheet.js?v=20260824-kick-confirm-v8"></script>
 <script src="./js/bounty-applications.js?v=20260904-my-tests-refresh-v1"></script>
@@ -104,7 +104,7 @@
     <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260915-recruit-guest-right-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
     <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20260916-tab-seam-v1">
-    <link rel="stylesheet" href="./css/project-parameters.css?v=20260916-project-parameters-v2">
+    <link rel="stylesheet" href="./css/project-parameters.css?v=20260916-instructions-sheet-v1">
 </head>
 <body>
 
@@ -922,7 +922,6 @@
         <div class="modal-content pc-lc-sheet" onclick="event.stopPropagation()">
             <div class="pc-lc-sheet__header">
                 <h3 id="project-lifecycle-title" class="pc-lc-sheet__title"></h3>
-                <button type="button" class="pc-lc-sheet__close" onclick="closeProjectLifecycleModal(event)" aria-label="Close">&times;</button>
             </div>
             <div class="pc-lc-sheet__body" id="project-lifecycle-body"></div>
             <div class="pc-lc-sheet__actions" id="project-lifecycle-actions-wrap">
@@ -2857,7 +2856,6 @@
         <div class="attract-sheet" onclick="event.stopPropagation()">
             <div class="attract-sheet-header">
                 <span class="attract-sheet-title" data-i18n="attractTestersTitle">Привлечь тестеров</span>
-                <button type="button" class="attract-sheet-close" onclick="closeAttractTestersSheet()">✕</button>
             </div>
             <div class="attract-sheet-content" id="attract-testers-sheet-content"></div>
         </div>

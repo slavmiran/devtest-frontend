@@ -1600,6 +1600,9 @@ function refreshLanguageUi() {
     };
     renderChips('chips-instructions', 'app-instructions');
     renderChips('chips-edit-instructions', 'edit-description');
+    if (window.ProjectParameters && typeof window.ProjectParameters.renderInstructionChips === 'function') {
+        window.ProjectParameters.renderInstructionChips();
+    }
 
 
 

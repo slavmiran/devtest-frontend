@@ -2603,8 +2603,6 @@
                     '<div class="pc-catchup-request-sheet__icon" aria-hidden="true">' + ICONS.image + '</div>' +
                     '<div><h3 id="pc-catchup-request-title">' + esc(text('pcCatchupRequestTitle', 'Catch-up control proof')) + '</h3>' +
                     '<p>' + esc(text('pcCatchupRequestDay', 'Control day {day}', { day: day })) + '</p></div>' +
-                    '<button class="pc-catchup-request-sheet__close" type="button" aria-label="' +
-                        esc(text('pcCloseDialog', 'Close')) + '" onclick="pcCloseCatchupProofRequestDialog()">×</button>' +
                 '</div>' +
                 '<div class="pc-catchup-request-sheet__tester">' + avatarHtml(tester) +
                     '<span>' + esc(handleOf(tester)) + '</span></div>' +

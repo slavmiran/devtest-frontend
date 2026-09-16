@@ -1418,8 +1418,11 @@ function openTelegramPrefilledMessage(username, text) {
         try {
             tg.openLink(url);
         } catch (fallbackError) {
-            window.open(url, '_blank', 'noopener');
+            window.location.href = url;
         }
+    }
+    if (typeof _pendingScreenshotReminderUsername !== 'undefined') {
+        _pendingScreenshotReminderUsername = cleanUsername;
     }
     return true;
 }
@@ -2389,23 +2392,23 @@ async function sendExternalTrackingProofFromUi(testId, ownerUsername, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+    var test = getExternalProjectTest(testId) || (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item.id) === Number(testId || 0);
     }) || null;
     if (!test) return;
 
-    var cleanUsername = String(ownerUsername || test.owner_username || '').trim().replace(/^@+/, '');
+    var cleanUsername = String(ownerUsername || test.owner_username || test.external_owner_username || '').trim().replace(/^@+/, '');
     if (!cleanUsername) {
         showToast(window.t('playReviewMissingOwnerLink', {}, lang));
         return;
     }
 
-    var result = await window.submitExternalTrackingProof(test.progress_id, test.id);
-    if (!result) return;
-
+    var testingDay = typeof getExternalCurrentTestingDay === 'function'
+        ? getExternalCurrentTestingDay(test)
+        : Number(test.testing_days || 0);
     var proofText = window.t('externalTrackProofMessageTemplate', {
         app_name: test.name || window.t('unknownLabel', {}, lang),
-        day: Number(result.testing_day || test.testing_days || 0),
+        day: Number(testingDay || 0),
         claim_link: typeof window.buildExternalClaimStartLink === 'function'
             ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '', test.external_guest_app_id)
             : '',
@@ -2413,11 +2416,23 @@ async function sendExternalTrackingProofFromUi(testId, ownerUsername, event) {
     copyTextWithToast(proofText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     openTelegramPrefilledMessage(cleanUsername, proofText);
+
+    if (typeof window.submitExternalTrackingProof === 'function') {
+        window.submitExternalTrackingProof(test.progress_id, test.id).then(function(result) {
+            if (result && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            var modal = document.getElementById('project-details-modal');
+            if (modal && modal.classList.contains('active') && String(modal.dataset.appId || '') === String(test.id)) {
+                openProjectDetailsModal(test.id);
+            }
+        }).catch(function(err) {
+            console.error('External tracking proof background error:', err);
+        });
+    }
 }
 
 function getExternalProjectTest(testId) {
     return (Array.isArray(myTests) ? myTests : []).find(function(item) {
-        return Number(item.id) === Number(testId || 0) && !!item.is_external;
+        return Number(item.id) === Number(testId || 0) && !!(item.is_external || item.is_guest || String(item.flow || '') === 'external');
     }) || null;
 }
 
@@ -2444,7 +2459,11 @@ async function submitExternalGuestActivityFromUi(testId) {
     var test = getExternalProjectTest(testId);
     if (!test) return null;
 
-    if (!isExternalControlDayDue(test)) {
+    var isControlDay = typeof isExternalControlDayDue === 'function'
+        ? isExternalControlDayDue(test)
+        : (typeof isMandatoryScreenshotDay === 'function' ? isMandatoryScreenshotDay(Number(test.testing_days || 0)) : false);
+
+    if (!isControlDay) {
         return sendExternalDailyCheckinFromUi(testId);
     }
     if (typeof window.submitExternalTrackingProof !== 'function') return null;
@@ -2465,22 +2484,25 @@ async function sendExternalScreenshotAndConfirmFromUi(testId, ownerUsername, eve
         event.preventDefault();
         event.stopPropagation();
     }
-    var test = getExternalProjectTest(testId);
+    var test = getExternalProjectTest(testId) || (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(testId || 0);
+    }) || null;
     if (!test) return;
 
-    var cleanOwnerUsername = String(ownerUsername || test.owner_username || '').trim().replace(/^@+/, '');
+    var cleanOwnerUsername = String(ownerUsername || test.owner_username || test.external_owner_username || '').trim().replace(/^@+/, '');
     if (!cleanOwnerUsername) {
         showToast(window.t('externalProjectOwnerMissing', {}, lang));
         return;
     }
 
-    var result = await submitExternalGuestActivityFromUi(testId);
-    if (!result) return;
-
     var messageText = window.t('externalProjectScreenshotMessageTemplate', getExternalProjectOwnerMessageParams(test), lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
+
+    submitExternalGuestActivityFromUi(testId).catch(function(err) {
+        console.error('External guest activity background error:', err);
+    });
 }
 
 function getExternalProjectOwnerMessageParams(test) {
@@ -2495,12 +2517,16 @@ function getExternalProjectOwnerMessageParams(test) {
         appNameDisplay = packageName;
     }
 
+    var day = typeof getExternalCurrentTestingDay === 'function'
+        ? getExternalCurrentTestingDay(test)
+        : Number(test && test.testing_days || 1);
+
     return {
         app_name_display: appNameDisplay,
         package_name: packageName || appNameDisplay,
-        day: getExternalCurrentTestingDay(test),
+        day: day,
         claim_link: typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(packageName, test.external_guest_app_id)
+            ? window.buildExternalClaimStartLink(packageName, test && test.external_guest_app_id)
             : '',
     };
 }
@@ -2511,17 +2537,16 @@ async function sendExternalBugReportFromUi(testId, event, feedbackType) {
         event.stopPropagation();
     }
     var normalizedType = String(feedbackType || 'bug').toLowerCase() === 'idea' ? 'idea' : 'bug';
-    var test = getExternalProjectTest(testId);
+    var test = getExternalProjectTest(testId) || (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(testId || 0);
+    }) || null;
     if (!test) return;
 
-    var cleanOwnerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    var cleanOwnerUsername = String(test.owner_username || test.external_owner_username || '').trim().replace(/^@+/, '');
     if (!cleanOwnerUsername) {
         showToast(window.t('externalProjectOwnerMissing', {}, lang));
         return;
     }
-
-    var result = await submitExternalGuestActivityFromUi(testId);
-    if (!result) return;
 
     var templateKey = normalizedType === 'idea'
         ? 'externalProjectIdeaReportMessageTemplate'
@@ -2530,6 +2555,10 @@ async function sendExternalBugReportFromUi(testId, event, feedbackType) {
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
+
+    submitExternalGuestActivityFromUi(testId).catch(function(err) {
+        console.error('External feedback background error:', err);
+    });
 }
 
 function inviteExternalProjectOwnerToPlatform(testId, event) {
@@ -2860,18 +2889,29 @@ function showScreenshotCompleteModal(ownerUsername) {
     if (titleEl) {
         titleEl.innerText = t.screenshotCompleteTitle || t.screenshotReminderTitle;
     }
+    var cleanUsername = String(ownerUsername || '').trim().replace(/^@+/, '');
+    var isExternal = false;
+    if (Array.isArray(myTests)) {
+        var matched = myTests.find(function(item) {
+            return String(item.owner_username || item.external_owner_username || '').trim().replace(/^@+/, '') === cleanUsername;
+        });
+        if (matched && (matched.is_external || matched.is_guest || String(matched.flow || '') === 'external')) {
+            isExternal = true;
+        }
+    }
     if (textEl) {
-        textEl.innerText = (typeof window.tInternalCheckinCopy === 'function'
+        textEl.innerText = (!isExternal && typeof window.tInternalCheckinCopy === 'function'
             ? window.tInternalCheckinCopy('screenshotCompleteText', 'screenshotCompleteTextProof')
             : (t.screenshotCompleteText || t.screenshotReminderText));
     }
     if (closeEl) {
         closeEl.innerText = t.screenshotCompleteClose || t.btnClose;
     }
-    var hideOwnerDm = typeof window.isScreenshotProofUploadEnabled === 'function'
+    var hideOwnerDm = !isExternal
+        && typeof window.isScreenshotProofUploadEnabled === 'function'
         && window.isScreenshotProofUploadEnabled();
-    if (ownerUsername && !hideOwnerDm) {
-        const safe = escapeInlineJsString(ownerUsername || '');
+    if (cleanUsername && !hideOwnerDm) {
+        const safe = escapeInlineJsString(cleanUsername);
         actionEl.innerHTML = `<button class="btn" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none; margin-bottom: 8px;" onclick="openTelegramProfile('${safe}', event); closeScreenshotCompleteModal();">${t.screenshotReminderBtn}</button>`;
     } else {
         actionEl.innerHTML = '';
@@ -3251,10 +3291,15 @@ function handleRemoveReviewScreenshot(event) {
 window.handleRemoveReviewScreenshot = handleRemoveReviewScreenshot;
 
 function openCheckinOptionsModal(appId, ownerUsername) {
+    var test = typeof window.getMyTestById === 'function'
+        ? window.getMyTestById(appId)
+        : ((typeof myTests !== 'undefined' && Array.isArray(myTests)) ? myTests.find(function(item) { return Number(item.id) === Number(appId); }) : null);
+    if (test && (test.is_external || test.is_guest || String(test.flow || '') === 'external')) {
+        return openExternalCheckinOptionsModal(appId, ownerUsername);
+    }
     _checkinOptionsAppId = appId;
     _checkinOptionsOwner = ownerUsername || '';
     _checkinOptionsFlow = 'regular';
-    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
     var testingDay = test ? getResolvedTestingDay(test) : null;
     _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
     if (_checkinOptionsIsControlDay && isScreenshotOnlyControlDay(testingDay)) {
@@ -3306,7 +3351,6 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     }
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
-        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
         var testingDay = test ? getResolvedTestingDay(test) : null;
         var reviewStatus = typeof window.getPlayReviewStatus === 'function' ? window.getPlayReviewStatus(test) : String(test && test.play_review_status || 'none').toLowerCase();
         var canReview = !!(test && test.request_reviews && testingDay && testingDay >= 7);
@@ -3338,8 +3382,8 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     }
     var test = getExternalProjectTest(appId);
     _checkinOptionsAppId = appId;
-    _checkinOptionsOwner = ownerUsername || '';
-    _checkinOptionsIsControlDay = !!(test && isExternalControlDayDue(test));
+    _checkinOptionsOwner = ownerUsername || (test && (test.owner_username || test.external_owner_username)) || '';
+    _checkinOptionsIsControlDay = !!(test && (typeof isExternalControlDayDue === 'function' ? isExternalControlDayDue(test) : false));
     _checkinOptionsFlow = 'external';
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;
@@ -4238,16 +4282,17 @@ function openReportModal(appId, ownerUsername, options) {
     _reportMessageLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
         ? window.getDefaultCheckpointReportLanguage(appId)
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
-    var usesProofUpload = typeof window.isScreenshotProofUploadEnabled === 'function'
-        && window.isScreenshotProofUploadEnabled();
+    var safeAppId = Number(appId || 0);
+    var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
+    var usesProofUpload = typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+        ? window.isInternalScreenshotProofUploadEnabled(test)
+        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled());
     var reportModal = document.getElementById('report-modal');
     if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
     if (usesProofUpload) {
         var proofOptions = options && typeof options === 'object' ? options : {};
         var isBufferCatchup = proofOptions.submissionMode === 'buffer_catchup';
         var isCatchupSubmission = isBufferCatchup || proofOptions.catchupRequested === true;
-        var safeAppId = Number(appId || 0);
-        var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
         var progressId = Number(test && test.progress_id || 0);
         if (progressId > 0 && typeof _loadOrCreateCheckinProofKey === 'function') {
             if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();

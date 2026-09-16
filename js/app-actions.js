@@ -173,13 +173,24 @@ function openOwnerCheckpointChat(ownerUsername, text, options) {
 }
 
 function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
+    var safeAppId = Number(appId || 0);
+    var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
+    var isExternal = !!(test && (test.is_external || test.is_guest || String(test.flow || '') === 'external'));
+    if (isExternal) {
+        if (typeof window.sendExternalScreenshotAndConfirmFromUi === 'function') {
+            window.sendExternalScreenshotAndConfirmFromUi(safeAppId, ownerUsername || (test && test.owner_username) || '');
+            return;
+        }
+    }
     if (
-        typeof window.isScreenshotProofUploadEnabled === 'function'
-        && window.isScreenshotProofUploadEnabled()
-        && typeof window.openCheckinProofUploadModal === 'function'
+        typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+        ? window.isInternalScreenshotProofUploadEnabled(test || safeAppId)
+        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())
     ) {
-        window.openCheckinProofUploadModal(appId);
-        return;
+        if (typeof window.openCheckinProofUploadModal === 'function') {
+            window.openCheckinProofUploadModal(appId);
+            return;
+        }
     }
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
     confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
@@ -2840,15 +2851,30 @@ async function sendReport() {
     document.getElementById('report-modal').classList.remove('active');
 
     if (appId) {
+        var safeAppId = Number(appId || 0);
+        var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
+        var isExternal = !!(test && (test.is_external || test.is_guest || String(test.flow || '') === 'external'));
+        var usesProofUpload = !isExternal && (
+            typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+            ? window.isInternalScreenshotProofUploadEnabled(test || safeAppId)
+            : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())
+        );
         if (
-            typeof window.isScreenshotProofUploadEnabled === 'function'
-            && window.isScreenshotProofUploadEnabled()
+            usesProofUpload
             && typeof window.openCheckinProofUploadModal === 'function'
         ) {
             window.openCheckinProofUploadModal(appId);
             return;
         }
-        confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
+        if (isExternal) {
+            if (typeof window.submitExternalGuestActivityFromUi === 'function') {
+                window.submitExternalGuestActivityFromUi(appId).catch(function(err) {
+                    console.error('Submit external guest activity from sendReport error:', err);
+                });
+            }
+        } else {
+            confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
+        }
     }
     if (ownerUsername) {
         openOwnerCheckpointChat(ownerUsername, text);
@@ -4976,3 +5002,5 @@ window.markTestFeedbackCheckinPending = markTestFeedbackCheckinPending;
 window.applyTestFeedbackCheckinPendingUi = applyTestFeedbackCheckinPendingUi;
 window.reapplyAllFeedbackCheckinPendingUi = reapplyAllFeedbackCheckinPendingUi;
 window.getFeedbackCheckinPendingLabel = getFeedbackCheckinPendingLabel;
+window.openOwnerCheckpointChat = openOwnerCheckpointChat;
+
