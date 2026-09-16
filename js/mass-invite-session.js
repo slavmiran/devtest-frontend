@@ -236,42 +236,51 @@
         return save(appId, session);
     }
 
-    function getResponseRemaining(session) {
-        if (!session || !session.sent_at) return null;
-        if (typeof formatOfferRemaining === 'function') {
-            var remaining = formatOfferRemaining(session.sent_at);
-            if (!remaining) return null;
-            var leftMs = remaining.expiresAt
-                ? Math.max(0, remaining.expiresAt.getTime() - Date.now())
-                : 0;
-            var totalSeconds = Math.floor(leftMs / 1000);
-            var hours = Math.floor(totalSeconds / 3600);
-            var minutes = Math.floor((totalSeconds % 3600) / 60);
-            var seconds = totalSeconds % 60;
-            return {
-                expiresAt: remaining.expiresAt,
-                hours: hours,
-                minutes: minutes,
-                seconds: seconds,
-                text: String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0'),
-            };
-        }
-        var created = new Date(session.sent_at);
-        if (Number.isNaN(created.getTime())) return null;
-        var expiresAt = new Date(created.getTime() + RESPONSE_WINDOW_MS);
-        var left = expiresAt.getTime() - Date.now();
-        if (left <= 0) return null;
-        var totalSec = Math.floor(left / 1000);
+    function formatWaitClock(leftMs) {
+        var totalSec = Math.max(0, Math.floor(leftMs / 1000));
         var h = Math.floor(totalSec / 3600);
         var m = Math.floor((totalSec % 3600) / 60);
         var s = totalSec % 60;
+        return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    function getOfferRemaining(createdAt) {
+        if (!createdAt) return null;
+        if (createdAt instanceof Date && !Number.isNaN(createdAt.getTime())) {
+            return _remainingFromDate(createdAt);
+        }
+        var rawValue = createdAt;
+        var normalized = String(rawValue || '').trim();
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(normalized)) {
+            normalized = normalized.replace(' ', 'T');
+        }
+        if (normalized && !/([zZ]|[+\-]\d{2}:\d{2})$/.test(normalized)) {
+            normalized += 'Z';
+        }
+        var created = new Date(normalized || '');
+        if (Number.isNaN(created.getTime()) && createdAt) {
+            created = new Date(createdAt);
+        }
+        if (Number.isNaN(created.getTime())) return null;
+        return _remainingFromDate(created);
+    }
+
+    function _remainingFromDate(created) {
+        var expiresAt = new Date(created.getTime() + RESPONSE_WINDOW_MS);
+        var left = expiresAt.getTime() - Date.now();
+        if (left <= 0) return null;
         return {
             expiresAt: expiresAt,
-            hours: h,
-            minutes: m,
-            seconds: s,
-            text: String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'),
+            hours: Math.floor(left / 3600000),
+            minutes: Math.floor((left / 60000) % 60),
+            seconds: Math.floor((left / 1000) % 60),
+            text: formatWaitClock(left),
         };
+    }
+
+    function getResponseRemaining(session) {
+        if (!session || !session.sent_at) return null;
+        return getOfferRemaining(session.sent_at);
     }
 
     async function refreshFromServer(appId, ownerId, apiBase) {
@@ -306,7 +315,9 @@
         finalize: finalize,
         mergeServerOffers: mergeServerOffers,
         computeStats: computeStats,
+        getOfferRemaining: getOfferRemaining,
         getResponseRemaining: getResponseRemaining,
+        formatWaitClock: formatWaitClock,
         refreshFromServer: refreshFromServer,
     };
 })(window);

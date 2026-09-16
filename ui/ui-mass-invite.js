@@ -22,7 +22,7 @@
         selected: '',
         sending: '…',
         delivered: '✓',
-        sent: '…',
+        sent: '',
         accepted: '✓',
         rejected: '✕',
         expired: '⏱',
@@ -31,6 +31,63 @@
         failed: '!',
         skipped: '!',
     };
+
+    var RING_SVG = (
+        '<svg class="mi-ring" viewBox="0 0 48 48" aria-hidden="true">' +
+            '<circle class="mi-ring-track" cx="24" cy="24" r="21"></circle>' +
+            '<circle class="mi-ring-arc" cx="24" cy="24" r="21"></circle>' +
+        '</svg>'
+    );
+
+    var LETTER_SVG = (
+        '<span class="mi-letter-fly" aria-hidden="true">' +
+            '<svg viewBox="0 0 24 24">' +
+                '<rect x="3.2" y="6" width="17.6" height="12" rx="2.2"></rect>' +
+                '<path d="M4.2 7.4 L12 13.2 L19.8 7.4"></path>' +
+            '</svg>' +
+        '</span>'
+    );
+
+    var SANDGLASS_HTML = (
+        '<span class="mi-sandglass" aria-hidden="true">' +
+            '<span class="mi-sandglass-top"></span>' +
+            '<span class="mi-sandglass-stream"></span>' +
+            '<span class="mi-sandglass-bot"></span>' +
+        '</span>'
+    );
+
+    function remainingForCreatedAt(createdAt) {
+        if (typeof MassInviteSession !== 'undefined' && MassInviteSession.getOfferRemaining) {
+            return MassInviteSession.getOfferRemaining(createdAt);
+        }
+        var created = new Date(createdAt || '');
+        if (Number.isNaN(created.getTime())) return null;
+        var left = created.getTime() + (5 * 60 * 60 * 1000) - Date.now();
+        if (left <= 0) return null;
+        var totalSec = Math.floor(left / 1000);
+        var h = Math.floor(totalSec / 3600);
+        var m = Math.floor((totalSec % 3600) / 60);
+        var s = totalSec % 60;
+        return { text: h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') };
+    }
+
+    function waitClockHtml(createdAt) {
+        var remaining = remainingForCreatedAt(createdAt);
+        var digits = remaining ? remaining.text : '0:00:00';
+        return (
+            '<span class="mi-wait-clock">' +
+                SANDGLASS_HTML +
+                '<span class="mi-wait-digits">' + _esc(digits) + '</span>' +
+            '</span>'
+        );
+    }
+
+    function renderLabelHtml(status, item, currentLang) {
+        if (status === 'sent') {
+            return waitClockHtml(item && (item.created_at || item.wait_created_at));
+        }
+        return _esc(statusLabel(status, currentLang));
+    }
 
     function _lang() {
         return (typeof lang !== 'undefined' && lang) || 'ru';
@@ -96,11 +153,13 @@
         var ownerName = _displayName(item);
         var appName = String(item.name || '');
         var badge = STATUS_BADGE[status] || '';
-        var label = statusLabel(status, opts.lang || _lang());
+        var createdAt = item.created_at || '';
+        var labelHtml = renderLabelHtml(status, item, opts.lang || _lang());
         var interactiveClass = interactive ? ' is-interactive' : '';
         var clickAttr = interactive
             ? ' onclick="MassInviteCards.openDossierFromEl(this)"'
             : '';
+        var createdAttr = createdAt ? ' data-created-at="' + _esc(createdAt) + '"' : '';
 
         return (
             '<button type="button" class="mi-candidate-card' + interactiveClass + '"' +
@@ -108,13 +167,16 @@
             ' data-owner-id="' + _esc(ownerId) + '"' +
             ' data-username="' + _esc(username) + '"' +
             ' data-source-app-id="' + _esc(sourceAppId) + '"' +
-            ' aria-label="' + _esc(ownerName + ' — ' + label) + '"' +
+            createdAttr +
+            ' aria-label="' + _esc(ownerName + ' — ' + statusLabel(status, opts.lang || _lang())) + '"' +
             clickAttr +
             '>' +
                 '<span class="mi-candidate-pair" aria-hidden="true">' +
+                    RING_SVG +
                     '<span class="mi-candidate-avatar-wrap">' +
                         _iconHtml(ownerName, item.owner_avatar_url || '') +
                     '</span>' +
+                    LETTER_SVG +
                     '<span class="mi-candidate-app">' +
                         _iconHtml(appName, item.icon_url || '') +
                     '</span>' +
@@ -122,7 +184,7 @@
                         ? '<span class="mi-candidate-badge">' + _esc(badge) + '</span>'
                         : '') +
                 '</span>' +
-                '<span class="mi-candidate-label">' + _esc(label) + '</span>' +
+                '<span class="mi-candidate-label">' + labelHtml + '</span>' +
             '</button>'
         );
     }
@@ -168,12 +230,36 @@
         return container;
     }
 
-    function updateCardStatus(container, ownerId, status) {
+    function updateCardStatus(container, ownerId, status, meta) {
         if (!container) return false;
         var card = container.querySelector('.mi-candidate-card[data-owner-id="' + String(ownerId) + '"]');
         if (!card) return false;
+        var info = meta || {};
         var next = normalizeStatus(status);
+        var prev = String(card.getAttribute('data-status') || '');
+        if (next === 'delivered' && prev === 'delivered') {
+            card.classList.remove('is-filling');
+            void card.offsetWidth;
+        }
         card.setAttribute('data-status', next);
+        if (next === 'delivered') {
+            card.classList.add('is-filling');
+        } else {
+            card.classList.remove('is-filling');
+        }
+        if (next !== 'delivered') {
+            card.classList.remove('is-letter-fly');
+        }
+
+        var createdAt = info.created_at || card.getAttribute('data-created-at') || '';
+        if (next === 'sent' || next === 'delivered') {
+            if (!createdAt) createdAt = new Date().toISOString();
+            card.setAttribute('data-created-at', createdAt);
+        } else if (next !== 'accepted') {
+            card.removeAttribute('data-created-at');
+            createdAt = '';
+        }
+
         var badgeEl = card.querySelector('.mi-candidate-badge');
         var badge = STATUS_BADGE[next] || '';
         if (badge) {
@@ -188,13 +274,55 @@
             badgeEl.remove();
         }
         var labelEl = card.querySelector('.mi-candidate-label');
-        if (labelEl) labelEl.textContent = statusLabel(next);
+        if (labelEl) {
+            if (next === 'sent') {
+                labelEl.innerHTML = waitClockHtml(createdAt);
+            } else {
+                labelEl.textContent = statusLabel(next);
+            }
+        }
         var name = _displayName({
             owner_full_name: card.getAttribute('aria-label') || '',
             owner_username: card.getAttribute('data-username') || '',
         });
-        card.setAttribute('aria-label', name + ' — ' + statusLabel(next));
+        var ariaStatus = next === 'sent'
+            ? ((remainingForCreatedAt(createdAt) || {}).text || statusLabel(next))
+            : statusLabel(next);
+        card.setAttribute('aria-label', name + ' — ' + ariaStatus);
         return true;
+    }
+
+    function flyLetter(container, ownerId) {
+        if (!container) return false;
+        var card = container.querySelector('.mi-candidate-card[data-owner-id="' + String(ownerId) + '"]');
+        if (!card) return false;
+        card.classList.remove('is-letter-fly');
+        void card.offsetWidth;
+        card.classList.add('is-letter-fly');
+        return true;
+    }
+
+    function tickWaitClocks(container) {
+        var root = container || document;
+        var cards = root.querySelectorAll('.mi-candidate-card[data-status="sent"]');
+        cards.forEach(function (card) {
+            var createdAt = card.getAttribute('data-created-at');
+            if (!createdAt) return;
+            var remaining = remainingForCreatedAt(createdAt);
+            var digitsEl = card.querySelector('.mi-wait-digits');
+            var nextText = remaining ? remaining.text : '0:00:00';
+            if (digitsEl && digitsEl.textContent !== nextText) {
+                digitsEl.textContent = nextText;
+                digitsEl.classList.remove('is-tick');
+                void digitsEl.offsetWidth;
+                digitsEl.classList.add('is-tick');
+            }
+            if (!remaining) {
+                card.setAttribute('data-status', 'expired');
+                var labelEl = card.querySelector('.mi-candidate-label');
+                if (labelEl) labelEl.textContent = statusLabel('expired');
+            }
+        });
     }
 
     function setInteractive(container, enabled) {
@@ -376,6 +504,9 @@
         renderCandidateStrip: renderCandidateStrip,
         mountStrip: mountStrip,
         updateCardStatus: updateCardStatus,
+        flyLetter: flyLetter,
+        tickWaitClocks: tickWaitClocks,
+        waitClockHtml: waitClockHtml,
         setInteractive: setInteractive,
         openDossier: openDossier,
         openDossierFromEl: openDossierFromEl,

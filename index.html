@@ -1102,8 +1102,9 @@
     </div>
 
     <!-- Mass Invite Processing Overlay -->
-    <div id="mass-invite-progress-overlay" class="mi-progress-overlay" aria-live="polite" aria-busy="true" data-phase="collecting">
-        <div class="mi-progress-card">
+    <div id="mass-invite-progress-overlay" class="mi-progress-overlay" aria-live="polite" aria-busy="true" data-phase="collecting" onclick="MassInviteProgressOverlay.onBackdrop(event)">
+        <div class="mi-progress-card" onclick="event.stopPropagation()">
+            <button type="button" class="mi-progress-minimize-btn" id="mi-progress-minimize-btn" onclick="MassInviteProgressOverlay.minimize()" aria-label="Minimize">Свернуть</button>
             <div class="mi-phase-dots" aria-hidden="true">
                 <span class="mi-phase-dot" data-phase-dot="collecting"></span>
                 <span class="mi-phase-dot" data-phase-dot="sending"></span>
@@ -1133,6 +1134,25 @@
             <button id="mi-progress-close-btn" class="btn btn-secondary mi-progress-close-btn" type="button" style="display: none;" onclick="MassInviteProgressOverlay.finishAndReturn()">Close</button>
         </div>
     </div>
+
+    <button type="button" id="mi-blast-hud" class="mi-blast-hud" hidden data-hud="collecting" onclick="MassInviteProgressOverlay.onHudClick()">
+        <span class="mi-blast-hud-bar" aria-hidden="true"><span class="mi-blast-hud-bar-fill"></span></span>
+        <span class="mi-blast-hud-row">
+            <span class="mi-blast-hud-stage" aria-hidden="true">
+                <span class="mi-blast-hud-letter">
+                    <svg viewBox="0 0 24 24"><rect x="3.2" y="6" width="17.6" height="12" rx="2.2"></rect><path d="M4.2 7.4 L12 13.2 L19.8 7.4"></path></svg>
+                </span>
+                <span class="mi-blast-hud-sand"><span class="mi-sandglass"><span class="mi-sandglass-top"></span><span class="mi-sandglass-stream"></span><span class="mi-sandglass-bot"></span></span></span>
+                <span class="mi-blast-hud-search">…</span>
+                <span class="mi-blast-hud-check">✓</span>
+            </span>
+            <span class="mi-blast-hud-copy">
+                <span class="mi-blast-hud-title" id="mi-blast-hud-title">Mass invite</span>
+                <span class="mi-blast-hud-meta" id="mi-blast-hud-meta"></span>
+            </span>
+            <span class="mi-blast-hud-count" id="mi-blast-hud-count">0/0</span>
+        </span>
+    </button>
 
     <div id="visibility-mode-modal" class="modal-overlay" onclick="closeVisibilityModeModal(event)">
         <div class="modal-content visibility-mode-modal-content" onclick="event.stopPropagation()">

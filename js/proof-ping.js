@@ -309,10 +309,6 @@
     function expandedHtml(project, extraClass) {
         var appId = Number(project.id || project.app_id || 0);
         var enabled = isEnabled(project);
-        var statusLabel = text(
-            enabled ? 'pcPingStatusOn' : 'pcPingStatusOff',
-            enabled ? 'Enabled' : 'Disabled'
-        );
         var extra = extraClass ? ' ' + extraClass : '';
         var isDialog = extra.indexOf('pc-ping--dialog') !== -1;
         var titleAttrs = isDialog ? ' id="proof-ping-explain-title"' : '';
@@ -326,7 +322,6 @@
                 '<div class="pc-ping__titles">' +
                     '<div class="pc-ping__title-row">' +
                         '<h3 class="pc-ping__title"' + titleAttrs + '>' + esc(text('pcPingTitle', 'Notifications')) + '</h3>' +
-                        '<span class="pc-ping__status ' + (enabled ? 'is-on' : 'is-off') + '" data-pc-ping-status="' + appId + '">' + esc(statusLabel) + '</span>' +
                     '</div>' +
                     '<p class="pc-ping__desc">' + descHtml() + '</p>' +
                 '</div>' +

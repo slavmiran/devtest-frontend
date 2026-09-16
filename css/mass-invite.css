@@ -10,7 +10,7 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    width: 64px;
+    width: 70px;
     padding: 2px;
     border: 0;
     background: transparent;
@@ -33,21 +33,49 @@
     width: 48px;
     height: 48px;
     flex-shrink: 0;
+    overflow: visible;
+}
+
+.mi-ring {
+    position: absolute;
+    inset: 0;
+    width: 48px;
+    height: 48px;
+    transform: rotate(-90deg);
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+}
+
+.mi-ring-track,
+.mi-ring-arc {
+    fill: none;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+}
+
+.mi-ring-track {
+    stroke: rgba(255, 255, 255, 0.16);
+}
+
+.mi-ring-arc {
+    stroke: var(--mi-ring);
+    stroke-dasharray: 132;
+    stroke-dashoffset: 0;
+    filter: drop-shadow(0 0 4px var(--mi-ring-glow));
+    transition: stroke 0.25s ease, stroke-dashoffset 0.25s ease;
 }
 
 .mi-candidate-avatar-wrap {
     position: absolute;
-    inset: 0;
+    inset: 4px;
     border-radius: 50%;
-    padding: 2px;
-    background:
-        linear-gradient(var(--bg-surface-2), var(--bg-surface-2)) padding-box,
-        conic-gradient(from 210deg, var(--mi-ring), var(--mi-ring)) border-box;
-    border: 2px solid transparent;
-    box-shadow: 0 0 0 0 var(--mi-ring-glow);
+    padding: 0;
+    background: var(--bg-surface-2);
     overflow: hidden;
     box-sizing: border-box;
-    transition: box-shadow 0.25s ease, background 0.25s ease, transform 0.2s ease;
+    z-index: 1;
+    transition: transform 0.2s ease, box-shadow 0.25s ease;
 }
 
 .mi-candidate-avatar-wrap .avatar,
@@ -98,7 +126,8 @@
 }
 
 .mi-candidate-label {
-    max-width: 64px;
+    max-width: 70px;
+    min-height: 12px;
     font-size: 10px;
     font-weight: 600;
     line-height: 1.2;
@@ -143,6 +172,39 @@
     animation: miCandidatePulse 1s ease-in-out infinite;
 }
 
+.mi-candidate-card[data-status="sending"] .mi-ring-arc {
+    stroke-dasharray: 34 98;
+}
+
+.mi-candidate-card[data-status="sending"] .mi-ring {
+    animation: miRingSpin 1.05s linear infinite;
+}
+
+.mi-candidate-card[data-status="delivered"] .mi-ring-arc {
+    stroke-dasharray: 132;
+    stroke-dashoffset: 132;
+}
+
+.mi-candidate-card[data-status="delivered"].is-filling .mi-ring-arc {
+    animation: miRingFill 0.72s cubic-bezier(0.22, 0.9, 0.32, 1) forwards;
+}
+
+.mi-candidate-card[data-status="sent"] .mi-ring-arc {
+    stroke-dasharray: 132;
+    stroke-dashoffset: 0;
+}
+
+.mi-candidate-card[data-status="accepted"] .mi-ring-arc,
+.mi-candidate-card[data-status="rejected"] .mi-ring-arc,
+.mi-candidate-card[data-status="expired"] .mi-ring-arc,
+.mi-candidate-card[data-status="access_issue"] .mi-ring-arc,
+.mi-candidate-card[data-status="error"] .mi-ring-arc,
+.mi-candidate-card[data-status="failed"] .mi-ring-arc,
+.mi-candidate-card[data-status="skipped"] .mi-ring-arc {
+    stroke-dasharray: 132;
+    stroke-dashoffset: 0;
+}
+
 /* Brief "message delivered" flash during live send */
 .mi-candidate-card[data-status="delivered"] {
     --mi-ring: var(--success);
@@ -167,6 +229,8 @@
 
 .mi-candidate-card[data-status="sent"] .mi-candidate-label {
     color: var(--warning);
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .mi-candidate-card[data-status="accepted"] {
@@ -246,6 +310,146 @@
         transform: scale(1.04);
         box-shadow: 0 0 0 6px rgba(76, 141, 255, 0.12);
     }
+}
+
+@keyframes miRingSpin {
+    from { transform: rotate(-90deg); }
+    to { transform: rotate(270deg); }
+}
+
+@keyframes miRingFill {
+    from { stroke-dashoffset: 132; }
+    to { stroke-dashoffset: 0; }
+}
+
+.mi-letter-fly {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    width: 18px;
+    height: 18px;
+    margin: -9px 0 0 -9px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 6;
+    color: var(--success);
+    filter: drop-shadow(0 3px 8px rgba(48, 209, 88, 0.45));
+}
+
+.mi-letter-fly svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.85;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.mi-candidate-card.is-letter-fly .mi-letter-fly {
+    animation: miLetterFly 0.62s cubic-bezier(0.18, 0.86, 0.32, 1) forwards;
+}
+
+@keyframes miLetterFly {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(0.86) rotate(-8deg);
+    }
+    35% {
+        opacity: 1;
+        transform: translate(8px, -10px) scale(1.08) rotate(6deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(22px, -34px) scale(0.72) rotate(18deg);
+    }
+}
+
+.mi-wait-clock {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    max-width: 70px;
+    color: var(--warning);
+}
+
+.mi-wait-digits {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    line-height: 1;
+}
+
+.mi-wait-digits.is-tick {
+    animation: miDigitTick 0.32s ease;
+}
+
+@keyframes miDigitTick {
+    0% { opacity: 0.45; transform: translateY(-2px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.mi-sandglass {
+    position: relative;
+    width: 8px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.mi-sandglass-top,
+.mi-sandglass-bot {
+    position: absolute;
+    left: 0;
+    width: 8px;
+    height: 5px;
+    box-sizing: border-box;
+}
+
+.mi-sandglass-top {
+    top: 0;
+    border: 1.15px solid currentColor;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    background: linear-gradient(180deg, currentColor 0%, currentColor 55%, transparent 56%);
+    animation: miSandTop 1.6s ease-in-out infinite;
+}
+
+.mi-sandglass-bot {
+    bottom: 0;
+    border: 1.15px solid currentColor;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: linear-gradient(180deg, transparent 0%, transparent 40%, currentColor 41%);
+    animation: miSandBot 1.6s ease-in-out infinite;
+}
+
+.mi-sandglass-stream {
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    width: 1px;
+    height: 4px;
+    margin-left: -0.5px;
+    background: currentColor;
+    opacity: 0.85;
+    animation: miSandStream 1.6s linear infinite;
+}
+
+@keyframes miSandTop {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
+@keyframes miSandBot {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+
+@keyframes miSandStream {
+    0% { transform: scaleY(0.4); opacity: 0.2; }
+    40% { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(0.5); opacity: 0.25; }
 }
 
 /* --- Horizontal strip --- */
@@ -530,4 +734,264 @@
     letter-spacing: 0.02em;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
+}
+
+.mi-progress-minimize-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: auto;
+    min-width: 0;
+    height: 26px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.01em;
+}
+
+.mi-progress-minimize-btn:active {
+    transform: scale(0.96);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.mi-progress-card {
+    position: relative;
+}
+
+.mi-progress-overlay.is-docked {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.mi-blast-hud {
+    position: fixed;
+    top: max(10px, env(safe-area-inset-top, 0px));
+    left: 12px;
+    right: 12px;
+    max-width: 420px;
+    margin: 0 auto;
+    z-index: 10090;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    background: rgba(18, 22, 28, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.38);
+    color: var(--text-primary);
+    overflow: hidden;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    animation: miHudIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.mi-blast-hud[hidden] {
+    display: none !important;
+}
+
+.mi-blast-hud:active {
+    transform: scale(0.985);
+}
+
+@keyframes miHudIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mi-blast-hud-bar {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.mi-blast-hud-bar-fill {
+    display: block;
+    height: 100%;
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: linear-gradient(90deg, var(--accent-primary), #7cb0ff);
+    border-radius: 0 2px 2px 0;
+}
+
+.mi-blast-hud[data-hud="sending"] .mi-blast-hud-bar-fill {
+    background: linear-gradient(90deg, var(--accent-primary), #7cb0ff);
+    animation: miHudBarSend 1.15s ease-out forwards;
+}
+
+.mi-blast-hud[data-hud="delivered"] .mi-blast-hud-bar-fill {
+    background: linear-gradient(90deg, var(--success), #7dff9a);
+    animation: miHudBarFill 0.72s cubic-bezier(0.22, 0.9, 0.32, 1) forwards;
+}
+
+.mi-blast-hud[data-hud="waiting"] .mi-blast-hud-bar-fill,
+.mi-blast-hud[data-hud="done"] .mi-blast-hud-bar-fill {
+    transform: scaleX(1);
+    background: linear-gradient(90deg, var(--warning), #ffd37a);
+}
+
+.mi-blast-hud[data-hud="done"] .mi-blast-hud-bar-fill {
+    background: linear-gradient(90deg, var(--success), #7dff9a);
+}
+
+.mi-blast-hud[data-hud="collecting"] .mi-blast-hud-bar-fill {
+    animation: miHudBarPulse 1.2s ease-in-out infinite;
+    background: linear-gradient(90deg, var(--accent-primary), #7cb0ff);
+}
+
+@keyframes miHudBarSend {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(0.72); }
+}
+
+@keyframes miHudBarFill {
+    from { transform: scaleX(0.72); }
+    to { transform: scaleX(1); }
+}
+
+@keyframes miHudBarPulse {
+    0%, 100% { transform: scaleX(0.18); opacity: 0.55; }
+    50% { transform: scaleX(0.55); opacity: 1; }
+}
+
+.mi-blast-hud-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px 10px;
+}
+
+.mi-blast-hud-stage {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    color: var(--accent-primary);
+}
+
+.mi-blast-hud[data-hud="delivered"] .mi-blast-hud-stage,
+.mi-blast-hud[data-hud="done"] .mi-blast-hud-stage {
+    color: var(--success);
+}
+
+.mi-blast-hud[data-hud="waiting"] .mi-blast-hud-stage {
+    color: var(--warning);
+}
+
+.mi-blast-hud-letter,
+.mi-blast-hud-sand,
+.mi-blast-hud-check,
+.mi-blast-hud-search {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.mi-blast-hud-letter svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.85;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.mi-blast-hud[data-hud="sending"] .mi-blast-hud-letter,
+.mi-blast-hud[data-hud="delivered"] .mi-blast-hud-letter {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.mi-blast-hud[data-hud="delivered"] .mi-blast-hud-letter {
+    animation: miHudLetterPop 0.62s ease-out;
+}
+
+.mi-blast-hud[data-hud="waiting"] .mi-blast-hud-sand,
+.mi-blast-hud[data-hud="collecting"] .mi-blast-hud-search,
+.mi-blast-hud[data-hud="done"] .mi-blast-hud-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+@keyframes miHudLetterPop {
+    0% { transform: translateY(6px) scale(0.7); opacity: 0; }
+    40% { transform: translateY(-2px) scale(1.08); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.mi-blast-hud-copy {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mi-blast-hud-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-primary);
+}
+
+.mi-blast-hud-meta {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 14px;
+}
+
+.mi-blast-hud-meta .mi-wait-clock {
+    max-width: none;
+    color: var(--warning);
+}
+
+.mi-blast-hud-meta .mi-wait-digits {
+    font-size: 11px;
+}
+
+.mi-blast-hud-count {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+    padding: 4px 8px;
+    line-height: 1;
+}
+
+.mi-blast-hud-check {
+    font-size: 15px;
+    font-weight: 800;
 }

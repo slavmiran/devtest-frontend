@@ -8890,6 +8890,9 @@ function updateMassInviteModalTimers() {
         var closed = window.t && text === window.t('massInviteSessionWindowClosed', {}, lang);
         responseEl.classList.toggle('is-done', !!closed || !text);
     }
+    if (typeof MassInviteCards !== 'undefined' && MassInviteCards.tickWaitClocks) {
+        MassInviteCards.tickWaitClocks(document.getElementById('mi-session-strip'));
+    }
 }
 
 async function refreshMassInviteSessionQuietly(projectId) {

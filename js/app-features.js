@@ -2159,10 +2159,20 @@ var MassInviteProgressOverlay = (function () {
     var _longTimer = null;
     var _returnTimer = null;
     var _autoCloseInterval = null;
+    var _waitTickInterval = null;
     var _autoCloseEndsAt = 0;
     var _currentIndex = 0;
     var _phase = 'collecting';
     var _sourceAppId = 0;
+    var _minimized = false;
+    var _done = false;
+    var _beatGen = 0;
+    var _sendCurrent = 0;
+    var _sendTotal = 0;
+    var _successCount = 0;
+    var _hudWaitCreatedAt = '';
+    var RING_FILL_MS = 720;
+    var LETTER_MS = 620;
     var RESULT_AUTO_CLOSE_MS = 120000;
     var COLLECT_STATUS_KEYS = [
         'massInviteProgressStatus1',
@@ -2173,6 +2183,210 @@ var MassInviteProgressOverlay = (function () {
     function _t(key, params, currentLang) {
         if (window.t) return window.t(key, params || {}, currentLang || lang);
         return key;
+    }
+
+    function _sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+
+    function _hudEl() {
+        return document.getElementById('mi-blast-hud');
+    }
+
+    function _restartHudBar() {
+        var hud = _hudEl();
+        if (!hud) return;
+        var fill = hud.querySelector('.mi-blast-hud-bar-fill');
+        if (!fill) return;
+        fill.style.animation = 'none';
+        void fill.offsetWidth;
+        fill.style.animation = '';
+    }
+
+    function _setHudWaitMeta(createdAt) {
+        var metaEl = document.getElementById('mi-blast-hud-meta');
+        if (!metaEl) return;
+        _hudWaitCreatedAt = createdAt || _hudWaitCreatedAt || '';
+        if (!_hudWaitCreatedAt || typeof MassInviteCards === 'undefined' || !MassInviteCards.waitClockHtml) {
+            metaEl.textContent = '';
+            return;
+        }
+        metaEl.innerHTML = MassInviteCards.waitClockHtml(_hudWaitCreatedAt);
+    }
+
+    function _tickHudWait() {
+        var digitsEl = document.querySelector('#mi-blast-hud-meta .mi-wait-digits');
+        if (!digitsEl || !_hudWaitCreatedAt) return;
+        var remaining = (typeof MassInviteSession !== 'undefined' && MassInviteSession.getOfferRemaining)
+            ? MassInviteSession.getOfferRemaining(_hudWaitCreatedAt)
+            : null;
+        var nextText = remaining && remaining.text ? remaining.text : '0:00:00';
+        if (digitsEl.textContent !== nextText) {
+            digitsEl.textContent = nextText;
+            digitsEl.classList.remove('is-tick');
+            void digitsEl.offsetWidth;
+            digitsEl.classList.add('is-tick');
+        }
+    }
+
+    function updateHud(mode, extra) {
+        var hud = _hudEl();
+        if (!hud) return;
+        var info = extra || {};
+        var currentLang = info.lang || lang;
+        var prev = hud.getAttribute('data-hud');
+        hud.setAttribute('data-hud', mode);
+        if (info.restartBar || prev !== mode) _restartHudBar();
+
+        var titleEl = document.getElementById('mi-blast-hud-title');
+        var metaEl = document.getElementById('mi-blast-hud-meta');
+        var countEl = document.getElementById('mi-blast-hud-count');
+        var sent = info.successCount != null ? info.successCount : _successCount;
+        var total = info.total != null ? info.total : _sendTotal;
+        var current = info.current != null ? info.current : _sendCurrent;
+
+        if (countEl) {
+            countEl.textContent = total > 0
+                ? (sent + '/' + total)
+                : String(sent || 0);
+        }
+
+        if (mode === 'collecting') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseCollectTitle', {}, currentLang);
+            if (metaEl) metaEl.textContent = _t('massInviteHudCollectingMeta', {}, currentLang);
+        } else if (mode === 'sending') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudSending', {}, currentLang);
+            if (metaEl) {
+                metaEl.textContent = _t('massInviteProgressSending', {
+                    current: current || 1,
+                    total: total || current || 1,
+                }, currentLang);
+            }
+        } else if (mode === 'delivered') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudDelivered', {}, currentLang);
+            if (metaEl) metaEl.textContent = _t('massInviteHudDeliveredMeta', {}, currentLang);
+        } else if (mode === 'waiting') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudWaiting', {}, currentLang);
+            _setHudWaitMeta(info.createdAt);
+        } else if (mode === 'done') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudDone', {}, currentLang);
+            if (metaEl) metaEl.textContent = _t('massInviteHudDoneHint', {}, currentLang);
+        }
+        hud.setAttribute('aria-label', (titleEl && titleEl.textContent) || '');
+    }
+
+    function _showHud() {
+        var hud = _hudEl();
+        if (!hud) return;
+        hud.hidden = false;
+        if (_done) updateHud('done');
+        else if (_phase === 'collecting') updateHud('collecting');
+        else if (_phase === 'result') updateHud('done');
+        else updateHud(hud.getAttribute('data-hud') || 'sending');
+    }
+
+    function _hideHud() {
+        var hud = _hudEl();
+        if (hud) hud.hidden = true;
+    }
+
+    function _closeMassInviteSheet() {
+        if (typeof closeMassInviteModal === 'function') {
+            try { closeMassInviteModal(); } catch (e) { /* ignore */ }
+        }
+    }
+
+    function _ensureWaitTick() {
+        if (_waitTickInterval !== null) return;
+        _waitTickInterval = setInterval(function () {
+            var strip = document.getElementById('mi-candidates-strip');
+            if (typeof MassInviteCards !== 'undefined' && MassInviteCards.tickWaitClocks) {
+                MassInviteCards.tickWaitClocks(strip);
+            }
+            _tickHudWait();
+        }, 1000);
+    }
+
+    function _clearWaitTick() {
+        if (_waitTickInterval !== null) {
+            clearInterval(_waitTickInterval);
+            _waitTickInterval = null;
+        }
+    }
+
+    function isMinimized() {
+        return !!_minimized;
+    }
+
+    function minimize() {
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (!overlay) return;
+        _minimized = true;
+        overlay.classList.remove('active');
+        overlay.classList.add('is-docked');
+        overlay.setAttribute('aria-hidden', 'true');
+        _clearAutoClose();
+        _closeMassInviteSheet();
+        _showHud();
+        if (_done || _phase === 'result') updateHud('done');
+        try {
+            if (window.tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        } catch (e) { /* ignore */ }
+    }
+
+    function expand() {
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (!overlay) return;
+        if (_done || _phase === 'result') {
+            finishAndReturn();
+            return;
+        }
+        _minimized = false;
+        overlay.classList.add('active');
+        overlay.classList.remove('is-docked');
+        overlay.removeAttribute('aria-hidden');
+        _hideHud();
+        try {
+            if (window.tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        } catch (e) { /* ignore */ }
+    }
+
+    function onHudClick() {
+        if (_done || _phase === 'result') {
+            finishAndReturn();
+            return;
+        }
+        expand();
+    }
+
+    function onBackdrop(event) {
+        if (!event || event.target !== event.currentTarget) return;
+        if (!_done && _phase !== 'result') {
+            minimize();
+        }
+    }
+
+    function playDeliveredBeat(ownerId, meta) {
+        var gen = _beatGen;
+        var info = meta || {};
+        if (info.successCount != null) _successCount = Number(info.successCount);
+        if (info.total != null) _sendTotal = Number(info.total);
+        if (info.current != null) _sendCurrent = Number(info.current);
+        setCandidateStatus(ownerId, 'delivered', info);
+        updateHud('delivered', info);
+        return _sleep(RING_FILL_MS).then(function () {
+            if (gen !== _beatGen) return;
+            var strip = document.getElementById('mi-candidates-strip');
+            if (typeof MassInviteCards !== 'undefined' && MassInviteCards.flyLetter) {
+                MassInviteCards.flyLetter(strip, ownerId);
+            }
+            return _sleep(LETTER_MS);
+        }).then(function () {
+            if (gen !== _beatGen) return;
+            setCandidateStatus(ownerId, 'sent', info);
+            updateHud('waiting', info);
+            _ensureWaitTick();
+        });
     }
 
     function _formatAutoClose(ms) {
@@ -2225,6 +2439,7 @@ var MassInviteProgressOverlay = (function () {
         if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
         if (_returnTimer !== null) { clearTimeout(_returnTimer); _returnTimer = null; }
         _clearAutoClose();
+        _clearWaitTick();
     }
 
     function _setStatus(text, fade) {
@@ -2319,8 +2534,16 @@ var MassInviteProgressOverlay = (function () {
         var overlay = document.getElementById('mass-invite-progress-overlay');
         if (!overlay) return;
         _clearTimers();
+        _beatGen += 1;
         _currentIndex = 0;
         _sourceAppId = 0;
+        _minimized = false;
+        _done = false;
+        _sendCurrent = 0;
+        _sendTotal = 0;
+        _successCount = 0;
+        _hudWaitCreatedAt = '';
+        _hideHud();
 
         var noticeEl = document.getElementById('t-miProgressLongNotice');
         var noticeDetailEl = document.getElementById('t-miProgressLongNoticeDetail');
@@ -2330,11 +2553,20 @@ var MassInviteProgressOverlay = (function () {
         var longNotice = document.getElementById('mi-progress-long-notice');
         if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
 
+        var minBtn = document.getElementById('mi-progress-minimize-btn');
+        if (minBtn) {
+            minBtn.setAttribute('aria-label', _t('massInviteMinimize', {}, currentLang));
+            minBtn.textContent = _t('massInviteMinimize', {}, currentLang);
+        }
+
         clearCandidates();
         setPhase('collecting', currentLang);
         _setStatus(_t(COLLECT_STATUS_KEYS[0], {}, currentLang), false);
+        updateHud('collecting', { lang: currentLang });
 
         overlay.classList.add('active');
+        overlay.classList.remove('is-docked');
+        overlay.removeAttribute('aria-hidden');
         overlay.setAttribute('aria-busy', 'true');
 
         _rotateInterval = setInterval(function () {
@@ -2350,10 +2582,13 @@ var MassInviteProgressOverlay = (function () {
     }
 
     function hide() {
+        _beatGen += 1;
         _clearTimers();
+        _hideHud();
         var overlay = document.getElementById('mass-invite-progress-overlay');
         if (overlay) {
-            overlay.classList.remove('active');
+            overlay.classList.remove('active', 'is-docked');
+            overlay.removeAttribute('aria-hidden');
             overlay.setAttribute('aria-busy', 'true');
             overlay.setAttribute('data-phase', 'collecting');
         }
@@ -2364,6 +2599,12 @@ var MassInviteProgressOverlay = (function () {
         _currentIndex = 0;
         _phase = 'collecting';
         _sourceAppId = 0;
+        _minimized = false;
+        _done = false;
+        _sendCurrent = 0;
+        _sendTotal = 0;
+        _successCount = 0;
+        _hudWaitCreatedAt = '';
     }
 
     function scrollToOwner(ownerId) {
@@ -2384,16 +2625,33 @@ var MassInviteProgressOverlay = (function () {
 
     function updateProgress(current, total, currentLang) {
         if (_phase !== 'sending') setPhase('sending', currentLang);
+        _sendCurrent = Number(current || 0);
+        _sendTotal = Number(total || 0);
         var text = _t('massInviteProgressSending', {
             current: current,
             total: total,
         }, currentLang);
         _setStatus(text, false);
+        updateHud('sending', { current: current, total: total, lang: currentLang, restartBar: true });
     }
 
     function showFinalState(statusText, currentLang, details) {
         var info = details || {};
         if (info.sourceAppId) _sourceAppId = Number(info.sourceAppId) || _sourceAppId;
+        _done = true;
+        _successCount = Number(info.sentCount != null ? info.sentCount : _successCount);
+        updateHud('done', {
+            successCount: _successCount,
+            total: _sendTotal,
+            lang: currentLang,
+        });
+
+        if (_minimized) {
+            _clearAutoClose();
+            enableCandidateInteraction(true);
+            return;
+        }
+
         setPhase('result', currentLang);
         _setResultHero(true, {
             sentCount: info.sentCount != null ? info.sentCount : 0,
@@ -2425,7 +2683,6 @@ var MassInviteProgressOverlay = (function () {
         _clearAutoClose();
         var projectId = _sourceAppId;
         hide();
-        // Prefer refreshing the mass-invite modal if it is still open.
         var modal = document.getElementById('mass-invite-modal');
         if (modal && modal.classList.contains('active') && typeof renderMassInviteModalContent === 'function') {
             renderMassInviteModalContent();
@@ -2465,10 +2722,10 @@ var MassInviteProgressOverlay = (function () {
         });
     }
 
-    function setCandidateStatus(ownerId, status) {
+    function setCandidateStatus(ownerId, status, meta) {
         var strip = document.getElementById('mi-candidates-strip');
         if (!strip || typeof MassInviteCards === 'undefined') return false;
-        var ok = MassInviteCards.updateCardStatus(strip, ownerId, status);
+        var ok = MassInviteCards.updateCardStatus(strip, ownerId, status, meta);
         if (String(status) === 'sending') scrollToOwner(ownerId);
         return ok;
     }
@@ -2493,6 +2750,13 @@ var MassInviteProgressOverlay = (function () {
         enableCandidateInteraction: enableCandidateInteraction,
         finishAndReturn: finishAndReturn,
         scrollToOwner: scrollToOwner,
+        minimize: minimize,
+        expand: expand,
+        onHudClick: onHudClick,
+        onBackdrop: onBackdrop,
+        playDeliveredBeat: playDeliveredBeat,
+        isMinimized: isMinimized,
+        updateHud: updateHud,
     };
 }());
 
@@ -2589,23 +2853,33 @@ async function startMassInvite(projectId) {
                 var sendData = await sendResponse.json();
                 if (sendResponse.ok && sendData.status === 'success' && sendData.sent) {
                     successCount++;
+                    var sentMeta = {
+                        offer_id: sendData.offer_id,
+                        outcome: sendData.outcome || 'pending',
+                        created_at: new Date().toISOString(),
+                        successCount: successCount,
+                        total: totalCount,
+                        current: i + 1,
+                    };
                     if (typeof MassInviteSession !== 'undefined') {
-                        MassInviteSession.markSent(projectId, candidate.owner_id, {
-                            offer_id: sendData.offer_id,
-                            outcome: sendData.outcome || 'pending'
-                        });
+                        MassInviteSession.markSent(projectId, candidate.owner_id, sentMeta);
                     }
                     if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
                         if (sendData.outcome === 'auto_accepted') {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'accepted');
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'accepted', sentMeta);
+                            if (MassInviteProgressOverlay.updateHud) {
+                                MassInviteProgressOverlay.updateHud('delivered', {
+                                    successCount: successCount,
+                                    total: totalCount,
+                                    current: i + 1,
+                                });
+                            }
+                        } else if (MassInviteProgressOverlay.playDeliveredBeat) {
+                            await MassInviteProgressOverlay.playDeliveredBeat(candidate.owner_id, sentMeta);
                         } else {
-                            // Brief green "delivered" flash, then yellow waiting ring.
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'delivered');
-                            (function (ownerId) {
-                                setTimeout(function () {
-                                    MassInviteProgressOverlay.setCandidateStatus(ownerId, 'sent');
-                                }, 700);
-                            })(candidate.owner_id);
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'delivered', sentMeta);
+                            await new Promise(function (resolve) { setTimeout(resolve, 700); });
+                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'sent', sentMeta);
                         }
                     }
                 } else {
