@@ -542,12 +542,16 @@
             pcParamsOn: "On",
             pcParamsOff: "Off",
             pcParamsBoost: "Additional reports with screenshots",
+            pcParamsBoostLead: "Additional reports",
+            pcParamsBoostTail: "with screenshots",
             pcParamsBoostActive: "On",
             pcParamsBoostPaused: "Off",
             pcParamsBoostOff: "Off",
             pcParamsBoostRewardChip: "+{amount} $BUST per report",
+            pcParamsBoostRewardRest: "per report",
             pcParamsBoostRewardChipZero: "0 $BUST per report",
             pcParamsBoostPoolChip: "Pool: {amount} $BUST",
+            pcParamsBoostPoolLead: "Pool:",
             pcParamsBoostPool: "Pool: {amount} $BUST",
             pcParamsBoostEmpty: "Pool empty",
             pcParamsReportsOne: "Remaining: {count}",
@@ -3395,6 +3399,11 @@
             pcReceivedToggleHide: "Hide received",
             pcProofOpenTopicInline: "Open in topic",
             pcControlRemindAllSuccess: "Reminders sent",
+            pcBugDetected: "Bug detected",
+            pcScreenshotSet: "Screenshot set",
+            pcScreenshotSingle: "Screenshot",
+            pcProofOpenVerb: "Open",
+            pcProofOpenTopicTail: "in topic",
 
     };
     window.I18N_EN = window.I18NEN;

@@ -94,10 +94,10 @@
         var isPoolActive = boost.on;
         var badgeModifier = isPoolActive ? 'active' : 'off';
         var badgeText = isPoolActive ? text('pcParamsBoostActive') : text('pcParamsBoostOff');
-        var rewardChipText = boost.reward > 0 ? text('pcParamsBoostRewardChip', { amount: amount(boost.reward) }) : text('pcParamsBoostRewardChipZero', { amount: '0' });
-        var poolChipText = text('pcParamsBoostPoolChip', { amount: amount(boost.pool) });
-        var leftChipText = boost.pool > 0 && boost.reward > 0 ? plural(boost.reports, 'pcParamsReportsOne', 'pcParamsReportsFew', 'pcParamsReportsMany') : text('pcParamsBoostEmpty');
+        var rewardAmountText = (boost.reward > 0 ? '+' : '') + amount(boost.reward > 0 ? boost.reward : 0) + ' $BUST';
+        var poolAmountText = amount(boost.pool) + ' $BUST';
         var noteText = isPoolActive ? text('pcParamsBoostNoteActive') : text('pcParamsBoostNoteInactive');
+        var leftChipText = boost.pool > 0 && boost.reward > 0 ? plural(boost.reports, 'pcParamsReportsOne', 'pcParamsReportsFew', 'pcParamsReportsMany') : text('pcParamsBoostEmpty');
         return '<div class="pc-project-params__head">' +
             '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '">' +
                 '<span class="pc-project-params__title">' + esc(text('pcParamsTitle')) + '</span>' +
@@ -121,15 +121,18 @@
                 '<div class="pc-project-boost__head">' +
                     '<span class="pc-project-boost__title-group">' +
                         '<span class="pc-project-boost__icon" aria-hidden="true">' + icon('camera') + '</span>' +
-                        '<span class="pc-project-boost__title">' + esc(text('pcParamsBoost')) + '</span>' +
+                        '<span class="pc-project-boost__title">' +
+                            '<span class="pc-project-boost__title-accent">' + esc(text('pcParamsBoostLead')) + '</span>' +
+                            ' <span class="pc-project-boost__title-tail">' + esc(text('pcParamsBoostTail')) + '</span>' +
+                        '</span>' +
                     '</span>' +
                     '<span class="pc-project-boost__badge pc-project-boost__badge--' + badgeModifier + '">' + esc(badgeText) + '</span>' +
                 '</div>' +
                 '<div class="pc-project-boost__divider" aria-hidden="true"></div>' +
                 '<div class="pc-project-boost__chips">' +
-                    '<span class="pc-project-boost__chip pc-project-boost__chip--reward">' + esc(rewardChipText) + '</span>' +
+                    '<span class="pc-project-boost__chip pc-project-boost__chip--reward"><strong class="pc-project-boost__bust">' + esc(rewardAmountText) + '</strong> ' + esc(text('pcParamsBoostRewardRest')) + '</span>' +
                     '<span class="pc-project-boost__dot" aria-hidden="true">•</span>' +
-                    '<span class="pc-project-boost__chip pc-project-boost__chip--pool">' + esc(poolChipText) + '</span>' +
+                    '<span class="pc-project-boost__chip pc-project-boost__chip--pool">' + esc(text('pcParamsBoostPoolLead')) + ' <strong class="pc-project-boost__bust">' + esc(poolAmountText) + '</strong></span>' +
                     '<span class="pc-project-boost__dot" aria-hidden="true">•</span>' +
                     '<span class="pc-project-boost__chip pc-project-boost__chip--left">' + esc(leftChipText) + '</span>' +
                 '</div>' +

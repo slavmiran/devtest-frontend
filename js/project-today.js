@@ -638,7 +638,7 @@
             createdAt: String(proof && proof.created_at || ''),
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
-            feedbackStatus: '',
+            feedbackStatus: String(proof && proof.feedback && (proof.feedback.status || proof.feedback.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
             feedbackText: String(proof && proof.feedback && (proof.feedback.message_text || proof.feedback.text || proof.feedback.summary || proof.feedback.title) || ''),
             slots: buildSlots(proof, thumbnailByProofId),
@@ -667,7 +667,7 @@
             createdAt: String(proof && proof.created_at || ''),
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
-            feedbackStatus: '',
+            feedbackStatus: String(proof && proof.feedback && (proof.feedback.status || proof.feedback.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
             feedbackText: String(proof && proof.feedback && (proof.feedback.message_text || proof.feedback.text || proof.feedback.summary || proof.feedback.title) || ''),
             slots: buildSlots(proof, thumbnailByProofId),
@@ -683,7 +683,9 @@
             try {
                 var proof = await requestProofDetails(row.proofId);
                 var fb = proof && proof.feedback;
-                row.feedbackStatus = String(fb && fb.status || '').toLowerCase();
+                if (fb && fb.status) {
+                    row.feedbackStatus = String(fb.status).toLowerCase();
+                }
                 if (fb) {
                     if (fb.has_media != null) row.hasMedia = Boolean(fb.has_media);
                     row.feedbackText = String(fb.message_text || fb.text || fb.summary || fb.title || '').replace(/\s+/g, ' ').trim();
@@ -696,9 +698,7 @@
                     (fb && (fb.title || fb.summary || fb.text || fb.message_text)) || ''
                 ).replace(/\s+/g, ' ').trim().slice(0, 80);
             } catch (_) {
-                row.feedbackStatus = '';
-                row.feedbackTitle = '';
-                row.feedbackText = '';
+                // Preserve existing row properties
             }
         }));
     }
@@ -934,13 +934,15 @@
 
         var title = '';
         if (type === 'bug') {
-            title = hasMedia ? text('pcBugWithScreenshot', 'Баг + Скриншот') : text('pcProofBug', 'Баг');
+            title = text('pcBugDetected', 'Обнаружен баг');
         } else if (type === 'idea') {
-            title = hasMedia ? text('pcIdeaWithScreenshot', 'Рекомендация + Скриншот') : text('pcContributionIdea', 'Рекомендация');
+            title = text('pcContributionIdea', 'Рекомендация');
         } else if (type === 'play_review') {
-            title = text('pcProofPlayReview', 'Отзыв Google Play');
+            title = text('pcProofReview', 'Отзыв');
         } else {
-            title = text('pcProofAlbumCount', '{count} screenshots', { count: imageCount || 1 });
+            title = imageCount > 1
+                ? text('pcScreenshotSet', 'Серия скриншотов')
+                : text('pcScreenshotSingle', 'Скриншот');
         }
 
         var processedHtml = '';
@@ -987,10 +989,15 @@
 
         var bottomHtml = '';
         if (type !== 'play_review' && proofId > 0) {
+            var verbText = text('pcProofOpenVerb', 'Открыть');
+            var targetText = text('pcProofOpenTopicTail', 'в топике');
             bottomHtml = '<div class="pc-proof-album-card__divider" aria-hidden="true"></div>' +
                 '<button type="button" class="pc-proof-album-card__topic-btn" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
                     ICONS.topic +
-                    '<span>' + esc(text('pcProofOpenTopicInline', 'Открыть в топике')) + '</span>' +
+                    '<span class="pc-proof-album-card__topic-label">' +
+                        '<span class="pc-proof-album-card__topic-verb">' + esc(verbText) + '</span> ' +
+                        '<span class="pc-proof-album-card__topic-target">' + esc(targetText) + '</span>' +
+                    '</span>' +
                 '</button>';
         }
 
@@ -998,6 +1005,47 @@
             topHtml +
             bottomHtml +
         '</div>';
+    }
+
+    var sessionReviewedItems = new Set();
+
+    function isItemActionDone(item) {
+        if (!item) return false;
+        var type = String(item.kind || item.proofType || '');
+        if (type === 'screenshots') type = 'screenshot';
+        if (type === 'screenshot') {
+            return true;
+        }
+        var feedbackId = Number(item.feedbackId || item.source_feedback_id || (item.feedback && item.feedback.id) || 0);
+        if (feedbackId > 0 && sessionReviewedItems.has('fb:' + feedbackId)) {
+            return true;
+        }
+        if (item.proofId > 0 && sessionReviewedItems.has('proof:' + item.proofId)) {
+            return true;
+        }
+        return isProcessed(item);
+    }
+
+    function activityTimelineHtml(appId, items, opts) {
+        opts = opts || {};
+        var list = Array.isArray(items) ? items : [items];
+        list = list.filter(Boolean);
+        if (!list.length) return '';
+        var stepsHtml = list.map(function (item) {
+            var type = String(item && (item.kind || item.proofType) || '');
+            if (type === 'screenshots') type = 'screenshot';
+            if (!type && item && item.proofId > 0) type = 'screenshot';
+            if (!type) type = 'screenshot';
+            var isDone = isItemActionDone(item);
+            var cardHtml = activityCardHtml(appId, item, opts);
+            return '<div class="pc-activity-timeline-step pc-activity-timeline-step--' + esc(type) +
+                (isDone ? ' is-completed' : ' is-pending') + '">' +
+                '<span class="pc-activity-timeline-node" aria-hidden="true"></span>' +
+                cardHtml +
+            '</div>';
+        }).join('');
+
+        return '<div class="pc-contribution-cards pc-activity-timeline-group">' + stepsHtml + '</div>';
     }
 
     function controlActionsHtml(appId, row, context) {
@@ -1051,7 +1099,7 @@
         }
         var extraHtml = '';
         if (row.received && row.proofId > 0) {
-            extraHtml = activityCardHtml(appId, row);
+            extraHtml = activityTimelineHtml(appId, [row]);
         }
         return personRowHtml({
             appId: appId,
@@ -1457,18 +1505,34 @@
         return 2;
     }
 
-    function rewardAccentButtonHtml(appId, testerId) {
+    function rewardAccentButtonHtml(appId, testerId, opts) {
+        opts = opts || {};
         var karmaIcon = typeof window.karmaIconHtml === 'function'
             ? window.karmaIconHtml('karma-yin-icon--inline')
             : (ICONS.reward || '<span class="rewards-icon-glyph">☯</span>');
+        var orbitHtml = '';
+        if (opts.hasSparkle) {
+            var seed = Math.abs(Number(opts.seed || testerId || 0));
+            var durations = ['4.6s', '5.2s', '6.0s'];
+            var delays = ['0s', '-1.8s', '-3.2s'];
+            var angles = ['-12deg', '10deg', '-6deg'];
+            var dur = durations[seed % durations.length];
+            var del = delays[(seed + 1) % delays.length];
+            var ang = angles[(seed + 2) % angles.length];
+            var style = 'style="animation-duration:' + dur + '; animation-delay:' + del + '; --orbit-tilt:' + ang + ';"';
+            orbitHtml = '<span class="pc-reward-accent-btn__orbit" aria-hidden="true" style="--orbit-tilt:' + ang + ';">' +
+                '<span class="pc-reward-accent-btn__sparkle" ' + style + '>' +
+                    '<span class="pc-sparkle-glyph pc-sparkle-glyph--star" aria-hidden="true">✦</span>' +
+                    '<span class="pc-sparkle-glyph pc-sparkle-glyph--plus" aria-hidden="true">+</span>' +
+                '</span>' +
+            '</span>';
+        }
         return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward" ' +
             'title="' + esc(text('pcRewardBtn', 'Reward')) + '" ' +
             'aria-label="' + esc(text('pcRewardBtn', 'Reward')) + '" ' +
             'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')">' +
             '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
-            '<span class="pc-reward-accent-btn__orbit" aria-hidden="true">' +
-                '<span class="pc-reward-accent-btn__sparkle"></span>' +
-            '</span>' +
+            orbitHtml +
         '</button>';
     }
 
@@ -1479,18 +1543,33 @@
             return contributionPriority(left, context) - contributionPriority(right, context);
         });
 
+        var unrewardedTesters = sorted.filter(function (it) {
+            return context.rewardedTesterIds.indexOf(Number(it.testerId)) === -1;
+        });
+        var sparkleTesterIds = new Set();
+        if (unrewardedTesters.length > 0) {
+            var seedBase = Math.abs(Number(appId || 0) * 19 + unrewardedTesters.length * 7);
+            var idx1 = seedBase % unrewardedTesters.length;
+            sparkleTesterIds.add(Number(unrewardedTesters[idx1].testerId));
+            if (unrewardedTesters.length >= 4) {
+                var idx2 = (idx1 + 2) % unrewardedTesters.length;
+                sparkleTesterIds.add(Number(unrewardedTesters[idx2].testerId));
+            }
+        }
+
         return '<ul class="pc-act-list">' + sorted.map(function (item) {
             var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
             var headerActionsHtml = '';
             if (rewarded) {
                 headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId);
             } else if (context.rewardsLeft > 0) {
-                headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId);
+                headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                    hasSparkle: sparkleTesterIds.has(Number(item.testerId)),
+                    seed: Number(item.testerId),
+                });
             }
 
-            var subrowsHtml = '<div class="pc-contribution-cards">' + item.reasons.map(function (reason) {
-                return activityCardHtml(appId, reason);
-            }).join('') + '</div>';
+            var subrowsHtml = activityTimelineHtml(appId, item.reasons);
 
             return personRowHtml({
                 appId: appId,
@@ -1857,7 +1936,7 @@
             pendingSectionHtml = '<div class="pc-control-section pc-control-section--pending">' +
                 '<div class="pc-control-section-title">' +
                     '<span>' + esc(text('pcControlSectionPending', 'Pending')) + '</span>' +
-                    '<span class="pc-control-section-badge pc-control-section-count">' + pendingRows.length + '</span>' +
+                    '<span class="pc-control-section-badge pc-control-section-count' + (String(pendingRows.length).length <= 1 ? ' is-circle' : '') + '">' + pendingRows.length + '</span>' +
                 '</div>' +
                 '<ul class="pc-act-list pc-activity-control">' +
                     pendingRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
@@ -1878,7 +1957,7 @@
                 '<button type="button" class="pc-control-section-title pc-control-section-toggle" onclick="event.stopPropagation(); pcToggleReceivedSection(' + Number(appId) + ')" aria-expanded="' + isReceivedExpanded + '">' +
                     '<span class="pc-control-section-toggle__left">' +
                         '<span>' + esc(text('pcControlSectionReceived', 'Received')) + '</span>' +
-                        '<span class="pc-control-section-badge pc-control-section-count' + (hasNewReceived ? ' is-highlight' : '') + '">' + receivedCount + '</span>' +
+                        '<span class="pc-control-section-badge pc-control-section-count' + (String(receivedCount).length <= 1 ? ' is-circle' : '') + (hasNewReceived ? ' is-highlight' : '') + '">' + receivedCount + '</span>' +
                     '</span>' +
                     '<span class="pc-control-section-chevron' + (isReceivedExpanded ? ' is-expanded' : '') + '" aria-hidden="true">' +
                         '<svg viewBox="0 0 12 12" width="10" height="10"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
@@ -2631,9 +2710,21 @@
     };
 
     window.pcOpenFeedback = function (appId, feedbackId) {
-        if (typeof openProjectFeedback !== 'function' || Number(feedbackId || 0) <= 0) return;
+        var fid = Number(feedbackId || 0);
+        if (fid > 0) {
+            sessionReviewedItems.add('fb:' + fid);
+            var btn = document.querySelector('[onclick*="pcOpenFeedback(' + Number(appId) + ',' + fid + ')"]');
+            if (btn) {
+                var step = btn.closest('.pc-activity-timeline-step');
+                if (step) {
+                    step.classList.remove('is-pending');
+                    step.classList.add('is-completed');
+                }
+            }
+        }
+        if (typeof openProjectFeedback !== 'function' || fid <= 0) return;
         openProjectFeedback(Number(appId || 0), false, {
-            focusFeedbackId: Number(feedbackId),
+            focusFeedbackId: fid,
             preferUnprocessed: true,
         });
     };
@@ -2948,6 +3039,18 @@
     };
 
     window.pcOpenProofOverview = function(appId, proofId, fallbackCount) {
+        var pid = Number(proofId || 0);
+        if (pid > 0) {
+            sessionReviewedItems.add('proof:' + pid);
+            var btn = document.querySelector('[onclick*="pcOpenProofOverview(' + Number(appId) + ',' + pid + '"]');
+            if (btn) {
+                var step = btn.closest('.pc-activity-timeline-step');
+                if (step) {
+                    step.classList.remove('is-pending');
+                    step.classList.add('is-completed');
+                }
+            }
+        }
         var row = findRow(appId, proofId);
         if (typeof openCheckinProofOverview !== 'function') return;
         openCheckinProofOverview(Number(proofId), {
