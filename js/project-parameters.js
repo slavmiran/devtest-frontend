@@ -91,11 +91,17 @@
         var countLabel = plural(count, 'pcParamsCountOne', 'pcParamsCountFew', 'pcParamsCountMany');
         var campaign = project.screenshot_boost_campaign || {};
         var isEnabled = campaign.enabled === true;
-        var rewardAmountText = '+' + amount(boost.reward) + '$';
+        var rewardAmountText = amount(boost.reward) + '$';
         var poolAmountText = amount(boost.pool) + '$';
-        var boostValue = isEnabled
-            ? '$BUST ' + rewardAmountText + ' ' + text('pcParamsBoostRewardRest') + ' • ' + text('pcParamsBoostPoolLead') + ' ' + poolAmountText
+        var boostAriaValue = isEnabled
+            ? '$BUST ' + poolAmountText + ' ' + text('pcParamsBoostPoolLead') + ' • ' + rewardAmountText + ' ' + text('pcParamsBoostRewardRest')
             : text('pcParamsBoostNoteInactive');
+        // Keep the BUST label visually distinct, matching the compact state
+        // chips used by the other project settings while leaving the amounts
+        // and explanatory text quiet and readable.
+        var boostValueHtml = isEnabled
+            ? '<span class="pc-project-boost-bust-state">$BUST</span> ' + esc(poolAmountText) + ' ' + esc(text('pcParamsBoostPoolLead')) + ' • ' + esc(rewardAmountText) + ' ' + esc(text('pcParamsBoostRewardRest'))
+            : esc(text('pcParamsBoostNoteInactive'));
         return '<div class="pc-project-params__head">' +
             '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '">' +
                 '<span class="pc-project-params__title">' + esc(text('pcParamsTitle')) + '</span>' +
@@ -114,9 +120,9 @@
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + id + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
-                '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostValue) + '">' +
+                '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
                     '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
-                    '<span class="pc-project-param__value">' + esc(boostValue) + '</span>' +
+                    '<span class="pc-project-param__value">' + boostValueHtml + '</span>' +
                     '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' +
                 '</button>' +
             '</div>' +

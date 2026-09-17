@@ -2306,7 +2306,7 @@ function syncScreenshotBoostOfferUi(appId) {
             : 'screenshotBoostOfferDetail';
         node.innerHTML = '<span class="screenshot-boost-offer__gift" aria-hidden="true">🎁</span>' +
             '<span class="screenshot-boost-offer__copy">' +
-                '<strong>+' + window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $</strong>' +
+                '<strong>+' + window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</strong>' +
                 '<span>' + window.escapeHTML(window.t(detailKey, {}, lang)) + '</span>' +
             '</span>';
     });
@@ -2631,6 +2631,9 @@ function renderTests(force) {
         let actionsHtml = '';
         const isFeedbackCheckinPending = typeof isTestFeedbackCheckinPending === 'function' && isTestFeedbackCheckinPending(test.id);
         const feedbackPendingBtnLabel = (typeof getFeedbackCheckinPendingLabel === 'function' ? getFeedbackCheckinPendingLabel() : window.t('feedbackCheckinPendingBtn', {}, lang));
+        const feedbackPendingBtnInner = (typeof getFeedbackCheckinPendingLabelHtml === 'function')
+            ? getFeedbackCheckinPendingLabelHtml()
+            : window.escapeHTML(feedbackPendingBtnLabel);
         const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
 
         if (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail) {
@@ -2836,9 +2839,9 @@ function renderTests(force) {
 
                 actionsHtml = `
                     <div class="action-row">
-                        <div class="split-btn-group" style="width: 100%; flex: 1;">
+                        <div class="split-btn-group${isFeedbackCheckinPending ? ' is-feedback-pending' : ''}" style="width: 100%; flex: 1;">
                             <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
-                                ${window.escapeHTML(isFeedbackCheckinPending ? feedbackPendingBtnLabel : (window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed'))}
+                                ${isFeedbackCheckinPending ? feedbackPendingBtnInner : window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed')}
                             </button>
                             ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${getScreenshotBoostOffer(test, testingDay) ? ' has-screenshot-boost' : ''}${hasOpenControlProofCatchup(test) ? ' has-catchup-proof' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang) + (hasOpenControlProofCatchup(test) ? ' · ' + window.t('checkinOptionsCatchupAria', {}, lang) : ''))}">
                                 ${getScreenshotBoostPaperclipContent(test.id)}
@@ -2857,15 +2860,15 @@ function renderTests(force) {
 
                 if (isScreenshotDay) {
                     const confirmLabel = isFeedbackCheckinPending
-                        ? feedbackPendingBtnLabel
-                        : (isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
+                        ? feedbackPendingBtnInner
+                        : window.escapeHTML(isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
                     actionsHtml = `
                         <div class="checkin-actions checkin-actions--stacked">
                             <button class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
                             <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
-                                ${window.escapeHTML(confirmLabel)}
+                                ${confirmLabel}
                             </button>
                             ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}
@@ -2879,7 +2882,7 @@ function renderTests(force) {
                                 ${t.openBtn}
                             </button>
                             <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 2; ${feedbackPendingBtnStyle}" disabled data-feedback-pending="1">
-                                ${window.escapeHTML(feedbackPendingBtnLabel)}
+                                ${feedbackPendingBtnInner}
                             </button>
                         </div>
                     `;

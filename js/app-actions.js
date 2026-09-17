@@ -796,6 +796,34 @@ function _setConfirmButtonLabel(btn, text) {
     btn.innerText = text;
 }
 
+function getFeedbackCheckinPendingLabelHtml() {
+    return '<span class="feedback-pending-label">' +
+        window.escapeHTML(getFeedbackCheckinPendingLabel()) +
+        '<span class="feedback-pending-dots" aria-hidden="true">' +
+        '<span>.</span><span>.</span><span>.</span>' +
+        '</span></span>';
+}
+
+function _setConfirmButtonPendingLabel(btn) {
+    if (!btn) return;
+    var html = getFeedbackCheckinPendingLabelHtml();
+    var label = btn.querySelector('.tstep__label');
+    if (label) {
+        label.innerHTML = html;
+        return;
+    }
+    btn.innerHTML = html;
+}
+
+function _setSplitOptionsHidden(splitBtn, hidden) {
+    if (!splitBtn) return;
+    splitBtn.hidden = !!hidden;
+    splitBtn.disabled = !!hidden;
+    splitBtn.style.display = hidden ? 'none' : '';
+    splitBtn.style.pointerEvents = hidden ? 'none' : '';
+    splitBtn.style.opacity = '';
+}
+
 function _setAccessProblemStepLabel(btn, text) {
     if (!btn) return;
     var label = btn.querySelector('.apstep__label');
@@ -1302,8 +1330,8 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             btn.style.color = '';
             btn.style.borderColor = '';
         }
-        if (existingSplitGroup) {
-            existingSplitGroup.classList.remove('split-timer-running');
+            if (existingSplitGroup) {
+            existingSplitGroup.classList.remove('split-timer-running', 'is-feedback-pending');
             if (isExternalTest) {
                 btn.className = 'btn btn-success split-btn-main external-tests-confirm-btn external-tests-confirm-ready';
                 btn.textContent = window.t('externalProjectCheckinBtn', {}, lang);
@@ -1336,6 +1364,7 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             existingOptionsBtn.className = isExternalTest
                 ? 'btn btn-success split-btn-options external-tests-attach-btn'
                 : 'btn btn-success split-btn-options';
+            _setSplitOptionsHidden(existingOptionsBtn, false);
             existingOptionsBtn.title = window.t('checkinOptionsTitle', {}, lang);
             existingOptionsBtn.setAttribute('aria-label', window.t('checkinOptionsTitle', {}, lang));
             _syncScreenshotBoostPaperclip(existingOptionsBtn, finishedId);
@@ -3065,12 +3094,11 @@ function restoreCheckinReadyAfterFeedbackPending(appId) {
     var card = document.getElementById('test-card-' + normalizedId);
     if (card) {
         card.classList.remove('card-feedback-pending');
-        var splitBtn = card.querySelector('.split-btn-options');
-        if (splitBtn) {
-            splitBtn.disabled = false;
-            splitBtn.style.pointerEvents = '';
-            splitBtn.style.opacity = '';
+        var splitGroup = card.querySelector('.split-btn-group');
+        if (splitGroup) {
+            splitGroup.classList.remove('is-feedback-pending');
         }
+        _setSplitOptionsHidden(card.querySelector('.split-btn-options'), false);
     }
     var payload = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(normalizedId) : null;
     var hasOpenToken = !!(typeof _getCheckinOpenToken === 'function' && _getCheckinOpenToken(normalizedId));
@@ -3114,29 +3142,31 @@ function applyTestFeedbackCheckinPendingUi(appId) {
         card.classList.add('card-feedback-pending');
     }
 
-    var pendingLabel = getFeedbackCheckinPendingLabel();
     var confirmBtn = document.getElementById('btn-confirm-' + normalizedId)
         || (card ? card.querySelector('#btn-confirm-' + normalizedId) : null)
         || (card ? card.querySelector('.split-btn-main') : null);
     if (confirmBtn) {
+        var alreadyPending = confirmBtn.getAttribute('data-feedback-pending') === '1'
+            && !!confirmBtn.querySelector('.feedback-pending-dots');
         confirmBtn.disabled = true;
         confirmBtn.setAttribute('data-feedback-pending', '1');
         confirmBtn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         confirmBtn.style.color = 'var(--hint-color)';
         confirmBtn.style.cursor = 'not-allowed';
         confirmBtn.classList.remove('btn-success', 'external-tests-confirm-ready');
-        _setConfirmButtonLabel(confirmBtn, pendingLabel);
+        if (!alreadyPending) {
+            _setConfirmButtonPendingLabel(confirmBtn);
+        }
         confirmBtn.onclick = null;
         confirmBtn.removeAttribute('onclick');
+        var splitGroup = confirmBtn.closest('.split-btn-group');
+        if (splitGroup) {
+            splitGroup.classList.add('is-feedback-pending');
+        }
     }
 
     if (!card) return;
-    var splitBtn = card.querySelector('.split-btn-options');
-    if (splitBtn) {
-        splitBtn.disabled = true;
-        splitBtn.style.pointerEvents = 'none';
-        splitBtn.style.opacity = '0.55';
-    }
+    _setSplitOptionsHidden(card.querySelector('.split-btn-options'), true);
 }
 
 function reapplyAllFeedbackCheckinPendingUi() {
@@ -5111,5 +5141,6 @@ window.markTestFeedbackCheckinPending = markTestFeedbackCheckinPending;
 window.applyTestFeedbackCheckinPendingUi = applyTestFeedbackCheckinPendingUi;
 window.reapplyAllFeedbackCheckinPendingUi = reapplyAllFeedbackCheckinPendingUi;
 window.getFeedbackCheckinPendingLabel = getFeedbackCheckinPendingLabel;
+window.getFeedbackCheckinPendingLabelHtml = getFeedbackCheckinPendingLabelHtml;
 window.openOwnerCheckpointChat = openOwnerCheckpointChat;
 

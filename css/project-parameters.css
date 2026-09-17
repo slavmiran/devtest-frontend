@@ -113,6 +113,23 @@
     font-weight: 500;
     line-height: 1.3;
 }
+/* Inline BUST marker: the same restrained outline/state treatment used by
+   the On/Off settings chips, without turning the whole description into a
+   brightly coloured badge. */
+.pc-project-boost-bust-state {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 7px;
+    margin: -3px 0;
+    border: 1px solid rgba(93, 146, 226, .28);
+    border-radius: 5px;
+    color: #9ebef0;
+    background: rgba(93, 146, 226, .11);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
 .pc-project-params__access { appearance: none; display: flex; align-items: center; gap: 6px; width: 100%; margin: 7px 0 0; padding: 7px 2px 0; border: 0; background: transparent; color: #7a8ba3; font: inherit; font-size: 10px; text-align: left; cursor: pointer; }
 .pc-project-params__access svg:first-child { width: 12px; height: 12px; }
 .pc-project-params__access span { flex: 1; }

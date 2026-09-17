@@ -617,6 +617,79 @@ html.tests-scrolling #tab-tests .test-card-highlight-pulse {
     border-radius: 0 14px 14px 0;
 }
 
+/* Waiting for bot report: hide paperclip/boost so the status fits one line. */
+#tab-tests .split-btn-group.is-feedback-pending .split-btn-options,
+#tab-tests .split-btn-group:has([data-feedback-pending="1"]) .split-btn-options {
+    display: none !important;
+}
+
+#tab-tests .split-btn-group.is-feedback-pending .split-btn-main,
+#tab-tests .split-btn-group.is-feedback-pending [data-feedback-pending="1"],
+#tab-tests .split-btn-group:has([data-feedback-pending="1"]) [data-feedback-pending="1"] {
+    border-radius: 14px !important;
+    border-right: none !important;
+    flex: 1 1 auto;
+    width: 100%;
+}
+
+#tab-tests .action-row .btn[data-feedback-pending="1"],
+#tab-tests .split-btn-group .btn[data-feedback-pending="1"],
+#tab-tests .checkin-confirm-btn[data-feedback-pending="1"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    padding-inline: 8px;
+    line-height: 1.2;
+    font-size: 13px;
+}
+
+.feedback-pending-label {
+    display: inline-flex;
+    align-items: baseline;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.feedback-pending-dots {
+    display: inline-flex;
+    align-items: baseline;
+    margin-left: 1px;
+    pointer-events: none;
+}
+
+.feedback-pending-dots span {
+    display: inline-block;
+    animation: feedbackPendingDotBounce 1.05s ease-in-out infinite;
+    will-change: transform;
+}
+
+.feedback-pending-dots span:nth-child(2) {
+    animation-delay: 0.18s;
+}
+
+.feedback-pending-dots span:nth-child(3) {
+    animation-delay: 0.36s;
+}
+
+@keyframes feedbackPendingDotBounce {
+    0%, 70%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    35% {
+        transform: translateY(-0.28em);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feedback-pending-dots span {
+        animation: none;
+        opacity: 1;
+    }
+}
+
 /* Stroke paperclip (even thickness) — primary accent, not white. */
 #tab-tests .split-btn-options {
     position: relative;
@@ -1930,11 +2003,10 @@ button.ts-section-head {
 }
 
 .split-btn-options.has-screenshot-boost { min-width:82px; padding-inline:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
-.split-btn-options__boost { display:inline-flex; align-items:center; min-height:22px; padding:0 6px; border:1px solid rgba(76,141,255,.22); border-radius:8px; background:rgba(76,141,255,.11); font-size:10.5px; font-weight:750; line-height:1; white-space:nowrap; color:inherit; font-variant-numeric:tabular-nums; }
+.split-btn-options__boost { font-size:11px; font-weight:750; line-height:1; white-space:nowrap; color:inherit; font-variant-numeric:tabular-nums; }
 /* Purple is only the countdown cue. Once the timer ends the attachment
    button uses the same primary colour as its ordinary ready state. */
 #tab-tests .split-btn-group.split-timer-running .split-btn-options.has-screenshot-boost { color:#c495ff!important; }
-#tab-tests .split-btn-group.split-timer-running .split-btn-options__boost { border-color:rgba(196,149,255,.28); background:rgba(196,149,255,.12); }
 .split-btn-options.has-catchup-proof { overflow: visible !important; }
 .split-btn-options__catchup-cam {
     position: absolute;
@@ -1963,35 +2035,21 @@ button.ts-section-head {
 @media (prefers-reduced-motion: reduce) {
     .split-btn-options__catchup-cam { animation: none; }
 }
-.screenshot-boost-offer { display:flex; align-items:center; gap:9px; margin:0 0 12px; padding:9px 11px; border:1px solid rgba(76,141,255,.2); border-radius:11px; color:#dce7f8; background:rgba(76,141,255,.055); font-size:12px; line-height:1.32; text-align:left; }
-.screenshot-boost-offer__gift { display:grid; place-items:center; flex:0 0 27px; width:27px; height:27px; border-radius:8px; background:rgba(76,141,255,.12); font-size:15px; }
+.screenshot-boost-offer { display:flex; align-items:center; gap:9px; margin:0 0 12px; padding:9px 11px; border:1px solid rgba(196,149,255,.34); border-radius:11px; color:#e7dbff; background:linear-gradient(135deg, rgba(158,104,232,.17), rgba(98,75,170,.08)); font-size:12px; line-height:1.32; text-align:left; }
+.screenshot-boost-offer__gift { display:grid; place-items:center; flex:0 0 27px; width:27px; height:27px; border-radius:8px; background:rgba(196,149,255,.18); font-size:15px; }
 .screenshot-boost-offer__copy { display:grid; min-width:0; gap:1px; }
-.screenshot-boost-offer__copy strong { color:#d5b3ff; font-size:13px; font-weight:800; line-height:1.15; }
+.screenshot-boost-offer__copy strong { color:#e1c5ff; font-size:13px; font-weight:800; line-height:1.15; }
 .screenshot-boost-offer__copy span { color:#aeb8cc; font-size:11px; font-weight:600; }
 .screenshot-boost-offer[hidden] { display:none!important; }
 #checkin-options-modal .modal-content .btn.screenshot-boost-eligible,
 #report-modal .screenshot-boost-eligible {
     display:inline-flex !important;
     align-items:center;
-    justify-content:space-between !important;
+    justify-content:flex-start !important;
     gap:8px;
 }
 .screenshot-boost-action__label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.screenshot-boost-action__amount {
-    display:inline-flex;
-    align-items:center;
-    flex:0 0 auto;
-    min-height:21px;
-    padding:0 6px;
-    border:1px solid rgba(196,149,255,.24);
-    border-radius:7px;
-    color:#cda5ff;
-    background:rgba(196,149,255,.09);
-    font-size:10.5px;
-    font-weight:750;
-    line-height:1;
-    font-variant-numeric:tabular-nums;
-}
+.screenshot-boost-action__icon { display:grid; place-items:center; flex:0 0 23px; width:23px; height:23px; border:1px solid rgba(201,157,255,.6); border-radius:7px; background:rgba(196,149,255,.07); font-size:13px; line-height:1; }
 .checkin-catchup-note {
     display: flex;
     align-items: flex-start;

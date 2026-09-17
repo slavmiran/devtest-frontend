@@ -3300,12 +3300,12 @@ function setScreenshotBoostActionButton(button, label, offer) {
         button.textContent = safeLabel;
         return;
     }
-    var amount = typeof window.formatScreenshotBoostAmount === 'function'
-        ? window.formatScreenshotBoostAmount(offer.reward)
-        : String(Number(offer.reward || 0));
     var labelId = button.id === 'checkin-proof-submit' ? ' id="t-checkinProofSubmit"' : '';
-    button.innerHTML = '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(safeLabel) + '</span>' +
-        '<span class="screenshot-boost-action__amount">+' + window.escapeHTML(amount) + '$</span>';
+    var parts = /^(\S+)\s+([\s\S]+)$/.exec(safeLabel);
+    button.innerHTML = parts
+        ? '<span class="screenshot-boost-action__icon" aria-hidden="true">' + window.escapeHTML(parts[1]) + '</span>' +
+            '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(parts[2]) + '</span>'
+        : '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(safeLabel) + '</span>';
 }
 
 function openCheckinOptionsModal(appId, ownerUsername) {
