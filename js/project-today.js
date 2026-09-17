@@ -600,6 +600,9 @@
             : '<span class="pc-person__avatar">' + avatarHtml(tester) + '</span>';
         var stateCls = opts.received ? ' is-received' : (opts.waiting ? ' is-waiting' : '');
         var rowCls = opts.rowClass ? ' ' + String(opts.rowClass) : '';
+        var timeAgoHtml = opts.timeAgoText
+            ? '<span class="pc-person__time-ago"> • ' + esc(opts.timeAgoText) + '</span>'
+            : '';
         return '<li class="pc-person is-' + esc(tone) + stateCls + rowCls + '"' +
             ' onclick="' + dossierClick(opts.appId, tester) + '">' +
             '<div class="pc-person__top">' +
@@ -608,7 +611,8 @@
                     '<span class="pc-person__name notranslate"><span class="pc-person__handle">' + esc(handleOf(tester)) + '</span>' +
                         (tester.username && fullName
                             && fullName.replace(/^@/, '').toLowerCase() !== String(tester.username).replace(/^@/, '').toLowerCase()
-                            ? '<span class="pc-person__fullname">' + esc(fullName) + '</span>' : '') + '</span>' +
+                            ? ('<span class="pc-person__fullname">' + esc(fullName) + timeAgoHtml + '</span>')
+                            : (timeAgoHtml ? ('<span class="pc-person__fullname">' + timeAgoHtml.replace(/^\s*•\s*/, '') + '</span>') : '')) + '</span>' +
                     '<span class="pc-person__meta">' + (opts.metaHtml || '') + '</span>' +
                 '</div>' +
                 '<div class="pc-person__actions">' + (opts.actionsHtml || '') + '</div>' +
@@ -749,6 +753,7 @@
             rewardBust: Number(proofFb && (proofFb.reward_bust || proofFb.rewardBust) || (proof && proof.reward_bust) || 0),
             rewardKarma: Number(proofFb && (proofFb.reward_karma || proofFb.rewardKarma) || (proof && proof.reward_karma) || 0),
             boostBust: Number(proof && (proof.boost_bust || proof.screenshot_boost_bust || proof.bonus_bust) || 0),
+            rejectionReason: String(proofFb && (proofFb.rejection_reason || proofFb.reject_reason || proofFb.decline_reason) || (proof && (proof.rejection_reason || proof.reject_reason)) || '').trim(),
             slots: buildSlots(proof, thumbnailByProofId),
         };
     }
@@ -782,6 +787,7 @@
             rewardBust: Number(proofFb && (proofFb.reward_bust || proofFb.rewardBust) || (proof && proof.reward_bust) || 0),
             rewardKarma: Number(proofFb && (proofFb.reward_karma || proofFb.rewardKarma) || (proof && proof.reward_karma) || 0),
             boostBust: Number(proof && (proof.boost_bust || proof.screenshot_boost_bust || proof.bonus_bust) || 0),
+            rejectionReason: String(proofFb && (proofFb.rejection_reason || proofFb.reject_reason || proofFb.decline_reason) || (proof && (proof.rejection_reason || proof.reject_reason)) || '').trim(),
             rewardsSummary: item.rewards_summary || (item.tester && item.tester.rewards_summary) || null,
             slots: buildSlots(proof, thumbnailByProofId),
         };
@@ -804,6 +810,9 @@
                     if (fb.reward_bust != null) row.rewardBust = Number(fb.reward_bust);
                     if (fb.reward_karma != null) row.rewardKarma = Number(fb.reward_karma);
                     row.feedbackText = String(fb.message_text || fb.text || fb.summary || fb.title || '').replace(/\s+/g, ' ').trim();
+                    if (fb.rejection_reason || fb.reject_reason || fb.decline_reason) {
+                        row.rejectionReason = String(fb.rejection_reason || fb.reject_reason || fb.decline_reason).trim();
+                    }
                 }
                 if (proof && proof.image_count != null) {
                     row.imageCount = Number(proof.image_count);
@@ -1119,6 +1128,24 @@
             itemBust = getTesterAwardedBust(opts.context, targetTesterId, item);
         }
 
+        var boostBust = Number(item && (item.boostBust || item.boost_bust) || 0);
+        if (!boostBust && targetTesterId > 0 && opts && opts.context) {
+            var testerBoost = getTesterBoostBust(opts.context, targetTesterId, opts.item || { reasons: opts.reasons });
+            if (testerBoost > 0) {
+                var hasTicketWithBust = Array.isArray(opts && opts.reasons) && opts.reasons.some(function (r) {
+                    var rType = String(r && (r.kind || r.proofType) || '');
+                    var rFbId = Number(r && (r.feedbackId || (r.feedback && r.feedback.id)) || 0);
+                    var rBust = Number(r && (r.rewardBust || r.reward_bust) || 0);
+                    return (rType === 'bug' || rType === 'idea' || rFbId > 0) && rBust > 0;
+                });
+                if (itemBust > 0) {
+                    boostBust = testerBoost;
+                } else if (!hasTicketWithBust && type === 'screenshot') {
+                    boostBust = testerBoost;
+                }
+            }
+        }
+
         var mainClick = '';
         if (feedbackId > 0) {
             mainClick = 'pcOpenFeedback(' + safeAppId + ',' + feedbackId + ')';
@@ -1126,8 +1153,38 @@
             mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount ? ',' + imageCount : '') + ')';
         }
 
+        var feedbackStatus = String(item && (item.feedbackStatus || item.status) || '').toLowerCase();
+        var isRejected = feedbackStatus === 'rejected';
+        var rejectionReason = String(item && (item.rejectionReason || item.rejection_reason || item.reject_reason || item.decline_reason) || '').trim();
+        if ((!rejectionReason || !isRejected) && feedbackId > 0 && Array.isArray(window._activeProjectFeedbackItems)) {
+            var fbMatch = window._activeProjectFeedbackItems.find(function (f) {
+                return Number(f && f.id) === feedbackId;
+            });
+            if (fbMatch) {
+                if (!isRejected && String(fbMatch.status || '').toLowerCase() === 'rejected') {
+                    isRejected = true;
+                }
+                if (!rejectionReason) {
+                    rejectionReason = String(fbMatch.rejection_reason || fbMatch.reject_reason || fbMatch.decline_reason || '').trim();
+                }
+            }
+        }
+
         var awardsRowHtml = '';
-        if (itemKarma > 0 || itemBust > 0) {
+        if (isRejected) {
+            var rReason = typeof resolveFeedbackRejectReasonLabel === 'function'
+                ? resolveFeedbackRejectReasonLabel(rejectionReason)
+                : (rejectionReason || '');
+            var rejectText = text('projectFeedbackRejectedBadge', 'Отклонён');
+            var chipLabel = rReason ? ('❌ ' + rejectText + ': ' + rReason) : ('❌ ' + rejectText);
+            awardsRowHtml = '<div class="pc-proof-album-card__awards-row"' +
+                (mainClick ? ' onclick="event.stopPropagation(); ' + mainClick + '"' : '') +
+                '>' +
+                '<span class="pc-award-badge pc-award-badge--rejected" title="' + esc(chipLabel) + '">' +
+                    '<span class="pc-award-badge__value">' + esc(chipLabel) + '</span>' +
+                '</span>' +
+            '</div>';
+        } else if (itemKarma > 0 || itemBust > 0 || boostBust > 0) {
             var kBadge = '';
             if (itemKarma > 0) {
                 var kVal = '+' + (itemKarma % 1 === 0 ? itemKarma.toFixed(1) : itemKarma.toFixed(1));
@@ -1141,7 +1198,18 @@
                 '</span>';
             }
             var bBadge = '';
-            if (itemBust > 0) {
+            if (boostBust > 0 && itemBust > 0) {
+                var bTitle = text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: boostBust }) +
+                    ' | ' + text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: itemBust });
+                bBadge = '<button type="button" class="pc-award-badge pc-award-badge--bust" onclick="event.stopPropagation(); pcShowBoostBonusToast();" title="' + esc(bTitle) + '">' +
+                    '<span class="pc-award-badge__value">🎁 +' + esc(boostBust) + ' $BUST | 💎 +' + esc(itemBust) + '</span>' +
+                '</button>';
+            } else if (boostBust > 0) {
+                var bTitle = text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: boostBust });
+                bBadge = '<button type="button" class="pc-award-badge pc-award-badge--bust" onclick="event.stopPropagation(); pcShowBoostBonusToast();" title="' + esc(bTitle) + '">' +
+                    '<span class="pc-award-badge__value">🎁 +' + esc(boostBust) + ' $BUST</span>' +
+                '</button>';
+            } else if (itemBust > 0) {
                 var bTitle = text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: itemBust });
                 bBadge = '<span class="pc-award-badge pc-award-badge--bust" title="' + esc(bTitle) + '">' +
                     '<span class="pc-award-badge__value">💎 +' + esc(itemBust) + '</span>' +
@@ -1438,7 +1506,7 @@
         return type === 'screenshot' && Number(row.imageCount || 0) >= 3;
     }
 
-    function collectContribution(control, others) {
+    function collectContribution(control, others, project) {
         var byTester = {};
         var order = [];
         (control || []).concat(others || []).forEach(function (row) {
@@ -1446,18 +1514,35 @@
             var testerId = Number(row.testerId || 0);
             if (testerId <= 0) return;
             if (!byTester[testerId]) {
+                var rosterTester = null;
+                if (project && Array.isArray(project.testers)) {
+                    rosterTester = project.testers.find(function (t) {
+                        return Number(t && (t.tester_id || t.id) || 0) === testerId;
+                    });
+                }
+                var testerObj = rosterTester ? Object.assign({}, rosterTester, row.tester || {}) : (row.tester || {});
                 byTester[testerId] = {
                     testerId: testerId,
-                    tester: row.tester,
+                    tester: testerObj,
                     screenshotCount: 0,
                     screenshotRow: null,
                     bug: null,
                     idea: null,
                     play_review: null,
+                    latestCreatedAt: row.createdAt || (row.tester && row.tester.last_check_date) || (rosterTester && rosterTester.last_check_date) || '',
                 };
                 order.push(testerId);
             }
             var item = byTester[testerId];
+            if (row.createdAt) {
+                if (!item.latestCreatedAt || new Date(row.createdAt) > new Date(item.latestCreatedAt)) {
+                    item.latestCreatedAt = row.createdAt;
+                }
+            } else if (row.tester && row.tester.last_check_date) {
+                if (!item.latestCreatedAt || new Date(row.tester.last_check_date) > new Date(item.latestCreatedAt)) {
+                    item.latestCreatedAt = row.tester.last_check_date;
+                }
+            }
             if (row.proofType === 'screenshot' && Number(row.imageCount || 0) > item.screenshotCount) {
                 item.screenshotCount = Number(row.imageCount || 0);
                 item.screenshotRow = row;
@@ -1477,6 +1562,7 @@
                     imageCount: item.screenshotCount,
                     feedbackId: 0,
                     boostBust: Number(item.screenshotRow.boostBust || 0),
+                    rejectionReason: '',
                 });
             }
             if (item.bug) {
@@ -1494,6 +1580,7 @@
                     rewardBust: Number(item.bug.rewardBust || 0),
                     rewardKarma: Number(item.bug.rewardKarma || 0),
                     boostBust: Number(item.bug.boostBust || 0),
+                    rejectionReason: item.bug.rejectionReason || item.bug.rejection_reason || item.bug.reject_reason || '',
                 });
             }
             if (item.idea) {
@@ -1509,6 +1596,7 @@
                     rewardBust: Number(item.idea.rewardBust || 0),
                     rewardKarma: Number(item.idea.rewardKarma || 0),
                     boostBust: Number(item.idea.boostBust || 0),
+                    rejectionReason: item.idea.rejectionReason || item.idea.rejection_reason || item.idea.reject_reason || '',
                 });
             }
             if (item.play_review) {
@@ -1524,11 +1612,26 @@
                     rewardBust: Number(item.play_review.rewardBust || 0),
                     rewardKarma: Number(item.play_review.rewardKarma || 0),
                     boostBust: Number(item.play_review.boostBust || 0),
+                    rejectionReason: item.play_review.rejectionReason || item.play_review.rejection_reason || item.play_review.reject_reason || '',
                 });
             }
             item.reasons = reasons;
             return item;
         });
+    }
+
+    function formatContributionTimeAgo(dateStr) {
+        if (!dateStr) return '';
+        var eventDate = new Date(dateStr);
+        if (isNaN(eventDate.getTime())) return '';
+        var diffMs = Date.now() - eventDate.getTime();
+        var minutes = Math.max(0, Math.floor(diffMs / 60000));
+        if (minutes < 1) return text('timeJustNow', 'сейчас');
+        if (minutes < 60) return text('timeMinAgo', '{count}м').replace('{count}', minutes);
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return text('timeHourAgo', '{count}ч').replace('{count}', hours);
+        var days = Math.floor(hours / 24);
+        return text('timeDayAgo', '{count}д').replace('{count}', days);
     }
 
     function attentionPriority(item) {
@@ -1878,10 +1981,8 @@
             var hasSubrowAwards = Array.isArray(item.reasons) && item.reasons.length > 0;
 
             if (rewarded) {
-                if (hasSubrowAwards) {
-                    headerActionsHtml = boostBustHtml;
-                } else {
-                    headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId, item) + boostBustHtml;
+                if (!hasSubrowAwards) {
+                    headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId, item);
                 }
             } else {
                 var rewardBtnHtml = '';
@@ -1894,10 +1995,11 @@
                         duration: '3.8s',
                     });
                 }
-                headerActionsHtml = boostBustHtml + rewardBtnHtml;
+                headerActionsHtml = rewardBtnHtml;
             }
 
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons });
+            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item });
+            var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
 
             return personRowHtml({
                 appId: appId,
@@ -1908,6 +2010,7 @@
                 actionsHtml: headerActionsHtml,
                 avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
                 extraHtml: subrowsHtml,
+                timeAgoText: timeAgo,
             });
         }).join('') + '</ul>';
     }
@@ -2053,8 +2156,8 @@
                 actionHtml = '<span class="pc-iconact pc-iconact--done" title="' + esc(text('pcProofRequested', 'Requested')) + '">' +
                     ICONS.done + '<span class="pc-iconact__label">' + esc(text('pcProofRequested', 'Requested')) + '</span></span>';
             } else {
-                title = workspaceText('Контрольный день ' + missedDay, 'Control day ' + missedDay);
-                summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(workspaceText('Нет отчёта', 'Missing proof')) + '</span>';
+                title = text('pcAttentionMissedReportTitle', 'Пропущен обязательный отчёт');
+                summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(workspaceText('Контрольный день ' + missedDay, 'Control day ' + missedDay)) + '</span>';
                 desc = workspaceText('В обязательный контрольный день ' + missedDay + ' не был отправлен подтверждающий скриншот.', 'Mandatory control proof was not submitted for day ' + missedDay + '.');
                 if (isCatchupControlDay(missedDay)) {
                     actionHtml = iconAct('image', text('pcRequestProof', 'Request'),
@@ -2338,7 +2441,8 @@
             controlDone: controlRows.filter(function (row) { return row.received; }).length,
             contribution: collectContribution(
                 hydrated ? (entry.control || []) : [],
-                hydrated ? (entry.others || []) : []
+                hydrated ? (entry.others || []) : [],
+                project
             ),
             attention: collectAttention(project),
         };
@@ -3012,7 +3116,7 @@
             markTabSeen(appId, prefs.filter, {
                 control: entry.control || [],
                 others: entry.others || [],
-                contribution: collectContribution(entry.control, entry.others),
+                contribution: collectContribution(entry.control, entry.others, projectById(appId)),
                 attention: collectAttention(projectById(appId)),
             });
         }
@@ -3111,10 +3215,36 @@
             }
         }
         if (typeof openProjectFeedback !== 'function' || fid <= 0) return;
+        var isProcessedOrRejected = false;
+        if (Array.isArray(window._activeProjectFeedbackItems)) {
+            var fbMatch = window._activeProjectFeedbackItems.find(function (f) {
+                return Number(f && f.id) === fid;
+            });
+            if (fbMatch) {
+                var st = String(fbMatch.status || '').toLowerCase();
+                if (st === 'rejected' || st === 'resolved' || st === 'closed' || fbMatch.processed) {
+                    isProcessedOrRejected = true;
+                }
+            }
+        }
         openProjectFeedback(Number(appId || 0), false, {
             focusFeedbackId: fid,
-            preferUnprocessed: true,
+            preferUnprocessed: !isProcessedOrRejected,
         });
+    };
+
+    window.getTesterTodayBoost = function (appId, testerId) {
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        if (safeAppId <= 0 || safeTesterId <= 0) return 0;
+        var project = projectById(safeAppId);
+        if (!project) return 0;
+        var context = contextFor(project);
+        var counts = activityCounts(project);
+        var item = (counts && counts.contribution || []).find(function (c) {
+            return Number(c.testerId) === safeTesterId;
+        });
+        return getTesterBoostBust(context, safeTesterId, item);
     };
 
     window.pcRewardTester = function (appId, testerId) {

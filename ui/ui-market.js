@@ -6182,6 +6182,16 @@ function showProjectFeedbackModalError(project) {
 
 function showProjectFeedbackModal(project, items, options) {
     options = options || {};
+    var focusId = Number(options.focusFeedbackId || 0);
+    if (focusId > 0 && Array.isArray(items)) {
+        var focusItem = items.find(function(it) { return Number(it && it.id) === focusId; });
+        if (focusItem) {
+            var fSt = String(focusItem.status || '').toLowerCase();
+            if (fSt === 'rejected' || fSt === 'resolved' || fSt === 'closed' || focusItem.processed) {
+                options.preferUnprocessed = false;
+            }
+        }
+    }
     if (options.preserveFilters) {
         _projectFeedbackCardNodes = null;
     } else {

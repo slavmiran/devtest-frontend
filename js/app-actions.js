@@ -3538,7 +3538,30 @@ function focusProjectFeedbackCard(feedbackId) {
     var safeId = Number(feedbackId || 0);
     if (safeId <= 0) return false;
     var card = document.querySelector('.fb-card[data-feedback-id="' + safeId + '"]');
+    if (!card || card.style.display === 'none' || card.hidden) {
+        if (typeof _projectFeedbackStatusFilter !== 'undefined' && _projectFeedbackStatusFilter !== 'all') {
+            _projectFeedbackStatusFilter = 'all';
+            var filterAllBtn = document.querySelector('[data-feedback-status-filter="all"]');
+            if (filterAllBtn) {
+                var siblings = filterAllBtn.parentElement ? filterAllBtn.parentElement.querySelectorAll('.filter-chip') : [];
+                siblings.forEach(function(s) { s.classList.remove('active'); });
+                filterAllBtn.classList.add('active');
+            }
+            if (typeof applyProjectFeedbackFilters === 'function') {
+                applyProjectFeedbackFilters();
+            }
+            card = document.querySelector('.fb-card[data-feedback-id="' + safeId + '"]');
+        }
+        if (card) {
+            card.style.display = '';
+            card.hidden = false;
+        }
+    }
     if (!card) return false;
+    card.classList.remove('fb-card--collapsed');
+    card.classList.add('fb-card--expanded');
+    var expandBtn = card.querySelector('.fb-card__expand-btn, [data-action="expand-feedback"]');
+    if (expandBtn) expandBtn.setAttribute('aria-expanded', 'true');
     if (typeof toggleFeedbackCardCollapse === 'function' && !card.classList.contains('fb-card--expanded')) {
         toggleFeedbackCardCollapse(card, { target: card, currentTarget: card });
     }
@@ -3812,7 +3835,7 @@ function openFeedbackRewardModal(appId, feedbackId) {
     var project = getFeedbackRewardProject();
     var item = getFeedbackRewardItem();
 
-    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
+    var balance = (typeof visibilityStats !== 'undefined' && visibilityStats && visibilityStats.balance_bust) || 0;
     var balanceEl = document.getElementById('feedback-owner-balance');
     if (balanceEl) balanceEl.textContent = window.t('feedbackRewardBustStatus', { amount: formatBustAmount(balance) }, lang);
 
@@ -3856,6 +3879,26 @@ function openFeedbackRewardModal(appId, feedbackId) {
     }
 
     updateFeedbackRewardKarmaStatus(project);
+
+    var poolBoostContainer = document.getElementById('feedback-reward-pool-boost-container');
+    if (poolBoostContainer) {
+        var testerId = Number((item && item.tester_id) || 0);
+        var poolBoost = (window.getTesterTodayBoost && testerId > 0)
+            ? window.getTesterTodayBoost(appId, testerId)
+            : 0;
+        if (poolBoost > 0) {
+            var poolLabel = (typeof window.t === 'function' ? window.t('feedbackRewardPoolAwardedToday', {}, lang) : '') || 'Выдано сегодня из пула:';
+            var chipTitle = (typeof window.t === 'function' ? window.t('pcBoostRewardBonusTitle', { amount: poolBoost }, lang) : '') || ('Бонус за доп. отчёт: +' + poolBoost + ' $BUST');
+            poolBoostContainer.innerHTML = '<span class="feedback-reward-pool-boost__label">' + window.escapeHTML(poolLabel) + '</span>' +
+                '<button type="button" class="pc-award-badge pc-award-badge--boost" onclick="pcShowBoostBonusToast();" title="' + window.escapeHTML(chipTitle) + '">' +
+                    '<span class="pc-award-badge__value">🎁 +' + window.escapeHTML(poolBoost) + ' $BUST</span>' +
+                '</button>';
+            poolBoostContainer.style.display = 'flex';
+        } else {
+            poolBoostContainer.innerHTML = '';
+            poolBoostContainer.style.display = 'none';
+        }
+    }
 
     if (window.openFeedbackRewardModalUi) {
         window.openFeedbackRewardModalUi();
