@@ -10,7 +10,7 @@
     var CACHE_TTL_MS = 90000;
     var MAX_TICKET_REQUESTS = 8;
     var MAX_DETAIL_LOOKUPS = 6;
-    var PROCESSED_STATUSES = ['accepted', 'approved', 'processed', 'tipped', 'rewarded', 'rejected', 'expired'];
+    var PROCESSED_STATUSES = ['accepted', 'approved', 'processed', 'tipped', 'rewarded', 'rejected', 'expired', 'closed', 'resolved', 'done'];
     var FEEDBACK_PROOF_TYPES = ['bug', 'idea', 'play_review'];
 
     /* appId -> { loadedAt, loading, error, control[], others[], catchupByProgress{} } */
@@ -999,7 +999,13 @@
     }
 
     function isProcessed(row) {
-        return PROCESSED_STATUSES.indexOf(String(row.feedbackStatus || '')) !== -1;
+        if (!row) return false;
+        var st = String(row.feedbackStatus || row.status || '').toLowerCase();
+        if (st && PROCESSED_STATUSES.indexOf(st) !== -1) return true;
+        if (Number(row.rewardBust || row.reward_bust || 0) > 0 || Number(row.rewardKarma || row.reward_karma || 0) > 0) {
+            return true;
+        }
+        return false;
     }
 
     function stateHtml(row) {
@@ -1093,9 +1099,15 @@
             }
         }
         var targetTesterId = Number((item && item.testerId) || (opts && opts.testerId) || 0);
+        var hasBugOrFeedbackInGroup = Array.isArray(opts && opts.reasons) && opts.reasons.some(function (r) {
+            var rType = String(r && (r.kind || r.proofType) || '');
+            var rFbId = Number(r && (r.feedbackId || (r.feedback && r.feedback.id)) || 0);
+            return rType === 'bug' || rType === 'idea' || rFbId > 0;
+        });
+        var shouldAwardKarma = (type === 'bug' || feedbackId > 0) || (!hasBugOrFeedbackInGroup && type === 'screenshot');
         if (!itemKarma && targetTesterId > 0 && opts && opts.context && opts.context.rewardTypesByTester) {
             var testerRewards = opts.context.rewardTypesByTester[targetTesterId] || [];
-            if (testerRewards.length > 0 && (type === 'bug' || feedbackId > 0)) {
+            if (testerRewards.length > 0 && shouldAwardKarma) {
                 var firstReward = testerRewards[0];
                 if (firstReward === 'good') itemKarma = 1.5;
                 else if (firstReward === 'bug') itemKarma = 3.0;
@@ -1107,7 +1119,14 @@
             itemBust = getTesterAwardedBust(opts.context, targetTesterId, item);
         }
 
-        var itemAwardsHtml = '';
+        var mainClick = '';
+        if (feedbackId > 0) {
+            mainClick = 'pcOpenFeedback(' + safeAppId + ',' + feedbackId + ')';
+        } else if (proofId > 0) {
+            mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount ? ',' + imageCount : '') + ')';
+        }
+
+        var awardsRowHtml = '';
         if (itemKarma > 0 || itemBust > 0) {
             var kBadge = '';
             if (itemKarma > 0) {
@@ -1125,17 +1144,12 @@
             if (itemBust > 0) {
                 var bTitle = text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: itemBust });
                 bBadge = '<span class="pc-award-badge pc-award-badge--bust" title="' + esc(bTitle) + '">' +
-                    '<span class="pc-award-badge__value">+' + esc(itemBust) + ' $BUST</span>' +
+                    '<span class="pc-award-badge__value">💎 +' + esc(itemBust) + '</span>' +
                 '</span>';
             }
-            itemAwardsHtml = '<span class="pc-proof-album-card__awards">' + kBadge + bBadge + '</span>';
-        }
-
-        var mainClick = '';
-        if (feedbackId > 0) {
-            mainClick = 'pcOpenFeedback(' + safeAppId + ',' + feedbackId + ')';
-        } else if (proofId > 0) {
-            mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount ? ',' + imageCount : '') + ')';
+            awardsRowHtml = '<div class="pc-proof-album-card__awards-row"' +
+                (mainClick ? ' onclick="event.stopPropagation(); ' + mainClick + '"' : '') +
+                '>' + kBadge + bBadge + '</div>';
         }
 
         var topHtml = '<button type="button" class="pc-proof-album-card__main" onclick="event.stopPropagation(); ' + mainClick + '">' +
@@ -1147,7 +1161,6 @@
                 '<strong>' + esc(title) + '</strong>' +
                 '<small>' + esc(subtitle) + '</small>' +
             '</span>' +
-            itemAwardsHtml +
             '<span class="pc-proof-album-card__chev" aria-hidden="true">›</span>' +
         '</button>';
 
@@ -1167,6 +1180,7 @@
 
         return '<div class="pc-proof-album-card pc-proof-album-launch pc-proof-album-card--' + esc(iconMod) + '">' +
             topHtml +
+            awardsRowHtml +
             bottomHtml +
         '</div>';
     }
@@ -1195,13 +1209,14 @@
         var list = Array.isArray(items) ? items : [items];
         list = list.filter(Boolean);
         if (!list.length) return '';
+        var stepOpts = Object.assign({}, opts, { reasons: opts.reasons || list });
         var stepsHtml = list.map(function (item) {
             var type = String(item && (item.kind || item.proofType) || '');
             if (type === 'screenshots') type = 'screenshot';
             if (!type && item && item.proofId > 0) type = 'screenshot';
             if (!type) type = 'screenshot';
             var isDone = isItemActionDone(item);
-            var cardHtml = activityCardHtml(appId, item, opts);
+            var cardHtml = activityCardHtml(appId, item, stepOpts);
             var nodeIcon = isDone
                 ? '<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
                 : '';
@@ -1882,7 +1897,7 @@
                 headerActionsHtml = boostBustHtml + rewardBtnHtml;
             }
 
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context });
+            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons });
 
             return personRowHtml({
                 appId: appId,

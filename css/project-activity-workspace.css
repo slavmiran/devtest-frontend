@@ -596,23 +596,22 @@
     transition: all .25s ease;
 }
 .pc-activity-timeline-step.is-pending .pc-activity-timeline-node::after {
-    content: '';
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--node-color, rgba(148, 163, 184, 0.65));
-    opacity: 0.85;
+    display: none !important;
+    content: none !important;
 }
 .pc-activity-timeline-step.is-completed .pc-activity-timeline-node {
-    border-color: var(--node-color, #60a5fa);
-    background: var(--node-color, #60a5fa);
-    color: var(--node-text, #ffffff);
-    box-shadow: 0 0 8px var(--node-glow, rgba(96, 165, 250, 0.35));
+    border-color: rgba(148, 163, 184, 0.28);
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--node-color, #60a5fa);
+    box-shadow: none;
 }
 .pc-activity-timeline-step.is-completed .pc-activity-timeline-node svg {
     display: block;
     width: 10px;
     height: 10px;
+}
+.pc-activity-timeline-step.is-completed .pc-activity-timeline-node svg path {
+    stroke: var(--node-color, #60a5fa);
 }
 .pc-activity-timeline-step--bug {
     --node-color: #f87171;
@@ -775,7 +774,7 @@
     box-sizing: border-box;
     border-radius: 7px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.2;
     white-space: nowrap;
     border: 1px solid rgba(153, 180, 219, 0.18);
@@ -798,37 +797,68 @@
 }
 .pc-activity--workspace .pc-award-badge--karma .pc-award-badge__value {
     color: #e2eeff;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .pc-activity--workspace .pc-award-badge--bust {
-    border-color: rgba(191, 90, 242, 0.26);
-    background: rgba(191, 90, 242, 0.11);
-    color: #e2d9f8;
+    border-color: rgba(148, 163, 184, 0.16);
+    background: rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
 }
 .pc-activity--workspace .pc-award-badge--bust .pc-award-badge__value {
-    color: #e2d9f8;
-    font-weight: 600;
+    color: #cbd5e1;
+    font-weight: 500;
 }
 
 .pc-activity--workspace .pc-award-badge--boost {
-    border-color: rgba(191, 90, 242, 0.26);
-    background: rgba(191, 90, 242, 0.11);
-    color: #e2d9f8;
+    border-color: rgba(148, 163, 184, 0.16);
+    background: rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
     cursor: pointer;
-    transition: transform .12s ease, background-color .12s ease;
+    transition: transform .12s ease, background-color .12s ease, border-color .12s ease;
     user-select: none;
 }
 .pc-activity--workspace .pc-award-badge--boost .pc-award-badge__value {
-    color: #e2d9f8;
-    font-weight: 600;
+    color: #cbd5e1;
+    font-weight: 500;
+}
+.pc-activity--workspace .pc-award-badge--boost:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(148, 163, 184, 0.24);
 }
 .pc-activity--workspace .pc-award-badge--boost:active {
     transform: scale(0.96);
-    background: rgba(191, 90, 242, 0.20);
+    background: rgba(255, 255, 255, 0.12);
 }
 
-/* Awards container inside item cards */
+/* Dedicated awards row inside item cards */
+.pc-activity--workspace .pc-proof-album-card__awards-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px 10px 58px;
+    margin-top: -3px;
+    flex-wrap: wrap;
+    cursor: pointer;
+}
+@media (max-width: 360px) {
+    .pc-activity--workspace .pc-proof-album-card__awards-row {
+        padding-left: 12px;
+    }
+}
+.pc-activity--workspace .pc-proof-album-card__awards-row .pc-award-badge {
+    min-height: 20px;
+    padding: 2px 7px;
+    font-size: 10.5px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+.pc-activity--workspace .pc-proof-album-card__awards-row .pc-award-badge--karma .karma-yin-icon {
+    width: 11px;
+    height: 11px;
+}
+
+/* Legacy container inside item cards (if used) */
 .pc-activity--workspace .pc-proof-album-card__awards {
     display: inline-flex;
     align-items: center;
