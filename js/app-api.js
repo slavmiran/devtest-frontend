@@ -3664,15 +3664,23 @@ async function confirmRestartFromSettings() {
     if (!settingsPayload) return null;
 
     const editBtn = document.getElementById('t-editSave');
-    const originalText = editBtn ? editBtn.innerText : '';
-    if (editBtn) {
-        editBtn.innerText = '...';
+    const cancelBtn = document.getElementById('t-editCancel');
+    if (editBtn && editBtn.classList.contains('is-processing')) return null;
+
+    const processingLabel = window.t('archiveRestartProcessingBtn', {}, lang);
+    if (typeof applyActionButtonProcessing === 'function') {
+        applyActionButtonProcessing(editBtn, true, processingLabel);
+    } else if (editBtn) {
+        editBtn.innerText = processingLabel || '...';
         editBtn.disabled = true;
     }
+    if (cancelBtn) cancelBtn.disabled = true;
 
+    var succeeded = false;
     try {
         const result = await restartArchivedProject(projectToEdit, settingsPayload);
-        if (result && result.status === 'success') {
+        succeeded = !!(result && result.status === 'success');
+        if (succeeded) {
             if (typeof window.markEditModalSavedState === 'function') {
                 window.markEditModalSavedState();
             }
@@ -3686,9 +3694,14 @@ async function confirmRestartFromSettings() {
         }
         return result;
     } finally {
-        if (editBtn) {
-            editBtn.innerText = originalText || window.t('archiveRestartConfirmBtn', {}, lang);
-            editBtn.disabled = false;
+        if (!succeeded) {
+            if (cancelBtn) cancelBtn.disabled = false;
+            if (typeof applyActionButtonProcessing === 'function') {
+                applyActionButtonProcessing(editBtn, false);
+            } else if (editBtn) {
+                editBtn.innerText = window.t('archiveRestartConfirmBtn', {}, lang);
+                editBtn.disabled = false;
+            }
             if (typeof window.updateEditSaveButtonState === 'function') {
                 window.updateEditSaveButtonState();
             }

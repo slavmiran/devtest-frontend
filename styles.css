@@ -296,6 +296,43 @@ button.pc-subtitle-chip--reviews:active {
 }
 
 .btn:active { opacity: 0.7; }
+
+.btn.is-processing {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    pointer-events: none;
+    cursor: wait;
+    opacity: 1 !important;
+}
+
+.btn.is-processing .btn-spinner {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: btnProcessingSpin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+.btn-primary.is-processing .btn-spinner,
+.bounty-app-accept-btn.is-processing .btn-spinner {
+    border-color: rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+}
+
+.bounty-app-reject-btn.is-processing .btn-spinner {
+    border-color: rgba(142, 142, 147, 0.28);
+    border-top-color: var(--hint-color, #8e8e93);
+}
+
+@keyframes btnProcessingSpin {
+    to { transform: rotate(360deg); }
+}
+
 .btn-primary { background-color: var(--button-color); color: var(--button-text-color); }
 .btn-success { background-color: var(--success-color); color: #fff; }
 .btn-warning { background-color: var(--warning-color); color: var(--warning-text-color); }

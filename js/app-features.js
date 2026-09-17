@@ -2817,7 +2817,9 @@ async function startMassInvite(projectId) {
         var totalCount = candidates.length;
 
         if (typeof MassInviteSession !== 'undefined') {
-            MassInviteSession.createFromPlan(projectId, candidates);
+            MassInviteSession.createFromPlan(projectId, candidates, {
+                run_iteration: Number(planData.run_iteration || 1),
+            });
         }
 
         if (totalCount === 0) {

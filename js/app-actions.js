@@ -2011,25 +2011,17 @@ async function decideOffer(offerId, action, event) {
     if (!offerId) return;
 
     var lang = (typeof getLang === 'function') ? getLang() : 'ru';
-    var card = document.querySelector(`.offer-card[data-offer-id="${offerId}"]`);
-    var clickedBtn = event && event.currentTarget ? event.currentTarget : null;
-    var prevText = clickedBtn ? clickedBtn.textContent : '';
-
-    if (card) {
-        var btns = card.querySelectorAll('button');
-        btns.forEach(function(b) {
-            b.disabled = true;
-            b.style.opacity = '0.6';
-            b.style.cursor = 'not-allowed';
-        });
-        if (clickedBtn) {
-            var rawAccept = typeof window.t === 'function' ? window.t('acceptingOffer', {}, lang) : '';
-            var rawReject = typeof window.t === 'function' ? window.t('rejectingOffer', {}, lang) : '';
-            var spinText = action === 'accept'
-                ? ((rawAccept && rawAccept !== 'acceptingOffer') ? rawAccept : 'Принятие...')
-                : ((rawReject && rawReject !== 'rejectingOffer') ? rawReject : 'Отклонение...');
-            clickedBtn.innerHTML = '<span class="offer-btn-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span>' + window.escapeHTML(spinText);
-        }
+    var card = document.querySelector('.offer-card[data-offer-id="' + offerId + '"]');
+    var cardBtn = card && card.querySelector(action === 'accept' ? '.bounty-app-accept-btn' : '.bounty-app-reject-btn');
+    var clickedBtn = cardBtn || (event && event.currentTarget);
+    var processingLabel = action === 'accept'
+        ? window.t('acceptingOffer', {}, lang)
+        : window.t('rejectingOffer', {}, lang);
+    if (typeof applyActionButtonProcessing === 'function') {
+        applyActionButtonProcessing(clickedBtn, true, processingLabel);
+    }
+    if (typeof applyCardButtonsBusy === 'function') {
+        applyCardButtonsBusy(card, true, clickedBtn);
     }
 
     try {
@@ -2040,14 +2032,11 @@ async function decideOffer(offerId, action, event) {
         });
         const result = await response.json();
         if (result.status !== 'success') {
-            if (card) {
-                var btns = card.querySelectorAll('button');
-                btns.forEach(function(b) {
-                    b.disabled = false;
-                    b.style.opacity = '1';
-                    b.style.cursor = 'pointer';
-                });
-                if (clickedBtn && prevText) clickedBtn.textContent = prevText;
+            if (typeof applyActionButtonProcessing === 'function') {
+                applyActionButtonProcessing(clickedBtn, false);
+            }
+            if (typeof applyCardButtonsBusy === 'function') {
+                applyCardButtonsBusy(card, false);
             }
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
@@ -2087,14 +2076,11 @@ async function decideOffer(offerId, action, event) {
         }
     } catch (error) {
         console.error('Offer decision error:', error);
-        if (card) {
-            var btns = card.querySelectorAll('button');
-            btns.forEach(function(b) {
-                b.disabled = false;
-                b.style.opacity = '1';
-                b.style.cursor = 'pointer';
-            });
-            if (clickedBtn && prevText) clickedBtn.textContent = prevText;
+        if (typeof applyActionButtonProcessing === 'function') {
+            applyActionButtonProcessing(clickedBtn, false);
+        }
+        if (typeof applyCardButtonsBusy === 'function') {
+            applyCardButtonsBusy(card, false);
         }
         handleApiError('network_error');
     }

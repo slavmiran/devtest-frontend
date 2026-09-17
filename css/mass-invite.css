@@ -600,6 +600,24 @@
     font-size: 13px;
     font-weight: 700;
     color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.mi-session-run {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 2px 7px;
+    border: 1px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent-color) 9%, transparent);
+    color: color-mix(in srgb, var(--accent-color) 68%, var(--text-primary));
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: .02em;
 }
 
 .mi-session-sent {

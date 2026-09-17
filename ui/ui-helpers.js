@@ -567,3 +567,54 @@ function isProjectSynced(test) {
     return !!(test && test.last_sync_date);
 }
 window.isProjectSynced = isProjectSynced;
+
+function applyActionButtonProcessing(btn, processing, label) {
+    if (!btn) return;
+    if (processing) {
+        if (btn.dataset.processingLock !== '1') {
+            btn.dataset.processingHtml = btn.innerHTML;
+            btn.dataset.processingLock = '1';
+        }
+        btn.disabled = true;
+        btn.classList.add('is-processing');
+        btn.setAttribute('aria-busy', 'true');
+        var lang = (typeof getLang === 'function') ? getLang() : (typeof window.lang === 'string' ? window.lang : 'ru');
+        var text = label
+            || (typeof window.t === 'function' ? window.t('loading', {}, lang) : '')
+            || '…';
+        btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span><span>' +
+            window.escapeHTML(text) + '</span>';
+        return;
+    }
+    btn.classList.remove('is-processing');
+    btn.removeAttribute('aria-busy');
+    if (btn.dataset.processingLock === '1') {
+        btn.innerHTML = btn.dataset.processingHtml || btn.innerHTML;
+        delete btn.dataset.processingHtml;
+        delete btn.dataset.processingLock;
+    }
+    btn.disabled = false;
+}
+
+function applyCardButtonsBusy(card, busy, exceptBtn) {
+    if (!card) return;
+    card.querySelectorAll('button').forEach(function(b) {
+        if (busy) {
+            b.disabled = true;
+            if (b !== exceptBtn) {
+                b.style.opacity = '0.55';
+                b.style.cursor = 'not-allowed';
+            } else {
+                b.style.opacity = '';
+                b.style.cursor = 'wait';
+            }
+            return;
+        }
+        b.disabled = false;
+        b.style.opacity = '';
+        b.style.cursor = '';
+    });
+}
+
+window.applyActionButtonProcessing = applyActionButtonProcessing;
+window.applyCardButtonsBusy = applyCardButtonsBusy;

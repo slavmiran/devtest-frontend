@@ -508,11 +508,19 @@ async function decideBountyApplication(applicationId, action, event, options) {
     if (typeof _pendingActions !== 'undefined' && _pendingActions.has(actionKey)) return;
     if (typeof _pendingActions !== 'undefined') _pendingActions.add(actionKey);
 
-    var rollback = bountyApplications.slice();
-    bountyApplications = bountyApplications.filter(function(item) {
-        return Number(item && item.application_id) !== normalizedId;
-    });
-    renderBountyApplications(true);
+    var card = document.querySelector('.offer-card[data-application-id="' + normalizedId + '"]');
+    var cardBtn = card && card.querySelector(decision === 'accept' ? '.bounty-app-accept-btn' : '.bounty-app-reject-btn');
+    var clickedBtn = cardBtn || (event && event.currentTarget);
+    var processingLabel = typeof window.t === 'function'
+        ? window.t(decision === 'accept' ? 'acceptingOffer' : 'rejectingOffer', {}, lang)
+        : '';
+    if (typeof applyActionButtonProcessing === 'function') {
+        applyActionButtonProcessing(clickedBtn, true, processingLabel);
+    }
+    if (typeof applyCardButtonsBusy === 'function') {
+        applyCardButtonsBusy(card, true, clickedBtn);
+    }
+
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
     try {
@@ -540,16 +548,34 @@ async function decideBountyApplication(applicationId, action, event, options) {
             apiStatus === 'rejected'
         );
         if (!decisionOk) {
-            bountyApplications = rollback;
-            renderBountyApplications(true);
+            if (typeof applyActionButtonProcessing === 'function') {
+                applyActionButtonProcessing(clickedBtn, false);
+            }
+            if (typeof applyCardButtonsBusy === 'function') {
+                applyCardButtonsBusy(card, false);
+            }
             if (typeof handleApiError === 'function') {
                 handleApiError(typeof getBackendErrorCode === 'function' ? getBackendErrorCode(result) : 'unexpected_error', result.details || {});
             }
             return;
         }
+        bountyApplications = (bountyApplications || []).filter(function(item) {
+            return Number(item && item.application_id) !== normalizedId;
+        });
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t(decision === 'accept' ? 'bountyAppAcceptedToast' : 'bountyAppRejectedToast', {}, lang));
         setBountyAppsCache(bountyApplications);
+        if (card) {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(function() {
+                try { card.remove(); } catch (e) {}
+                if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
+            }, 300);
+        } else {
+            renderBountyApplications(true);
+        }
         if (typeof loadProjects === 'function') loadProjects(true);
         if (decision === 'accept') {
             if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();
@@ -558,8 +584,12 @@ async function decideBountyApplication(applicationId, action, event, options) {
         loadBountyApplications({ background: true }).catch(function() {});
     } catch (error) {
         console.error('decideBountyApplication error:', error);
-        bountyApplications = rollback;
-        renderBountyApplications(true);
+        if (typeof applyActionButtonProcessing === 'function') {
+            applyActionButtonProcessing(clickedBtn, false);
+        }
+        if (typeof applyCardButtonsBusy === 'function') {
+            applyCardButtonsBusy(card, false);
+        }
         if (typeof handleApiError === 'function') handleApiError('network_error');
     } finally {
         if (typeof _pendingActions !== 'undefined') _pendingActions.delete(actionKey);

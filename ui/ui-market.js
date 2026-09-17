@@ -10514,6 +10514,9 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         const ownerLinkMeta = _getProjectOwnerLinkMeta(p, targetOwnerId, fallbackOwnerAppName);
         const targetAlreadyTesting = !!ownerLinkMeta;
         const blockedEntry = blockedProjects[String(p.id)] || null;
+        const blockedReason = String(blockedEntry && blockedEntry.reason_code || '');
+        const targetProfileMissing = blockedReason === 'tester_profile_required';
+        const targetAndroidTooLow = blockedReason === 'android_version_too_low';
         const emailIncompatible = String(p.test_mode || 'google_group') === 'email_list' && !targetOwnerHasEmail;
         const isInBuffer = String(p.status || '').toLowerCase() === 'pending_completion';
         const isArchived = String(p.status || '').toLowerCase() === 'archived';
@@ -10527,7 +10530,10 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
             badges.push(`<span class="meta-chip accent-purple">${window.escapeHTML(window.t('alreadyTestingBadge', {}, lang))}</span>`);
         }
         if (blockedEntry) {
-            badges.push(`<span class="meta-chip accent-orange">${window.escapeHTML(window.t('offerProjectLockedBadge', {}, lang))}</span>`);
+            var blockedBadgeKey = targetProfileMissing
+                ? 'offerTargetProfileRequiredBadge'
+                : (targetAndroidTooLow ? 'offerTargetAndroidTooLowBadge' : 'offerProjectLockedBadge');
+            badges.push(`<span class="meta-chip accent-orange">${window.escapeHTML(window.t(blockedBadgeKey, {}, lang))}</span>`);
         }
         if (emailIncompatible && !targetAlreadyTesting && !blockedEntry) {
             badges.push('<span class="project-select-lock">🔒</span>');
@@ -10546,7 +10552,13 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         if (targetAlreadyTesting && ownerLinkMeta) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('projectSelectOwnerLinkedDetails', { owner_app: ownerLinkMeta.linkedProjectName }, lang))}</span>`;
         } else if (blockedEntry) {
-            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`;
+            if (targetProfileMissing) {
+                reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerTargetProfileRequiredDetails', { min_android_version: Number(blockedEntry.min_android_version || 0) }, lang))}</span>`;
+            } else if (targetAndroidTooLow) {
+                reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerTargetAndroidTooLowDetails', { min_android_version: Number(blockedEntry.min_android_version || 0) }, lang))}</span>`;
+            } else {
+                reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`;
+            }
         } else if (emailIncompatible) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectGroupsOnly', {}, lang))}</span>`;
         } else if (isInBuffer) {

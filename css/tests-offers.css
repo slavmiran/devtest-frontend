@@ -647,3 +647,9 @@
 .mutual-offer-card .bounty-app-accept-btn:active {
     background: #2b7ecf !important;
 }
+
+.bounty-app-accept-btn.is-processing,
+.bounty-app-reject-btn.is-processing,
+.mutual-offer-card .bounty-app-accept-btn.is-processing {
+    opacity: 1 !important;
+}

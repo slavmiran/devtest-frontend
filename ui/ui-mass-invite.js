@@ -48,16 +48,6 @@
         '</span>'
     );
 
-    var HOURGLASS_HTML = (
-        '<span class="mi-hourglass" aria-hidden="true">' +
-            '<svg viewBox="0 0 16 16">' +
-                '<path d="M3.4 2.2h9.2v1.65L9.2 8l3.4 4.15v1.65H3.4v-1.65L6.8 8 3.4 3.85z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"></path>' +
-                '<path d="M5.15 3.45h5.7M5.15 12.55h5.7" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"></path>' +
-                '<path d="M6.45 11.2h3.1L8 9z" fill="currentColor" opacity="0.55"></path>' +
-            '</svg>' +
-        '</span>'
-    );
-
     function remainingForCreatedAt(createdAt) {
         if (typeof MassInviteSession !== 'undefined' && MassInviteSession.getOfferRemaining) {
             return MassInviteSession.getOfferRemaining(createdAt);
@@ -78,7 +68,6 @@
         var digits = remaining ? remaining.text : '0:00:00';
         return (
             '<span class="mi-wait-clock">' +
-                HOURGLASS_HTML +
                 '<span class="mi-wait-digits">' + _esc(digits) + '</span>' +
             '</span>'
         );
@@ -458,6 +447,20 @@
             : (accepted + '/' + rejected + '/' + pending);
     }
 
+    function buildSessionTitle(session, currentLang) {
+        var title = window.t ? window.t('massInviteSessionTitle', {}, currentLang) : 'Last blast';
+        var runIteration = Math.max(0, Number(session && session.run_iteration || 0));
+        var runLabel = runIteration > 0
+            ? ('Run ' + runIteration)
+            : (window.t ? window.t('massInvitePreviousRun', {}, currentLang) : 'Previous run');
+        return (
+            '<span>' + _esc(title) + '</span>' +
+            (session && session.is_previous_run
+                ? '<span class="mi-session-run">' + _esc(runLabel) + '</span>'
+                : '')
+        );
+    }
+
     function renderSessionBlock(session, options) {
         var opts = options || {};
         var currentLang = opts.lang || _lang();
@@ -469,7 +472,7 @@
                 return (
                     '<div class="mi-session-block">' +
                         '<div class="mi-session-head">' +
-                            '<div class="mi-session-title">' + _esc(window.t ? window.t('massInviteSessionTitle', {}, currentLang) : 'Last blast') + '</div>' +
+                            '<div class="mi-session-title">' + buildSessionTitle(session, currentLang) + '</div>' +
                             '<div class="mi-session-sent">' + _esc(String(fallbackCount)) + '</div>' +
                         '</div>' +
                         '<div class="mi-session-stats">' + _esc(window.t ? window.t('massInviteLastSentSummary', { count: fallbackCount }, currentLang) : '') + '</div>' +
@@ -500,7 +503,7 @@
         return (
             '<div class="mi-session-block" id="mi-session-block" data-app-id="' + _esc(sourceAppId) + '">' +
                 '<div class="mi-session-head">' +
-                    '<div class="mi-session-title">' + _esc(window.t ? window.t('massInviteSessionTitle', {}, currentLang) : 'Last blast') + '</div>' +
+                    '<div class="mi-session-title">' + buildSessionTitle(session, currentLang) + '</div>' +
                     '<div class="mi-session-sent" id="mi-session-sent-count">' + _esc(String(sentCount)) + '</div>' +
                 '</div>' +
                 '<div class="mi-session-stats" id="mi-session-stats">' + _esc(buildStatsLine(stats, currentLang)) + '</div>' +

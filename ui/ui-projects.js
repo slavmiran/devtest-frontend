@@ -6021,6 +6021,7 @@ function _getEditAccessViewMeta() {
 function updateEditSaveButtonState() {
     var btn = document.getElementById('t-editSave');
     if (!btn) return;
+    if (btn.classList.contains('is-processing')) return;
     var canSave = true;
     if (window.AccessSetupManager && typeof window.AccessSetupManager.canSaveEdit === 'function') {
         canSave = !!window.AccessSetupManager.canSaveEdit();
@@ -8896,21 +8897,38 @@ function _getMassInviteSessionForProject(projectId, project) {
     if (typeof MassInviteSession !== 'undefined' && MassInviteSession.load) {
         session = MassInviteSession.load(projectId);
     }
+    var currentRun = Math.max(1, Number(project && project.run_iteration || 1));
+    var currentRunStartedAt = new Date(project && project.created_at || '');
+    function applyRunContext(value) {
+        if (!value) return value;
+        var sentAt = new Date(value.sent_at || (project && project.last_mass_invite_at) || '');
+        var predatesCurrentRun = !Number.isNaN(sentAt.getTime())
+            && !Number.isNaN(currentRunStartedAt.getTime())
+            && sentAt.getTime() < currentRunStartedAt.getTime();
+        var hasExplicitRunContext = Number(value.v || 0) >= 2
+            && Number(value.current_run_iteration || 0) > 0;
+        if (!hasExplicitRunContext) {
+            value.run_iteration = predatesCurrentRun ? 0 : currentRun;
+        }
+        value.current_run_iteration = currentRun;
+        value.is_previous_run = !!value.sent_at && Number(value.run_iteration || currentRun) !== currentRun;
+        return value;
+    }
     if (session && Array.isArray(session.candidates) && session.candidates.length) {
-        return session;
+        return applyRunContext(session);
     }
     // Soft fallback: project may know sent_count but not candidate list (pre-WOW blasts).
     var fallbackCount = Math.max(0, Number(project && project.last_mass_invite_sent_count || 0));
     if (!session && fallbackCount > 0 && project && project.last_mass_invite_at) {
-        return {
+        return applyRunContext({
             app_id: Number(projectId),
             sent_at: project.last_mass_invite_at,
             sent_count: fallbackCount,
             candidates: [],
             stats: { sent: fallbackCount, accepted: 0, rejected: 0, pending: 0, expired: 0, failed: 0 },
-        };
+        });
     }
-    return session;
+    return applyRunContext(session);
 }
 
 function updateMassInviteModalTimers() {

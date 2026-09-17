@@ -7,7 +7,7 @@
 
     var STORAGE_PREFIX = 'mass_invite_session_v1_';
     var RESPONSE_WINDOW_MS = 5 * 60 * 60 * 1000;
-    var SCHEMA_VERSION = 1;
+    var SCHEMA_VERSION = 2;
 
     function _key(appId) {
         return STORAGE_PREFIX + String(appId || 0);
@@ -98,6 +98,9 @@
             app_id: Number(appId),
             sent_at: session.sent_at || null,
             sent_count: Number(session.sent_count || 0),
+            run_iteration: Math.max(0, Number(session.run_iteration || 0)),
+            current_run_iteration: Math.max(1, Number(session.current_run_iteration || session.run_iteration || 1)),
+            is_previous_run: !!session.is_previous_run,
             response_window_hours: Number(session.response_window_hours || 5),
             candidates: (session.candidates || []).map(function (c) { return _normalizeCandidate(c); }),
             updated_at: _nowIso(),
@@ -117,13 +120,18 @@
         } catch (e) { /* ignore */ }
     }
 
-    function createFromPlan(appId, candidates) {
+    function createFromPlan(appId, candidates, meta) {
+        var info = meta || {};
+        var runIteration = Math.max(1, Number(info.run_iteration || 1));
         var list = (candidates || []).map(function (c) {
             return _normalizeCandidate(c, { ui_status: 'selected' });
         });
         return save(appId, {
             sent_at: null,
             sent_count: 0,
+            run_iteration: runIteration,
+            current_run_iteration: runIteration,
+            is_previous_run: false,
             response_window_hours: 5,
             candidates: list,
         });
@@ -198,6 +206,9 @@
             app_id: Number(appId),
             sent_at: payload.last_mass_invite_at || null,
             sent_count: Number(payload.last_mass_invite_sent_count || 0),
+            run_iteration: Math.max(0, Number(payload.run_iteration || 0)),
+            current_run_iteration: Math.max(1, Number(payload.current_run_iteration || payload.run_iteration || 1)),
+            is_previous_run: !!payload.is_previous_run,
             response_window_hours: Number(payload.response_window_hours || 5),
             candidates: [],
         };
@@ -210,6 +221,17 @@
         }
         if (payload.response_window_hours) {
             session.response_window_hours = Number(payload.response_window_hours);
+        }
+        if (payload.run_iteration != null) {
+            session.run_iteration = Math.max(0, Number(payload.run_iteration));
+        }
+        if (payload.current_run_iteration) {
+            session.current_run_iteration = Math.max(1, Number(payload.current_run_iteration));
+        }
+        if (typeof payload.is_previous_run === 'boolean') {
+            session.is_previous_run = payload.is_previous_run;
+        } else {
+            session.is_previous_run = Number(session.run_iteration || 1) !== Number(session.current_run_iteration || session.run_iteration || 1);
         }
 
         var byOwner = {};
