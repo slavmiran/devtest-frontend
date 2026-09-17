@@ -2928,16 +2928,13 @@ function renderEarnBustDynamic() {
         <span class="meta-chip accent-green">⚡ ${window.escapeHTML(window.t('earnEarlyFinishCountChip', { count: _earnEarlyFinishCount }, lang))}</span>
         <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>
     `;
-    document.getElementById('earn-feedback-status').innerHTML = `
-        <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
-    `;
     var developerRewardsStatus = document.getElementById('earn-developer-rewards-status');
     if (developerRewardsStatus) {
-        var developerTotalBust = Number(_earnTicketRewardBust || 0) + Number(_earnScreenshotBoostBust || 0);
         developerRewardsStatus.innerHTML = `
             <span class="meta-chip accent-green">🐞 ${window.escapeHTML(window.t('earnDeveloperTicketChip', { count: Number(_earnTicketRewardCount || 0) }, lang))}</span>
+            <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnTicketRewardBust)}</span>
             <span class="meta-chip accent-green">📸 ${window.escapeHTML(window.t('earnDeveloperBoostChip', { count: Number(_earnScreenshotBoostCount || 0) }, lang))}</span>
-            <span class="meta-chip accent-purple">💎 ${formatBustAmount(developerTotalBust)}</span>
+            <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnScreenshotBoostBust)}</span>
         `;
     }
     var playReviewStatus = document.getElementById('earn-play-review-status');

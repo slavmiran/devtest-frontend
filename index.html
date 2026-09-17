@@ -36,15 +36,15 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260917-boost-ui-polish-v1"></script>
-    <script src="./i18n/en.js?v=20260917-boost-ui-polish-v1"></script>
+<script src="./i18n/ru.js?v=20260917-earn-karma-how-v1"></script>
+    <script src="./i18n/en.js?v=20260917-earn-karma-how-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
-    <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
+    <script src="./ui/ui-helpers.js?v=20260917-earn-karma-how-v1"></script>
     <script src="./ui/ui-tests.js?v=20260917-boost-ui-polish-v1"></script>
     <script src="./ui/ui-projects.js?v=20260917-boost-ui-polish-v1"></script>
     <script src="./js/project-parameters.js?v=20260917-boost-ui-polish-v1"></script>
-    <script src="./ui/ui-market.js?v=20260917-issue-proof-v2"></script>
+    <script src="./ui/ui-market.js?v=20260917-earn-karma-how-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
@@ -52,7 +52,7 @@
     <script src="./js/app-api.js?v=20260917-issue-proof-v2"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260917-issue-proof-v2"></script>
+    <script src="./js/app-actions.js?v=20260917-earn-karma-how-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260915-authoritative-album-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -95,7 +95,7 @@
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260917-issue-proof-v2">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
-    <link rel="stylesheet" href="./styles.css?v=20260915-market-chips-neutral-v1">
+    <link rel="stylesheet" href="./styles.css?v=20260917-earn-karma-how-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260904-scroll-smooth-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260912-crypto-exit-v1">
@@ -1975,7 +1975,7 @@
                     <span style="font-size: 18px;">⚙️</span>
                     <span style="font-weight: 700; font-size: 15px;" data-i18n="karmaInfoHowTitle">Как получить и потерять?</span>
                 </div>
-                <div style="font-size: 13px; color: var(--hint-color); line-height: 1.55; white-space: pre-line;" data-i18n="karmaInfoHowText"></div>
+                <div id="karma-how-list" class="karma-how-list"></div>
             </div>
 
             <button class="btn btn-secondary" style="width: 100%;" onclick="closeKarmaInfoModal()" data-i18n="karmaInfoCloseBtn">Закрыть</button>
@@ -2490,15 +2490,6 @@
                 </div>
                 <p style="font-size: 13px; color: var(--hint-color);" data-i18n="earnEarlyFinishDesc">Если разработчик завершает проект раньше 14 дней, а вы отметились минимум 3 чекинами с не более 3 пропусками — вы получаете пропорциональную часть от полного Гранта Платформы (включая надбавки за Карму и статус без пропусков). Нажмите Claim на карточке теста, чтобы забрать награду.</p>
                 <div id="earn-early-finish-status" class="earn-chip-row" style="margin-top: 10px;"></div>
-            </div>
-
-            <div class="card" style="margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-size: 20px;">🐞</span>
-                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnFeedbackTitle">Баг-репорты и Рекомендации</span>
-                </div>
-                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnFeedbackDesc">Отправляйте полезный фидбэк разработчикам. После благодарности вы получаете $BUST и иногда Карму.</p>
-                <div id="earn-feedback-status" class="earn-chip-row"></div>
             </div>
 
             <div class="card" style="margin-bottom: 12px;">

@@ -2270,16 +2270,14 @@ function formatScreenshotBoostAmount(value) {
     return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
 }
 
-function screenshotBoostPaperclipIconHtml() {
-    return '<svg class="split-btn-options__paperclip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.44 11.05-8.49 8.49a6 6 0 0 1-8.49-8.49l8.49-8.49a4 4 0 0 1 5.66 5.66l-8.5 8.48a2 2 0 0 1-2.83-2.83l7.79-7.78"/></svg>';
-}
-
 function getScreenshotBoostPaperclipContent(appId) {
     var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id || 0) === Number(appId || 0);
     });
     var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
-    var html = offer ? screenshotBoostPaperclipIconHtml() : '<span aria-hidden="true">📎</span>';
+    // The button itself already draws the canonical paperclip with ::before.
+    // Keep its contents to the amount only, otherwise both icons are visible.
+    var html = '';
     if (offer) {
         html += '<span class="split-btn-options__boost">+' +
             window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $</span>';

@@ -6216,8 +6216,78 @@ function formatKarmaAmount(amount) {
     const sign = num >= 0 ? '+' : '';
     const value = `${sign}${num.toFixed(1)}`;
     const safeValue = typeof window.escapeHTML === 'function' ? window.escapeHTML(value) : value;
-    if (typeof window.withKarmaIcon === 'function') return window.withKarmaIcon(safeValue);
+    if (typeof window.withKarmaIcon === 'function') {
+        return window.withKarmaIcon(safeValue, 'karma-yin-icon--inline', { after: true });
+    }
     return `${safeValue} ☯️`;
+}
+
+function karmaHowValueHtml(value) {
+    const safeValue = typeof window.escapeHTML === 'function'
+        ? window.escapeHTML(String(value == null ? '' : value))
+        : String(value == null ? '' : value);
+    if (typeof window.withKarmaIcon === 'function') {
+        return window.withKarmaIcon(safeValue, 'karma-yin-icon--inline', { after: true });
+    }
+    return safeValue;
+}
+
+function renderKarmaHowList() {
+    const root = document.getElementById('karma-how-list');
+    if (!root) return;
+    const currentLang = (typeof lang !== 'undefined' && lang) || window.currentLang || 'ru';
+    const label = function (key, fallback) {
+        return window.t(key, {}, currentLang) || fallback;
+    };
+    const groups = [
+        {
+            title: label('karmaHowPlatformTitle', '🟢 От Платформы'),
+            rows: [
+                { label: label('karmaHowOvertimeCheckin', 'Чекин в овертайме'), value: '+0.5' },
+                { label: label('karmaHowScreenshots', '3+ скриншота за день'), value: '+0.3' },
+                { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.3' },
+                { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.3' },
+                { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.3' },
+                { label: label('karmaHowOwnerFinish', 'Завершение проекта владельцем'), value: '+1.0' },
+                { label: label('karmaHowPlatformFeedback', 'Фидбэк саппорту / Платформе'), value: label('karmaHowValueUpTo30', 'до +3.0') },
+                { label: label('karmaHowAdmin', 'Награда от администратора'), value: label('karmaHowValueCustom', 'индивидуально') },
+            ],
+        },
+        {
+            title: label('karmaHowDevTitle', '🤝 От Разработчиков'),
+            rows: [
+                { label: label('karmaHowThanks', 'Спасибо'), note: label('karmaHowThanksNote', '2 в первую неделю, ещё 2 со второй'), value: '+1.5' },
+                { label: label('karmaHowSpecial', 'Особый вклад'), note: label('karmaHowSpecialNote', '1 в первую неделю, ещё 1 со второй'), value: '+3.0' },
+                { label: label('karmaHowOvertimeReward', 'Овертайм-награда (одному тестеру)'), value: '+2.0' },
+                { label: label('karmaHowPlayReviewReward', 'Награда за отзыв в Google Play'), value: '+1.5 / +3.0' },
+            ],
+        },
+        {
+            title: label('karmaHowLoseTitle', '🔴 Как потерять'),
+            rows: [
+                { label: label('karmaHowAbandon', 'Покинуть проект досрочно (abandoned)'), value: '−3.0' },
+            ],
+        },
+    ];
+    root.innerHTML = groups.map(function (group) {
+        return '<div class="karma-how-group">' + window.escapeHTML(group.title) + '</div>' +
+            group.rows.map(function (row) {
+                const text = row.note ? (row.label + ' (' + row.note + ')') : row.label;
+                return '<div class="karma-how-row">' +
+                    '<span class="karma-how-row__label">' + window.escapeHTML(text) + '</span>' +
+                    '<span class="karma-how-row__value">' + karmaHowValueHtml(row.value) + '</span>' +
+                    '</div>';
+            }).join('');
+    }).join('');
+}
+window.renderKarmaHowList = renderKarmaHowList;
+if (typeof window.updateTranslations === 'function' && !window._karmaHowTranslationsHooked) {
+    window._karmaHowTranslationsHooked = true;
+    const originalUpdateTranslations = window.updateTranslations;
+    window.updateTranslations = function (nextLang) {
+        originalUpdateTranslations(nextLang);
+        renderKarmaHowList();
+    };
 }
 
 function closeKarmaInfoModal(event) {
@@ -6245,6 +6315,7 @@ async function showKarmaInfo() {
         });
     breakdownEl.innerHTML = '';
     breakdownSection.style.display = 'none';
+    renderKarmaHowList();
 
     let result = {
         status: 'error',

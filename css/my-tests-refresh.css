@@ -1929,10 +1929,10 @@ button.ts-section-head {
     transition: opacity 0.2s ease;
 }
 
-.split-btn-options.has-screenshot-boost { min-width:82px; padding-inline:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; color:#c495ff; }
-.split-btn-options__paperclip { flex:0 0 auto; width:20px; height:20px; color:#c495ff; }
-.split-btn-options__boost { font-size:11px; font-weight:750; line-height:1; white-space:nowrap; color:#c495ff; }
-#tab-tests .split-btn-group .split-btn-options.has-screenshot-boost,
+.split-btn-options.has-screenshot-boost { min-width:82px; padding-inline:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
+.split-btn-options__boost { font-size:11px; font-weight:750; line-height:1; white-space:nowrap; color:inherit; }
+/* Purple is only the countdown cue. Once the timer ends the attachment
+   button uses the same primary colour as its ordinary ready state. */
 #tab-tests .split-btn-group.split-timer-running .split-btn-options.has-screenshot-boost { color:#c495ff!important; }
 .split-btn-options.has-catchup-proof { overflow: visible !important; }
 .split-btn-options__catchup-cam {

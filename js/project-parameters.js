@@ -51,7 +51,7 @@
         var campaign = project.screenshot_boost_campaign || {};
         var reward = Math.max(0, Number(campaign.reward_bust || 0));
         var pool = Math.max(0, Number(campaign.pool_remaining || 0));
-        return { reward: reward, pool: pool, on: campaign.enabled === true && reward > 0 && pool > 0, reports: reward > 0 ? Math.floor((pool + 1e-8) / reward) : 0 };
+        return { reward: reward, pool: pool, on: campaign.enabled === true && reward > 0 && pool >= reward, reports: reward > 0 ? Math.floor((pool + 1e-8) / reward) : 0 };
     }
     function amount(value) { return typeof formatScreenshotBoostAmount === 'function' ? formatScreenshotBoostAmount(value) : String(value); }
     function plural(count, one, few, many) {
@@ -91,13 +91,11 @@
         var countLabel = plural(count, 'pcParamsCountOne', 'pcParamsCountFew', 'pcParamsCountMany');
         var campaign = project.screenshot_boost_campaign || {};
         var isEnabled = campaign.enabled === true;
-        var isPoolActive = boost.on;
-        var badgeModifier = isPoolActive ? 'active' : 'off';
-        var badgeText = isPoolActive ? text('pcParamsBoostActive') : text('pcParamsBoostOff');
-        var rewardAmountText = (boost.reward > 0 ? '+' : '') + amount(boost.reward > 0 ? boost.reward : 0) + ' $BUST';
-        var poolAmountText = amount(boost.pool) + ' $BUST';
-        var noteText = isPoolActive ? text('pcParamsBoostNoteActive') : text('pcParamsBoostNoteInactive');
-        var leftChipText = boost.pool > 0 && boost.reward > 0 ? plural(boost.reports, 'pcParamsReportsOne', 'pcParamsReportsFew', 'pcParamsReportsMany') : text('pcParamsBoostEmpty');
+        var rewardAmountText = '+' + amount(boost.reward) + '$';
+        var poolAmountText = amount(boost.pool) + '$';
+        var boostValue = isEnabled
+            ? '$BUST ' + rewardAmountText + ' ' + text('pcParamsBoostRewardRest') + ' • ' + text('pcParamsBoostPoolLead') + ' ' + poolAmountText
+            : text('pcParamsBoostNoteInactive');
         return '<div class="pc-project-params__head">' +
             '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '">' +
                 '<span class="pc-project-params__title">' + esc(text('pcParamsTitle')) + '</span>' +
@@ -116,28 +114,12 @@
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + id + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
+                '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostValue) + '">' +
+                    '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
+                    '<span class="pc-project-param__value">' + esc(boostValue) + '</span>' +
+                    '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' +
+                '</button>' +
             '</div>' +
-            '<button type="button" class="pc-project-boost' + (isPoolActive ? ' is-active' : '') + '" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog">' +
-                '<div class="pc-project-boost__head">' +
-                    '<span class="pc-project-boost__title-group">' +
-                        '<span class="pc-project-boost__icon" aria-hidden="true">' + icon('camera') + '</span>' +
-                        '<span class="pc-project-boost__title">' +
-                            '<span class="pc-project-boost__title-accent">' + esc(text('pcParamsBoostLead')) + '</span>' +
-                            ' <span class="pc-project-boost__title-tail">' + esc(text('pcParamsBoostTail')) + '</span>' +
-                        '</span>' +
-                    '</span>' +
-                    '<span class="pc-project-boost__badge pc-project-boost__badge--' + badgeModifier + '">' + esc(badgeText) + '</span>' +
-                '</div>' +
-                '<div class="pc-project-boost__divider" aria-hidden="true"></div>' +
-                '<div class="pc-project-boost__chips">' +
-                    '<span class="pc-project-boost__chip pc-project-boost__chip--reward"><strong class="pc-project-boost__bust">' + esc(rewardAmountText) + '</strong> ' + esc(text('pcParamsBoostRewardRest')) + '</span>' +
-                    '<span class="pc-project-boost__dot" aria-hidden="true">•</span>' +
-                    '<span class="pc-project-boost__chip pc-project-boost__chip--pool">' + esc(text('pcParamsBoostPoolLead')) + ' <strong class="pc-project-boost__bust">' + esc(poolAmountText) + '</strong></span>' +
-                    '<span class="pc-project-boost__dot" aria-hidden="true">•</span>' +
-                    '<span class="pc-project-boost__chip pc-project-boost__chip--left">' + esc(leftChipText) + '</span>' +
-                '</div>' +
-                '<div class="pc-project-boost__note">' + esc(noteText) + '</div>' +
-            '</button>' +
             (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email') + '<span>' + esc(text('pcParamsEmailAccess')) + '</span>' + CHEVRON + '</button>' : '') +
         '</div></div></div>';
     }

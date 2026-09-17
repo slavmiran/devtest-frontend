@@ -373,10 +373,13 @@ function karmaIconHtml(extraClass) {
     '</svg>';
 }
 
-function withKarmaIcon(text, extraClass) {
+function withKarmaIcon(text, extraClass, options) {
     var raw = String(text == null ? '' : text);
     var cleaned = raw.replace(/\u262F\uFE0F?/g, '').replace(/\s{2,}/g, ' ').trim();
-    return karmaIconHtml(extraClass || 'karma-yin-icon--inline') + (cleaned ? (' ' + cleaned) : '');
+    var icon = karmaIconHtml(extraClass || 'karma-yin-icon--inline');
+    if (!cleaned) return icon;
+    if (options && options.after) return cleaned + ' ' + icon;
+    return icon + ' ' + cleaned;
 }
 
 window.karmaIconHtml = karmaIconHtml;
