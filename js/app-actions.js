@@ -2791,10 +2791,42 @@ async function submitIssueReport(appId) {
     }
 
     try {
+        var wait = typeof getIssueAccessWaitState === 'function'
+            ? getIssueAccessWaitState(appId)
+            : { remainingMs: 0, timeLabel: '00:00' };
+        if (wait.remainingMs > 0) {
+            showToast(window.t(
+                wait.reason === 'group' ? 'reportIssueWaitGroupActive' : 'reportIssueWaitActive',
+                { time: wait.timeLabel },
+                lang
+            ));
+            return;
+        }
+
+        var screenshotFileId = '';
+        var screenshotRaw = (typeof _issueReportScreenshotFileId !== 'undefined' ? _issueReportScreenshotFileId : '')
+            || (typeof _issueReportScreenshotUrl !== 'undefined' ? _issueReportScreenshotUrl : '')
+            || (window._issueReportScreenshotFileId || window._issueReportScreenshotUrl || '');
+        if (typeof _telegramFileIdFromMediaUrl === 'function') {
+            screenshotFileId = _telegramFileIdFromMediaUrl(screenshotRaw);
+        } else {
+            screenshotFileId = String(screenshotRaw || '').trim();
+        }
+        if (!screenshotFileId) {
+            showToast(window.t('reportIssueScreenshotRequired', {}, lang));
+            return;
+        }
+
         var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({ tester_id: userId, issue_reason: reason, email: email, account_match_confirmed: true }))
+            body: JSON.stringify(withInitData({
+                tester_id: userId,
+                issue_reason: reason,
+                email: email,
+                account_match_confirmed: true,
+                screenshot_file_id: screenshotFileId,
+            }))
         });
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -4940,6 +4972,68 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
 }
 
 window.handleReviewScreenshotUpload = handleReviewScreenshotUpload;
+
+function _telegramFileIdFromUploadPayload(data) {
+    var fileId = String((data && data.file_id) || '').trim();
+    if (fileId) return fileId;
+    var url = String((data && data.url) || '').trim();
+    var marker = '/telegram-media/';
+    var idx = url.indexOf(marker);
+    if (idx >= 0) return url.slice(idx + marker.length).replace(/^\/+/, '');
+    return '';
+}
+
+async function handleIssueScreenshotUpload(fileInput) {
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (file.type && String(file.type).indexOf('image/') !== 0) {
+        showToast(window.t('reportIssueScreenshotRequired', {}, lang));
+        fileInput.value = '';
+        return;
+    }
+
+    var zone = document.getElementById('issue-screenshot-zone');
+    var origHtml = zone ? zone.innerHTML : '';
+    if (zone) {
+        zone.classList.add('is-uploading');
+        zone.innerHTML = '<span class="icon-upload-spinner"></span>';
+    }
+
+    try {
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', String((window.App && window.App.userId) || window.userId || 0));
+        formData.append('init_data', getTelegramInitDataRaw());
+        formData.append('upload_kind', 'access_issue');
+
+        var apiBase = (window.App && window.App.API_BASE) || API_BASE || '';
+        var resp = await fetch(apiBase + '/upload-icon', { method: 'POST', body: formData });
+        var data = await resp.json();
+        var fileId = _telegramFileIdFromUploadPayload(data);
+        if (!(data && data.status === 'success' && fileId)) {
+            showToast((data && data.message) || window.t('reportIssueScreenshotRequired', {}, lang));
+            return;
+        }
+        _issueReportScreenshotFileId = fileId;
+        _issueReportScreenshotUrl = String(data.url || ('/telegram-media/' + fileId));
+        window._issueReportScreenshotFileId = _issueReportScreenshotFileId;
+        window._issueReportScreenshotUrl = _issueReportScreenshotUrl;
+        if (typeof _renderIssueScreenshotUi === 'function') _renderIssueScreenshotUi();
+        if (typeof syncIssueReportPauseState === 'function') syncIssueReportPauseState();
+    } catch (error) {
+        console.error('Access issue screenshot upload error:', error);
+        handleApiError('network_error');
+    } finally {
+        if (fileInput) fileInput.value = '';
+        if (zone) {
+            zone.classList.remove('is-uploading');
+            if (origHtml) zone.innerHTML = origHtml;
+        }
+        if (typeof _renderIssueScreenshotUi === 'function') _renderIssueScreenshotUi();
+    }
+}
+
+window.handleIssueScreenshotUpload = handleIssueScreenshotUpload;
 
 function updateIconPreview(inputId, previewId) {
     var input = document.getElementById(inputId);

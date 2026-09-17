@@ -3877,14 +3877,90 @@ function openPlayReviewStoreByAppId(appId, event) {
 
 const ISSUE_CHECKLIST_PLAY_STORE_HOME = 'https://play.google.com/store';
 const ISSUE_PROJECT_VERIFICATION_WINDOW_MS = 30 * 60 * 1000;
+var _issueReportAppId = null;
 let _issueReportStep = 1;
 let _issueReportVerificationTimerId = null;
+var _issueReportScreenshotFileId = '';
+var _issueReportScreenshotUrl = '';
 
 function _getIssueReportTest(appId) {
     const tests = (typeof myTests !== 'undefined' && Array.isArray(myTests))
         ? myTests
         : ((window.App && Array.isArray(window.App.myTests)) ? window.App.myTests : []);
     return tests.find(function(item) { return Number(item.id) === Number(appId); }) || null;
+}
+
+function _telegramFileIdFromMediaUrl(value) {
+    var raw = String(value || '').trim();
+    var marker = '/telegram-media/';
+    var idx = raw.indexOf(marker);
+    if (idx >= 0) raw = raw.slice(idx + marker.length);
+    raw = raw.replace(/^\/+/, '');
+    return /^[A-Za-z0-9_\-:]{20,256}$/.test(raw) ? raw : '';
+}
+
+function _formatIssueWaitClock(remainingMs) {
+    var totalSeconds = Math.max(0, Math.ceil(Number(remainingMs || 0) / 1000));
+    var minutes = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function getIssueAccessWaitState(appId) {
+    var test = _getIssueReportTest(appId);
+    var projectMs = 0;
+    var createdAt = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
+    if (Number.isFinite(createdAt)) {
+        projectMs = Math.max(0, ISSUE_PROJECT_VERIFICATION_WINDOW_MS - Math.max(0, Date.now() - createdAt));
+    }
+    var groupMs = 0;
+    if (typeof getCustomGroupAccessWaitRemainingMs === 'function') {
+        groupMs = Math.max(0, Number(getCustomGroupAccessWaitRemainingMs(appId) || 0));
+    }
+    var remainingMs = Math.max(projectMs, groupMs);
+    var reason = '';
+    if (remainingMs > 0) {
+        reason = groupMs > projectMs ? 'group' : 'project';
+    }
+    return {
+        remainingMs: remainingMs,
+        reason: reason,
+        timeLabel: _formatIssueWaitClock(remainingMs),
+    };
+}
+
+function _hasIssueReportScreenshot() {
+    return !!_telegramFileIdFromMediaUrl(
+        _issueReportScreenshotFileId
+        || _issueReportScreenshotUrl
+        || window._issueReportScreenshotFileId
+        || window._issueReportScreenshotUrl
+    );
+}
+
+function _renderIssueScreenshotUi() {
+    var zone = document.getElementById('issue-screenshot-zone');
+    var preview = document.getElementById('issue-screenshot-preview');
+    var has = _hasIssueReportScreenshot();
+    if (zone) zone.hidden = has;
+    if (preview) preview.hidden = !has;
+}
+
+function _resetIssueReportScreenshot() {
+    _issueReportScreenshotFileId = '';
+    _issueReportScreenshotUrl = '';
+    window._issueReportScreenshotFileId = '';
+    window._issueReportScreenshotUrl = '';
+    _renderIssueScreenshotUi();
+}
+
+function clearIssueScreenshot(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    _resetIssueReportScreenshot();
+    syncIssueReportPauseState();
 }
 
 function _clearIssueReportVerificationTimer() {
@@ -3901,13 +3977,8 @@ function _renderIssueReportVerificationTimer() {
     const timerText = document.getElementById('issue-report-verification-timer-text');
     if (!timer || !countdownEl || !timerText) return false;
 
-    const test = _getIssueReportTest(_issueReportAppId);
-    const createdAt = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
-    const remainingMs = Number.isFinite(createdAt)
-        ? ISSUE_PROJECT_VERIFICATION_WINDOW_MS - Math.max(0, Date.now() - createdAt)
-        : 0;
-
-    if (remainingMs <= 0) {
+    const wait = getIssueAccessWaitState(_issueReportAppId);
+    if (!wait.remainingMs) {
         timer.hidden = true;
         countdownEl.textContent = '';
         if (titleEl) titleEl.textContent = '';
@@ -3915,26 +3986,30 @@ function _renderIssueReportVerificationTimer() {
         return false;
     }
 
-    const totalSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const timeLabel = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-    countdownEl.textContent = timeLabel;
-    if (titleEl) {
-        titleEl.textContent = window.t('reportIssueVerificationTitle', {}, lang);
+    countdownEl.textContent = wait.timeLabel;
+    if (wait.reason === 'group') {
+        if (titleEl) titleEl.textContent = window.t('accessProblemWaitTitle', {}, lang);
+        timerText.textContent = window.t('accessProblemWaitText', {}, lang);
+    } else {
+        if (titleEl) titleEl.textContent = window.t('reportIssueVerificationTitle', {}, lang);
+        timerText.textContent = window.t('reportIssueVerificationTimer', { time: wait.timeLabel }, lang);
     }
-    timerText.textContent = window.t('reportIssueVerificationTimer', { time: timeLabel }, lang);
     timer.hidden = false;
     return true;
 }
 
 function _startIssueReportVerificationTimer() {
     _clearIssueReportVerificationTimer();
-    if (!_renderIssueReportVerificationTimer()) return;
+    _renderIssueReportVerificationTimer();
+    syncIssueReportPauseState();
     _issueReportVerificationTimerId = setInterval(function() {
-        if (!_renderIssueReportVerificationTimer()) {
+        var modal = document.getElementById('issue-report-modal');
+        if (!modal || !modal.classList.contains('active')) {
             _clearIssueReportVerificationTimer();
+            return;
         }
+        _renderIssueReportVerificationTimer();
+        syncIssueReportPauseState();
     }, 1000);
 }
 
@@ -3972,17 +4047,18 @@ function _renderIssueReportAccountCopy() {
 }
 
 function _setIssueChecklistChecked(checked) {
-    ['issue-check-group', 'issue-check-play', 'issue-check-match', 'issue-check-still'].forEach(function(id) {
+    ['issue-check-group', 'issue-check-play', 'issue-check-match'].forEach(function(id) {
         const el = document.getElementById(id);
         if (el) el.checked = !!checked;
     });
 }
 
 function isIssueReportChecklistComplete() {
-    return ['issue-check-group', 'issue-check-play', 'issue-check-match', 'issue-check-still'].every(function(id) {
+    var boxesOk = ['issue-check-group', 'issue-check-play', 'issue-check-match'].every(function(id) {
         const el = document.getElementById(id);
         return !!(el && el.checked);
     });
+    return boxesOk && _hasIssueReportScreenshot();
 }
 
 function syncIssueReportPauseState() {
@@ -3993,8 +4069,25 @@ function syncIssueReportPauseState() {
     const emailOk = !!(email && typeof isValidEmail === 'function' ? isValidEmail(email) : email.includes('@'));
     const groupChecked = !!(document.getElementById('issue-check-group') || {}).checked;
     const playChecked = !!(document.getElementById('issue-check-play') || {}).checked;
-    const ready = emailOk && isIssueReportChecklistComplete();
-    if (sendBtn) sendBtn.disabled = !ready;
+    const wait = getIssueAccessWaitState(_issueReportAppId);
+    const checklistReady = emailOk && isIssueReportChecklistComplete();
+    const ready = checklistReady && wait.remainingMs <= 0;
+    if (sendBtn) {
+        sendBtn.disabled = !ready;
+        sendBtn.classList.toggle('is-waiting', wait.remainingMs > 0);
+        sendBtn.classList.toggle('is-need-proof', wait.remainingMs <= 0 && !checklistReady);
+        if (wait.remainingMs > 0) {
+            sendBtn.innerText = window.t(
+                wait.reason === 'group' ? 'reportIssueSendWaitGroupBtn' : 'reportIssueSendWaitBtn',
+                { time: wait.timeLabel },
+                lang
+            );
+        } else if (!_hasIssueReportScreenshot()) {
+            sendBtn.innerText = window.t('reportIssueSendNeedScreenshotBtn', {}, lang);
+        } else {
+            sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
+        }
+    }
     if (nextBtn) {
         nextBtn.disabled = _issueReportStep === 1
             ? !emailOk
@@ -4059,6 +4152,19 @@ function openIssueChecklistGooglePlay() {
     _openIssueChecklistLink(ISSUE_CHECKLIST_PLAY_STORE_HOME);
 }
 
+function openIssueChecklistAppPlay() {
+    var url = '';
+    if (typeof getPlayReviewUrl === 'function') {
+        url = String(getPlayReviewUrl(_issueReportAppId) || '').trim();
+    }
+    if (!url) {
+        var test = _getIssueReportTest(_issueReportAppId);
+        var pkg = String(test && (test.package || test.package_name) || '').trim();
+        if (pkg) url = 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(pkg);
+    }
+    _openIssueChecklistLink(url || ISSUE_CHECKLIST_PLAY_STORE_HOME);
+}
+
 function openIssueReportModal(appId) {
     _issueReportAppId = appId;
     const modal = document.getElementById('issue-report-modal');
@@ -4092,24 +4198,30 @@ function openIssueReportModal(appId) {
     setText('t-issueReportPauseEffect', 'reportIssuePauseEffect');
     setText('t-issueReportBack', 'reportIssueBackBtn');
     setText('t-issueReportNext', 'reportIssueNextBtn');
+    setText('t-issueScreenshotUpload', 'reportIssueScreenshotUpload');
+    setText('t-issueScreenshotReady', 'reportIssueScreenshotReady');
+    setText('t-issueScreenshotReplace', 'reportIssueScreenshotReplace');
 
     const openGroupBtn = document.getElementById('t-issueOpenGroup');
     const openPlayBtn = document.getElementById('t-issueOpenPlay');
+    const openAppPlayBtn = document.getElementById('t-issueOpenAppPlay');
     const checkGroup = document.getElementById('t-issueCheckGroup');
     const checkPlay = document.getElementById('t-issueCheckPlay');
     const checkMatch = document.getElementById('t-issueCheckMatch');
     const checkStill = document.getElementById('t-issueCheckStill');
     if (openGroupBtn) openGroupBtn.innerText = window.t('reportIssueOpenGroupBtn', {}, lang);
     if (openPlayBtn) openPlayBtn.innerText = window.t('reportIssueOpenPlayBtn', {}, lang);
+    if (openAppPlayBtn) openAppPlayBtn.innerText = window.t('reportIssueOpenAppPlayBtn', {}, lang);
     if (checkGroup) checkGroup.innerText = window.t('reportIssueCheckGroup', {}, lang);
     if (checkPlay) checkPlay.innerText = window.t('reportIssueCheckPlay', {}, lang);
     if (checkMatch) checkMatch.innerText = window.t('reportIssueCheckMatch', {}, lang);
     if (checkStill) checkStill.innerText = window.t('reportIssueCheckStill', {}, lang);
 
     _setIssueChecklistChecked(false);
+    _resetIssueReportScreenshot();
     if (emailInput) {
         const appState = window.App && typeof window.App.getState === 'function' ? window.App.getState() : {};
-        emailInput.value = String(appState && appState.userEmail || window.App.userEmail || '').trim();
+        emailInput.value = String((appState && appState.userEmail) || (window.App && window.App.userEmail) || '').trim();
         emailInput.placeholder = window.t('reportIssueEmailPlaceholder', {}, lang);
     }
     const textarea = document.getElementById('issue-report-text');
@@ -4132,11 +4244,21 @@ function closeIssueReportModal(event) {
     _issueReportAppId = null;
     _issueReportStep = 1;
     _setIssueChecklistChecked(false);
+    _resetIssueReportScreenshot();
 }
 
 function submitIssueReportFromModal() {
     if (!_issueReportAppId) return;
     if (!syncIssueReportPauseState()) {
+        const wait = getIssueAccessWaitState(_issueReportAppId);
+        if (wait.remainingMs > 0) {
+            showToast(window.t(
+                wait.reason === 'group' ? 'reportIssueWaitGroupActive' : 'reportIssueWaitActive',
+                { time: wait.timeLabel },
+                lang
+            ));
+            return;
+        }
         const emailInput = document.getElementById('issue-report-email');
         const email = emailInput ? String(emailInput.value || '').trim() : '';
         if (!email || (typeof isValidEmail === 'function' && !isValidEmail(email))) {
@@ -4144,11 +4266,16 @@ function submitIssueReportFromModal() {
             if (emailInput && typeof emailInput.focus === 'function') emailInput.focus();
             return;
         }
+        if (!_hasIssueReportScreenshot()) {
+            showToast(window.t('reportIssueScreenshotRequired', {}, lang));
+            return;
+        }
         showToast(window.t('reportIssueChecklistIncomplete', {}, lang));
         return;
     }
     submitIssueReport(_issueReportAppId);
 }
+
 
 function renderReportLanguageToggle() {
     const toggle = document.getElementById('report-language-toggle');
@@ -10789,12 +10916,15 @@ Object.assign(window, {
     openIssueReportModal,
     closeIssueReportModal,
     submitIssueReportFromModal,
+    getIssueAccessWaitState,
     syncIssueReportPauseState,
     isIssueReportChecklistComplete,
     nextIssueReportStep,
     previousIssueReportStep,
     openIssueChecklistGoogleGroup,
     openIssueChecklistGooglePlay,
+    openIssueChecklistAppPlay,
+    clearIssueScreenshot,
     openCheckinOptionsModal,
     closeCheckinOptionsModal,
     syncCheckinOptionsJustConfirmTimer,

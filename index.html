@@ -36,23 +36,23 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260917-thanks-tester-v1"></script>
-    <script src="./i18n/en.js?v=20260917-thanks-tester-v1"></script>
+<script src="./i18n/ru.js?v=20260917-issue-proof-v2"></script>
+    <script src="./i18n/en.js?v=20260917-issue-proof-v2"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260903-reports-karma-v1"></script>
     <script src="./ui/ui-tests.js?v=20260917-thanks-tester-v1"></script>
     <script src="./ui/ui-projects.js?v=20260916-instructions-sheet-v1"></script>
     <script src="./js/project-parameters.js?v=20260916-instructions-sheet-v1"></script>
-    <script src="./ui/ui-market.js?v=20260917-thanks-tester-v1"></script>
+    <script src="./ui/ui-market.js?v=20260917-issue-proof-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20260916-earn-karma-v1"></script>
-    <script src="./js/app-api.js?v=20260916-done-proof-topic-v1"></script>
+    <script src="./js/app-api.js?v=20260917-issue-proof-v2"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260916-feedback-all-toggle-v1"></script>
+    <script src="./js/app-actions.js?v=20260917-issue-proof-v2"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260915-authoritative-album-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -93,7 +93,7 @@
     <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
-    <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
+    <link rel="stylesheet" href="./css/access-issue.css?v=20260917-issue-proof-v2">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
     <link rel="stylesheet" href="./styles.css?v=20260915-market-chips-neutral-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260904-scroll-smooth-v1">
@@ -1855,10 +1855,25 @@
                             <input type="checkbox" id="issue-check-match" onchange="syncIssueReportPauseState()">
                             <span id="t-issueCheckMatch" data-i18n="reportIssueCheckMatch">Один аккаунт используется в Group и Play</span>
                         </label>
-                        <label class="issue-check-item issue-check-item--strong">
-                            <input type="checkbox" id="issue-check-still" onchange="syncIssueReportPauseState()">
-                            <span id="t-issueCheckStill" data-i18n="reportIssueCheckStill">Приложение всё ещё недоступно</span>
-                        </label>
+                        <div class="issue-still-proof">
+                            <div class="issue-still-proof__title" id="t-issueCheckStill" data-i18n="reportIssueCheckStill">После проверки приложение всё ещё нельзя установить</div>
+                            <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenAppPlay" onclick="openIssueChecklistAppPlay()" data-i18n="reportIssueOpenAppPlayBtn">Открыть приложение в Google Play</button>
+                            <input type="file" id="issue-report-file" accept="image/*" hidden onchange="handleIssueScreenshotUpload(this)">
+                            <button type="button" class="issue-screenshot-zone" id="issue-screenshot-zone" onclick="document.getElementById('issue-report-file').click()">
+                                <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                <span id="t-issueScreenshotUpload" data-i18n="reportIssueScreenshotUpload">Прикрепить скриншот ошибки</span>
+                            </button>
+                            <div class="issue-screenshot-preview" id="issue-screenshot-preview" hidden>
+                                <div class="preview-success-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <div class="preview-info">
+                                    <div class="preview-title" id="t-issueScreenshotReady" data-i18n="reportIssueScreenshotReady">Скриншот прикреплён</div>
+                                    <div class="preview-subtitle" id="t-issueScreenshotReplace" data-i18n="reportIssueScreenshotReplace">Нажмите ✕ чтобы заменить</div>
+                                </div>
+                                <button type="button" class="preview-remove-btn" onclick="clearIssueScreenshot(event)" aria-label="Remove screenshot">✕</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="issue-report-comment">
                         <label class="issue-report-label" for="issue-report-text">

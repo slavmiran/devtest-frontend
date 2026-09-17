@@ -1316,6 +1316,8 @@ function handleApiError(code, details = {}) {
         target_owner_has_access_issue: 'targetOwnerAccessIssueBlockToast',
         email_required: 'reportIssueEmailRequired',
         access_checklist_required: 'reportIssueChecklistIncomplete',
+        access_wait_active: 'reportIssueWaitActive',
+        issue_screenshot_required: 'reportIssueScreenshotRequired',
         auto_accept_reliability_required: 'auto_accept_reliability_required',
         tester_profile_required: 'err_tester_profile_required',
         android_version_too_low: 'err_android_version_too_low',
