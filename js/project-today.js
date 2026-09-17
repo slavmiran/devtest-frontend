@@ -2884,6 +2884,10 @@
 
     function paint(appId) {
         var safeAppId = Number(appId || 0);
+        if (typeof window.deferUntilProjectsScrollIdle === 'function' && window.deferUntilProjectsScrollIdle(
+            'project-activity-' + safeAppId,
+            function() { paint(safeAppId); }
+        )) return;
         var root = document.getElementById('pc-today-' + safeAppId);
         var project = projectById(safeAppId);
         if (!root || !project) return;

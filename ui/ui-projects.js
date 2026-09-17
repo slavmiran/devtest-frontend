@@ -1172,6 +1172,10 @@ function restoreProjectViewportAnchor(anchor) {
 
 function renderProjects(force) {
     if (!force && !isTabVisible('projects')) return;
+    if (typeof window.deferUntilProjectsScrollIdle === 'function' && window.deferUntilProjectsScrollIdle(
+        'render-projects',
+        function() { renderProjects(force); }
+    )) return;
     if (typeof window.syncHomeScreenUi === 'function') {
         window.syncHomeScreenUi();
     }
@@ -8225,6 +8229,10 @@ function renderGuaranteedOrdersSection(container) {
     function paintOrders(orders) {
         if (!container.contains(section)) return;
         var safeOrders = Array.isArray(orders) ? orders : [];
+        if (typeof window.deferUntilProjectsScrollIdle === 'function' && window.deferUntilProjectsScrollIdle(
+            'guaranteed-orders',
+            function() { paintOrders(safeOrders.slice()); }
+        )) return;
         var snapshot = JSON.stringify(safeOrders);
         if (section.dataset.ordersSnapshot === snapshot) return;
         var viewportAnchor = captureProjectViewportAnchor(container);
@@ -9060,18 +9068,57 @@ window.dismissLeftTesterRow = dismissLeftTesterRow;
 (function initProjectsScrollPerf() {
     var scrollEndTimer = null;
     var isProjectsScrolling = false;
-    function markProjectsScrolling() {
+    var deferredWork = new Map();
+
+    function activeProjectsTab() {
         var tab = document.getElementById('tab-projects');
-        if (!tab || !tab.classList.contains('active')) return;
+        return tab && tab.classList.contains('active') ? tab : null;
+    }
+
+    function flushDeferredWork() {
+        if (!deferredWork.size) return;
+        var work = Array.from(deferredWork.values());
+        deferredWork.clear();
+        window.requestAnimationFrame(function() {
+            work.forEach(function(callback) {
+                try { callback(); } catch (error) {
+                    console.error('Deferred projects render failed:', error);
+                }
+            });
+        });
+    }
+
+    function finishProjectsScrolling() {
+        if (scrollEndTimer) {
+            clearTimeout(scrollEndTimer);
+            scrollEndTimer = null;
+        }
+        if (!isProjectsScrolling) return;
+        isProjectsScrolling = false;
+        var tab = document.getElementById('tab-projects');
+        if (tab) tab.classList.remove('is-scrolling');
+        flushDeferredWork();
+    }
+
+    function markProjectsScrolling() {
+        var tab = activeProjectsTab();
+        if (!tab) return;
         if (!isProjectsScrolling) {
             isProjectsScrolling = true;
-            document.documentElement.classList.add('projects-scrolling');
+            tab.classList.add('is-scrolling');
         }
         clearTimeout(scrollEndTimer);
-        scrollEndTimer = setTimeout(function() {
-            isProjectsScrolling = false;
-            document.documentElement.classList.remove('projects-scrolling');
-        }, 160);
+        scrollEndTimer = setTimeout(finishProjectsScrolling, 140);
     }
+
+    window.deferUntilProjectsScrollIdle = function(key, callback) {
+        if (!isProjectsScrolling || !activeProjectsTab() || typeof callback !== 'function') return false;
+        deferredWork.set(String(key || 'projects-work'), callback);
+        return true;
+    };
+    window.isProjectsScrollActive = function() { return isProjectsScrolling; };
     window.addEventListener('scroll', markProjectsScrolling, { passive: true });
+    if ('onscrollend' in window) {
+        window.addEventListener('scrollend', finishProjectsScrolling, { passive: true });
+    }
 })();

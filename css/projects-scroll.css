@@ -4,6 +4,12 @@
     animation: projectsTabFadeIn 0.2s ease;
 }
 
+/* Dynamic cards use explicit viewport restoration. Native scroll anchoring on
+   the same subtree can apply a second correction and create a visible jump. */
+#tab-projects #projects-list {
+    overflow-anchor: none;
+}
+
 @keyframes projectsTabFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -62,21 +68,21 @@
     animation: none !important;
 }
 
-html.projects-scrolling #tab-projects .energy-bar-fill::after,
-html.projects-scrolling #tab-projects .energy-bar-shimmer,
-html.projects-scrolling #tab-projects .grant-segment.current-pending,
-html.projects-scrolling #tab-projects .grant-segment.current-completed,
-html.projects-scrolling #tab-projects .pc-cal.is-need-sync .pc-cal__dot,
-html.projects-scrolling #tab-projects .pc-slot.is-filled:not(.is-loaded)::after {
+#tab-projects.is-scrolling .energy-bar-fill::after,
+#tab-projects.is-scrolling .energy-bar-shimmer,
+#tab-projects.is-scrolling .grant-segment.current-pending,
+#tab-projects.is-scrolling .grant-segment.current-completed,
+#tab-projects.is-scrolling .pc-cal.is-need-sync .pc-cal__dot,
+#tab-projects.is-scrolling .pc-slot.is-filled:not(.is-loaded)::after {
     animation-play-state: paused !important;
 }
 
 /* Keep access-issue alert pulsing even while projects list scrolls */
-html.projects-scrolling #tab-projects .access-error-panel,
-html.projects-scrolling #tab-projects .access-error-head__icon {
+#tab-projects.is-scrolling .access-error-panel,
+#tab-projects.is-scrolling .access-error-head__icon {
     animation-play-state: running !important;
 }
 
-html.projects-scrolling #tab-projects .card-expanded-zone {
+#tab-projects.is-scrolling .card-expanded-zone {
     transition: none !important;
 }
