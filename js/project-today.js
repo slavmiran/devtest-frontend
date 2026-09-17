@@ -368,7 +368,7 @@
         if (val <= 0) return '';
         var title = text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: val });
         return '<button type="button" class="pc-award-badge pc-award-badge--boost" onclick="event.stopPropagation(); pcShowBoostBonusToast();" title="' + esc(title) + '">' +
-            '<span class="pc-award-badge__value">🎁 +' + esc(val) + ' $BUST</span>' +
+            '<span class="pc-award-badge__value">$BUST ' + esc(val) + ' 🎁</span>' +
         '</button>';
     }
 
@@ -395,7 +395,7 @@
         if (ticketBust > 0) {
             var bustTitle = text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: ticketBust });
             ticketBustHtml = '<span class="pc-award-badge pc-award-badge--bust" title="' + esc(bustTitle) + '">' +
-                '<span class="pc-award-badge__value">+' + esc(ticketBust) + ' $BUST</span>' +
+                '<span class="pc-award-badge__value">$BUST ' + esc(ticketBust) + '</span>' +
             '</span>';
         }
 
@@ -1177,7 +1177,7 @@
                 : (rejectionReason || '');
             var rejectText = text('projectFeedbackRejectedBadge', 'Отклонён');
             var chipLabel = rReason ? ('❌ ' + rejectText + ': ' + rReason) : ('❌ ' + rejectText);
-            awardsRowHtml = '<div class="pc-proof-album-card__awards-row"' +
+            awardsRowHtml = '<div class="pc-proof-album-card__awards-row pc-proof-album-card__awards-row--rejected"' +
                 (mainClick ? ' onclick="event.stopPropagation(); ' + mainClick + '"' : '') +
                 '>' +
                 '<span class="pc-award-badge pc-award-badge--rejected" title="' + esc(chipLabel) + '">' +
@@ -1199,20 +1199,20 @@
             }
             var bBadge = '';
             if (boostBust > 0 && itemBust > 0) {
-                var bTitle = text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: boostBust }) +
-                    ' | ' + text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: itemBust });
+                var bTitle = text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: itemBust }) +
+                    ' | ' + text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: boostBust });
                 bBadge = '<button type="button" class="pc-award-badge pc-award-badge--bust" onclick="event.stopPropagation(); pcShowBoostBonusToast();" title="' + esc(bTitle) + '">' +
-                    '<span class="pc-award-badge__value">🎁 +' + esc(boostBust) + ' $BUST | 💎 +' + esc(itemBust) + '</span>' +
+                    '<span class="pc-award-badge__value">$BUST ' + esc(itemBust) + ' +' + esc(boostBust) + '🎁</span>' +
                 '</button>';
             } else if (boostBust > 0) {
                 var bTitle = text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: boostBust });
                 bBadge = '<button type="button" class="pc-award-badge pc-award-badge--bust" onclick="event.stopPropagation(); pcShowBoostBonusToast();" title="' + esc(bTitle) + '">' +
-                    '<span class="pc-award-badge__value">🎁 +' + esc(boostBust) + ' $BUST</span>' +
+                    '<span class="pc-award-badge__value">$BUST ' + esc(boostBust) + ' 🎁</span>' +
                 '</button>';
             } else if (itemBust > 0) {
                 var bTitle = text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: itemBust });
                 bBadge = '<span class="pc-award-badge pc-award-badge--bust" title="' + esc(bTitle) + '">' +
-                    '<span class="pc-award-badge__value">💎 +' + esc(itemBust) + '</span>' +
+                    '<span class="pc-award-badge__value">$BUST ' + esc(itemBust) + '</span>' +
                 '</span>';
             }
             awardsRowHtml = '<div class="pc-proof-album-card__awards-row"' +
@@ -3215,21 +3215,9 @@
             }
         }
         if (typeof openProjectFeedback !== 'function' || fid <= 0) return;
-        var isProcessedOrRejected = false;
-        if (Array.isArray(window._activeProjectFeedbackItems)) {
-            var fbMatch = window._activeProjectFeedbackItems.find(function (f) {
-                return Number(f && f.id) === fid;
-            });
-            if (fbMatch) {
-                var st = String(fbMatch.status || '').toLowerCase();
-                if (st === 'rejected' || st === 'resolved' || st === 'closed' || fbMatch.processed) {
-                    isProcessedOrRejected = true;
-                }
-            }
-        }
         openProjectFeedback(Number(appId || 0), false, {
             focusFeedbackId: fid,
-            preferUnprocessed: !isProcessedOrRejected,
+            preferUnprocessed: false,
         });
     };
 

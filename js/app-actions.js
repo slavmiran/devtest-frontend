@@ -3696,23 +3696,31 @@ async function openProjectFeedback(appId, isArchived, options) {
     var loadSeq = ++_activeProjectFeedbackLoadSeq;
 
     if (cached) {
-        _activeProjectFeedbackItems = cached.items;
-        _activeProjectFeedbackFullLoaded = !!cached.fullLoaded;
-        _activeProjectFeedbackPartial = !!cached.partial && !cached.fullLoaded;
-        if (window.showProjectFeedbackModal) {
-            window.showProjectFeedbackModal(project, cached.items, {
-                preferUnprocessed: preferUnprocessed,
-                partialLoad: !!_activeProjectFeedbackPartial
-            });
-        }
-        if (focusId > 0) {
-            setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
-        }
-        refreshProjectFeedbackInBackground(project, loadSeq, {
-            preferUnprocessed: preferUnprocessed,
-            focusId: focusId
+        var hasFocusInCached = focusId > 0 && Array.isArray(cached.items) && cached.items.some(function (it) {
+            return Number(it && it.id) === focusId;
         });
-        return;
+        if (focusId > 0 && !hasFocusInCached) {
+            cached = null;
+        } else {
+            _activeProjectFeedbackItems = cached.items;
+            _activeProjectFeedbackFullLoaded = !!cached.fullLoaded;
+            _activeProjectFeedbackPartial = !!cached.partial && !cached.fullLoaded;
+            if (window.showProjectFeedbackModal) {
+                window.showProjectFeedbackModal(project, cached.items, {
+                    preferUnprocessed: preferUnprocessed,
+                    focusFeedbackId: focusId,
+                    partialLoad: !!_activeProjectFeedbackPartial
+                });
+            }
+            if (focusId > 0) {
+                setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
+            }
+            refreshProjectFeedbackInBackground(project, loadSeq, {
+                preferUnprocessed: preferUnprocessed,
+                focusId: focusId
+            });
+            return;
+        }
     }
 
     _activeProjectFeedbackItems = [];
@@ -3788,6 +3796,7 @@ async function openProjectFeedback(appId, isArchived, options) {
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, stageItems, {
                 preferUnprocessed: forceUnprocessed,
+                focusFeedbackId: focusId,
                 partialLoad: false
             });
         }
@@ -3891,7 +3900,7 @@ function openFeedbackRewardModal(appId, feedbackId) {
             var chipTitle = (typeof window.t === 'function' ? window.t('pcBoostRewardBonusTitle', { amount: poolBoost }, lang) : '') || ('Бонус за доп. отчёт: +' + poolBoost + ' $BUST');
             poolBoostContainer.innerHTML = '<span class="feedback-reward-pool-boost__label">' + window.escapeHTML(poolLabel) + '</span>' +
                 '<button type="button" class="pc-award-badge pc-award-badge--boost" onclick="pcShowBoostBonusToast();" title="' + window.escapeHTML(chipTitle) + '">' +
-                    '<span class="pc-award-badge__value">🎁 +' + window.escapeHTML(poolBoost) + ' $BUST</span>' +
+                    '<span class="pc-award-badge__value">$BUST ' + window.escapeHTML(poolBoost) + ' 🎁</span>' +
                 '</button>';
             poolBoostContainer.style.display = 'flex';
         } else {

@@ -573,6 +573,10 @@
     width: 100%;
     margin-top: 0;
 }
+.pc-person--contribution .pc-proof-album-card,
+.pc-contribution-cards .pc-proof-album-card {
+    box-shadow: inset 0 1px 2.5px rgba(0, 0, 0, 0.35);
+}
 /* Timeline step and indicator node */
 .pc-activity-timeline-step {
     position: relative;
@@ -850,6 +854,17 @@
     margin-top: -3px;
     flex-wrap: wrap;
     cursor: pointer;
+}
+.pc-activity--workspace .pc-proof-album-card__awards-row--rejected,
+.pc-activity--workspace .pc-proof-album-card__awards-row:has(.pc-award-badge--rejected) {
+    padding-left: 12px;
+}
+.pc-activity--workspace .pc-proof-album-card__awards-row .pc-award-badge--rejected {
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+    text-align: left;
+    line-height: 1.35;
 }
 @media (max-width: 360px) {
     .pc-activity--workspace .pc-proof-album-card__awards-row {

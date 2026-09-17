@@ -6206,6 +6206,15 @@ function showProjectFeedbackModal(project, items, options) {
     cacheProjectFeedbackCards();
     applyProjectFeedbackFilters();
     feedbackScheduleClampMeasure();
+    if (focusId > 0) {
+        var focusCard = body.querySelector('.fb-card[data-feedback-id="' + focusId + '"]');
+        if (focusCard) {
+            focusCard.classList.remove('fb-card--collapsed');
+            focusCard.classList.add('fb-card--expanded');
+            var expandBtn = focusCard.querySelector('.fb-card__expand-btn, [data-action="expand-feedback"]');
+            if (expandBtn) expandBtn.setAttribute('aria-expanded', 'true');
+        }
+    }
     if (typeof window.hideTgDeeplinkLoader === 'function') {
         window.hideTgDeeplinkLoader('feedback');
     }
