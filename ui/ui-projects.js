@@ -3874,6 +3874,12 @@ async function handleMassInviteAction(projectId) {
         return;
     }
 
+    var projectStatus = String(project.status || project.app_status || '').toLowerCase();
+    if (projectStatus === 'pending_completion') {
+        showToast(window.t('massInviteSafetyBufferAlert', {}, lang));
+        return;
+    }
+
     var meta = getProjectMassInviteMeta(project);
     if (!meta.isAvailable && !meta.isCooldownActive) {
         showToast(window.t('massInviteUnavailable', {}, lang));
@@ -8530,32 +8536,24 @@ function openMutualCatalogTesterSearch(projectId) {
 }
 window.openMutualCatalogTesterSearch = openMutualCatalogTesterSearch;
 
-async function openAttractTestersSheet(projectId) {
-    const project = myProjects.find((p) => p.id === projectId);
-    if (!project) return;
+function _attractGtOrderKey(project, activeOrders) {
+    var activeGtOrder = findActiveGuaranteedOrderForProject(project, activeOrders);
+    if (!activeGtOrder) return '';
+    return String(activeGtOrder.id || activeGtOrder.public_code || 'active');
+}
 
-    const overlay = document.getElementById('attract-testers-sheet-overlay');
-    const content = document.getElementById('attract-testers-sheet-content');
-    if (!overlay || !content) return;
-
-    const massInviteMeta = getProjectMassInviteMeta(project);
-    const guestCount = getGuestProjectsCount();
-    const leadsCount = getLeadsRadarCount();
-    const testersList = Array.isArray(project.testers) ? project.testers : [];
-    const manualCount = testersList.filter(t => t.join_type === 'manual').length;
-
-    const activeOrders = await fetchActiveGuaranteedOrders(false);
-    const activeGtOrder = findActiveGuaranteedOrderForProject(project, activeOrders);
-    let handsFreeItemHtml = '';
+function _buildAttractHandsFreeItemHtml(projectId, project, activeOrders) {
+    var activeGtOrder = findActiveGuaranteedOrderForProject(project, activeOrders);
+    var gtKey = _attractGtOrderKey(project, activeOrders);
     if (activeGtOrder) {
-        const orderPayload = encodeURIComponent(JSON.stringify(activeGtOrder));
-        const statusLabel = window.escapeHTML(getGuaranteedOrderStatusLabel(activeGtOrder));
-        const code = window.escapeHTML(String(activeGtOrder.public_code || ''));
-        const subtitle = lang === 'ru'
+        var orderPayload = encodeURIComponent(JSON.stringify(activeGtOrder));
+        var statusLabel = window.escapeHTML(getGuaranteedOrderStatusLabel(activeGtOrder));
+        var code = window.escapeHTML(String(activeGtOrder.public_code || ''));
+        var subtitle = lang === 'ru'
             ? ('Заявка #' + code + ' уже в работе. Повторная отправка недоступна.')
             : ('Order #' + code + ' is already in progress. Resubmit is locked.');
-        handsFreeItemHtml =
-            '<div class="attract-sheet-item attract-sheet-item--gt-active" onclick="closeAttractTestersSheet(); openHandsFreeOrderStatusModal(JSON.parse(decodeURIComponent(\'' + orderPayload + '\')));">' +
+        return (
+            '<div id="attract-gt-slot" class="attract-sheet-item attract-sheet-item--gt-active" data-gt-key="' + window.escapeHTML(gtKey) + '" onclick="closeAttractTestersSheet(); openHandsFreeOrderStatusModal(JSON.parse(decodeURIComponent(\'' + orderPayload + '\')));">' +
                 '<div class="attract-sheet-item-icon">🛡️</div>' +
                 '<div class="attract-sheet-item-info">' +
                     '<div class="attract-sheet-item-title-row">' +
@@ -8565,18 +8563,31 @@ async function openAttractTestersSheet(projectId) {
                     '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(subtitle) + '</div>' +
                 '</div>' +
                 '<span class="attract-sheet-item-chevron">›</span>' +
-            '</div>';
-    } else {
-        handsFreeItemHtml =
-            '<div class="attract-sheet-item" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard(' + projectId + ');">' +
-                '<div class="attract-sheet-item-icon">🛡️</div>' +
-                '<div class="attract-sheet-item-info">' +
-                    '<div class="attract-sheet-item-title">' + window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang)) + '</div>' +
-                    '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(window.t('attractHandsFreeSubtitle', {}, lang)) + '</div>' +
-                '</div>' +
-                '<span class="attract-sheet-item-chevron">›</span>' +
-            '</div>';
+            '</div>'
+        );
     }
+    return (
+        '<div id="attract-gt-slot" class="attract-sheet-item" data-gt-key="" onclick="closeAttractTestersSheet(); openHandsFreeTestingWizard(' + projectId + ');">' +
+            '<div class="attract-sheet-item-icon">🛡️</div>' +
+            '<div class="attract-sheet-item-info">' +
+                '<div class="attract-sheet-item-title">' + window.escapeHTML(window.t('attractHandsFreeTitle', {}, lang)) + '</div>' +
+                '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(window.t('attractHandsFreeSubtitle', {}, lang)) + '</div>' +
+            '</div>' +
+            '<span class="attract-sheet-item-chevron">›</span>' +
+        '</div>'
+    );
+}
+
+function _fillAttractTestersSheet(projectId, project, activeOrders) {
+    var content = document.getElementById('attract-testers-sheet-content');
+    if (!content) return;
+
+    var massInviteMeta = getProjectMassInviteMeta(project);
+    var guestCount = getGuestProjectsCount();
+    var leadsCount = getLeadsRadarCount();
+    var testersList = Array.isArray(project.testers) ? project.testers : [];
+    var manualCount = testersList.filter(function (t) { return t.join_type === 'manual'; }).length;
+    var handsFreeItemHtml = _buildAttractHandsFreeItemHtml(projectId, project, activeOrders);
 
     content.innerHTML = `
         <!-- Item 1: Mutual Testing Catalog & Mass Invite Hub -->
@@ -8661,9 +8672,34 @@ async function openAttractTestersSheet(projectId) {
         <!-- Item 6: Private Testing -->
         ${handsFreeItemHtml}
     `;
+}
 
-    overlay.classList.add('is-active');
+function openAttractTestersSheet(projectId) {
+    var project = myProjects.find(function (p) { return p.id === projectId; });
+    if (!project) return;
+
+    var overlay = document.getElementById('attract-testers-sheet-overlay');
+    var content = document.getElementById('attract-testers-sheet-content');
+    if (!overlay || !content) return;
+
+    overlay.setAttribute('data-project-id', String(projectId));
+    _fillAttractTestersSheet(projectId, project, Array.isArray(_gtActiveOrdersCache) ? _gtActiveOrdersCache : []);
+
+    if (!overlay.classList.contains('is-active')) {
+        requestAnimationFrame(function () {
+            overlay.classList.add('is-active');
+        });
+    }
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+
+    loadVisibleGuaranteedOrders(false).then(function (orders) {
+        if (!overlay.classList.contains('is-active')) return;
+        if (overlay.getAttribute('data-project-id') !== String(projectId)) return;
+        var slot = document.getElementById('attract-gt-slot');
+        var nextKey = _attractGtOrderKey(project, orders);
+        if (!slot || slot.getAttribute('data-gt-key') === nextKey) return;
+        slot.outerHTML = _buildAttractHandsFreeItemHtml(projectId, project, orders);
+    }).catch(function () {});
 }
 
 function closeAttractTestersSheet(event) {

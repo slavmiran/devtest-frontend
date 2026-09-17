@@ -2774,6 +2774,17 @@ async function startMassInvite(projectId) {
         return null;
     }
 
+    var sourceProject = (typeof myProjects !== 'undefined' && myProjects)
+        ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
+        : null;
+    var sourceStatus = String((sourceProject && (sourceProject.status || sourceProject.app_status)) || '').toLowerCase();
+    if (sourceStatus === 'pending_completion') {
+        if (typeof showToast === 'function') {
+            showToast(window.t('massInviteSafetyBufferAlert', {}, lang));
+        }
+        return null;
+    }
+
     var actionKey = 'mass_invite_start_' + projectId;
     if (_pendingActions.has(actionKey)) return null;
     _pendingActions.add(actionKey);

@@ -224,6 +224,19 @@
     }
 
 
+    window.pcOpenTesterTelegram = function (username) {
+        var clean = String(username || '').replace(/^@+/, '').trim();
+        if (!clean) return;
+        var url = 'https://t.me/' + encodeURIComponent(clean);
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(url);
+        } else if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+            window.tg.openTelegramLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+
     function handleOf(source) {
         var username = String(source && source.username || '').trim().replace(/^@+/, '');
         if (username) return '@' + username;
@@ -603,16 +616,32 @@
         var timeAgoHtml = opts.timeAgoText
             ? '<span class="pc-person__time-ago"> • ' + esc(opts.timeAgoText) + '</span>'
             : '';
+        var rawUsername = String(tester.username || '').trim().replace(/^@+/, '');
+        var nameHtml = '';
+        var hasDistinctFullName = fullName && rawUsername
+            && fullName.replace(/^@/, '').toLowerCase() !== rawUsername.toLowerCase();
+
+        if (hasDistinctFullName) {
+            nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(fullName) + '</span>' +
+                '<span class="pc-person__handle pc-person__handle--link" onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" title="Написать в Telegram">@' + esc(rawUsername) + '</span>';
+        } else if (rawUsername) {
+            nameHtml = '<span class="pc-person__handle pc-person__handle--link" onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" title="Написать в Telegram">@' + esc(rawUsername) + '</span>';
+        } else if (fullName) {
+            nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(fullName) + '</span>';
+        } else {
+            nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(handleOf(tester)) + '</span>';
+        }
+
+        if (timeAgoHtml) {
+            nameHtml += timeAgoHtml;
+        }
+
         return '<li class="pc-person is-' + esc(tone) + stateCls + rowCls + '"' +
             ' onclick="' + dossierClick(opts.appId, tester) + '">' +
             '<div class="pc-person__top">' +
                 identityAvatar +
                 '<div class="pc-person__copy">' +
-                    '<span class="pc-person__name notranslate"><span class="pc-person__handle">' + esc(handleOf(tester)) + '</span>' +
-                        (tester.username && fullName
-                            && fullName.replace(/^@/, '').toLowerCase() !== String(tester.username).replace(/^@/, '').toLowerCase()
-                            ? ('<span class="pc-person__fullname">' + esc(fullName) + timeAgoHtml + '</span>')
-                            : (timeAgoHtml ? ('<span class="pc-person__fullname">' + timeAgoHtml.replace(/^\s*•\s*/, '') + '</span>') : '')) + '</span>' +
+                    '<span class="pc-person__name notranslate">' + nameHtml + '</span>' +
                     '<span class="pc-person__meta">' + (opts.metaHtml || '') + '</span>' +
                 '</div>' +
                 '<div class="pc-person__actions">' + (opts.actionsHtml || '') + '</div>' +
@@ -729,6 +758,23 @@
         return [];
     }
 
+    function resolveCachedFeedbackRejection(feedbackId) {
+        var fid = Number(feedbackId || 0);
+        if (fid <= 0) return '';
+        try {
+            var items = (typeof _activeProjectFeedbackItems !== 'undefined' && Array.isArray(_activeProjectFeedbackItems))
+                ? _activeProjectFeedbackItems
+                : (window._activeProjectFeedbackItems || []);
+            var found = items.find(function(it) {
+                return Number(it && (it.id || it.feedback_id) || 0) === fid;
+            });
+            if (found) {
+                return String(found.rejection_reason || found.reject_reason || found.decline_reason || '').trim();
+            }
+        } catch (e) {}
+        return '';
+    }
+
     function buildProofRow(item, proof, thumbnailByProofId) {
         var isScreenshot = String(proof && proof.type || '') === 'screenshot';
         var hasProofMedia = Boolean(proof && (proof.has_media || (proof.image_count && Number(proof.image_count) > 0) || (proof.feedback && proof.feedback.has_media)));
@@ -753,7 +799,12 @@
             rewardBust: Number(proofFb && (proofFb.reward_bust || proofFb.rewardBust) || (proof && proof.reward_bust) || 0),
             rewardKarma: Number(proofFb && (proofFb.reward_karma || proofFb.rewardKarma) || (proof && proof.reward_karma) || 0),
             boostBust: Number(proof && (proof.boost_bust || proof.screenshot_boost_bust || proof.bonus_bust) || 0),
-            rejectionReason: String(proofFb && (proofFb.rejection_reason || proofFb.reject_reason || proofFb.decline_reason) || (proof && (proof.rejection_reason || proof.reject_reason)) || '').trim(),
+            rejectionReason: String(
+                proofFb && (proofFb.rejection_reason || proofFb.reject_reason || proofFb.decline_reason)
+                || (proof && (proof.rejection_reason || proof.reject_reason))
+                || resolveCachedFeedbackRejection(proof && proof.source_feedback_id)
+                || ''
+            ).trim(),
             slots: buildSlots(proof, thumbnailByProofId),
         };
     }
@@ -787,7 +838,12 @@
             rewardBust: Number(proofFb && (proofFb.reward_bust || proofFb.rewardBust) || (proof && proof.reward_bust) || 0),
             rewardKarma: Number(proofFb && (proofFb.reward_karma || proofFb.rewardKarma) || (proof && proof.reward_karma) || 0),
             boostBust: Number(proof && (proof.boost_bust || proof.screenshot_boost_bust || proof.bonus_bust) || 0),
-            rejectionReason: String(proofFb && (proofFb.rejection_reason || proofFb.reject_reason || proofFb.decline_reason) || (proof && (proof.rejection_reason || proof.reject_reason)) || '').trim(),
+            rejectionReason: String(
+                proofFb && (proofFb.rejection_reason || proofFb.reject_reason || proofFb.decline_reason)
+                || (proof && (proof.rejection_reason || proof.reject_reason))
+                || resolveCachedFeedbackRejection(proof && proof.source_feedback_id)
+                || ''
+            ).trim(),
             rewardsSummary: item.rewards_summary || (item.tester && item.tester.rewards_summary) || null,
             slots: buildSlots(proof, thumbnailByProofId),
         };
@@ -1177,11 +1233,14 @@
                 : (rejectionReason || '');
             var rejectText = text('projectFeedbackRejectedBadge', 'Отклонён');
             var chipLabel = rReason ? ('❌ ' + rejectText + ': ' + rReason) : ('❌ ' + rejectText);
+            var badgeContentHtml = rReason
+                ? '<span class="pc-award-badge__label">❌ ' + esc(rejectText) + ':</span> <span class="pc-award-badge__reason">' + esc(rReason) + '</span>'
+                : '<span class="pc-award-badge__label">❌ ' + esc(rejectText) + '</span>';
             awardsRowHtml = '<div class="pc-proof-album-card__awards-row pc-proof-album-card__awards-row--rejected"' +
                 (mainClick ? ' onclick="event.stopPropagation(); ' + mainClick + '"' : '') +
                 '>' +
                 '<span class="pc-award-badge pc-award-badge--rejected" title="' + esc(chipLabel) + '">' +
-                    '<span class="pc-award-badge__value">' + esc(chipLabel) + '</span>' +
+                    badgeContentHtml +
                 '</span>' +
             '</div>';
         } else if (itemKarma > 0 || itemBust > 0 || boostBust > 0) {
@@ -1313,21 +1372,22 @@
     }
 
     function controlRowHtml(appId, row, context) {
-        var dayNum = Number(row && row.day || 0);
+        var devText = formatDeviceInfo(row.device);
         var meta = '';
+        if (devText) {
+            meta += '<span class="pc-person__device">' + esc(devText) + '</span>';
+        }
+        var dayNum = Number(row && row.day || 0);
         if (dayNum > 0) {
             var dayClass = 'pc-person__day' + (!row.received ? ' pc-person__day--control is-control-accent' : '');
-            meta += '<span class="' + dayClass + '">' +
-                esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
-            '</span>';
+            meta += (meta ? ' • ' : '') +
+                '<span class="' + dayClass + '">' +
+                    esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
+                '</span>';
         }
         var typeLabel = row.received ? proofTypeLabel(row.proofType) : '';
         if (typeLabel) {
-            meta += '<span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
-        }
-        var devText = formatDeviceInfo(row.device);
-        if (devText) {
-            meta += '<span class="pc-person__device">' + (meta ? ' · ' : '') + esc(devText) + '</span>';
+            meta += ' <span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
         }
         var receipts = controlReminderStates.get(Number(appId));
         var receipt = receipts && (receipts.items || []).find(function(item) {
@@ -1580,7 +1640,7 @@
                     rewardBust: Number(item.bug.rewardBust || 0),
                     rewardKarma: Number(item.bug.rewardKarma || 0),
                     boostBust: Number(item.bug.boostBust || 0),
-                    rejectionReason: item.bug.rejectionReason || item.bug.rejection_reason || item.bug.reject_reason || '',
+                    rejectionReason: item.bug.rejectionReason || item.bug.rejection_reason || item.bug.reject_reason || resolveCachedFeedbackRejection(item.bug.feedbackId) || '',
                 });
             }
             if (item.idea) {
@@ -1596,7 +1656,7 @@
                     rewardBust: Number(item.idea.rewardBust || 0),
                     rewardKarma: Number(item.idea.rewardKarma || 0),
                     boostBust: Number(item.idea.boostBust || 0),
-                    rejectionReason: item.idea.rejectionReason || item.idea.rejection_reason || item.idea.reject_reason || '',
+                    rejectionReason: item.idea.rejectionReason || item.idea.rejection_reason || item.idea.reject_reason || resolveCachedFeedbackRejection(item.idea.feedbackId) || '',
                 });
             }
             if (item.play_review) {
@@ -1612,7 +1672,7 @@
                     rewardBust: Number(item.play_review.rewardBust || 0),
                     rewardKarma: Number(item.play_review.rewardKarma || 0),
                     boostBust: Number(item.play_review.boostBust || 0),
-                    rejectionReason: item.play_review.rejectionReason || item.play_review.rejection_reason || item.play_review.reject_reason || '',
+                    rejectionReason: item.play_review.rejectionReason || item.play_review.rejection_reason || item.play_review.reject_reason || resolveCachedFeedbackRejection(item.play_review.feedbackId) || '',
                 });
             }
             item.reasons = reasons;

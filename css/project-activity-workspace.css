@@ -127,7 +127,45 @@
 .pc-activity--workspace .pc-person__meta:empty { display: none; }
 .pc-activity--workspace .pc-person__name { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; white-space:normal; font-size:15px; line-height:1.35; }
 .pc-activity--workspace .pc-person__handle { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; color:var(--text-primary); }
-.pc-activity--workspace .pc-person__fullname {
+.pc-activity--workspace .pc-person__fullname-main {
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.35;
+}
+.pc-activity--workspace .pc-person__handle--link {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(88, 166, 255, 0.10);
+    border: 1px solid rgba(88, 166, 255, 0.22);
+    color: #79c0ff;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.pc-activity--workspace .pc-person__handle--link:hover {
+    background: rgba(88, 166, 255, 0.18);
+    border-color: rgba(88, 166, 255, 0.4);
+    color: #a5d4ff;
+}
+.pc-activity--workspace .pc-person__handle--link:active {
+    transform: scale(0.96);
+}
+.pc-activity--workspace .pc-person__fullname:not(.pc-person__fullname-main) {
     display: inline-flex;
     align-items: center;
     max-width: 100%;
@@ -172,7 +210,7 @@
     background: rgba(56, 189, 248, 0.12);
     border: 1px solid rgba(56, 189, 248, 0.28);
 }
-.pc-activity--workspace .pc-person__meta { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; font-weight: 500; }
+.pc-activity--workspace .pc-person__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; font-weight: 500; line-height: 1.35; }
 .pc-activity--workspace .pc-contribution-subrows { margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
 .pc-activity--workspace .pc-contribution-subrow {
     --reason-color: #92afd6;
@@ -575,6 +613,8 @@
 }
 .pc-person--contribution .pc-proof-album-card,
 .pc-contribution-cards .pc-proof-album-card {
+    background: rgba(10, 16, 26, 0.65);
+    border: 1px solid rgba(0, 0, 0, 0.45);
     box-shadow: inset 0 1px 2.5px rgba(0, 0, 0, 0.35);
 }
 /* Timeline step and indicator node */
@@ -760,6 +800,32 @@
 .pc-activity--workspace .pc-person__actions { flex-wrap:wrap; gap:6px; }
 .pc-activity--workspace .pc-person__actions .pc-iconact,
 .pc-activity--workspace .pc-contribution-subrow__action .pc-iconact { display:inline-flex; flex-direction:row; align-items:center; justify-content:center; gap:5px; padding:7px 8px; border:1px solid rgba(102,156,240,.14); border-radius:9px; background:rgba(102,156,240,.06); }
+.pc-activity--workspace .pc-person__actions .pc-iconact--remind {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 3px 6px;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.pc-activity--workspace .pc-person__actions .pc-iconact--remind svg {
+    width: 22px !important;
+    height: 22px !important;
+    color: #79c0ff;
+}
+.pc-activity--workspace .pc-person__actions .pc-iconact--remind .pc-iconact__label {
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 500;
+    color: #93c5fd;
+}
+.pc-activity--workspace .pc-person__actions .pc-iconact--remind:active {
+    transform: scale(0.94);
+    opacity: 0.85;
+}
 .pc-activity--workspace .pc-person__actions .pc-iconact svg,
 .pc-activity--workspace .pc-contribution-subrow__action .pc-iconact svg { width:18px; height:18px; }
 .pc-activity--workspace .pc-iconact__img { width:20px; height:20px; }
@@ -838,11 +904,19 @@
 .pc-activity--workspace .pc-award-badge--rejected {
     border-color: rgba(248, 113, 113, 0.25);
     background: rgba(248, 113, 113, 0.08);
-    color: #fca5a5;
+    color: rgba(226, 232, 240, 0.85);
 }
 .pc-activity--workspace .pc-award-badge--rejected .pc-award-badge__value {
     color: #fca5a5;
     font-weight: 500;
+}
+.pc-activity--workspace .pc-award-badge--rejected .pc-award-badge__label {
+    color: #f87171;
+    font-weight: 600;
+}
+.pc-activity--workspace .pc-award-badge--rejected .pc-award-badge__reason {
+    color: rgba(226, 232, 240, 0.82);
+    font-weight: 400;
 }
 
 /* Dedicated awards row inside item cards */

@@ -1307,6 +1307,7 @@ function handleApiError(code, details = {}) {
         transfer_app_unavailable: 'err_transfer_app_unavailable',
         bot_is_blocked: 'err_bot_is_blocked',
         mass_invite_project_unavailable: 'massInviteUnavailable',
+        mass_invite_project_in_buffer: 'massInviteSafetyBufferAlert',
         mass_invite_cooldown_active: 'massInviteCooldownActiveError',
         mass_invite_cooldown_not_active: 'massInviteCooldownNotActive',
         invalid_email_commas: 'invalidEmailCommas',

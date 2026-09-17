@@ -1456,11 +1456,11 @@ body.wizard-open .bottom-nav {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
     z-index: 9999;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.22s ease, visibility 0s linear 0.22s;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -1468,7 +1468,9 @@ body.wizard-open .bottom-nav {
 
 .attract-sheet-overlay.is-active {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+    transition: opacity 0.22s ease, visibility 0s;
 }
 
 .attract-sheet {
@@ -1483,6 +1485,7 @@ body.wizard-open .bottom-nav {
     box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
     transform: translateY(100%);
     transition: transform 0.28s cubic-bezier(0.1, 0.76, 0.55, 0.94);
+    will-change: transform;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
