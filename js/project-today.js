@@ -288,7 +288,7 @@
         var rewards = (context && context.rewardTypesByTester && context.rewardTypesByTester[Number(testerId)]) || [];
         var tokens = rewards.map(function (type) {
             if (type === 'good') return '👍 +1.5';
-            if (type === 'bug') return '💎 +3.0';
+            if (type === 'bug') return '❤️‍🔥 +3.0';
             if (type === 'overtime') return '⏱ +2.0';
             return '☯️';
         });

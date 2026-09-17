@@ -1274,6 +1274,13 @@ function canProposeMutualFromTest(test) {
     if (!targetOwnerId || targetOwnerId === Number(userId || 0)) {
         return false;
     }
+    // Guest/external tracking has no reciprocal owner on the platform.
+    if (test && (test.is_external || test.is_guest || String(test.flow || '').toLowerCase() === 'external')) {
+        return false;
+    }
+    if (typeof isGuestOriginTest === 'function' && isGuestOriginTest(test)) {
+        return false;
+    }
     // Contract/bounty tests are paid slots — no mutual-offer chip on those cards.
     if (joinType === 'mutual' || joinType === 'bounty' || appStatus === 'archived') {
         return false;
