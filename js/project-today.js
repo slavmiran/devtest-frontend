@@ -1826,7 +1826,7 @@
             clearTimeout(existingTimer);
             karmaSparkleTimers.delete(safeAppId);
         }
-        var delay = typeof delayMs === 'number' ? delayMs : (350 + Math.floor(Math.random() * 400));
+        var delay = typeof delayMs === 'number' ? delayMs : (2500 + Math.floor(Math.random() * 1500));
         var timer = setTimeout(function () {
             karmaSparkleTimers.delete(safeAppId);
             launchKarmaSparkle(safeAppId);
@@ -1923,7 +1923,7 @@
             });
             setTimeout(onExistingDone, 4500);
         } else {
-            scheduleNextKarmaSparkle(safeAppId, 200);
+            scheduleNextKarmaSparkle(safeAppId, 1000);
         }
     }
 

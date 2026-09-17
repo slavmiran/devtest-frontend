@@ -48,11 +48,13 @@
         '</span>'
     );
 
-    var SANDGLASS_HTML = (
-        '<span class="mi-sandglass" aria-hidden="true">' +
-            '<span class="mi-sandglass-top"></span>' +
-            '<span class="mi-sandglass-stream"></span>' +
-            '<span class="mi-sandglass-bot"></span>' +
+    var HOURGLASS_HTML = (
+        '<span class="mi-hourglass" aria-hidden="true">' +
+            '<svg viewBox="0 0 16 16">' +
+                '<path d="M3.4 2.2h9.2v1.65L9.2 8l3.4 4.15v1.65H3.4v-1.65L6.8 8 3.4 3.85z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"></path>' +
+                '<path d="M5.15 3.45h5.7M5.15 12.55h5.7" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"></path>' +
+                '<path d="M6.45 11.2h3.1L8 9z" fill="currentColor" opacity="0.55"></path>' +
+            '</svg>' +
         '</span>'
     );
 
@@ -76,13 +78,16 @@
         var digits = remaining ? remaining.text : '0:00:00';
         return (
             '<span class="mi-wait-clock">' +
-                SANDGLASS_HTML +
+                HOURGLASS_HTML +
                 '<span class="mi-wait-digits">' + _esc(digits) + '</span>' +
             '</span>'
         );
     }
 
-    function renderLabelHtml(status, item, currentLang) {
+    function renderLabelHtml(status, item, currentLang, sessionView) {
+        if (status === 'sent' && sessionView) {
+            return _esc(window.t ? window.t('massInviteStatusSent', {}, currentLang || _lang()) : 'Sent');
+        }
         if (status === 'sent') {
             return waitClockHtml(item && (item.created_at || item.wait_created_at));
         }
@@ -154,21 +159,27 @@
         var appName = String(item.name || '');
         var badge = STATUS_BADGE[status] || '';
         var createdAt = item.created_at || '';
-        var labelHtml = renderLabelHtml(status, item, opts.lang || _lang());
+        var sessionView = !!opts.sessionView;
+        var labelHtml = renderLabelHtml(status, item, opts.lang || _lang(), sessionView);
         var interactiveClass = interactive ? ' is-interactive' : '';
+        var sessionClass = sessionView ? ' is-session' : '';
         var clickAttr = interactive
             ? ' onclick="MassInviteCards.openDossierFromEl(this)"'
             : '';
         var createdAttr = createdAt ? ' data-created-at="' + _esc(createdAt) + '"' : '';
+        var sentAria = sessionView && status === 'sent'
+            ? (window.t ? window.t('massInviteStatusSent', {}, opts.lang || _lang()) : 'Sent')
+            : statusLabel(status, opts.lang || _lang());
 
         return (
-            '<button type="button" class="mi-candidate-card' + interactiveClass + '"' +
+            '<button type="button" class="mi-candidate-card' + interactiveClass + sessionClass + '"' +
             ' data-status="' + _esc(status) + '"' +
             ' data-owner-id="' + _esc(ownerId) + '"' +
             ' data-username="' + _esc(username) + '"' +
             ' data-source-app-id="' + _esc(sourceAppId) + '"' +
             createdAttr +
-            ' aria-label="' + _esc(ownerName + ' — ' + statusLabel(status, opts.lang || _lang())) + '"' +
+            (sessionView ? ' data-session-view="1"' : '') +
+            ' aria-label="' + _esc(ownerName + ' — ' + sentAria) + '"' +
             clickAttr +
             '>' +
                 '<span class="mi-candidate-pair" aria-hidden="true">' +
@@ -274,8 +285,11 @@
             badgeEl.remove();
         }
         var labelEl = card.querySelector('.mi-candidate-label');
+        var sessionView = card.classList.contains('is-session') || card.getAttribute('data-session-view') === '1';
         if (labelEl) {
-            if (next === 'sent') {
+            if (next === 'sent' && sessionView) {
+                labelEl.textContent = window.t ? window.t('massInviteStatusSent', {}, _lang()) : 'Sent';
+            } else if (next === 'sent') {
                 labelEl.innerHTML = waitClockHtml(createdAt);
             } else {
                 labelEl.textContent = statusLabel(next);
@@ -285,9 +299,11 @@
             owner_full_name: card.getAttribute('aria-label') || '',
             owner_username: card.getAttribute('data-username') || '',
         });
-        var ariaStatus = next === 'sent'
-            ? ((remainingForCreatedAt(createdAt) || {}).text || statusLabel(next))
-            : statusLabel(next);
+        var ariaStatus = (next === 'sent' && sessionView)
+            ? (window.t ? window.t('massInviteStatusSent', {}, _lang()) : 'Sent')
+            : (next === 'sent'
+                ? ((remainingForCreatedAt(createdAt) || {}).text || statusLabel(next))
+                : statusLabel(next));
         card.setAttribute('aria-label', name + ' — ' + ariaStatus);
         return true;
     }
@@ -304,8 +320,9 @@
 
     function tickWaitClocks(container) {
         var root = container || document;
-        var cards = root.querySelectorAll('.mi-candidate-card[data-status="sent"]');
+        var cards = root.querySelectorAll('.mi-candidate-card[data-status="sent"]:not(.is-session)');
         cards.forEach(function (card) {
+            if (card.getAttribute('data-session-view') === '1') return;
             var createdAt = card.getAttribute('data-created-at');
             if (!createdAt) return;
             var remaining = remainingForCreatedAt(createdAt);
@@ -313,9 +330,6 @@
             var nextText = remaining ? remaining.text : '0:00:00';
             if (digitsEl && digitsEl.textContent !== nextText) {
                 digitsEl.textContent = nextText;
-                digitsEl.classList.remove('is-tick');
-                void digitsEl.offsetWidth;
-                digitsEl.classList.add('is-tick');
             }
             if (!remaining) {
                 card.setAttribute('data-status', 'expired');
@@ -478,6 +492,7 @@
         var stripHtml = renderCandidateStrip(session.candidates, {
             sourceAppId: sourceAppId,
             interactive: true,
+            sessionView: true,
             lang: currentLang,
             id: 'mi-session-strip',
         });

@@ -4944,33 +4944,78 @@ function getFeedbackTypePillLabel(item) {
     return window.t('feedbackChipBug', {}, lang) || 'Bug';
 }
 
-function groupFeedbackByDate(items) {
-    const groups = {
-        today: [],
-        yesterday: [],
-        thisWeek: [],
-        earlier: []
+var FEEDBACK_DATE_WINDOW_DAYS = 14;
+var MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function feedbackDateGroupKey(dayOffset) {
+    if (dayOffset === 0) return 'today';
+    if (dayOffset === 1) return 'yesterday';
+    return 'day' + dayOffset;
+}
+
+function feedbackDateGroupOrder() {
+    var keys = [];
+    for (var i = 0; i < FEEDBACK_DATE_WINDOW_DAYS; i++) {
+        keys.push(feedbackDateGroupKey(i));
+    }
+    keys.push('earlier');
+    return keys;
+}
+
+function feedbackDateGroupTitle(groupKey) {
+    var tr = function(key, params, fallback) {
+        var value = (typeof window.t === 'function') ? window.t(key, params || {}, lang) : '';
+        if (!value || value === key) return fallback;
+        return value;
     };
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
-    const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+    if (groupKey === 'earlier') {
+        return tr('feedbackSectionEarlier', {}, lang === 'ru' ? 'Ранее' : 'Earlier');
+    }
+    if (groupKey === 'today') {
+        return tr('feedbackSectionToday', {}, lang === 'ru' ? 'Сегодня' : 'Today');
+    }
+    if (groupKey === 'yesterday') {
+        return tr('feedbackSectionYesterday', {}, lang === 'ru' ? 'Вчера' : 'Yesterday');
+    }
+    var days = parseInt(String(groupKey).replace('day', ''), 10);
+    if (!days) days = 0;
+    return tr(
+        'feedbackSectionDaysAgo',
+        { days: days },
+        lang === 'ru' ? (days + ' д. назад') : (days + ' days ago')
+    );
+}
+
+function groupFeedbackByDate(items) {
+    var groups = { earlier: [] };
+    var i;
+    for (i = 0; i < FEEDBACK_DATE_WINDOW_DAYS; i++) {
+        groups[feedbackDateGroupKey(i)] = [];
+    }
+    var now = new Date();
+    var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     (items || []).forEach(function(item) {
         if (!item.created_at) {
             groups.earlier.push(item);
             return;
         }
-        const date = new Date(item.created_at);
-        if (date >= startOfToday) {
-            groups.today.push(item);
-        } else if (date >= startOfYesterday) {
-            groups.yesterday.push(item);
-        } else if (date >= startOfWeek) {
-            groups.thisWeek.push(item);
-        } else {
+        var date = new Date(item.created_at);
+        if (isNaN(date.getTime())) {
             groups.earlier.push(item);
+            return;
         }
+        var startOfItem = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        var offset = Math.round((startOfToday.getTime() - startOfItem.getTime()) / MS_PER_DAY);
+        if (offset < 0) {
+            groups.today.push(item);
+            return;
+        }
+        if (offset < FEEDBACK_DATE_WINDOW_DAYS) {
+            groups[feedbackDateGroupKey(offset)].push(item);
+            return;
+        }
+        groups.earlier.push(item);
     });
     return groups;
 }
@@ -5419,20 +5464,14 @@ function renderProjectFeedbackCards(project, items) {
     const projectId = Number(project && (project.id || project.app_id) || 0);
 
     const groups = groupFeedbackByDate(items);
-    const groupTitles = {
-        today: lang === 'ru' ? 'Сегодня' : 'Today',
-        yesterday: lang === 'ru' ? 'Вчера' : 'Yesterday',
-        thisWeek: lang === 'ru' ? 'На этой неделе' : 'This week',
-        earlier: lang === 'ru' ? 'Ранее' : 'Earlier'
-    };
 
     let html = '<div class="feedback-list">';
 
-    ['today', 'yesterday', 'thisWeek', 'earlier'].forEach(function(groupKey) {
+    feedbackDateGroupOrder().forEach(function(groupKey) {
         const groupItems = groups[groupKey];
         if (!groupItems || !groupItems.length) return;
 
-        html += `<div class="feedback-section-header">${groupTitles[groupKey]} <span class="feedback-section-count">${groupItems.length}</span></div>`;
+        html += `<div class="feedback-section-header">${window.escapeHTML(feedbackDateGroupTitle(groupKey))} <span class="feedback-section-count">${groupItems.length}</span></div>`;
 
         html += groupItems.map(function(item) {
             const feedbackType = String(item.type || 'bug').toLowerCase();

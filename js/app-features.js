@@ -2223,9 +2223,6 @@ var MassInviteProgressOverlay = (function () {
         var nextText = remaining && remaining.text ? remaining.text : '0:00:00';
         if (digitsEl.textContent !== nextText) {
             digitsEl.textContent = nextText;
-            digitsEl.classList.remove('is-tick');
-            void digitsEl.offsetWidth;
-            digitsEl.classList.add('is-tick');
         }
     }
 
