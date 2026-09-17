@@ -367,23 +367,27 @@
         var val = Number(amount || 0);
         if (val <= 0) return '';
         var title = text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: val });
-        return '<span class="pc-award-badge pc-award-badge--boost" title="' + esc(title) + '">' +
+        return '<button type="button" class="pc-award-badge pc-award-badge--boost" onclick="event.stopPropagation(); pcShowBoostBonusToast();" title="' + esc(title) + '">' +
             '<span class="pc-award-badge__value">🎁 +' + esc(val) + ' $BUST</span>' +
-        '</span>';
+        '</button>';
     }
 
     function awardedRewardBadgeHtml(context, testerId, item) {
         var rewards = (context && context.rewardTypesByTester && context.rewardTypesByTester[Number(testerId)]) || [];
-        var tokens = rewards.map(function (type) {
-            if (type === 'good') return '👍 +1.5';
-            if (type === 'bug') return '❤️‍🔥 +3.0';
-            if (type === 'overtime') return '⏱ +2.0';
-            return '☯️';
-        });
-        if (!tokens.length) tokens.push('☯️');
-        var karmaVal = tokens.join(' · ');
-        var karmaHtml = '<span class="pc-award-badge pc-award-badge--karma" title="' + esc(karmaVal) + '">' +
-            '<span class="pc-award-badge__value">' + esc(karmaVal) + '</span>' +
+        var karmaIcon = typeof window.karmaIconHtml === 'function'
+            ? window.karmaIconHtml('karma-yin-icon--inline')
+            : '<span class="rewards-icon-glyph">☯</span>';
+        var amounts = rewards.map(function (type) {
+            if (type === 'good') return '+1.5';
+            if (type === 'bug') return '+3.0';
+            if (type === 'overtime') return '+2.0';
+            return '';
+        }).filter(Boolean);
+        var amountStr = amounts.length ? amounts.join(' · ') : '+1.5';
+        var karmaTitle = text('pcAwardBadgeLabel', 'Награда:') + ' ' + amountStr;
+        var karmaHtml = '<span class="pc-award-badge pc-award-badge--karma" title="' + esc(karmaTitle) + '">' +
+            karmaIcon +
+            '<span class="pc-award-badge__value">' + esc(amountStr) + '</span>' +
         '</span>';
 
         var ticketBust = getTesterAwardedBust(context, testerId, item);
@@ -1077,6 +1081,56 @@
             }
         }
 
+        var itemKarma = Number(item && (item.rewardKarma || item.reward_karma) || 0);
+        var itemBust = Number(item && (item.rewardBust || item.reward_bust) || 0);
+        if (feedbackId > 0 && (!itemKarma || !itemBust) && Array.isArray(window._activeProjectFeedbackItems)) {
+            var fbMatch = window._activeProjectFeedbackItems.find(function (f) {
+                return Number(f && f.id) === feedbackId;
+            });
+            if (fbMatch) {
+                if (!itemKarma && Number(fbMatch.reward_karma || 0) > 0) itemKarma = Number(fbMatch.reward_karma);
+                if (!itemBust && Number(fbMatch.reward_bust || 0) > 0) itemBust = Number(fbMatch.reward_bust);
+            }
+        }
+        var targetTesterId = Number((item && item.testerId) || (opts && opts.testerId) || 0);
+        if (!itemKarma && targetTesterId > 0 && opts && opts.context && opts.context.rewardTypesByTester) {
+            var testerRewards = opts.context.rewardTypesByTester[targetTesterId] || [];
+            if (testerRewards.length > 0 && (type === 'bug' || feedbackId > 0)) {
+                var firstReward = testerRewards[0];
+                if (firstReward === 'good') itemKarma = 1.5;
+                else if (firstReward === 'bug') itemKarma = 3.0;
+                else if (firstReward === 'overtime') itemKarma = 2.0;
+                else itemKarma = 1.5;
+            }
+        }
+        if (!itemBust && targetTesterId > 0 && opts && opts.context && (type === 'bug' || feedbackId > 0)) {
+            itemBust = getTesterAwardedBust(opts.context, targetTesterId, item);
+        }
+
+        var itemAwardsHtml = '';
+        if (itemKarma > 0 || itemBust > 0) {
+            var kBadge = '';
+            if (itemKarma > 0) {
+                var kVal = '+' + (itemKarma % 1 === 0 ? itemKarma.toFixed(1) : itemKarma.toFixed(1));
+                var kTitle = text('pcAwardBadgeLabel', 'Награда:') + ' ' + kVal;
+                var kIcon = typeof window.karmaIconHtml === 'function'
+                    ? window.karmaIconHtml('karma-yin-icon--inline')
+                    : '<span class="rewards-icon-glyph">☯</span>';
+                kBadge = '<span class="pc-award-badge pc-award-badge--karma" title="' + esc(kTitle) + '">' +
+                    kIcon +
+                    '<span class="pc-award-badge__value">' + esc(kVal) + '</span>' +
+                '</span>';
+            }
+            var bBadge = '';
+            if (itemBust > 0) {
+                var bTitle = text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: itemBust });
+                bBadge = '<span class="pc-award-badge pc-award-badge--bust" title="' + esc(bTitle) + '">' +
+                    '<span class="pc-award-badge__value">+' + esc(itemBust) + ' $BUST</span>' +
+                '</span>';
+            }
+            itemAwardsHtml = '<span class="pc-proof-album-card__awards">' + kBadge + bBadge + '</span>';
+        }
+
         var mainClick = '';
         if (feedbackId > 0) {
             mainClick = 'pcOpenFeedback(' + safeAppId + ',' + feedbackId + ')';
@@ -1093,6 +1147,7 @@
                 '<strong>' + esc(title) + '</strong>' +
                 '<small>' + esc(subtitle) + '</small>' +
             '</span>' +
+            itemAwardsHtml +
             '<span class="pc-proof-album-card__chev" aria-hidden="true">›</span>' +
         '</button>';
 
@@ -1805,8 +1860,14 @@
             var boostBust = getTesterBoostBust(context, item.testerId, item);
             var boostBustHtml = boostRewardBadgeHtml(boostBust);
 
+            var hasSubrowAwards = Array.isArray(item.reasons) && item.reasons.length > 0;
+
             if (rewarded) {
-                headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId, item) + boostBustHtml;
+                if (hasSubrowAwards) {
+                    headerActionsHtml = boostBustHtml;
+                } else {
+                    headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId, item) + boostBustHtml;
+                }
             } else {
                 var rewardBtnHtml = '';
                 if (context.rewardsLeft > 0) {
@@ -1821,7 +1882,7 @@
                 headerActionsHtml = boostBustHtml + rewardBtnHtml;
             }
 
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons);
+            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context });
 
             return personRowHtml({
                 appId: appId,
@@ -2911,6 +2972,13 @@
             if (observer) observer.observe(root);
             else hydrate(safeAppId);
         },
+    };
+
+    window.pcShowBoostBonusToast = function () {
+        var msg = text('pcBoostBonusToast', 'Этому тестеру сегодня был начислен бонус от вас за отчёт со скриншотом');
+        if (typeof showToast === 'function') {
+            showToast(msg);
+        }
     };
 
     window.pcSetActivityFilter = function (appId, filter) {

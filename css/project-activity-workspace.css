@@ -787,8 +787,8 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    min-height: 26px;
-    padding: 3px 8px;
+    min-height: 22px;
+    padding: 2px 7px;
     box-sizing: border-box;
     border-radius: 7px;
     font-size: 11px;
@@ -798,32 +798,86 @@
     border: 1px solid rgba(153, 180, 219, 0.18);
     background: rgba(99, 128, 178, 0.08);
     color: #cbdcf4;
+    cursor: default;
+    font-family: inherit;
 }
 
 .pc-activity--workspace .pc-award-badge--karma {
-    border-color: rgba(56, 189, 248, 0.28);
-    background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
+    border-color: rgba(102, 156, 240, 0.28);
+    background: rgba(102, 156, 240, 0.09);
+    color: #dbeafe;
+}
+.pc-activity--workspace .pc-award-badge--karma .karma-yin-icon {
+    width: 12px;
+    height: 12px;
+    vertical-align: -1px;
+    flex-shrink: 0;
+}
+.pc-activity--workspace .pc-award-badge--karma .pc-award-badge__value {
+    color: #e2eeff;
+    font-weight: 600;
 }
 
 .pc-activity--workspace .pc-award-badge--bust {
-    border-color: rgba(45, 212, 191, 0.32);
-    background: rgba(45, 212, 191, 0.1);
-    color: #2dd4bf;
+    border-color: rgba(191, 90, 242, 0.26);
+    background: rgba(191, 90, 242, 0.11);
+    color: #e2d9f8;
 }
 .pc-activity--workspace .pc-award-badge--bust .pc-award-badge__value {
-    color: #2dd4bf;
-    font-weight: 700;
+    color: #e2d9f8;
+    font-weight: 600;
 }
 
 .pc-activity--workspace .pc-award-badge--boost {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.12);
-    color: #fbbf24;
+    border-color: rgba(191, 90, 242, 0.26);
+    background: rgba(191, 90, 242, 0.11);
+    color: #e2d9f8;
+    cursor: pointer;
+    transition: transform .12s ease, background-color .12s ease;
+    user-select: none;
 }
 .pc-activity--workspace .pc-award-badge--boost .pc-award-badge__value {
-    color: #fbbf24;
-    font-weight: 700;
+    color: #e2d9f8;
+    font-weight: 600;
+}
+.pc-activity--workspace .pc-award-badge--boost:active {
+    transform: scale(0.96);
+    background: rgba(191, 90, 242, 0.20);
+}
+
+/* Awards container inside item cards */
+.pc-activity--workspace .pc-proof-album-card__awards {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.pc-activity--workspace .pc-proof-album-card__awards .pc-award-badge {
+    min-height: 20px;
+    padding: 1px 6px;
+    font-size: 10px;
+    border-radius: 6px;
+}
+.pc-activity--workspace .pc-proof-album-card__awards .pc-award-badge--karma .karma-yin-icon {
+    width: 10.5px;
+    height: 10.5px;
+}
+
+/* 2-line layout for name in contribution when actions present */
+.pc-activity--workspace .pc-person--contribution .pc-person__name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    line-height: 1.25;
+}
+.pc-activity--workspace .pc-person--contribution .pc-person__handle {
+    max-width: 100%;
+}
+.pc-activity--workspace .pc-person--contribution .pc-person__fullname {
+    max-width: 100%;
+    margin-left: 0;
 }
 .pc-control-reminder-panel { display:flex; flex-direction:column; gap:10px; margin:10px 0 16px; padding:14px; border:1px solid rgba(132,164,207,.14); border-radius:14px; background:rgba(99,139,194,.035); }
 .pc-control-reminder-panel .pc-control-reminder-hint { margin:0; }

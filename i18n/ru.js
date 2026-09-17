@@ -3280,6 +3280,7 @@
             pcRewardedLabel: "Награждён",
             pcAwardBadgeLabel: "Награда:",
             pcBoostRewardBonusTitle: "Бонус за доп. отчёт: +{amount} $BUST",
+            pcBoostBonusToast: "Этому тестеру сегодня был начислен бонус от вас за отчёт со скриншотом",
             pcTicketRewardTitle: "Награда за тикет: +{amount} $BUST",
             pcProcessBtn: "Обработать",
             pcProcessedLabel: "Обработано",
