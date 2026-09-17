@@ -777,10 +777,6 @@ button.pc-stage-badge {
     flex-shrink: 0;
 }
 
-.pc-ring:hover {
-    transform: scale(1.02);
-}
-
 .pc-ring:active {
     transform: scale(0.96);
 }
@@ -2878,11 +2874,6 @@ button.pc-stage-badge {
     -webkit-tap-highlight-color: transparent;
 }
 
-.rewards-chip-btn:hover {
-    background: #1c2536;
-    border-color: rgba(255, 255, 255, 0.22);
-}
-
 .rewards-chip-btn:active {
     transform: scale(0.96);
 }
@@ -2951,11 +2942,6 @@ button.pc-stage-badge {
     box-shadow: none !important;
     transition: color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
-}
-
-.tab-item:hover,
-.pc-activity__filter:hover {
-    color: #f1f5f9;
 }
 
 .tab-item.is-active,
@@ -3078,12 +3064,6 @@ button.pc-stage-badge {
     transition: background-color 0.15s ease, color 0.15s ease !important;
     padding: 0 !important;
     margin-left: 2px !important;
-}
-
-.pc-activity__subbar .pc-activity__info:hover,
-.pc-activity__caption .pc-activity__info:hover {
-    background: rgba(255, 255, 255, 0.15) !important;
-    color: #fff !important;
 }
 
 .pc-activity__subbar .pc-activity__actions,
@@ -3764,10 +3744,6 @@ button.pc-act-reason {
     transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
     box-sizing: border-box;
 }
-.pc-attention-tile:hover {
-    background: rgba(0, 0, 0, 0.28);
-    border-color: rgba(255, 255, 255, 0.09);
-}
 .pc-attention-tile.is-expanded {
     background: rgba(0, 0, 0, 0.32);
     border-color: rgba(255, 255, 255, 0.12);
@@ -3865,10 +3841,6 @@ button.pc-act-reason {
     color: var(--text-tertiary, #8493a7);
     transition: color 0.15s ease, background 0.15s ease;
 }
-.pc-attention-tile:hover .pc-attention-tile__toggle {
-    color: var(--text-secondary, #cad8eb);
-    background: rgba(255, 255, 255, 0.04);
-}
 .pc-attention-tile__chevron {
     transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -3932,10 +3904,6 @@ button.pc-act-reason {
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.15s ease, border-color 0.15s ease;
-}
-.pc-attention-tile__action .pc-iconact:hover {
-    background: rgba(102, 156, 240, 0.16);
-    border-color: rgba(102, 156, 240, 0.3);
 }
 .pc-attention-tile__action .pc-iconact svg {
     width: 15px;
@@ -6196,11 +6164,6 @@ button.pc-quick-tile {
     cursor: pointer;
 }
 
-.pc-quick-tile:hover {
-    background: rgba(255, 255, 255, 0.055);
-    border-color: rgba(255, 255, 255, 0.12);
-}
-
 button.pc-quick-tile:active,
 .pc-quick-action:active {
     transform: scale(0.98);
@@ -6220,7 +6183,6 @@ button.pc-quick-tile__icon {
     -webkit-tap-highlight-color: transparent;
 }
 
-button.pc-quick-tile__icon:hover,
 button.pc-quick-tile__icon:focus-visible {
     background: rgba(10, 132, 255, 0.16);
     border-color: rgba(10, 132, 255, 0.3);
@@ -6265,11 +6227,6 @@ button.pc-quick-tile__icon:focus-visible {
     transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
-.pc-quick-tile:hover .pc-quick-tile__icon {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary, #ffffff);
-}
-
 .pc-quick-tile__icon svg {
     display: block;
     color: inherit;
@@ -6295,11 +6252,6 @@ button.pc-quick-tile__icon:focus-visible {
     margin-left: 4px;
     color: rgba(255, 255, 255, 0.22);
     transition: color 0.18s ease, transform 0.18s ease;
-}
-
-.pc-quick-tile:hover .pc-quick-tile__chevron {
-    color: rgba(255, 255, 255, 0.55);
-    transform: translateX(1px);
 }
 
 .pc-quick-tile__copy {
@@ -6369,29 +6321,8 @@ button.pc-quick-tile__icon:focus-visible {
     transition: opacity 0.18s ease, color 0.18s ease;
 }
 
-.pc-quick-action:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
-    color: var(--text-primary, #ffffff);
-}
-
-.pc-quick-action:hover svg {
-    opacity: 1;
-}
-
 .pc-quick-action--archive {
     color: var(--text-secondary, rgba(255, 255, 255, 0.78));
-}
-
-.pc-quick-action--archive:hover {
-    background: rgba(248, 113, 113, 0.08);
-    border-color: rgba(248, 113, 113, 0.25);
-    color: #f87171;
-}
-
-.pc-quick-action--archive:hover svg {
-    color: #f87171;
-    opacity: 1;
 }
 
 #tab-projects .card[id^="project-card-"] .pc-state-unified img.project-icon-btn__glyph--asset {
@@ -6930,3 +6861,68 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .screenshot-boost-info-card p,.screenshot-boost-info-card span { margin:0; color:rgba(226,232,240,.76); font-size:13px; line-height:1.4; }
 .screenshot-boost-info-card strong { color:#f6c85f; font-size:15px; }
 @media (max-width:370px) { .screenshot-boost-fields { grid-template-columns:1fr; } }
+
+/* Mouse-only hover. Touch keeps :active / :focus-visible, without a sticky highlight after a scroll-touch. */
+@media (hover: hover) and (pointer: fine) {
+    .pc-ring:hover {
+        transform: scale(1.02);
+    }
+    .rewards-chip-btn:hover {
+        background: #1c2536;
+        border-color: rgba(255, 255, 255, 0.22);
+    }
+    .tab-item:hover,
+    .pc-activity__filter:hover {
+        color: #f1f5f9;
+    }
+    .pc-activity__subbar .pc-activity__info:hover,
+    .pc-activity__caption .pc-activity__info:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #fff !important;
+    }
+    .pc-attention-tile:hover {
+        background: rgba(0, 0, 0, 0.28);
+        border-color: rgba(255, 255, 255, 0.09);
+    }
+    .pc-attention-tile:hover .pc-attention-tile__toggle {
+        color: var(--text-secondary, #cad8eb);
+        background: rgba(255, 255, 255, 0.04);
+    }
+    .pc-attention-tile__action .pc-iconact:hover {
+        background: rgba(102, 156, 240, 0.16);
+        border-color: rgba(102, 156, 240, 0.3);
+    }
+    .pc-quick-tile:hover {
+        background: rgba(255, 255, 255, 0.055);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    button.pc-quick-tile__icon:hover {
+        background: rgba(10, 132, 255, 0.16);
+        border-color: rgba(10, 132, 255, 0.3);
+    }
+    .pc-quick-tile:hover .pc-quick-tile__icon {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary, #ffffff);
+    }
+    .pc-quick-tile:hover .pc-quick-tile__chevron {
+        color: rgba(255, 255, 255, 0.55);
+        transform: translateX(1px);
+    }
+    .pc-quick-action:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-primary, #ffffff);
+    }
+    .pc-quick-action:hover svg {
+        opacity: 1;
+    }
+    .pc-quick-action--archive:hover {
+        background: rgba(248, 113, 113, 0.08);
+        border-color: rgba(248, 113, 113, 0.25);
+        color: #f87171;
+    }
+    .pc-quick-action--archive:hover svg {
+        color: #f87171;
+        opacity: 1;
+    }
+}

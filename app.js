@@ -157,6 +157,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try { scheduleDeferredBootstrap(); } catch (e) { console.error('Bootstrap deferred error:', e); }
         console.log('[DEBUG] bootstrap: all fire-and-forget launched, calling _handleInitialRoute');
         await _handleInitialRoute();
+        if (typeof initBrowserBackFallback === 'function') {
+            initBrowserBackFallback();
+        }
         console.log('[DEBUG] bootstrap IIFE completed successfully');
     })().catch(function(error) {
         console.error('Initial bootstrap failed:', error);

@@ -2902,6 +2902,56 @@
         if (overlayPay) overlayPay.style.display = 'none';
     }
 
+    function _gtwOverlayIsOpen(id, openClass) {
+        var overlay = document.getElementById(id);
+        if (!overlay || overlay.hidden || overlay.getAttribute('aria-hidden') === 'true') return false;
+        if (openClass && !overlay.classList.contains(openClass)) return false;
+        return overlay.style.display !== 'none';
+    }
+
+    // Shared by the native Telegram BackButton and the browser popstate fallback.
+    // It mirrors the existing visible Back controls and preserves the wizard draft.
+    function handleGuaranteedTestWizardBack() {
+        if (_gtwOverlayIsOpen('gtw-crypto-exit-overlay', 'is-open')) {
+            hideCryptoExitHint();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-start-gate-overlay', 'is-open')) {
+            hideGuaranteedStartGate();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-license-modal-overlay')) {
+            closeLicenseTestingModal();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-license-guide-overlay')) {
+            closeLicenseGuideModal();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-payment-flow-overlay', 'is-open')) {
+            closePaymentFlow();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('guaranteed-test-wizard-payment-overlay')) {
+            hideGuaranteedTestWizardPayment();
+            showGuaranteedTestWizardStep2();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('guaranteed-test-wizard-step2-overlay')) {
+            hideGuaranteedTestWizardStep2();
+            showGuaranteedTestWizardStep1({ keepState: true });
+            return true;
+        }
+        if (_gtwOverlayIsOpen('guaranteed-test-wizard-step1-overlay')) {
+            hideGuaranteedTestWizardStep1();
+            if (typeof window.showGuaranteedTestOfferModal === 'function') {
+                window.showGuaranteedTestOfferModal();
+            }
+            return true;
+        }
+        return false;
+    }
+
     async function fetchIncompleteGuaranteedOrders() {
         var apiBase = (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
         var initData = '';
@@ -3253,6 +3303,7 @@
     window.hideGuaranteedTestWizardStep2 = hideGuaranteedTestWizardStep2;
     window.showGuaranteedTestWizardPayment = showGuaranteedTestWizardPayment;
     window.hideGuaranteedTestWizardPayment = hideGuaranteedTestWizardPayment;
+    window.handleGuaranteedTestWizardBack = handleGuaranteedTestWizardBack;
     window.openGuaranteedFiatUploadFromOrder = openGuaranteedFiatUploadFromOrder;
     window.guardGuaranteedPrivateTestStart = guardGuaranteedPrivateTestStart;
     window.getGuaranteedTestWizardDraft = readGuaranteedTestWizardDraft;
