@@ -3943,8 +3943,10 @@ async function submitFeedbackReward() {
         var rewardedKarma = Number(_feedbackRewardKarma || 0);
         _setFeedbackRewardSubmitLoading(false);
         closeFeedbackRewardModal();
+        var fbItem = typeof getFeedbackRewardItem === 'function' ? getFeedbackRewardItem() : null;
+        var fbTesterId = fbItem ? Number(fbItem.user_id || fbItem.tester_id || fbItem.author_id || 0) : 0;
         if (typeof window.removeFeedbackCardOptimistic === 'function') {
-            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma });
+            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma, tester_id: fbTesterId });
         }
         if (typeof window.triggerFeedbackAutoAdvance === 'function') {
             window.triggerFeedbackAutoAdvance(processedFeedbackId);

@@ -3290,6 +3290,24 @@ function handleRemoveReviewScreenshot(event) {
 }
 window.handleRemoveReviewScreenshot = handleRemoveReviewScreenshot;
 
+function setScreenshotBoostActionButton(button, label, offer) {
+    if (!button) return;
+    var safeLabel = String(label || '');
+    button.dataset.screenshotBoostBaseLabel = safeLabel;
+    var eligible = !!offer;
+    button.classList.toggle('screenshot-boost-eligible', eligible);
+    if (!eligible) {
+        button.textContent = safeLabel;
+        return;
+    }
+    var amount = typeof window.formatScreenshotBoostAmount === 'function'
+        ? window.formatScreenshotBoostAmount(offer.reward)
+        : String(Number(offer.reward || 0));
+    var labelId = button.id === 'checkin-proof-submit' ? ' id="t-checkinProofSubmit"' : '';
+    button.innerHTML = '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(safeLabel) + '</span>' +
+        '<span class="screenshot-boost-action__amount">+' + window.escapeHTML(amount) + '$</span>';
+}
+
 function openCheckinOptionsModal(appId, ownerUsername) {
     var test = typeof window.getMyTestById === 'function'
         ? window.getMyTestById(appId)
@@ -3321,9 +3339,14 @@ function openCheckinOptionsModal(appId, ownerUsername) {
             _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitleProof' : 'checkinOptionsSubtitle'
         )
         : window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
-    if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
-    if (bugBtn) bugBtn.innerText = window.t('checkinOptionsSendBug', {}, lang);
-    if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
+    var screenshotBoostOffer = test && typeof window.getScreenshotBoostOffer === 'function'
+        ? window.getScreenshotBoostOffer(test, testingDay)
+        : null;
+    // Screenshot, bug and idea all result in screenshot-proof. A Google Play
+    // review deliberately remains neutral: it does not qualify for this pool.
+    setScreenshotBoostActionButton(screenshotBtn, window.t('checkinOptionsSendScreenshot', {}, lang), screenshotBoostOffer);
+    setScreenshotBoostActionButton(bugBtn, window.t('checkinOptionsSendBug', {}, lang), screenshotBoostOffer);
+    setScreenshotBoostActionButton(ideaBtn, window.t('checkinOptionsSendIdea', {}, lang), screenshotBoostOffer);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
         if (_checkinOptionsIsControlDay) {
@@ -3358,7 +3381,7 @@ function openCheckinOptionsModal(appId, ownerUsername) {
         if (reviewStatus === 'pending') reviewLabel = '⏳ ' + window.t('playReviewDetailsPendingChip', {}, lang);
         else if (reviewStatus === 'approved') reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
         else if (reviewStatus === 'rejected') reviewLabel = '❌ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
-        reviewBtn.innerText = reviewLabel;
+        setScreenshotBoostActionButton(reviewBtn, reviewLabel, null);
         reviewBtn.classList.toggle('is-review-pending', reviewStatus === 'pending');
         reviewBtn.classList.toggle('is-review-approved', reviewStatus === 'approved');
         reviewBtn.classList.toggle('is-review-rejected', reviewStatus === 'rejected');
@@ -3395,16 +3418,16 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
     if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
     if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
-    if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
-    if (bugBtn) bugBtn.innerText = window.t('checkinOptionsSendBug', {}, lang);
-    if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
+    setScreenshotBoostActionButton(screenshotBtn, window.t('checkinOptionsSendScreenshot', {}, lang), null);
+    setScreenshotBoostActionButton(bugBtn, window.t('checkinOptionsSendBug', {}, lang), null);
+    setScreenshotBoostActionButton(ideaBtn, window.t('checkinOptionsSendIdea', {}, lang), null);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
         confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
     }
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
-        reviewBtn.innerText = window.t('checkinOptionsSendReview', {}, lang);
+        setScreenshotBoostActionButton(reviewBtn, window.t('checkinOptionsSendReview', {}, lang), null);
         reviewBtn.classList.remove('is-review-pending', 'is-review-approved', 'is-review-rejected');
         reviewBtn.style.display = 'none';
     }
@@ -4443,6 +4466,21 @@ function openReportModal(appId, ownerUsername, options) {
         if (typeof window.syncScreenshotBoostOfferUi === 'function') {
             window.syncScreenshotBoostOfferUi(appId);
         }
+        var reportBoostOffer = !isCatchupSubmission && typeof window.getScreenshotBoostOffer === 'function'
+            ? window.getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0)
+            : null;
+        var proofSubmit = document.getElementById('checkin-proof-submit');
+        if (proofSubmit) {
+            setScreenshotBoostActionButton(
+                proofSubmit,
+                window.t('checkinProofSubmit', {}, lang),
+                reportBoostOffer
+            );
+        }
+        ['t-reportBtnBug', 't-reportBtnIdea'].forEach(function(id) {
+            var button = document.getElementById(id);
+            if (button) setScreenshotBoostActionButton(button, button.dataset.screenshotBoostBaseLabel || button.textContent, reportBoostOffer);
+        });
         if (isCatchupSubmission) {
             var catchupBoost = document.getElementById('report-screenshot-boost');
             if (catchupBoost) {
@@ -4459,6 +4497,10 @@ function openReportModal(appId, ownerUsername, options) {
             legacyBoost.hidden = true;
             legacyBoost.textContent = '';
         }
+        ['t-reportBtnBug', 't-reportBtnIdea', 'checkin-proof-submit'].forEach(function(id) {
+            var button = document.getElementById(id);
+            if (button) setScreenshotBoostActionButton(button, button.dataset.screenshotBoostBaseLabel || button.textContent, null);
+        });
     }
     document.getElementById('t-reportModalTitle').innerText = window.t(
         usesProofUpload
@@ -6042,6 +6084,10 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
     }
     if (typeof window.rememberProjectFeedbackSession === 'function') {
         window.rememberProjectFeedbackSession();
+    }
+    var activeAppId = Number(typeof _activeProjectFeedbackAppId !== 'undefined' ? _activeProjectFeedbackAppId : window._activeProjectFeedbackAppId || 0);
+    if (window.ProjectToday && typeof window.ProjectToday.recordFeedbackReward === 'function') {
+        window.ProjectToday.recordFeedbackReward(activeAppId, safeId, extra);
     }
 }
 

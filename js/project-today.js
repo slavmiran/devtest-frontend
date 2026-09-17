@@ -26,6 +26,10 @@
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
     var ACTIVITY_FILTERS = ['testers', 'contribution', 'attention', 'control'];
+    var optimisticFeedbackBustByTester = {};
+    if (typeof window !== 'undefined') {
+        window._optimisticFeedbackBustByTester = optimisticFeedbackBustByTester;
+    }
 
     function text(key, fallback, params) {
         if (typeof window.t === 'function') {
@@ -283,7 +287,92 @@
             '</button>';
     }
 
-    function awardedRewardBadgeHtml(context, testerId) {
+    function getTesterAwardedBust(context, testerId, item) {
+        var safeTesterId = Number(testerId || 0);
+        if (safeTesterId <= 0) return 0;
+        var total = 0;
+
+        if (item && Array.isArray(item.reasons)) {
+            item.reasons.forEach(function (reason) {
+                if (reason && Number(reason.rewardBust || 0) > 0) {
+                    total += Number(reason.rewardBust);
+                }
+            });
+        }
+
+        var feedbackItems = (typeof window !== 'undefined' && Array.isArray(window._activeProjectFeedbackItems))
+            ? window._activeProjectFeedbackItems
+            : [];
+        var activeFeedbackBust = 0;
+        feedbackItems.forEach(function (fb) {
+            if (Number(fb && fb.tester_id || 0) === safeTesterId) {
+                var st = String(fb.status || '').toLowerCase();
+                if (st === 'closed' || st === 'accepted' || st === 'processed' || st === 'rewarded') {
+                    activeFeedbackBust += Number(fb.reward_bust || 0);
+                }
+            }
+        });
+
+        var optimisticBust = Number(optimisticFeedbackBustByTester[safeTesterId] || 0);
+
+        var rosterBust = 0;
+        var project = context && context.project;
+        if (project && Array.isArray(project.testers)) {
+            var found = project.testers.find(function (t) {
+                return Number(t && t.tester_id || 0) === safeTesterId;
+            });
+            if (found && found.rewards_summary) {
+                rosterBust = Number(found.rewards_summary.feedback_bust || found.rewards_summary.total_bust || 0);
+            }
+        }
+
+        var contextBust = Number(context && context.rewardBustByTester && context.rewardBustByTester[safeTesterId] || 0);
+        return Math.max(total, activeFeedbackBust, optimisticBust, rosterBust, contextBust);
+    }
+
+    function getTesterBoostBust(context, testerId, item) {
+        var safeTesterId = Number(testerId || 0);
+        if (safeTesterId <= 0) return 0;
+
+        var proofBoost = 0;
+        if (item && Array.isArray(item.reasons)) {
+            item.reasons.forEach(function (reason) {
+                if (reason && Number(reason.boostBust || 0) > 0) {
+                    proofBoost = Math.max(proofBoost, Number(reason.boostBust));
+                }
+            });
+        }
+        if (proofBoost > 0) return proofBoost;
+
+        var project = context && context.project;
+        var campaign = (project && project.screenshot_boost_campaign) || (context && context.screenshotBoostCampaign) || null;
+        if (campaign && (campaign.enabled === true || campaign.is_active === true || campaign.enabled == null)) {
+            var campaignReward = Math.max(0, Number(campaign.reward_bust || campaign.bonus_bust || 0));
+            if (campaignReward > 0) {
+                var hasThreeScreenshots = item && Number(item.screenshotCount || 0) >= 3;
+                var hasMediaFeedback = item && Array.isArray(item.reasons) && item.reasons.some(function (r) {
+                    return Boolean(r.hasMedia || Number(r.imageCount || 0) > 0);
+                });
+                if (hasThreeScreenshots || hasMediaFeedback) {
+                    return campaignReward;
+                }
+            }
+        }
+
+        var contextBoost = Number(context && context.boostBustByTester && context.boostBustByTester[safeTesterId] || 0);
+        return contextBoost;
+    }
+
+    function boostRewardBadgeHtml(amount) {
+        var val = Number(amount || 0);
+        if (val <= 0) return '';
+        var title = text('pcBoostRewardBonusTitle', 'Бонус за доп. отчёт: +{amount} $BUST', { amount: val });
+        return '<span class="pc-award-badge pc-award-badge--boost" title="' + esc(title) + '">' +
+            '<span class="pc-award-badge__value">🎁 +' + esc(val) + ' $BUST</span>' +
+        '</span>';
+    }
+
+    function awardedRewardBadgeHtml(context, testerId, item) {
         var rewards = (context && context.rewardTypesByTester && context.rewardTypesByTester[Number(testerId)]) || [];
         var tokens = rewards.map(function (type) {
             if (type === 'good') return '👍 +1.5';
@@ -292,10 +381,21 @@
             return '☯️';
         });
         if (!tokens.length) tokens.push('☯️');
-        var value = tokens.join(' · ');
-        return '<span class="pc-award-badge" title="' + esc(value) + '">' +
-            '<span class="pc-award-badge__value">' + esc(value) + '</span>' +
+        var karmaVal = tokens.join(' · ');
+        var karmaHtml = '<span class="pc-award-badge pc-award-badge--karma" title="' + esc(karmaVal) + '">' +
+            '<span class="pc-award-badge__value">' + esc(karmaVal) + '</span>' +
         '</span>';
+
+        var ticketBust = getTesterAwardedBust(context, testerId, item);
+        var ticketBustHtml = '';
+        if (ticketBust > 0) {
+            var bustTitle = text('pcTicketRewardTitle', 'Награда за тикет: +{amount} $BUST', { amount: ticketBust });
+            ticketBustHtml = '<span class="pc-award-badge pc-award-badge--bust" title="' + esc(bustTitle) + '">' +
+                '<span class="pc-award-badge__value">+' + esc(ticketBust) + ' $BUST</span>' +
+            '</span>';
+        }
+
+        return karmaHtml + ticketBustHtml;
     }
 
     function contributionAvatarMarkerHtml(reasons) {
@@ -627,6 +727,7 @@
         var totalImages = isScreenshot
             ? Math.max(1, Math.min(5, Number(proof.image_count || 1)))
             : (hasProofMedia ? Math.max(1, Number(proof && proof.image_count || 1)) : 0);
+        var proofFb = proof && proof.feedback;
         return {
             progressId: Number(item.progress_id || 0),
             testerId: Number(item.tester && item.tester.id || 0),
@@ -638,9 +739,12 @@
             createdAt: String(proof && proof.created_at || ''),
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
-            feedbackStatus: String(proof && proof.feedback && (proof.feedback.status || proof.feedback.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
+            feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
-            feedbackText: String(proof && proof.feedback && (proof.feedback.message_text || proof.feedback.text || proof.feedback.summary || proof.feedback.title) || ''),
+            feedbackText: String(proofFb && (proofFb.message_text || proofFb.text || proofFb.summary || proofFb.title) || ''),
+            rewardBust: Number(proofFb && (proofFb.reward_bust || proofFb.rewardBust) || (proof && proof.reward_bust) || 0),
+            rewardKarma: Number(proofFb && (proofFb.reward_karma || proofFb.rewardKarma) || (proof && proof.reward_karma) || 0),
+            boostBust: Number(proof && (proof.boost_bust || proof.screenshot_boost_bust || proof.bonus_bust) || 0),
             slots: buildSlots(proof, thumbnailByProofId),
         };
     }
@@ -655,6 +759,7 @@
         var totalImages = isScreenshot
             ? Math.max(1, Math.min(5, Number(proof.image_count || 1)))
             : (hasProofMedia ? Math.max(1, Number(proof && proof.image_count || 1)) : 0);
+        var proofFb = proof && proof.feedback;
         return {
             progressId: Number(item.progress_id || 0),
             testerId: Number(item.tester && item.tester.id || 0),
@@ -667,9 +772,13 @@
             createdAt: String(proof && proof.created_at || ''),
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
-            feedbackStatus: String(proof && proof.feedback && (proof.feedback.status || proof.feedback.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
+            feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
-            feedbackText: String(proof && proof.feedback && (proof.feedback.message_text || proof.feedback.text || proof.feedback.summary || proof.feedback.title) || ''),
+            feedbackText: String(proofFb && (proofFb.message_text || proofFb.text || proofFb.summary || proofFb.title) || ''),
+            rewardBust: Number(proofFb && (proofFb.reward_bust || proofFb.rewardBust) || (proof && proof.reward_bust) || 0),
+            rewardKarma: Number(proofFb && (proofFb.reward_karma || proofFb.rewardKarma) || (proof && proof.reward_karma) || 0),
+            boostBust: Number(proof && (proof.boost_bust || proof.screenshot_boost_bust || proof.bonus_bust) || 0),
+            rewardsSummary: item.rewards_summary || (item.tester && item.tester.rewards_summary) || null,
             slots: buildSlots(proof, thumbnailByProofId),
         };
     }
@@ -688,11 +797,16 @@
                 }
                 if (fb) {
                     if (fb.has_media != null) row.hasMedia = Boolean(fb.has_media);
+                    if (fb.reward_bust != null) row.rewardBust = Number(fb.reward_bust);
+                    if (fb.reward_karma != null) row.rewardKarma = Number(fb.reward_karma);
                     row.feedbackText = String(fb.message_text || fb.text || fb.summary || fb.title || '').replace(/\s+/g, ' ').trim();
                 }
                 if (proof && proof.image_count != null) {
                     row.imageCount = Number(proof.image_count);
                     if (row.imageCount > 0) row.hasMedia = true;
+                }
+                if (proof && proof.boost_bust != null) {
+                    row.boostBust = Number(proof.boost_bust);
                 }
                 row.feedbackTitle = String(
                     (fb && (fb.title || fb.summary || fb.text || fb.message_text)) || ''
@@ -1063,13 +1177,9 @@
     function controlRowHtml(appId, row, context) {
         var dayNum = Number(row && row.day || 0);
         var meta = '';
-        if (!row.received) {
-            meta += '<span class="pc-pstate is-pending">' +
-                esc(text('pcControlPending', 'Pending')) +
-                '</span>';
-        }
         if (dayNum > 0) {
-            meta += '<span class="pc-person__day">' +
+            var dayClass = 'pc-person__day' + (!row.received ? ' pc-person__day--control is-control-accent' : '');
+            meta += '<span class="' + dayClass + '">' +
                 esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
             '</span>';
         }
@@ -1079,7 +1189,7 @@
         }
         var devText = formatDeviceInfo(row.device);
         if (devText) {
-            meta += '<span class="pc-person__device">' + (meta ? '• ' : '') + esc(devText) + '</span>';
+            meta += '<span class="pc-person__device">' + (meta ? ' · ' : '') + esc(devText) + '</span>';
         }
         var receipts = controlReminderStates.get(Number(appId));
         var receipt = receipts && (receipts.items || []).find(function(item) {
@@ -1296,6 +1406,7 @@
                     proofId: item.screenshotRow.proofId,
                     imageCount: item.screenshotCount,
                     feedbackId: 0,
+                    boostBust: Number(item.screenshotRow.boostBust || 0),
                 });
             }
             if (item.bug) {
@@ -1310,6 +1421,9 @@
                     feedbackText: item.bug.feedbackText || item.bug.feedbackTitle || '',
                     hasMedia: Boolean(item.bug.hasMedia || Number(item.bug.imageCount || 0) > 0),
                     imageCount: Number(item.bug.imageCount || 0),
+                    rewardBust: Number(item.bug.rewardBust || 0),
+                    rewardKarma: Number(item.bug.rewardKarma || 0),
+                    boostBust: Number(item.bug.boostBust || 0),
                 });
             }
             if (item.idea) {
@@ -1322,6 +1436,9 @@
                     feedbackText: item.idea.feedbackText || item.idea.feedbackTitle || '',
                     hasMedia: Boolean(item.idea.hasMedia || Number(item.idea.imageCount || 0) > 0),
                     imageCount: Number(item.idea.imageCount || 0),
+                    rewardBust: Number(item.idea.rewardBust || 0),
+                    rewardKarma: Number(item.idea.rewardKarma || 0),
+                    boostBust: Number(item.idea.boostBust || 0),
                 });
             }
             if (item.play_review) {
@@ -1334,6 +1451,9 @@
                     feedbackText: item.play_review.feedbackText || item.play_review.feedbackTitle || '',
                     hasMedia: Boolean(item.play_review.hasMedia || Number(item.play_review.imageCount || 0) > 0),
                     imageCount: Number(item.play_review.imageCount || 0),
+                    rewardBust: Number(item.play_review.rewardBust || 0),
+                    rewardKarma: Number(item.play_review.rewardKarma || 0),
+                    boostBust: Number(item.play_review.boostBust || 0),
                 });
             }
             item.reasons = reasons;
@@ -1682,16 +1802,23 @@
         return '<ul class="pc-act-list">' + sorted.map(function (item) {
             var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
             var headerActionsHtml = '';
+            var boostBust = getTesterBoostBust(context, item.testerId, item);
+            var boostBustHtml = boostRewardBadgeHtml(boostBust);
+
             if (rewarded) {
-                headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId);
-            } else if (context.rewardsLeft > 0) {
-                var isInitialTarget = Number(item.testerId) === initialSparkleTesterId;
-                headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
-                    hasSparkle: isInitialTarget,
-                    mode: initialSparkleMode,
-                    tilt: initialSparkleTilt,
-                    duration: '3.8s',
-                });
+                headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId, item) + boostBustHtml;
+            } else {
+                var rewardBtnHtml = '';
+                if (context.rewardsLeft > 0) {
+                    var isInitialTarget = Number(item.testerId) === initialSparkleTesterId;
+                    rewardBtnHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                        hasSparkle: isInitialTarget,
+                        mode: initialSparkleMode,
+                        tilt: initialSparkleTilt,
+                        duration: '3.8s',
+                    });
+                }
+                headerActionsHtml = boostBustHtml + rewardBtnHtml;
             }
 
             var subrowsHtml = activityTimelineHtml(appId, item.reasons);
@@ -2628,6 +2755,7 @@
 
     function contextFor(project) {
         var rewardTypesByTester = {};
+        var rewardBustByTester = {};
         (project.likes || []).forEach(function (like) {
             var testerId = Number(like && like.tester_id || 0);
             var type = String(like && like.type || '').toLowerCase();
@@ -2637,10 +2765,21 @@
                 rewardTypesByTester[testerId].push(type);
             }
         });
+        (project.testers || []).forEach(function (tester) {
+            var testerId = Number(tester && tester.tester_id || 0);
+            if (!testerId) return;
+            if (tester.rewards_summary) {
+                var bust = Number(tester.rewards_summary.feedback_bust || tester.rewards_summary.total_bust || 0);
+                if (bust > 0) rewardBustByTester[testerId] = bust;
+            }
+        });
         return {
+            project: project,
             rewardsLeft: Math.max(0, Number(project.likes_max || 0) - Number(project.likes_used || 0)),
             rewardedTesterIds: (project.likes || []).map(function (like) { return Number(like.tester_id || 0); }),
             rewardTypesByTester: rewardTypesByTester,
+            rewardBustByTester: rewardBustByTester,
+            screenshotBoostCampaign: project.screenshot_boost_campaign || null,
         };
     }
 
@@ -2719,11 +2858,36 @@
         else hydrate(Number(project.id));
     }
 
+    function recordFeedbackReward(appId, feedbackId, extra) {
+        var safeAppId = Number(appId || 0);
+        var safeFeedbackId = Number(feedbackId || 0);
+        var rewardBust = Number((extra && (extra.reward_bust || extra.rewardBust)) || 0);
+        var testerId = Number((extra && (extra.tester_id || extra.user_id || extra.author_id)) || 0);
+
+        if (!testerId && safeFeedbackId && Array.isArray(window._activeProjectFeedbackItems)) {
+            var found = window._activeProjectFeedbackItems.find(function (item) {
+                return Number(item && item.id) === safeFeedbackId;
+            });
+            if (found) {
+                testerId = Number(found.user_id || found.tester_id || found.author_id || 0);
+            }
+        }
+
+        if (testerId && rewardBust > 0) {
+            optimisticFeedbackBustByTester[testerId] = (Number(optimisticFeedbackBustByTester[testerId]) || 0) + rewardBust;
+        }
+
+        if (safeAppId) {
+            refreshActivityWorkspace(safeAppId);
+        }
+    }
+
     window.ProjectToday = {
         buildSection: buildSection,
         mount: mount,
         isControlDay: isControlDay,
         getCacheEntry: getCacheEntry,
+        recordFeedbackReward: recordFeedbackReward,
         invalidate: function (appId) {
             var safeAppId = Number(appId || 0);
             var current = cache.get(safeAppId);

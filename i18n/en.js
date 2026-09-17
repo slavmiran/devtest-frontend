@@ -3273,6 +3273,8 @@
             pcRemindBtn: "Remind",
             pcRewardedLabel: "Rewarded",
             pcAwardBadgeLabel: "Award:",
+            pcBoostRewardBonusTitle: "Bonus for extra report: +{amount} $BUST",
+            pcTicketRewardTitle: "Ticket reward: +{amount} $BUST",
             pcProcessBtn: "Process",
             pcProcessedLabel: "Processed",
             pcProofBug: "Bug",

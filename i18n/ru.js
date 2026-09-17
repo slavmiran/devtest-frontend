@@ -3279,6 +3279,8 @@
             pcRemindBtn: "Напомнить",
             pcRewardedLabel: "Награждён",
             pcAwardBadgeLabel: "Награда:",
+            pcBoostRewardBonusTitle: "Бонус за доп. отчёт: +{amount} $BUST",
+            pcTicketRewardTitle: "Награда за тикет: +{amount} $BUST",
             pcProcessBtn: "Обработать",
             pcProcessedLabel: "Обработано",
             pcProofBug: "Баг",
