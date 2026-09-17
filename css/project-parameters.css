@@ -129,7 +129,8 @@
 .pc-project-boost__title-accent { color: var(--accent-primary); font-weight: 700; }
 .pc-project-boost__title-tail { color: inherit; font-weight: 500; }
 .pc-project-boost__chip { display: inline-flex; align-items: center; font-weight: 500; color: #c5d1e3; }
-.pc-project-boost__bust { font-weight: 800; color: #e8eef7; }
+.pc-project-boost__bust { font-weight: 650; color: #c99dff; }
+.pc-project-boost__chip--brand { color: #c99dff; font-weight: 650; }
 .pc-project-boost__badge { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 3px 7px; margin: -3px 0; border-radius: 5px; font-size: 11px; font-weight: 600; line-height: 1.2; }
 .pc-project-boost__badge--active { background: rgba(93, 146, 226, .11); color: #9ebef0; }
 .pc-project-boost__badge--paused,

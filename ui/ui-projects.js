@@ -670,6 +670,27 @@ function buildProjectCardFeatureChips(project, options) {
         : Number(project.min_android_version || 0);
     const chips = [];
 
+    const screenshotBoost = project.screenshot_boost_campaign;
+    if (screenshotBoost) {
+        const reward = Math.max(0, Number(screenshotBoost.reward_bust || 0));
+        const pool = Math.max(0, Number(screenshotBoost.pool_remaining || 0));
+        const boostOn = screenshotBoost.enabled === true;
+        // A chip promises a real bonus only while the campaign can still fund
+        // at least one payout. Paused and depleted pools remain configurable,
+        // but do not compete with active project modes on the card.
+        if (boostOn && pool >= reward && reward > 0) {
+            const boostLabel = window.t('screenshotBoostChip', {}, lang);
+            const boostClass = 'pc-subtitle-chip pc-subtitle-chip--screenshot-boost is-on';
+            chips.push(
+                (interactive
+                    ? '<button type="button" class="' + boostClass + '" onclick="openScreenshotBoostInfo(' + Number(project.id || project.app_id || 0) + ', event)">'
+                    : '<span class="' + boostClass + '">') +
+                    window.escapeHTML(boostLabel) +
+                (interactive ? '</button>' : '</span>')
+            );
+        }
+    }
+
     const reviewsLabel = window.escapeHTML(window.t('pcCardReviewsLabel', {}, lang) || 'Отзывы Google');
     const reviewsState = window.escapeHTML(
         reviewsOn
@@ -697,29 +718,6 @@ function buildProjectCardFeatureChips(project, options) {
                 window.escapeHTML(window.t('emailTestModeChip', {}, lang) || 'Email') +
             '</span>'
         );
-    }
-
-    const screenshotBoost = project.screenshot_boost_campaign;
-    if (screenshotBoost) {
-        const reward = Math.max(0, Number(screenshotBoost.reward_bust || 0));
-        const pool = Math.max(0, Number(screenshotBoost.pool_remaining || 0));
-        const boostOn = screenshotBoost.enabled === true;
-        if (pool > 0 && reward > 0) {
-            const boostLabel = window.t('screenshotBoostChip', {
-                amount: formatScreenshotBoostAmount(reward),
-                pool: formatScreenshotBoostAmount(pool),
-            }, lang);
-            const boostClass = 'pc-subtitle-chip pc-subtitle-chip--screenshot-boost' +
-                (boostOn ? ' is-on' : ' is-off');
-            chips.push(
-                (interactive
-                    ? '<button type="button" class="' + boostClass + '" onclick="openScreenshotBoostInfo(' + Number(project.id || project.app_id || 0) + ', event)">'
-                    : '<span class="' + boostClass + '">') +
-                    screenshotBoostCameraIconHtml('pc-subtitle-chip__camera', 12) +
-                    window.escapeHTML(boostLabel) +
-                (interactive ? '</button>' : '</span>')
-            );
-        }
     }
 
     if (project.target_lang && String(project.target_lang).toUpperCase() !== 'ALL') {

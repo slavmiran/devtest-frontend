@@ -1929,10 +1929,11 @@ button.ts-section-head {
     transition: opacity 0.2s ease;
 }
 
-.split-btn-options.has-screenshot-boost { min-width:104px; padding-inline:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; color:#f6c85f; }
-.split-btn-options__boost { font-size:11px; font-weight:750; line-height:1; white-space:nowrap; }
+.split-btn-options.has-screenshot-boost { min-width:82px; padding-inline:10px; display:inline-flex; align-items:center; justify-content:center; gap:5px; color:#c495ff; }
+.split-btn-options__paperclip { flex:0 0 auto; width:20px; height:20px; color:#c495ff; }
+.split-btn-options__boost { font-size:11px; font-weight:750; line-height:1; white-space:nowrap; color:#c495ff; }
 #tab-tests .split-btn-group .split-btn-options.has-screenshot-boost,
-#tab-tests .split-btn-group.split-timer-running .split-btn-options.has-screenshot-boost { color:#f6c85f!important; }
+#tab-tests .split-btn-group.split-timer-running .split-btn-options.has-screenshot-boost { color:#c495ff!important; }
 .split-btn-options.has-catchup-proof { overflow: visible !important; }
 .split-btn-options__catchup-cam {
     position: absolute;
@@ -1961,7 +1962,11 @@ button.ts-section-head {
 @media (prefers-reduced-motion: reduce) {
     .split-btn-options__catchup-cam { animation: none; }
 }
-.screenshot-boost-offer { margin:0 0 12px; padding:9px 11px; border:1px solid rgba(246,200,95,.22); border-radius:11px; color:#f6c85f; background:rgba(246,200,95,.08); font-size:12px; font-weight:650; line-height:1.35; text-align:left; }
+.screenshot-boost-offer { display:flex; align-items:center; gap:9px; margin:0 0 12px; padding:9px 11px; border:1px solid rgba(196,149,255,.25); border-radius:11px; color:#d8c0ff; background:linear-gradient(135deg, rgba(158,104,232,.14), rgba(101,79,187,.08)); font-size:12px; line-height:1.32; text-align:left; }
+.screenshot-boost-offer__gift { display:grid; place-items:center; flex:0 0 27px; width:27px; height:27px; border-radius:8px; background:rgba(196,149,255,.14); font-size:15px; }
+.screenshot-boost-offer__copy { display:grid; min-width:0; gap:1px; }
+.screenshot-boost-offer__copy strong { color:#d5b3ff; font-size:13px; font-weight:800; line-height:1.15; }
+.screenshot-boost-offer__copy span { color:#aeb8cc; font-size:11px; font-weight:600; }
 .screenshot-boost-offer[hidden] { display:none!important; }
 .checkin-catchup-note {
     display: flex;

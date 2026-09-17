@@ -6079,6 +6079,11 @@ button.pc-subtitle-chip:hover,
     background: rgba(255, 255, 255, 0.045);
     border-color: rgba(255, 255, 255, 0.08);
 }
+.pc-subtitle-chip--screenshot-boost.is-on {
+    color: #d6b6ff;
+    background: rgba(175, 112, 255, 0.12);
+    border-color: rgba(196, 149, 255, 0.28);
+}
 
 .pc-metric-day-cal-btn {
     display: inline-flex;

@@ -1398,6 +1398,15 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         parts.unshift(`<button type="button" class="meta-chip accent-green">${t.newBadge}</button>`);
     }
     if (test) {
+        var screenshotBoostOffer = getScreenshotBoostOffer(test, userTestingDay);
+        if (screenshotBoostOffer) {
+            var screenshotBoostHint = window.t('screenshotBoostTesterChipHint', {
+                amount: formatScreenshotBoostAmount(screenshotBoostOffer.reward),
+            }, lang);
+            parts.push('<button type="button" class="meta-chip accent-purple" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast(\'' +
+                String(screenshotBoostHint || '').replace(/'/g, "\\'") +
+                '\'); return false;" title="' + window.escapeHTML(screenshotBoostHint) + '">+$BUST</button>');
+        }
         const reviewStatus = typeof window.getPlayReviewStatus === 'function'
             ? window.getPlayReviewStatus(test)
             : String(test.play_review_status || 'none').toLowerCase();
@@ -2261,15 +2270,19 @@ function formatScreenshotBoostAmount(value) {
     return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
 }
 
+function screenshotBoostPaperclipIconHtml() {
+    return '<svg class="split-btn-options__paperclip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.44 11.05-8.49 8.49a6 6 0 0 1-8.49-8.49l8.49-8.49a4 4 0 0 1 5.66 5.66l-8.5 8.48a2 2 0 0 1-2.83-2.83l7.79-7.78"/></svg>';
+}
+
 function getScreenshotBoostPaperclipContent(appId) {
     var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id || 0) === Number(appId || 0);
     });
     var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
-    var html = '<span aria-hidden="true">📎</span>';
+    var html = offer ? screenshotBoostPaperclipIconHtml() : '<span aria-hidden="true">📎</span>';
     if (offer) {
         html += '<span class="split-btn-options__boost">+' +
-            window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</span>';
+            window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $</span>';
     }
     if (hasOpenControlProofCatchup(test)) {
         html += '<span class="split-btn-options__catchup-cam" aria-hidden="true"></span>';
@@ -2290,11 +2303,14 @@ function syncScreenshotBoostOfferUi(appId) {
             node.textContent = '';
             return;
         }
-        node.textContent = window.t(
-            offer.isControlDay ? 'screenshotBoostControlOffer' : 'screenshotBoostOfferInline',
-            { amount: formatScreenshotBoostAmount(offer.reward) },
-            lang
-        );
+        var detailKey = offer.isControlDay
+            ? 'screenshotBoostControlOfferDetail'
+            : 'screenshotBoostOfferDetail';
+        node.innerHTML = '<span class="screenshot-boost-offer__gift" aria-hidden="true">🎁</span>' +
+            '<span class="screenshot-boost-offer__copy">' +
+                '<strong>+' + window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $</strong>' +
+                '<span>' + window.escapeHTML(window.t(detailKey, {}, lang)) + '</span>' +
+            '</span>';
     });
     return offer;
 }

@@ -22,7 +22,6 @@
     var expandedOthers = new Set();
     var expandedReceived = new Set();
     var lastSeenReceivedCounts = new Map();
-    var karmaSparkleSessionSeed = Math.floor(Math.random() * 1000) + 1;
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
@@ -1504,6 +1503,137 @@
         return 2;
     }
 
+    var SPARKLE_MODES = ['is-mode-orbit', 'is-mode-reverse', 'is-mode-figure8', 'is-mode-spiral'];
+    var karmaSparkleTimers = new Map();
+
+    function stopKarmaSparkle(appId) {
+        var safeAppId = Number(appId || 0);
+        if (safeAppId > 0) {
+            var timer = karmaSparkleTimers.get(safeAppId);
+            if (timer) {
+                clearTimeout(timer);
+                karmaSparkleTimers.delete(safeAppId);
+            }
+            var root = document.getElementById('pc-today-' + safeAppId);
+            if (root) {
+                root.querySelectorAll('.pc-reward-accent-btn__orbit').forEach(function (el) { el.remove(); });
+            }
+        } else {
+            karmaSparkleTimers.forEach(function (t) { clearTimeout(t); });
+            karmaSparkleTimers.clear();
+            document.querySelectorAll('.pc-reward-accent-btn__orbit').forEach(function (el) { el.remove(); });
+        }
+    }
+
+    function scheduleNextKarmaSparkle(appId, delayMs) {
+        var safeAppId = Number(appId || 0);
+        if (!safeAppId || prefersReducedMotion()) return;
+        var existingTimer = karmaSparkleTimers.get(safeAppId);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+            karmaSparkleTimers.delete(safeAppId);
+        }
+        var delay = typeof delayMs === 'number' ? delayMs : (350 + Math.floor(Math.random() * 400));
+        var timer = setTimeout(function () {
+            karmaSparkleTimers.delete(safeAppId);
+            launchKarmaSparkle(safeAppId);
+        }, delay);
+        karmaSparkleTimers.set(safeAppId, timer);
+    }
+
+    function launchKarmaSparkle(appId) {
+        var safeAppId = Number(appId || 0);
+        if (!safeAppId || prefersReducedMotion()) return;
+        var root = document.getElementById('pc-today-' + safeAppId);
+        if (!root) return;
+
+        var shell = root.querySelector('.pc-activity');
+        var folderBody = shell && shell.querySelector('.pc-activity__folder-body');
+        var activeFilter = folderBody ? folderBody.getAttribute('data-active-filter') : '';
+        if (activeFilter && activeFilter !== 'contribution') {
+            stopKarmaSparkle(safeAppId);
+            return;
+        }
+
+        var list = root.querySelector('.pc-act-list');
+        if (!list) return;
+        var buttons = Array.from(list.querySelectorAll('.pc-reward-accent-btn'));
+        if (!buttons.length) {
+            stopKarmaSparkle(safeAppId);
+            return;
+        }
+
+        root.querySelectorAll('.pc-reward-accent-btn__orbit').forEach(function (el) { el.remove(); });
+
+        var targetBtn = buttons[Math.floor(Math.random() * buttons.length)];
+        var chosenMode = SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)];
+        var durationSec = (3.4 + Math.random() * 0.8).toFixed(2);
+        var tiltDeg = (Math.floor(Math.random() * 48) - 24) + 'deg';
+
+        var orbit = document.createElement('span');
+        orbit.className = 'pc-reward-accent-btn__orbit';
+        orbit.setAttribute('aria-hidden', 'true');
+        orbit.style.setProperty('--orbit-tilt', tiltDeg);
+
+        var sparkle = document.createElement('span');
+        sparkle.className = 'pc-reward-accent-btn__sparkle ' + chosenMode;
+        sparkle.style.animationDuration = durationSec + 's';
+
+        var star = document.createElement('span');
+        star.className = 'pc-sparkle-glyph pc-sparkle-glyph--star';
+        star.setAttribute('aria-hidden', 'true');
+        star.textContent = '✦';
+
+        var plus = document.createElement('span');
+        plus.className = 'pc-sparkle-glyph pc-sparkle-glyph--plus';
+        plus.setAttribute('aria-hidden', 'true');
+        plus.textContent = '+';
+
+        sparkle.appendChild(star);
+        sparkle.appendChild(plus);
+        orbit.appendChild(sparkle);
+
+        var handled = false;
+        function onComplete() {
+            if (handled) return;
+            handled = true;
+            orbit.remove();
+            scheduleNextKarmaSparkle(safeAppId);
+        }
+
+        sparkle.addEventListener('animationend', function (e) {
+            if (e.target === sparkle) onComplete();
+        });
+
+        setTimeout(onComplete, (parseFloat(durationSec) * 1000) + 1200);
+
+        targetBtn.appendChild(orbit);
+    }
+
+    function initKarmaSparkleCycle(appId) {
+        var safeAppId = Number(appId || 0);
+        if (!safeAppId || prefersReducedMotion()) return;
+        var root = document.getElementById('pc-today-' + safeAppId);
+        if (!root) return;
+        var existingSparkle = root.querySelector('.pc-reward-accent-btn__sparkle');
+        if (existingSparkle) {
+            var existingOrbit = existingSparkle.closest('.pc-reward-accent-btn__orbit');
+            var done = false;
+            function onExistingDone() {
+                if (done) return;
+                done = true;
+                if (existingOrbit) existingOrbit.remove();
+                scheduleNextKarmaSparkle(safeAppId);
+            }
+            existingSparkle.addEventListener('animationend', function (e) {
+                if (e.target === existingSparkle) onExistingDone();
+            });
+            setTimeout(onExistingDone, 4500);
+        } else {
+            scheduleNextKarmaSparkle(safeAppId, 200);
+        }
+    }
+
     function rewardAccentButtonHtml(appId, testerId, opts) {
         opts = opts || {};
         var karmaIcon = typeof window.karmaIconHtml === 'function'
@@ -1511,16 +1641,12 @@
             : (ICONS.reward || '<span class="rewards-icon-glyph">☯</span>');
         var orbitHtml = '';
         if (opts.hasSparkle) {
-            var seed = Math.abs(Number(opts.seed || testerId || 0));
-            var durations = ['4.6s', '5.2s', '6.0s'];
-            var delays = ['0s', '-1.8s', '-3.2s'];
-            var angles = ['-12deg', '10deg', '-6deg'];
-            var dur = durations[seed % durations.length];
-            var del = delays[(seed + 1) % delays.length];
-            var ang = angles[(seed + 2) % angles.length];
-            var style = 'style="animation-duration:' + dur + '; animation-delay:' + del + '; --orbit-tilt:' + ang + ';"';
+            var mode = opts.mode || SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)];
+            var ang = opts.tilt || ((Math.floor(Math.random() * 40) - 20) + 'deg');
+            var dur = opts.duration || '3.8s';
+            var style = 'style="animation-duration:' + dur + ';"';
             orbitHtml = '<span class="pc-reward-accent-btn__orbit" aria-hidden="true" style="--orbit-tilt:' + ang + ';">' +
-                '<span class="pc-reward-accent-btn__sparkle" ' + style + '>' +
+                '<span class="pc-reward-accent-btn__sparkle ' + esc(mode) + '" ' + style + '>' +
                     '<span class="pc-sparkle-glyph pc-sparkle-glyph--star" aria-hidden="true">✦</span>' +
                     '<span class="pc-sparkle-glyph pc-sparkle-glyph--plus" aria-hidden="true">+</span>' +
                 '</span>' +
@@ -1545,16 +1671,12 @@
         var unrewardedTesters = sorted.filter(function (it) {
             return context.rewardedTesterIds.indexOf(Number(it.testerId)) === -1;
         });
-        var sparkleTesterIds = new Set();
+        var initialSparkleTesterId = 0;
+        var initialSparkleMode = SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)];
+        var initialSparkleTilt = (Math.floor(Math.random() * 40) - 20) + 'deg';
         if (unrewardedTesters.length > 0) {
-            var rotation = Math.floor(Date.now() / 15000);
-            var seedBase = Math.abs(Number(appId || 0) * 19 + karmaSparkleSessionSeed + rotation);
-            var idx1 = seedBase % unrewardedTesters.length;
-            sparkleTesterIds.add(Number(unrewardedTesters[idx1].testerId));
-            if (unrewardedTesters.length >= 4) {
-                var idx2 = (idx1 + 1 + Math.floor((unrewardedTesters.length - 1) / 2)) % unrewardedTesters.length;
-                sparkleTesterIds.add(Number(unrewardedTesters[idx2].testerId));
-            }
+            var startIdx = Math.floor(Math.random() * unrewardedTesters.length);
+            initialSparkleTesterId = Number(unrewardedTesters[startIdx].testerId);
         }
 
         return '<ul class="pc-act-list">' + sorted.map(function (item) {
@@ -1563,9 +1685,12 @@
             if (rewarded) {
                 headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId);
             } else if (context.rewardsLeft > 0) {
+                var isInitialTarget = Number(item.testerId) === initialSparkleTesterId;
                 headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
-                    hasSparkle: sparkleTesterIds.has(Number(item.testerId)),
-                    seed: Number(item.testerId),
+                    hasSparkle: isInitialTarget,
+                    mode: initialSparkleMode,
+                    tilt: initialSparkleTilt,
+                    duration: '3.8s',
                 });
             }
 
@@ -2355,8 +2480,14 @@
         var mode = prefs.modes[filter] || 'now';
         if (mode === 'history') {
             loadFilterHistory(appId, filter, data);
+            stopKarmaSparkle(Number(appId));
         } else if (filter === 'control') {
             loadControlReminderStatus(Number(appId));
+            stopKarmaSparkle(Number(appId));
+        } else if (filter === 'contribution') {
+            initKarmaSparkleCycle(Number(appId));
+        } else {
+            stopKarmaSparkle(Number(appId));
         }
     }
 
