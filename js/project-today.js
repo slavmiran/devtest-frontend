@@ -466,11 +466,18 @@
 
     function formatDeviceInfo(device) {
         if (!device) return '';
-        var model = String(device.model || '').trim();
+        if (typeof device === 'string') return device.trim();
         var brand = String(device.brand || '').trim();
-        var name = model || brand;
-        if (brand && model && model.toLowerCase().indexOf(brand.toLowerCase()) === -1) {
-            name = brand + ' ' + model;
+        var model = String(device.model || '').trim();
+        if (brand && model) {
+            var brandLower = brand.toLowerCase();
+            var modelLower = model.toLowerCase();
+            if (modelLower.indexOf(brandLower) === 0) {
+                var stripped = model.slice(brand.length).trim();
+                if (stripped) {
+                    model = stripped;
+                }
+            }
         }
         var android = String(device.android_version || '').trim();
         if (android) {
@@ -479,9 +486,14 @@
             }
         }
         var parts = [];
-        if (name) parts.push(name);
+        if (brand && model && brand.toLowerCase() !== model.toLowerCase()) {
+            parts.push(brand);
+            parts.push(model);
+        } else if (brand || model) {
+            parts.push(brand || model);
+        }
         if (android) parts.push(android);
-        return parts.join(' • ');
+        return parts.join(' · ');
     }
 
     function testerReliabilityLabel(tester) {
@@ -1393,10 +1405,9 @@
         var receipt = receipts && (receipts.items || []).find(function(item) {
             return Number(item.tester_id) === Number(row.testerId) && Number(item.day) === dayNum;
         });
-        if (!row.received && receipt && receipt.status !== 'ready') {
-            meta += '<span class="pc-reminder-receipt ' + (receipt.status === 'sent' ? 'is-sent' : 'is-unavailable') + '">' +
-                esc(receipt.status === 'sent' ? text('pcReminderSentAt', 'DM sent at {time}', { time: reminderTime(receipt.sent_at) })
-                    : text(receipt.status === 'reserved' || receipt.status === 'uncertain' ? 'pcReminderUnconfirmed' : 'pcReminderUnavailable', 'Delivery unavailable')) + '</span>';
+        if (!row.received && receipt && receipt.status !== 'ready' && receipt.status !== 'sent') {
+            meta += '<span class="pc-reminder-receipt is-unavailable">' +
+                esc(text(receipt.status === 'reserved' || receipt.status === 'uncertain' ? 'pcReminderUnconfirmed' : 'pcReminderUnavailable', 'Delivery unavailable')) + '</span>';
         }
         if (!row.received && receipt && receipt.personal_dm_opened_at) {
             meta += '<span class="pc-reminder-receipt is-personal">' +
@@ -3370,7 +3381,7 @@
         var unavailable = items.filter(function(item) { return ['unavailable', 'failed', 'rate_limited'].indexOf(item.status) !== -1; });
         var uncertain = items.filter(function(item) { return ['reserved', 'uncertain'].indexOf(item.status) !== -1; });
         var at = sent.map(function(item) { return item.sent_at || ''; }).sort().pop();
-        return (sent.length ? '<span class="is-sent">' + esc(text('pcRemindersSentCount', 'DMs sent: {count} · {time}', { count: sent.length, time: reminderTime(at) })) + '</span>' : '') +
+        return (sent.length ? '<span class="is-sent">' + esc(text('pcRemindersSentCount', 'Reminders sent via bot: {count} · {time}', { count: sent.length, time: reminderTime(at) })) + '</span>' : '') +
             (unavailable.length ? '<span class="is-error">' + esc(text('pcRemindersUnavailableCount', 'Not delivered: {count}', { count: unavailable.length })) + '</span>' : '') +
             (uncertain.length ? '<span>' + esc(text('pcRemindersUnconfirmedCount', 'Delivery unconfirmed: {count}', { count: uncertain.length })) + '</span>' : '');
     }

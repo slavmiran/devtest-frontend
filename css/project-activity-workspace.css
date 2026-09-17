@@ -147,23 +147,25 @@
     align-items: center;
     padding: 1px 7px;
     border-radius: 999px;
-    background: rgba(88, 166, 255, 0.10);
-    border: 1px solid rgba(88, 166, 255, 0.22);
-    color: #79c0ff;
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    color: rgba(174, 186, 204, 0.75);
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 450;
     line-height: 1.4;
     cursor: pointer;
-    transition: all 0.15s ease;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
     -webkit-tap-highlight-color: transparent;
 }
 .pc-activity--workspace .pc-person__handle--link:hover {
-    background: rgba(88, 166, 255, 0.18);
-    border-color: rgba(88, 166, 255, 0.4);
-    color: #a5d4ff;
+    background: rgba(148, 163, 184, 0.16);
+    border-color: rgba(148, 163, 184, 0.25);
+    color: #e2e8f0;
 }
 .pc-activity--workspace .pc-person__handle--link:active {
     transform: scale(0.96);
+    background: rgba(148, 163, 184, 0.22);
 }
 .pc-activity--workspace .pc-person__fullname:not(.pc-person__fullname-main) {
     display: inline-flex;
@@ -584,7 +586,7 @@
     border-radius: 50%;
 }
 .pc-control-remind-all-btn.is-sending svg { animation:testing-control-pulse 1s infinite; }
-.pc-control-reminder-feedback { display:flex; flex-wrap:wrap; gap:6px 12px; font-size:11px; }
+.pc-control-reminder-feedback { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; text-align:center; width:100%; gap:6px 12px; font-size:11px; }
 .pc-control-reminder-feedback:empty { display:none; }
 .pc-control-reminder-feedback .is-sent,.pc-reminder-receipt.is-sent { color:#85bfa5; }
 .pc-control-reminder-feedback .is-error,.pc-reminder-receipt.is-unavailable { color:#cba796; }
@@ -976,13 +978,14 @@
     height: 10.5px;
 }
 
-/* 2-line layout for name in contribution when actions present */
+/* Same-line layout for Fullname and @nickname in contribution, wraps only if needed */
 .pc-activity--workspace .pc-person--contribution .pc-person__name {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    line-height: 1.25;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    line-height: 1.35;
 }
 .pc-activity--workspace .pc-person--contribution .pc-person__handle {
     max-width: 100%;
