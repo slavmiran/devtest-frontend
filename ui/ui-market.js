@@ -7657,11 +7657,11 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
 
         let actionBtnHtml = '';
         if (testerPools.canReward) {
-            actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+Отметить')}</button>`;
+            actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         } else if (issuedRewards.length >= 2) {
             actionBtnHtml = `<span class="karma-awarded-summary"><span class="karma-awarded-summary__label">${window.escapeHTML(window.t('karmaAwardIssuedLabel', {}, lang) || 'Награда')}</span><span class="karma-awarded-summary__value">${window.escapeHTML(issuedRewards.join(' · '))}</span></span>`;
         } else {
-            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+Отметить')}</button>`;
+            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         }
 
         return `<div class="karma-dist-row">

@@ -2368,7 +2368,7 @@
             karmaSelectNote: "Один тестер может получить оба типа наград. Карма повышает репутацию тестера и увеличивает выплату $BUST по грантам.",
             karmaRewardAlreadyGiven: "Уже выдано этому тестеру",
             karmaPoolExhausted: "Лимит наград исчерпан",
-            karmaRewardBtn: "+Отметить",
+            karmaRewardBtn: "+ Отметить",
             karmaAllRewarded: "✓ Награждён",
             karmaAwardIssuedLabel: "Награда:",
             karmaDistSubtitle: "Поощрите участников вашего проекта",

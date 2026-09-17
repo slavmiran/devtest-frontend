@@ -2362,7 +2362,7 @@
             karmaSelectNote: "One tester can receive both rewards. Karma raises the tester's reputation and increases $BUST grant payouts.",
             karmaRewardAlreadyGiven: "Already given to this tester",
             karmaPoolExhausted: "Reward limit reached",
-            karmaRewardBtn: "+Mark",
+            karmaRewardBtn: "+ Mark",
             karmaAllRewarded: "✓ Rewarded",
             karmaAwardIssuedLabel: "Award:",
             karmaDistSubtitle: "Reward contributors of your project",

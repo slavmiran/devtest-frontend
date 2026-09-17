@@ -2256,12 +2256,18 @@ function getScreenshotBoostOffer(test, testingDay) {
     if (catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
 
     var isControlDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day);
-    if (isControlDay && campaign.reward_control_days !== true) return null;
+    // The first successful check-in always carries the mandatory first-launch
+    // proof, even when it is overdue and therefore lands on day 2+. Treat it
+    // exactly like a control-day report for screenshot reward eligibility.
+    var isFirstMandatoryProof = Number(test.checkins_count || 0) <= 0
+        && !String(test.last_check_date || '').trim();
+    var isControlEquivalent = isControlDay || isFirstMandatoryProof;
+    if (isControlEquivalent && campaign.reward_control_days !== true) return null;
     return {
         reward: reward,
         pool: pool,
         day: day,
-        isControlDay: isControlDay,
+        isControlDay: isControlEquivalent,
     };
 }
 

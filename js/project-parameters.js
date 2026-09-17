@@ -126,11 +126,18 @@
                     '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' +
                 '</button>' +
             '</div>' +
-            (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email') + '<span>' + esc(text('pcParamsEmailAccess')) + '</span>' + CHEVRON + '</button>' : '') +
+            (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email') + '<span>' + emailAccessHtml() + '</span>' + CHEVRON + '</button>' : '') +
         '</div></div></div>';
     }
+    function emailAccessHtml() {
+        // Highlight only the Email/email word in buffer orange; keep the rest muted.
+        return esc(text('pcParamsEmailAccess')).replace(/(Email|email)/, '<span class="pc-project-params__email-word">$1</span>');
+    }
+    function isEmailList(project) {
+        return String(project && project.test_mode || '').toLowerCase() === 'email_list';
+    }
     function build(project) {
-        return '<section class="pc-project-params' + (expanded.has(projectKey(project)) ? ' is-expanded' : '') + '" id="project-parameters-' + Number(project.id || project.app_id) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
+        return '<section class="pc-project-params' + (expanded.has(projectKey(project)) ? ' is-expanded' : '') + (isEmailList(project) ? ' is-email-list' : '') + '" id="project-parameters-' + Number(project.id || project.app_id) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
     }
     function stop(event) { if (event) { event.preventDefault(); event.stopPropagation(); } }
     function toggle(id, event) {
@@ -153,6 +160,7 @@
         if (!panel) return;
         var focusKey = panel.contains(document.activeElement) ? document.activeElement.getAttribute('data-project-param') : null;
         panel.classList.toggle('is-expanded', expanded.has(projectKey(project)));
+        panel.classList.toggle('is-email-list', isEmailList(project));
         panel.innerHTML = content(project);
         if (focusKey) {
             var target = panel.querySelector('[data-project-param="' + focusKey + '"]');

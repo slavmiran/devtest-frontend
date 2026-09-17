@@ -21,6 +21,7 @@
         previewProofId: 0,
         previewMediaIndex: 0,
         previewMode: '',
+        previewOpenRequest: 0,
         previewMediaCache: new Map(),
         previewMediaCacheBytes: 0,
         previewMediaLoading: new Map(),
@@ -1306,30 +1307,37 @@
         var modal = document.getElementById('checkin-proof-preview-modal');
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
-        if (options) state.previewFallback = { proofId: id, imageCount: Number(options.imageCount || 1), title: String(options.title || ''), subtitle: String(options.subtitle || '') };
-        state.previewProofId = id;
-        state.previewMode = 'overview';
-        body.classList.remove('is-proof-album');
-        body.classList.add('is-proof-overview');
-        var meta = previewMeta(id);
-        document.getElementById('checkin-proof-preview-title').textContent = meta.title;
-        document.getElementById('checkin-proof-preview-subtitle').textContent = meta.subtitle;
-        syncProofPreviewViewport();
+        var requestId = ++state.previewOpenRequest;
+        var fallback = options
+            ? { proofId: id, imageCount: Number(options.imageCount || 1), title: String(options.title || ''), subtitle: String(options.subtitle || '') }
+            : null;
+        if (fallback) state.previewFallback = fallback;
         // Card data can be stale while an album is still being reconciled.
         // Decide between the one-image viewer and the album only after the
-        // proof endpoint returns its authoritative media count.
-        body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
-        modal.classList.add('active');
-        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        // proof endpoint returns its authoritative media count. Keep the
+        // modal closed while resolving it so the user never sees a redundant
+        // loading screen followed by a second opening animation.
         try {
             var details = await warmAlbumTickets(id, 'thumbnail');
-            if (state.previewProofId !== id || state.previewMode !== 'overview' || !modal.classList.contains('active')) return;
+            if (requestId !== state.previewOpenRequest) return;
             var count = Math.max(1, Math.min(5, Number(details.image_count || 1)));
-            if (state.previewFallback && state.previewFallback.proofId === id) state.previewFallback.imageCount = count;
+            if (fallback) fallback.imageCount = count;
             if (count <= 1) {
-                return openCheckinProofPreview(id, 0, state.previewFallback || options);
+                return openCheckinProofPreview(id, 0, fallback || options);
             }
+            state.previewProofId = id;
+            state.previewMode = 'overview';
+            body.classList.remove('is-proof-album');
+            body.classList.add('is-proof-overview');
+            var meta = previewMeta(id);
+            var title = document.getElementById('checkin-proof-preview-title');
+            var subtitle = document.getElementById('checkin-proof-preview-subtitle');
+            if (title) title.textContent = meta.title;
+            if (subtitle) subtitle.textContent = meta.subtitle;
             renderProofOverview(body, id, count);
+            syncProofPreviewViewport();
+            modal.classList.add('active');
+            if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
             body.querySelectorAll('.checkin-proof-overview-tile').forEach(function(tile) {
                 var index = Number(tile.dataset.mediaIndex);
                 var image = tile.querySelector('img');
@@ -1343,12 +1351,13 @@
                 for (var index = 0; index < count; index++) decodePreviewImage(previewMediumCacheGet(id, index));
             }).catch(function() {});
         } catch (_) {
-            if (state.previewProofId !== id || state.previewMode !== 'overview') return;
-            body.innerHTML = '<div class="checkin-proof-preview-error"><span>' + escape(text('testingControlMediaUnavailable', 'Images are temporarily unavailable.')) + '</span><button type="button" class="btn btn-secondary" onclick="openCheckinProofOverview(' + id + ')">' + escape(text('retry', 'Retry')) + '</button></div>';
+            if (requestId !== state.previewOpenRequest) return;
+            if (typeof showToast === 'function') showToast(text('testingControlMediaUnavailable', 'Images are temporarily unavailable.'));
         }
     }
 
     async function openCheckinProofPreview(proofId, mediaIndex, options) {
+        state.previewOpenRequest += 1;
         var safeProofId = Number(proofId || 0);
         if (!galleryEnabled() || safeProofId <= 0) return;
         if (options) {
@@ -1451,6 +1460,7 @@
     }
 
     async function openTestingControlFeedbackPreview(proofId) {
+        state.previewOpenRequest += 1;
         var safeProofId = Number(proofId || 0);
         if (!galleryEnabled() || safeProofId <= 0) return;
         var modal = document.getElementById('checkin-proof-preview-modal');
@@ -1508,6 +1518,7 @@
             body.innerHTML = '';
         }
         if (modal) modal.classList.remove('active');
+        state.previewOpenRequest += 1;
         state.previewProofId = 0;
         state.previewMediaIndex = 0;
         state.previewMode = '';
