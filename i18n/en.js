@@ -2978,6 +2978,7 @@
             banScreenAppealRejected: "Your appeal was rejected. The administration's decision is final.",
             banScreenAppealSentToast: "Appeal submitted successfully for review",
             banScreenAppealEmptyToast: "Please describe your reason in the appeal field (min 5 characters)",
+            banScreenAppealSendErrorToast: "Couldn't submit the appeal",
 
             // Admin Ban Action in Dossier Modal
             dossierBtnBan: "🛑 Ban user",
@@ -2989,6 +2990,7 @@
             banModalCancelBtn: "Cancel",
             banSuccessToast: "User has been banned successfully",
             banReasonRequiredToast: "Please specify the ban reason",
+            banActionFailedToast: "Couldn't complete the ban",
             cannot_ban_self: "You cannot ban your own account",
             cannot_ban_admin: "You cannot ban a platform administrator",
             user_banned_toast: "Your account has been banned",
@@ -3274,7 +3276,7 @@
             pcRewardedLabel: "Rewarded",
             pcAwardBadgeLabel: "Award:",
             pcBoostRewardBonusTitle: "Bonus for extra report: +{amount} $BUST",
-            pcBoostBonusToast: "This tester was awarded a screenshot report bonus from you today",
+            pcBoostBonusToast: "Today, a tester received a bonus from your rewards pool for submitting additional reports.",
             pcTicketRewardTitle: "Ticket reward: +{amount} $BUST",
             pcProcessBtn: "Process",
             pcProcessedLabel: "Processed",

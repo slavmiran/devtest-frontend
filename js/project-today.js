@@ -2990,7 +2990,7 @@
     };
 
     window.pcShowBoostBonusToast = function () {
-        var msg = text('pcBoostBonusToast', 'Этому тестеру сегодня был начислен бонус от вас за отчёт со скриншотом');
+        var msg = text('pcBoostBonusToast', 'Today, a tester received a bonus from your rewards pool for submitting additional reports.');
         if (typeof showToast === 'function') {
             showToast(msg);
         }

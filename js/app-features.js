@@ -4035,7 +4035,7 @@ async function submitSocialLink() {
             _socialBonusStatus = 'pending';
             renderEarnBustDynamic();
             closeSocialModal();
-            showToast(t.earnSocialSubmitted || 'Ссылка отправлена!');
+            showToast(t.earnSocialSubmitted || 'Link submitted for review!');
         } else {
             showToast(getApiErrorMessage(data, 'socialSubmitError'));
         }
@@ -4828,7 +4828,7 @@ async function submitBanAppeal() {
     } catch (err) {
         console.error('Failed to submit ban appeal:', err);
         if (typeof showToast === 'function') {
-            showToast('❌ Ошибка отправки апелляции');
+            showToast(window.t ? window.t('banScreenAppealSendErrorToast', {}, lang) : "Couldn't submit the appeal");
         }
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -4915,7 +4915,7 @@ async function submitBanUser() {
     } catch (err) {
         console.error('Failed to ban user:', err);
         if (typeof showToast === 'function') {
-            showToast('❌ Ошибка выполнения блокировки');
+            showToast(window.t ? window.t('banActionFailedToast', {}, lang) : "Couldn't complete the ban");
         }
     } finally {
         if (confirmBtn) {

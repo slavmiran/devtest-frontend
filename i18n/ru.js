@@ -2984,6 +2984,7 @@
             banScreenAppealRejected: "Ваша апелляция была отклонена. Решение администрации окончательное.",
             banScreenAppealSentToast: "Апелляция успешно отправлена на рассмотрение",
             banScreenAppealEmptyToast: "Пожалуйста, опишите причину в поле апелляции (минимум 5 символов)",
+            banScreenAppealSendErrorToast: "Не удалось отправить апелляцию",
 
             // Admin Ban Action in Dossier Modal
             dossierBtnBan: "🛑 Заблокировать",
@@ -2995,6 +2996,7 @@
             banModalCancelBtn: "Отмена",
             banSuccessToast: "Пользователь успешно заблокирован",
             banReasonRequiredToast: "Пожалуйста, укажите причину блокировки",
+            banActionFailedToast: "Не удалось выполнить блокировку",
             cannot_ban_self: "Вы не можете заблокировать собственный аккаунт",
             cannot_ban_admin: "Нельзя заблокировать администратора платформы",
             user_banned_toast: "Ваш аккаунт заблокирован",
@@ -3280,7 +3282,7 @@
             pcRewardedLabel: "Награждён",
             pcAwardBadgeLabel: "Награда:",
             pcBoostRewardBonusTitle: "Бонус за доп. отчёт: +{amount} $BUST",
-            pcBoostBonusToast: "Этому тестеру сегодня был начислен бонус от вас за отчёт со скриншотом",
+            pcBoostBonusToast: "Сегодня тестировщик получил бонус из вашего пула наград, за дополнительные отчеты",
             pcTicketRewardTitle: "Награда за тикет: +{amount} $BUST",
             pcProcessBtn: "Обработать",
             pcProcessedLabel: "Обработано",
