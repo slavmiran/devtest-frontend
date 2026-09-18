@@ -2134,8 +2134,8 @@
             topBadgeText = text('pcContribStatTop10', 'Топ-10');
         }
 
-        // Текст вклада: короткое и ёмкое "Вклад: {X}"
-        var pointsLabel = text('pcContribStatScoreVal', 'Вклад: {score}', { score: score });
+        // Текст вклада: короткое и ёмкое "Вклад {X}"
+        var pointsLabel = text('pcContribStatScoreVal', 'Вклад {score}', { score: score });
 
         var toneClass = '';
         var parts = [];
@@ -2152,18 +2152,15 @@
             });
             parts.push({ text: seriesLabel, cls: 'pc-contrib-stat-chip__seg--series' });
         }
-        // Сценарий 1: Новичок или отчеты ждут подтверждения разработчика
-        // Правило: НИКОГДА не писать "0% принятия"
+        // Сценарий 1: Новичок или отчеты ждут подтверждения разработчика (< 3 проверенных отчетов)
+        // Если даже отчетов нет (только скриншоты) — выводим просто: "Вклад {X} ⌵"
         else if (pendingCount > 0 || verifiedTotal < 3 || acceptanceRate === null || acceptanceRate === 0) {
-            // Если у тестера разовая акция со скриншотами (1-2 серии) без текста и без отчётов на проверке
-            if (seriesCount > 0 && !hasFeedbackToday && pendingCount === 0 && verifiedTotal === 0) {
-                parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
-            } else {
-                toneClass = ' pc-contrib-stat-chip--pending';
-                parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
-                var nPending = pendingCount > 0 ? pendingCount : Math.max(1, pendingToday);
-                var pendingLabel = text('pcContribStatPending', '{count} на проверке', { count: nPending });
-                parts.push({ text: pendingLabel, cls: 'pc-contrib-stat-chip__seg--pending' });
+            toneClass = ' pc-contrib-stat-chip--newbie';
+            parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
+            var hasReportsHistory = (submittedTotal > 0 || verifiedTotal > 0 || pendingCount > 0 || hasFeedbackToday);
+            if (hasReportsHistory) {
+                var newbieLabel = text('pcContribStatNewbie', 'Новичок');
+                parts.push({ text: newbieLabel, cls: 'pc-contrib-stat-chip__seg--newbie' });
             }
         }
         // Сценарий 3: Низкий процент (<40% при 3+ отчетах), нейтральный спокойный стиль
@@ -2792,8 +2789,8 @@
         }
         if (filter === 'attention') {
             return workspaceText(
-                'Сначала — 3 и более пропуска подряд, выход тестера и пропущенные действия. Ниже — ожидание доказательства, долг, прямая ссылка и разорванная взаимная связь. Долг и отсутствие взаимки сами по себе не означают нарушение.',
-                'First: 3 or more consecutive skips, departed testers and missed actions. Then: pending proof, test debt, direct links and broken mutual links. Debt or no mutual link alone does not mean a violation.'
+                'Внимание: участники с пропусками 3+ дней, выходом из теста или вопросами по взаимке. Проверьте риски, чтобы вовремя заменить неактивных.',
+                'Attention: participants with 3+ missed days, who left the test, or with mutual-test issues. Check the risks so you can replace inactive testers in time.'
             );
         }
         if (filter === 'control') {
@@ -2958,7 +2955,7 @@
 
         var hints = {
             contribution: workspaceText('Больше обычного чекина', 'Beyond a regular check-in'),
-            attention: workspaceText('Требуется ваше решение', 'Needs your decision'),
+            attention: workspaceText('Риски срыва', 'Disruption risks'),
             control: workspaceText('Контрольные отчёты сегодня', 'Control reports today'),
             testers: workspaceText('Текущий состав команды', 'Current team'),
         };

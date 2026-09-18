@@ -335,7 +335,9 @@
 }
 
 .pc-activity--workspace .pc-contrib-stat-chip__seg--rate,
-.pc-activity--workspace .pc-contrib-stat-chip__seg--series {
+.pc-activity--workspace .pc-contrib-stat-chip__seg--series,
+.pc-activity--workspace .pc-contrib-stat-chip__seg--newbie,
+.pc-activity--workspace .pc-contrib-stat-chip__seg--pending {
     color: #cbd5e1;
 }
 
@@ -362,7 +364,7 @@
     transform: translateY(0.5px);
 }
 
-/* Micro-accent: Low acceptance (< 40%) - calm golden/amber */
+/* Micro-accent: Low acceptance (< 40%) - calm golden/amber (ONLY colored accent allowed) */
 .pc-activity--workspace .pc-contrib-stat-chip--warn {
     border-color: rgba(251, 191, 36, 0.22);
 }
@@ -371,15 +373,10 @@
     font-weight: 550;
 }
 
-/* Micro-accent: Pending / Newbie status - calm blue-gray */
-.pc-activity--workspace .pc-contrib-stat-chip__seg--pending {
-    color: #93c5fd;
-}
-
-/* Micro-accent: Sprint top badge - calm golden/amber */
+/* Neutral: Top sprint badge (neutral light gray, no colored highlight) */
 .pc-activity--workspace .pc-contrib-stat-chip__top-badge {
-    color: #fbbf24;
-    font-weight: 600;
+    color: #cbd5e1;
+    font-weight: 550;
 }
 
 /* ───────────────────── Attention Tab: Cleaner Tester Rows (No outer box) ───────────────────── */
