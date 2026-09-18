@@ -672,6 +672,16 @@ html.tests-scrolling #tab-tests .test-card-highlight-pulse {
     animation-delay: 0.36s;
 }
 
+.feedback-pending-hint {
+    margin-top: 8px;
+    padding: 0 4px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--hint-color, #8e8e93);
+    text-align: center;
+}
+
 @keyframes feedbackPendingDotBounce {
     0%, 70%, 100% {
         transform: translateY(0);

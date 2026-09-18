@@ -4926,12 +4926,19 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
         '<span class="fb-micro-meta"> <span class="fb-micro-sep">·</span> ' + when + rewardHtml + '</span>';
 }
 
+function isFeedbackScreenshotPlaceholder(text) {
+    var value = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!value) return true;
+    return /приложен скриншот приложения/i.test(value)
+        || /app screenshot attached/i.test(value);
+}
+
 function getFeedbackPreviewText(item, isReviewTicket) {
     if (isReviewTicket) {
         return window.t('projectFeedbackReviewTicketText', {}, lang) || 'Google Play review';
     }
     const text = String((item && item.message_text) || '').replace(/\s+/g, ' ').trim();
-    if (text) return text;
+    if (text && !isFeedbackScreenshotPlaceholder(text)) return text;
     return window.t('projectFeedbackNoText', {}, lang) || 'No text';
 }
 
@@ -5520,7 +5527,7 @@ function renderProjectFeedbackCards(project, items) {
             var textBodyHtml = '';
             if (isReviewTicket) {
                 textBodyHtml = `<div class="fb-text">${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</div>`;
-            } else if (item.message_text) {
+            } else if (item.message_text && !isFeedbackScreenshotPlaceholder(item.message_text)) {
                 const escapedText = escapeHtmlWithBreaks(item.message_text);
                 const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
                 textBodyHtml = `<div class="fb-text fb-text--clamped" id="fbt-${item.id}" data-feedback-clamp="1" data-feedback-id="${item.id}">${escapedText}</div><a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" style="display:none;" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;

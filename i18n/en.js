@@ -1364,6 +1364,7 @@
             feedbackBotRedirectCheckinIdeaToast: "Go to the bot: describe the idea and attach a screenshot. Check-in will be counted, and +0.3 karma will be credited after owner confirmation.",
             feedbackBotRedirectToast: "Go to the bot chat to continue (+0.3 karma after confirmation).",
             feedbackCheckinPendingBtn: "⏳ Waiting for report in bot",
+            feedbackCheckinPendingHint: "⏳ Report is being reviewed. You can continue with other tests",
             feedbackCheckinPendingRestoredToast: "Bot session ended without counting the day. Confirm is ready again — no need to re-Open or wait the timer.",
             feedbackCheckinPendingClearedToast: "Bot session ended without counting the day. Open the card and finish check-in (resend idea/bug if needed).",
             feedbackMediaSentToast: "The screenshot has been sent to your bot chat!",

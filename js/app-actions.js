@@ -3074,6 +3074,29 @@ function markTestFeedbackCheckinPending(appId) {
     applyTestFeedbackCheckinPendingUi(normalizedId);
 }
 
+function _removeFeedbackPendingHint(card) {
+    if (!card) return;
+    card.querySelectorAll('.feedback-pending-hint').forEach(function(el) {
+        el.remove();
+    });
+}
+
+function _ensureFeedbackPendingHint(card) {
+    if (!card || card.querySelector('.feedback-pending-hint')) return;
+    var hint = document.createElement('div');
+    hint.className = 'feedback-pending-hint';
+    hint.textContent = window.t('feedbackCheckinPendingHint', {}, lang);
+    var anchor = card.querySelector('.checkin-actions')
+        || card.querySelector('.action-row')
+        || card.querySelector('.tstep-flow')
+        || card.querySelector('[id^="actions-"]');
+    if (anchor) {
+        anchor.insertAdjacentElement('afterend', hint);
+        return;
+    }
+    card.appendChild(hint);
+}
+
 function restoreCheckinReadyAfterFeedbackPending(appId) {
     var normalizedId = Number(appId || 0);
     if (normalizedId <= 0) return false;
@@ -3085,6 +3108,7 @@ function restoreCheckinReadyAfterFeedbackPending(appId) {
             splitGroup.classList.remove('is-feedback-pending');
         }
         _setSplitOptionsHidden(card.querySelector('.split-btn-options'), false);
+        _removeFeedbackPendingHint(card);
     }
     var payload = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(normalizedId) : null;
     var hasOpenToken = !!(typeof _getCheckinOpenToken === 'function' && _getCheckinOpenToken(normalizedId));
@@ -3112,6 +3136,10 @@ function clearTestFeedbackCheckinPending(appId) {
     var confirmBtn = document.getElementById('btn-confirm-' + normalizedId);
     if (confirmBtn) {
         confirmBtn.removeAttribute('data-feedback-pending');
+    }
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (card) {
+        _removeFeedbackPendingHint(card);
     }
 }
 
@@ -3153,6 +3181,7 @@ function applyTestFeedbackCheckinPendingUi(appId) {
 
     if (!card) return;
     _setSplitOptionsHidden(card.querySelector('.split-btn-options'), true);
+    _ensureFeedbackPendingHint(card);
 }
 
 function reapplyAllFeedbackCheckinPendingUi() {

@@ -2641,6 +2641,9 @@ function renderTests(force) {
             ? getFeedbackCheckinPendingLabelHtml()
             : window.escapeHTML(feedbackPendingBtnLabel);
         const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
+        const feedbackPendingHintHtml = isFeedbackCheckinPending
+            ? `<div class="feedback-pending-hint">${window.escapeHTML(window.t('feedbackCheckinPendingHint', {}, lang))}</div>`
+            : '';
 
         if (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail) {
             const leaveReasonRaw = String(test.leave_reason || '').trim();
@@ -2833,6 +2836,7 @@ function renderTests(force) {
             const hintHtml = renderCheckinRewardHint(test, 1, lang);
             actionsHtml = `
                 ${renderFirstDaySteps(test, safePackage, safeOwnerUsername)}
+                ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                 ${issueBtnHtml}
                 ${hintHtml}
             `;
@@ -2854,6 +2858,7 @@ function renderTests(force) {
                             </button>`}
                         </div>
                     </div>
+                    ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                     ${hintHtml}
                 `;
             } else {
@@ -2879,6 +2884,7 @@ function renderTests(force) {
                             ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}
                             </div>` : ''}
+                            ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                         </div>
                     `;
                 } else if (isFeedbackCheckinPending) {
@@ -2891,6 +2897,7 @@ function renderTests(force) {
                                 ${feedbackPendingBtnInner}
                             </button>
                         </div>
+                        ${feedbackPendingHintHtml}
                     `;
                 } else {
                     actionsHtml = `
