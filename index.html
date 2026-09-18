@@ -36,8 +36,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260918-boost-control-info-v1"></script>
-    <script src="./i18n/en.js?v=20260918-boost-control-info-v1"></script>
+    <script src="./i18n/ru.js?v=20260918-reward-modal-v1"></script>
+    <script src="./i18n/en.js?v=20260918-reward-modal-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260917-action-processing-v1"></script>
@@ -53,7 +53,7 @@
     <script src="./js/app-api.js?v=20260918-checkin-dev-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260918-boost-protection-v1"></script>
+    <script src="./js/app-actions.js?v=20260918-reward-modal-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260917-album-open-v2"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -67,7 +67,7 @@
 <script src="./js/bounty-applications.js?v=20260917-action-processing-v1"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260917-back-navigation-v1"></script>
-    <script src="./app.js?v=20260918-pending-hint-delay-v1"></script>
+    <script src="./app.js?v=20260918-reward-modal-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260822-recip-highlight-v1">
@@ -80,7 +80,7 @@
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260827-dossier-layout-v15">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260914-page-no-grabber-v1">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20260918-reward-modal-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260915-ppc-tight-buffer-v1">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260918-karma-limit-v2">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260916-done-proof-topic-v1">
@@ -2677,51 +2677,108 @@
     </div>
 
     <div id="feedback-reward-modal" class="modal-overlay" onclick="closeFeedbackRewardModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 data-i18n="feedbackRewardModalTitle">🎁 Поблагодарить / Закрыть</h3>
-            <p class="feedback-reward-subtitle" data-i18n="feedbackRewardModalDesc">Выберите награду тестеру за полезный фидбэк и закройте тикет.</p>
-
-            <div class="feedback-reward-target-card">
-                <div class="feedback-reward-target-title" id="feedback-reward-target-name">—</div>
-                <div class="feedback-reward-target-subtitle" id="feedback-reward-target-meta">—</div>
+        <div class="modal-content feedback-reward-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div class="feedback-reward-head">
+                <div class="feedback-reward-head-copy">
+                    <h3 data-i18n="feedbackRewardModalTitle">🎁 Поблагодарить / Закрыть</h3>
+                    <p class="feedback-reward-subtitle" data-i18n="feedbackRewardModalDesc">Выберите вознаграждение тестеру за фидбэк и завершите тикет.</p>
+                </div>
+                <button type="button" class="feedback-reward-close" onclick="closeFeedbackRewardModal()" aria-label="Close">×</button>
             </div>
 
-            <div class="feedback-reward-block">
+            <div class="feedback-reward-card feedback-reward-author">
+                <div class="feedback-reward-avatar" id="feedback-reward-avatar" aria-hidden="true">
+                    <span id="feedback-reward-avatar-initials">?</span>
+                    <span class="feedback-reward-type-badge" id="feedback-reward-type-badge">🐞</span>
+                </div>
+                <div class="feedback-reward-author-main">
+                    <div class="feedback-reward-author-row">
+                        <span class="feedback-reward-target-title" id="feedback-reward-target-name">—</span>
+                        <span class="feedback-reward-role-badge" data-i18n="feedbackRewardAuthorBadge">АВТОР</span>
+                    </div>
+                    <div class="feedback-reward-target-subtitle" id="feedback-reward-target-meta">—</div>
+                </div>
+                <div class="feedback-reward-contrib" id="feedback-reward-contrib">
+                    <div class="feedback-reward-contrib-label" data-i18n="feedbackRewardContribLabel">ВКЛАД</div>
+                    <div class="feedback-reward-contrib-chip" id="feedback-reward-contrib-chip">⚡ +5</div>
+                </div>
+            </div>
+
+            <div class="feedback-reward-card feedback-reward-block">
                 <div class="feedback-reward-block-head">
-                    <div class="feedback-reward-label" data-i18n="feedbackRewardBustLabel">$BUST</div>
+                    <div class="feedback-reward-label">
+                        <span data-i18n="feedbackRewardBustLabel">$BUST</span>
+                        <span class="feedback-reward-label-hint" data-i18n="feedbackRewardBustHint">токены проекта</span>
+                    </div>
                     <span class="feedback-reward-status-item" id="feedback-owner-balance">💎 0 $BUST</span>
                 </div>
                 <div class="chip-scroll feedback-reward-chips">
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-5" onclick="setFeedbackRewardBust(5)">5</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-10" onclick="setFeedbackRewardBust(10)">10</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-25" onclick="setFeedbackRewardBust(25)">25</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-50" onclick="setFeedbackRewardBust(50)">50</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-100" onclick="setFeedbackRewardBust(100)">100</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-5" onclick="setFeedbackRewardBust(5)">5</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-10" onclick="setFeedbackRewardBust(10)">10</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-25" onclick="setFeedbackRewardBust(25)">25</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-50" onclick="setFeedbackRewardBust(50)">50</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-100" onclick="setFeedbackRewardBust(100)">100</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-500" onclick="setFeedbackRewardBust(500)">500</button>
                 </div>
-                <input type="number" id="feedback-reward-bust-input" class="form-input" min="0" step="0.1" data-i18n-placeholder="feedbackRewardBustPlaceholder" style="margin-top: 10px;">
-                <div id="feedback-reward-pool-boost-container" class="feedback-reward-pool-boost" style="display: none;"></div>
+                <div class="feedback-reward-stepper">
+                    <button type="button" class="feedback-reward-stepper-btn" id="feedback-reward-bust-minus" onclick="nudgeFeedbackRewardBust(-5)" aria-label="-5">−</button>
+                    <div class="feedback-reward-stepper-value">
+                        <span id="feedback-reward-bust-display">0</span>
+                        <span class="feedback-reward-stepper-unit">$BUST</span>
+                    </div>
+                    <button type="button" class="feedback-reward-stepper-btn" id="feedback-reward-bust-plus" onclick="nudgeFeedbackRewardBust(5)" aria-label="+5">+</button>
+                </div>
+                <input type="number" id="feedback-reward-bust-input" class="form-input visually-hidden" min="0" step="0.1" tabindex="-1" aria-hidden="true">
+                <div id="feedback-reward-pool-boost-container" class="feedback-reward-pool-line" style="display: none;"></div>
             </div>
 
-            <div class="feedback-reward-block">
+            <div class="feedback-reward-card feedback-reward-block">
                 <div class="feedback-reward-block-head">
-                    <div class="feedback-reward-label" data-i18n="feedbackRewardKarmaLabel">Карма</div>
+                    <div class="feedback-reward-label">
+                        <span data-i18n="feedbackRewardKarmaLabel">Карма</span>
+                        <span class="feedback-reward-label-hint" data-i18n="feedbackRewardKarmaHint">репутация в хабе</span>
+                    </div>
                     <button type="button" class="feedback-reward-status-item feedback-reward-status-button" id="feedback-karma-status" onclick="showFeedbackRewardKarmaInfo()">0/0</button>
                 </div>
-                <div class="chip-scroll feedback-reward-chips">
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-0" onclick="setFeedbackRewardKarma(0)">0</button>
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-15" onclick="setFeedbackRewardKarma(1.5)">+1.5</button>
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-30" onclick="setFeedbackRewardKarma(3.0)">+3.0</button>
+                <div class="feedback-reward-karma-grid">
+                    <button type="button" class="feedback-reward-karma-choice" id="feedback-karma-chip-0" onclick="setFeedbackRewardKarma(0)">
+                        <span class="feedback-reward-karma-amount">0</span>
+                        <span class="feedback-reward-karma-caption" data-i18n="feedbackRewardKarmaNone">Без кармы</span>
+                    </button>
+                    <button type="button" class="feedback-reward-karma-choice" id="feedback-karma-chip-15" onclick="setFeedbackRewardKarma(1.5)">
+                        <span class="feedback-reward-karma-amount">+1.5</span>
+                        <span class="feedback-reward-karma-caption" data-i18n="feedbackRewardKarmaGood">Хороший тест</span>
+                    </button>
+                    <button type="button" class="feedback-reward-karma-choice" id="feedback-karma-chip-30" onclick="setFeedbackRewardKarma(3.0)">
+                        <span class="feedback-reward-karma-amount">+3.0</span>
+                        <span class="feedback-reward-karma-caption" data-i18n="feedbackRewardKarmaSpecial">Ценный вклад</span>
+                    </button>
                 </div>
                 <div id="feedback-reward-karma-warning" class="feedback-warning-banner" style="display: none;"></div>
             </div>
 
-            <div class="feedback-reward-block">
-                <div class="feedback-reward-label" data-i18n="feedbackRewardReplyLabel">Сообщение тестеру</div>
-                <textarea id="feedback-reward-reply" class="form-input" rows="4" style="resize: vertical;" data-i18n-placeholder="feedbackRewardReplyPlaceholder"></textarea>
+            <div class="feedback-reward-card feedback-reward-block">
+                <div class="feedback-reward-block-head">
+                    <div class="feedback-reward-label" data-i18n="feedbackRewardReplyLabel">Сообщение тестеру</div>
+                    <span class="feedback-reward-label-hint" data-i18n="feedbackRewardReplyOptional">Опционально</span>
+                </div>
+                <textarea id="feedback-reward-reply" class="form-input feedback-reward-reply" rows="4" data-i18n-placeholder="feedbackRewardReplyPlaceholder"></textarea>
+                <div class="feedback-reward-quick-row" role="group">
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="thanks" onclick="applyFeedbackRewardQuickReply('thanks')" data-i18n="feedbackRewardQuickThanks">👍 Спасибо за отчёт!</button>
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="bug" onclick="applyFeedbackRewardQuickReply('bug')" data-i18n="feedbackRewardQuickBug">🔧 Баг взят в работу</button>
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="idea" onclick="applyFeedbackRewardQuickReply('idea')" data-i18n="feedbackRewardQuickIdea">💡 Отличная идея</button>
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="noted" onclick="applyFeedbackRewardQuickReply('noted')" data-i18n="feedbackRewardQuickNoted">📌 Зафиксировали</button>
+                </div>
             </div>
 
-            <button class="btn btn-primary" id="feedback-reward-submit-btn" style="width: 100%; margin-top: 14px;" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет</button>
-            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRewardModal()" data-i18n="feedbackRewardCancelBtn">Отмена</button>
+            <div class="feedback-reward-summary" id="feedback-reward-summary">
+                <span class="feedback-reward-summary-label" data-i18n="feedbackRewardSummaryLabel">Итого к отправке:</span>
+                <span class="feedback-reward-summary-badges" id="feedback-reward-summary-badges"></span>
+            </div>
+
+            <button class="btn btn-primary feedback-reward-submit" id="feedback-reward-submit-btn" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет →</button>
+            <button type="button" class="feedback-reward-cancel-link" onclick="closeFeedbackRewardModal()" data-i18n="feedbackRewardCancelKeepOpen">Отмена (оставить тикет открытым)</button>
         </div>
     </div>
 

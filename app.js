@@ -332,6 +332,8 @@ Object.assign(window, {
     getPlayReviewUrl,
     setPlayReviewSubmittedPending,
     setFeedbackRewardBust,
+    nudgeFeedbackRewardBust,
+    applyFeedbackRewardQuickReply,
     setFeedbackRewardKarma,
     submitFeedbackReward,
     sendFeedback,

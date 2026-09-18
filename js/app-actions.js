@@ -3499,21 +3499,201 @@ async function initiateProjectFeedback(appId, options) {
     }
 }
 
-function setFeedbackRewardBust(amount) {
-    _feedbackRewardBust = Number(amount || 0);
-    const input = document.getElementById('feedback-reward-bust-input');
-    if (input) {
-        input.value = _feedbackRewardBust > 0 ? String(_feedbackRewardBust) : '';
+var FEEDBACK_REWARD_BUST_PRESETS = [5, 10, 25, 50, 100, 500];
+var FEEDBACK_REWARD_BUST_STEP = 5;
+var FEEDBACK_REWARD_CONTRIB_POINTS = { bug: 5, idea: 4, review: 3 };
+
+function getFeedbackRewardOwnerBalance() {
+    return Math.max(0, Number((typeof visibilityStats !== 'undefined' && visibilityStats && visibilityStats.balance_bust) || 0) || 0);
+}
+
+function getFeedbackRewardTicketKind(item) {
+    var type = String((item && item.type) || 'bug').toLowerCase();
+    if (type.indexOf('google_play_review') === 0 || type === 'review' || type === 'play_review') return 'review';
+    if (type === 'idea') return 'idea';
+    return 'bug';
+}
+
+function getFeedbackRewardContributionPoints(item) {
+    var kind = getFeedbackRewardTicketKind(item);
+    return Number(FEEDBACK_REWARD_CONTRIB_POINTS[kind] || FEEDBACK_REWARD_CONTRIB_POINTS.bug);
+}
+
+function feedbackRewardHasProof(item) {
+    if (!item) return false;
+    if (Array.isArray(item.media_urls) && item.media_urls.some(Boolean)) return true;
+    if (Array.isArray(item.tg_file_ids) && item.tg_file_ids.some(Boolean)) return true;
+    if (item.tg_file_id) return true;
+    if (item.screenshot_url || item.play_review_screenshot_url) return true;
+    return false;
+}
+
+function getFeedbackRewardSubtitleKey(item) {
+    var kind = getFeedbackRewardTicketKind(item);
+    var hasProof = feedbackRewardHasProof(item);
+    if (kind === 'idea') return hasProof ? 'feedbackRewardProofIdea' : 'feedbackRewardNoProofIdea';
+    if (kind === 'review') return hasProof ? 'feedbackRewardProofReview' : 'feedbackRewardNoProofReview';
+    return hasProof ? 'feedbackRewardProofBug' : 'feedbackRewardNoProofBug';
+}
+
+function getFeedbackRewardTypeBadge(item) {
+    var kind = getFeedbackRewardTicketKind(item);
+    if (kind === 'idea') return '💡';
+    if (kind === 'review') return '⭐';
+    return '🐞';
+}
+
+function getFeedbackRewardDisplayName(item) {
+    var fullName = String((item && item.tester_full_name) || '').trim();
+    if (fullName) return fullName;
+    var username = String((item && item.tester_username) || '').replace(/^@+/, '').trim();
+    if (username) return username;
+    return window.t('idLabel', { id: (item && item.tester_id) || 0 }, lang);
+}
+
+function getFeedbackRewardInitials(item) {
+    var source = String((item && (item.tester_full_name || item.tester_username)) || '?')
+        .trim()
+        .replace(/^@+/, '');
+    var letters = source.replace(/[^A-Za-zА-Яа-яЁё0-9]/g, ' ').trim();
+    if (!letters) letters = source;
+    var parts = letters.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
     }
-    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
-    [5, 10, 25, 50, 100].forEach(function(value) {
-        const chip = document.getElementById(`feedback-bust-chip-${value}`);
+    return (letters.substring(0, 2) || '?').toUpperCase();
+}
+
+function fillFeedbackRewardAuthorCard(item) {
+    var nameEl = document.getElementById('feedback-reward-target-name');
+    var metaEl = document.getElementById('feedback-reward-target-meta');
+    var contribEl = document.getElementById('feedback-reward-contrib-chip');
+    var badgeEl = document.getElementById('feedback-reward-type-badge');
+    var avatarEl = document.getElementById('feedback-reward-avatar');
+    var initialsEl = document.getElementById('feedback-reward-avatar-initials');
+    if (nameEl) nameEl.textContent = getFeedbackRewardDisplayName(item);
+    if (metaEl) {
+        metaEl.textContent = window.t(getFeedbackRewardSubtitleKey(item), {}, lang);
+    }
+    if (contribEl) {
+        contribEl.textContent = window.t('feedbackRewardContribChip', {
+            points: getFeedbackRewardContributionPoints(item)
+        }, lang);
+    }
+    if (badgeEl) badgeEl.textContent = getFeedbackRewardTypeBadge(item);
+    if (avatarEl) {
+        var existingImg = avatarEl.querySelector('img');
+        if (existingImg) existingImg.remove();
+        var hue = ((Number((item && item.tester_id) || 0) * 73 + 17) % 360);
+        avatarEl.style.setProperty('--av-hue', String(hue));
+        if (initialsEl) {
+            initialsEl.textContent = getFeedbackRewardInitials(item);
+            initialsEl.style.display = 'flex';
+        }
+        var avatarUrl = item && (item.tester_avatar_url || item.avatar_url);
+        if (avatarUrl) {
+            var img = document.createElement('img');
+            img.alt = '';
+            img.src = String(avatarUrl);
+            img.addEventListener('load', function() {
+                if (initialsEl) initialsEl.style.display = 'none';
+            });
+            img.addEventListener('error', function() {
+                img.remove();
+                if (initialsEl) initialsEl.style.display = 'flex';
+            });
+            avatarEl.insertBefore(img, avatarEl.firstChild);
+        }
+    }
+}
+
+function setFeedbackRewardBust(amount) {
+    var balance = getFeedbackRewardOwnerBalance();
+    var next = Math.max(0, Math.round(Number(amount || 0)));
+    if (next > balance) next = Math.floor(balance);
+    _feedbackRewardBust = next;
+    const input = document.getElementById('feedback-reward-bust-input');
+    if (input) input.value = String(_feedbackRewardBust);
+    var display = document.getElementById('feedback-reward-bust-display');
+    if (display) display.textContent = String(_feedbackRewardBust);
+    FEEDBACK_REWARD_BUST_PRESETS.forEach(function(value) {
+        const chip = document.getElementById('feedback-bust-chip-' + value);
         if (chip) {
             chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
             chip.classList.toggle('is-disabled', Number(value) > balance);
+            chip.disabled = Number(value) > balance;
         }
     });
+    var minusBtn = document.getElementById('feedback-reward-bust-minus');
+    var plusBtn = document.getElementById('feedback-reward-bust-plus');
+    if (minusBtn) minusBtn.disabled = _feedbackRewardBust <= 0;
+    if (plusBtn) plusBtn.disabled = _feedbackRewardBust >= balance;
     _updateFeedbackRewardSubmitState();
+}
+
+function nudgeFeedbackRewardBust(delta) {
+    var direction = Number(delta) < 0 ? -1 : 1;
+    setFeedbackRewardBust(_feedbackRewardBust + (direction * FEEDBACK_REWARD_BUST_STEP));
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function applyFeedbackRewardQuickReply(kind) {
+    var keyMap = {
+        thanks: 'feedbackRewardQuickThanks',
+        bug: 'feedbackRewardQuickBug',
+        idea: 'feedbackRewardQuickIdea',
+        noted: 'feedbackRewardQuickNoted'
+    };
+    var key = keyMap[String(kind || '')];
+    var reply = document.getElementById('feedback-reward-reply');
+    if (!key || !reply) return;
+    reply.value = window.t(key, {}, lang);
+    syncFeedbackRewardQuickReplyState();
+    _updateFeedbackRewardSubmitState();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function syncFeedbackRewardQuickReplyState() {
+    var reply = document.getElementById('feedback-reward-reply');
+    var current = reply ? String(reply.value || '').trim() : '';
+    document.querySelectorAll('#feedback-reward-modal .feedback-reward-quick-chip').forEach(function(chip) {
+        var kind = chip.getAttribute('data-quick') || '';
+        var keyMap = {
+            thanks: 'feedbackRewardQuickThanks',
+            bug: 'feedbackRewardQuickBug',
+            idea: 'feedbackRewardQuickIdea',
+            noted: 'feedbackRewardQuickNoted'
+        };
+        var expected = keyMap[kind] ? String(window.t(keyMap[kind], {}, lang) || '').trim() : '';
+        chip.classList.toggle('is-active', !!expected && expected === current);
+    });
+}
+
+function updateFeedbackRewardSummary() {
+    var wrap = document.getElementById('feedback-reward-summary-badges');
+    if (!wrap) return;
+    var bits = [];
+    if (_feedbackRewardBust > 0) {
+        bits.push('<span class="feedback-reward-summary-bust">' +
+            window.escapeHTML(formatBustAmount(_feedbackRewardBust) + ' $BUST') +
+            '</span>');
+    }
+    if (_feedbackRewardKarma > 0) {
+        var karmaLabel = window.t('feedbackRewardSummaryKarma', {
+            amount: Number(_feedbackRewardKarma).toFixed(1)
+        }, lang);
+        var karmaHtml = (typeof window.withKarmaIcon === 'function')
+            ? window.withKarmaIcon(window.escapeHTML(karmaLabel), 'karma-yin-icon--inline', { after: true })
+            : window.escapeHTML(karmaLabel);
+        bits.push('<span class="feedback-reward-summary-karma">' + karmaHtml + '</span>');
+    }
+    if (!bits.length) {
+        wrap.innerHTML = '<span class="feedback-reward-summary-empty">' +
+            window.escapeHTML(window.t('feedbackRewardSummaryEmpty', {}, lang)) +
+            '</span>';
+        return;
+    }
+    wrap.innerHTML = bits.join('');
 }
 
 function setFeedbackRewardKarma(amount) {
@@ -3621,9 +3801,10 @@ function updateFeedbackRewardKarmaStatus(project) {
     if (!karmaEl) return;
     var meta = buildFeedbackRewardKarmaMeta(project);
     var label = String(meta.statusLabel || '');
-    karmaEl.innerHTML = (typeof window.withKarmaIcon === 'function')
+    var labelHtml = (typeof window.withKarmaIcon === 'function')
         ? window.withKarmaIcon(window.escapeHTML(label))
         : window.escapeHTML(label);
+    karmaEl.innerHTML = labelHtml + ' <span class="feedback-reward-status-info" aria-hidden="true">ℹ️</span>';
     karmaEl.dataset.toast = meta.toastText || '';
 }
 
@@ -3944,26 +4125,11 @@ function openFeedbackRewardModal(appId, feedbackId) {
     var project = getFeedbackRewardProject();
     var item = getFeedbackRewardItem();
 
-    var balance = (typeof visibilityStats !== 'undefined' && visibilityStats && visibilityStats.balance_bust) || 0;
+    var balance = getFeedbackRewardOwnerBalance();
     var balanceEl = document.getElementById('feedback-owner-balance');
     if (balanceEl) balanceEl.textContent = window.t('feedbackRewardBustStatus', { amount: formatBustAmount(balance) }, lang);
 
-    var targetNameEl = document.getElementById('feedback-reward-target-name');
-    var targetMetaEl = document.getElementById('feedback-reward-target-meta');
-    if (targetNameEl) {
-        var fullName = (item && item.tester_full_name) || '';
-        var username = item && item.tester_username ? '@' + String(item.tester_username).replace(/^@+/, '') : '';
-        var fallback = window.t('idLabel', { id: item && item.tester_id ? item.tester_id : 0 }, lang);
-        targetNameEl.textContent = fullName || username || fallback;
-    }
-    if (targetMetaEl) {
-        var usernameText = item && item.tester_username ? '@' + String(item.tester_username).replace(/^@+/, '') : '';
-        var fullNameText = (item && item.tester_full_name) || '';
-        var parts = [];
-        if (fullNameText && usernameText) parts.push(usernameText);
-        if (item && item.message_text) parts.push(window.t('feedbackRewardTargetHint', {}, lang));
-        targetMetaEl.textContent = parts.join(' • ') || window.t('feedbackRewardTargetHint', {}, lang);
-    }
+    fillFeedbackRewardAuthorCard(item);
 
     // Evaluate limits
     var thanksAvailable = item ? (item.thanks_available !== false) : true;
@@ -4001,15 +4167,10 @@ function openFeedbackRewardModal(appId, feedbackId) {
             ? window.getTesterTodayBoost(appId, testerId)
             : 0;
         if (poolBoost > 0) {
-            var poolLabel = (typeof window.t === 'function' ? window.t('feedbackRewardPoolAwardedToday', {}, lang) : '') || 'Выдано сегодня из пула:';
-            var chipTitle = (typeof window.t === 'function' ? window.t('pcBoostRewardBonusTitle', { amount: poolBoost }, lang) : '') || ('Бонус за доп. отчёт: +' + poolBoost + ' $BUST');
-            poolBoostContainer.innerHTML = '<span class="feedback-reward-pool-boost__label">' + window.escapeHTML(poolLabel) + '</span>' +
-                '<button type="button" class="pc-award-badge pc-award-badge--boost" onclick="pcShowBoostBonusToast();" title="' + window.escapeHTML(chipTitle) + '">' +
-                    '<span class="pc-award-badge__value">$BUST ' + window.escapeHTML(poolBoost) + ' 🎁</span>' +
-                '</button>';
-            poolBoostContainer.style.display = 'flex';
+            poolBoostContainer.textContent = window.t('feedbackRewardPoolAwardedToday', { amount: poolBoost }, lang);
+            poolBoostContainer.style.display = 'block';
         } else {
-            poolBoostContainer.innerHTML = '';
+            poolBoostContainer.textContent = '';
             poolBoostContainer.style.display = 'none';
         }
     }
@@ -4019,26 +4180,15 @@ function openFeedbackRewardModal(appId, feedbackId) {
     }
     setFeedbackRewardBust(0);
     setFeedbackRewardKarma(0);
-    const input = document.getElementById('feedback-reward-bust-input');
     const reply = document.getElementById('feedback-reward-reply');
-    if (input) {
-        input.value = '';
-        input.oninput = function() {
-            _feedbackRewardBust = Number(input.value || 0);
-            [5, 10, 25, 50, 100].forEach(function(value) {
-                const chip = document.getElementById(`feedback-bust-chip-${value}`);
-                if (chip) {
-                    chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
-                    chip.classList.toggle('is-disabled', Number(value) > balance);
-                }
-            });
+    if (reply) {
+        reply.value = '';
+        reply.oninput = function() {
+            syncFeedbackRewardQuickReplyState();
             _updateFeedbackRewardSubmitState();
         };
     }
-    if (reply) {
-        reply.value = '';
-        reply.oninput = function() { _updateFeedbackRewardSubmitState(); };
-    }
+    syncFeedbackRewardQuickReplyState();
     _updateFeedbackRewardSubmitState();
 }
 
@@ -4060,6 +4210,7 @@ function _updateFeedbackRewardSubmitState() {
     var enabled = hasReward || hasReply;
     btn.disabled = !enabled;
     btn.style.opacity = enabled ? '1' : '0.4';
+    updateFeedbackRewardSummary();
 }
 
 var _feedbackRewardSubmitting = false;
@@ -5290,6 +5441,16 @@ function triggerFeedbackAutoAdvance(currentFeedbackId) {
 window.triggerFeedbackAutoAdvance = triggerFeedbackAutoAdvance;
 
 window.handleFeedbackAcceptClick = handleFeedbackAcceptClick;
+window.nudgeFeedbackRewardBust = nudgeFeedbackRewardBust;
+window.applyFeedbackRewardQuickReply = applyFeedbackRewardQuickReply;
+window.setFeedbackRewardBust = setFeedbackRewardBust;
+window.setFeedbackRewardKarma = setFeedbackRewardKarma;
+window.openFeedbackRewardModal = openFeedbackRewardModal;
+window.closeFeedbackRewardModal = closeFeedbackRewardModal;
+window.getFeedbackRewardContributionPoints = getFeedbackRewardContributionPoints;
+window.getFeedbackRewardTicketKind = getFeedbackRewardTicketKind;
+window.feedbackRewardHasProof = feedbackRewardHasProof;
+window.getFeedbackRewardSubtitleKey = getFeedbackRewardSubtitleKey;
 
 window.updateIconPreview = updateIconPreview;
 
