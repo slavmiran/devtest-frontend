@@ -7612,7 +7612,11 @@ function getProjectKarmaPools(project, testerId) {
     const thanksUsed = Math.max(0, Number(payload.thanks_used || 0) || 0);
     const specialUsed = Math.max(0, Number(payload.special_used || 0) || 0);
     const likes = Array.isArray(payload.likes) ? payload.likes : [];
+    const rewardedTodayTesterIds = Array.isArray(payload.rewarded_today_tester_ids)
+        ? payload.rewarded_today_tester_ids.map(id => Number(id || 0))
+        : [];
     const safeTesterId = Number(testerId || 0);
+    const rewardedToday = safeTesterId > 0 && rewardedTodayTesterIds.includes(safeTesterId);
     const hasThanks = safeTesterId > 0 && likes.some(function(like) {
         return Number(like.tester_id) === safeTesterId && String(like.type || '').toLowerCase() === 'good';
     });
@@ -7630,9 +7634,10 @@ function getProjectKarmaPools(project, testerId) {
         specialAvailable: specialAvailable,
         hasThanks: hasThanks,
         hasSpecial: hasSpecial,
-        canGiveThanks: thanksAvailable > 0 && !hasThanks,
-        canGiveSpecial: specialAvailable > 0 && !hasSpecial,
-        canReward: (thanksAvailable > 0 && !hasThanks) || (specialAvailable > 0 && !hasSpecial),
+        rewardedToday: rewardedToday,
+        canGiveThanks: thanksAvailable > 0 && !rewardedToday,
+        canGiveSpecial: specialAvailable > 0 && !rewardedToday,
+        canReward: (thanksAvailable > 0 && !rewardedToday) || (specialAvailable > 0 && !rewardedToday),
     };
 }
 
@@ -7713,8 +7718,8 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
         let actionBtnHtml = '';
         if (testerPools.canReward) {
             actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
-        } else if (issuedRewards.length >= 2) {
-            actionBtnHtml = `<span class="karma-awarded-summary"><span class="karma-awarded-summary__label">${window.escapeHTML(window.t('karmaAwardIssuedLabel', {}, lang) || 'Награда')}</span><span class="karma-awarded-summary__value">${window.escapeHTML(issuedRewards.join(' · '))}</span></span>`;
+        } else if (testerPools.rewardedToday) {
+            actionBtnHtml = `<span class="karma-awarded-summary"><span class="karma-awarded-summary__label">${window.escapeHTML(window.t('karmaAwardIssuedLabel', {}, lang) || 'Награда')}</span><span class="karma-awarded-summary__value">${window.escapeHTML(window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today')}</span></span>`;
         } else {
             actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         }
@@ -10725,6 +10730,15 @@ function openKarmaSelectPopup(appId, testerId) {
     const bugBtn = document.getElementById('karma-btn-bug') || document.querySelector('#karma-select-popup .popup-btn.bug');
     const goodStatus = document.getElementById('karma-status-good');
     const bugStatus = document.getElementById('karma-status-bug');
+    const testerLimitNote = document.getElementById('karma-select-tester-limit');
+    const testerRewardedToday = pools.rewardedToday;
+
+    if (testerLimitNote) {
+        testerLimitNote.hidden = !testerRewardedToday;
+        testerLimitNote.textContent = testerRewardedToday
+            ? (window.t('karmaTesterRewardedToday', {}, lang) || 'A reward has already been issued to this tester today. The next reward can be issued tomorrow.')
+            : '';
+    }
 
     if (goodBtn) {
         goodBtn.disabled = !pools.canGiveThanks;
@@ -10736,8 +10750,8 @@ function openKarmaSelectPopup(appId, testerId) {
     }
 
     if (goodStatus) {
-        if (pools.hasThanks) {
-            goodStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+        if (testerRewardedToday) {
+            goodStatus.textContent = window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today';
             goodStatus.className = 'karma-option-status is-given';
         } else if (pools.thanksAvailable <= 0) {
             goodStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
@@ -10749,8 +10763,8 @@ function openKarmaSelectPopup(appId, testerId) {
     }
 
     if (bugStatus) {
-        if (pools.hasSpecial) {
-            bugStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+        if (testerRewardedToday) {
+            bugStatus.textContent = window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today';
             bugStatus.className = 'karma-option-status is-given';
         } else if (pools.specialAvailable <= 0) {
             bugStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';

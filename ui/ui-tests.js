@@ -2276,17 +2276,23 @@ function formatScreenshotBoostAmount(value) {
     return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
 }
 
+function formatScreenshotBoostStickerAmount(value) {
+    var number = Number(value || 0);
+    if (!Number.isFinite(number)) number = 0;
+    return (Math.round(number * 100) / 100).toFixed(2);
+}
+
 function getScreenshotBoostPaperclipContent(appId) {
     var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id || 0) === Number(appId || 0);
     });
     var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
     // The button itself already draws the canonical paperclip with ::before.
-    // Keep its contents to the amount only, otherwise both icons are visible.
+    // Reward amount lives on a corner sticker so the clip stays centered.
     var html = '';
     if (offer) {
-        html += '<span class="split-btn-options__boost">+' +
-            window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $</span>';
+        html += '<span class="split-btn-options__boost" aria-hidden="true">+$' +
+            window.escapeHTML(formatScreenshotBoostStickerAmount(offer.reward)) + '</span>';
     }
     if (hasOpenControlProofCatchup(test)) {
         html += '<span class="split-btn-options__catchup-cam" aria-hidden="true"></span>';

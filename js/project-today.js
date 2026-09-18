@@ -626,7 +626,7 @@
         var stateCls = opts.received ? ' is-received' : (opts.waiting ? ' is-waiting' : '');
         var rowCls = opts.rowClass ? ' ' + String(opts.rowClass) : '';
         var timeAgoHtml = opts.timeAgoText
-            ? '<span class="pc-person__time-ago"> • ' + esc(opts.timeAgoText) + '</span>'
+            ? '<span class="pc-person__time-ago">' + esc(opts.timeAgoText) + '</span>'
             : '';
         var rawUsername = String(tester.username || '').trim().replace(/^@+/, '');
         var nameHtml = '';
@@ -642,7 +642,9 @@
                 '<button type="button" class="pc-person__handle pc-person__handle--link pc-person__handle--reveal" ' +
                     'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
                     'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
+                timeAgoHtml +
             '</span>';
+            timeAgoHtml = '';
         } else {
             nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(primaryName) + '</span>';
         }
@@ -1179,25 +1181,9 @@
             }
         }
         var targetTesterId = Number((item && item.testerId) || (opts && opts.testerId) || 0);
-        var hasBugOrFeedbackInGroup = Array.isArray(opts && opts.reasons) && opts.reasons.some(function (r) {
-            var rType = String(r && (r.kind || r.proofType) || '');
-            var rFbId = Number(r && (r.feedbackId || (r.feedback && r.feedback.id)) || 0);
-            return rType === 'bug' || rType === 'idea' || rFbId > 0;
-        });
-        var shouldAwardKarma = (type === 'bug' || feedbackId > 0) || (!hasBugOrFeedbackInGroup && type === 'screenshot');
-        if (!itemKarma && targetTesterId > 0 && opts && opts.context && opts.context.rewardTypesByTester) {
-            var testerRewards = opts.context.rewardTypesByTester[targetTesterId] || [];
-            if (testerRewards.length > 0 && shouldAwardKarma) {
-                var firstReward = testerRewards[0];
-                if (firstReward === 'good') itemKarma = 1.5;
-                else if (firstReward === 'bug') itemKarma = 3.0;
-                else if (firstReward === 'overtime') itemKarma = 2.0;
-                else itemKarma = 1.5;
-            }
-        }
-        if (!itemBust && targetTesterId > 0 && opts && opts.context && (type === 'bug' || feedbackId > 0)) {
-            itemBust = getTesterAwardedBust(opts.context, targetTesterId, item);
-        }
+        // A reward belongs to one feedback record, not to every later report
+        // from the same tester. Do not infer it from the tester's reward history:
+        // that showed yesterday's reward on today's new ticket.
 
         var boostBust = Number(item && (item.boostBust || item.boost_bust) || 0);
         if (!boostBust && targetTesterId > 0 && opts && opts.context) {
@@ -1924,7 +1910,7 @@
 
         var list = root.querySelector('.pc-act-list');
         if (!list) return;
-        var buttons = Array.from(list.querySelectorAll('.pc-reward-accent-btn'));
+        var buttons = Array.from(list.querySelectorAll('.pc-reward-accent-btn:not(.is-tester-rewarded-today)'));
         if (!buttons.length) {
             stopKarmaSparkle(safeAppId);
             return;
@@ -2019,11 +2005,19 @@
                 '</span>' +
             '</span>';
         }
-        return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward" ' +
-            'title="' + esc(text('pcRewardBtn', 'Reward')) + '" ' +
-            'aria-label="' + esc(text('pcRewardBtn', 'Reward')) + '" ' +
+        var rewardedToday = !!opts.rewardedToday;
+        var label = rewardedToday
+            ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
+            : text('pcRewardBtn', 'Reward');
+        var completeMarkHtml = rewardedToday
+            ? '<span class="pc-reward-accent-btn__complete" aria-hidden="true">✓</span>'
+            : '';
+        return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' + (rewardedToday ? ' is-tester-rewarded-today' : '') + '" ' +
+            'title="' + esc(label) + '" ' +
+            'aria-label="' + esc(label) + '" ' +
             'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')">' +
             '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
+            completeMarkHtml +
             orbitHtml +
         '</button>';
     }
@@ -2035,41 +2029,31 @@
             return contributionPriority(left, context) - contributionPriority(right, context);
         });
 
-        var unrewardedTesters = sorted.filter(function (it) {
-            return context.rewardedTesterIds.indexOf(Number(it.testerId)) === -1;
+        var eligibleTesters = sorted.filter(function (it) {
+            return rewardStateForTester(context, it.testerId).canReward;
         });
         var initialSparkleTesterId = 0;
         var initialSparkleMode = SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)];
         var initialSparkleTilt = (Math.floor(Math.random() * 40) - 20) + 'deg';
-        if (unrewardedTesters.length > 0) {
-            var startIdx = Math.floor(Math.random() * unrewardedTesters.length);
-            initialSparkleTesterId = Number(unrewardedTesters[startIdx].testerId);
+        if (eligibleTesters.length > 0) {
+            var startIdx = Math.floor(Math.random() * eligibleTesters.length);
+            initialSparkleTesterId = Number(eligibleTesters[startIdx].testerId);
         }
 
         return '<ul class="pc-act-list">' + sorted.map(function (item) {
-            var rewarded = context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
+            var rewardState = rewardStateForTester(context, item.testerId);
             var headerActionsHtml = '';
             var boostBust = getTesterBoostBust(context, item.testerId, item);
             var boostBustHtml = boostRewardBadgeHtml(boostBust);
-
-            var hasSubrowAwards = Array.isArray(item.reasons) && item.reasons.length > 0;
-
-            if (rewarded) {
-                if (!hasSubrowAwards) {
-                    headerActionsHtml = awardedRewardBadgeHtml(context, item.testerId, item);
-                }
-            } else {
-                var rewardBtnHtml = '';
-                if (context.rewardsLeft > 0) {
-                    var isInitialTarget = Number(item.testerId) === initialSparkleTesterId;
-                    rewardBtnHtml = rewardAccentButtonHtml(appId, item.testerId, {
-                        hasSparkle: isInitialTarget,
-                        mode: initialSparkleMode,
-                        tilt: initialSparkleTilt,
-                        duration: '3.8s',
-                    });
-                }
-                headerActionsHtml = rewardBtnHtml;
+            if (rewardState.canReward || rewardState.rewardedToday) {
+                var isInitialTarget = rewardState.canReward && Number(item.testerId) === initialSparkleTesterId;
+                headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                    hasSparkle: isInitialTarget,
+                    mode: initialSparkleMode,
+                    tilt: initialSparkleTilt,
+                    duration: '3.8s',
+                    rewardedToday: rewardState.rewardedToday,
+                });
             }
 
             var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item });
@@ -2078,7 +2062,7 @@
             return personRowHtml({
                 appId: appId,
                 tester: item.tester,
-                tone: rewarded ? 'green' : 'sky',
+                tone: rewardState.rewardedToday ? 'green' : 'sky',
                 rowClass: 'pc-person--contribution',
                 metaHtml: '',
                 actionsHtml: headerActionsHtml,
@@ -3009,8 +2993,12 @@
 
     function contextFor(project) {
         var rewardTypesByTester = {};
+        var rewardedTodayTesterIds = Array.isArray(project.rewarded_today_tester_ids)
+            ? project.rewarded_today_tester_ids.map(function (id) { return Number(id || 0); }).filter(function (id) { return id > 0; })
+            : [];
         var rewardBustByTester = {};
-        (project.likes || []).forEach(function (like) {
+        var likes = Array.isArray(project.likes) ? project.likes : [];
+        likes.forEach(function (like) {
             var testerId = Number(like && like.tester_id || 0);
             var type = String(like && like.type || '').toLowerCase();
             if (!testerId) return;
@@ -3027,13 +3015,37 @@
                 if (bust > 0) rewardBustByTester[testerId] = bust;
             }
         });
+        var fallbackThanksUsed = likes.filter(function (like) {
+            return String(like && like.type || '').toLowerCase() === 'good';
+        }).length;
+        var fallbackSpecialUsed = likes.filter(function (like) {
+            return String(like && like.type || '').toLowerCase() === 'bug';
+        }).length;
+        var thanksMax = project.thanks_max != null ? Number(project.thanks_max || 0) : 2;
+        var specialMax = project.special_max != null ? Number(project.special_max || 0) : 1;
+        var thanksUsed = project.thanks_used != null ? Number(project.thanks_used || 0) : fallbackThanksUsed;
+        var specialUsed = project.special_used != null ? Number(project.special_used || 0) : fallbackSpecialUsed;
         return {
             project: project,
             rewardsLeft: Math.max(0, Number(project.likes_max || 0) - Number(project.likes_used || 0)),
             rewardedTesterIds: (project.likes || []).map(function (like) { return Number(like.tester_id || 0); }),
             rewardTypesByTester: rewardTypesByTester,
+            rewardedTodayTesterIds: rewardedTodayTesterIds,
             rewardBustByTester: rewardBustByTester,
+            thanksLeft: Math.max(0, thanksMax - thanksUsed),
+            specialLeft: Math.max(0, specialMax - specialUsed),
             screenshotBoostCampaign: project.screenshot_boost_campaign || null,
+        };
+    }
+
+    function rewardStateForTester(context, testerId) {
+        var safeTesterId = Number(testerId || 0);
+        var rewardedToday = !!(context && context.rewardedTodayTesterIds && context.rewardedTodayTesterIds.indexOf(safeTesterId) !== -1);
+        var canGiveThanks = !rewardedToday && Number(context && context.thanksLeft || 0) > 0;
+        var canGiveSpecial = !rewardedToday && Number(context && context.specialLeft || 0) > 0;
+        return {
+            canReward: canGiveThanks || canGiveSpecial,
+            rewardedToday: rewardedToday,
         };
     }
 
@@ -3181,11 +3193,14 @@
     window.pcRevealTesterNickname = function (trigger, event) {
         if (event) event.stopPropagation();
         var identity = trigger && trigger.closest ? trigger.closest('.pc-person__identity') : null;
-        if (!identity || identity.classList.contains('is-nickname-revealed')) return;
-        identity.classList.add('is-nickname-revealed');
-        trigger.setAttribute('aria-expanded', 'true');
+        if (!identity) return;
+        var revealed = identity.classList.toggle('is-nickname-revealed');
+        trigger.setAttribute('aria-expanded', revealed ? 'true' : 'false');
         var handle = identity.querySelector('.pc-person__handle--reveal');
-        if (handle) handle.removeAttribute('tabindex');
+        if (handle) {
+            if (revealed) handle.removeAttribute('tabindex');
+            else handle.setAttribute('tabindex', '-1');
+        }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 

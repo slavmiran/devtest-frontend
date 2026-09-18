@@ -3515,6 +3515,11 @@ function setFeedbackRewardKarma(amount) {
     }
     var alreadyThanked = item ? !!item.tester_already_thanked : false;
     var alreadySpecial = item ? !!item.tester_already_special : false;
+    var rewardedToday = item ? !!item.tester_rewarded_today : false;
+    if (rewardedToday) {
+        alreadyThanked = true;
+        alreadySpecial = true;
+    }
     if (!item || (item.tester_already_thanked == null && item.tester_already_special == null && item.tester_already_rewarded_karma)) {
         alreadyThanked = !!item && !!item.tester_already_rewarded_karma;
         alreadySpecial = alreadyThanked;
@@ -3955,7 +3960,12 @@ function openFeedbackRewardModal(appId, feedbackId) {
     var isKarmaAvailable = item ? (item.project_karma_available !== false && (thanksAvailable || specialAvailable)) : true;
     var alreadyThanked = item ? !!item.tester_already_thanked : false;
     var alreadySpecial = item ? !!item.tester_already_special : false;
-    var isTesterFullyRewarded = (alreadyThanked && alreadySpecial) || (item && item.tester_already_rewarded_karma && item.tester_already_thanked == null && item.tester_already_special == null);
+    var rewardedToday = item ? !!item.tester_rewarded_today : false;
+    if (rewardedToday) {
+        alreadyThanked = true;
+        alreadySpecial = true;
+    }
+    var isTesterFullyRewarded = rewardedToday || (alreadyThanked && alreadySpecial) || (item && item.tester_already_rewarded_karma && item.tester_already_thanked == null && item.tester_already_special == null);
     var hasAnyKarmaOption = (thanksAvailable && !alreadyThanked) || (specialAvailable && !alreadySpecial);
 
     var warningEl = document.getElementById('feedback-reward-karma-warning');
