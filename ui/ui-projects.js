@@ -895,11 +895,22 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
             </div>
         </div>
         <p id="screenshot-boost-budget-preview" class="screenshot-boost-budget-preview" aria-live="polite"></p>
-        <label class="screenshot-boost-control-row">
-            <input id="screenshot-boost-control-days" type="checkbox" ${campaign.reward_control_days ? 'checked' : ''}>
-            <span class="screenshot-boost-control-check" aria-hidden="true"></span>
-            <span><strong>${window.escapeHTML(window.t('screenshotBoostControlLabel', {}, lang))}</strong><small>1 · 4 · 7 · 10 · 14</small></span>
-        </label>
+        <div class="screenshot-boost-control-row screenshot-boost-protection-row">
+            <label class="screenshot-boost-protection-choice">
+                <input id="screenshot-boost-control-days" type="checkbox" ${campaign.reward_control_days ? 'checked' : ''}>
+                <span class="screenshot-boost-control-check" aria-hidden="true"></span>
+                <span>
+                    <strong>${window.escapeHTML(window.t('screenshotBoostControlLabel', {}, lang))}</strong>
+                    <small>${window.escapeHTML(window.t('screenshotBoostControlHint', {}, lang))}</small>
+                    <small class="screenshot-boost-control-note">${window.escapeHTML(window.t('screenshotBoostControlNote', {}, lang))}</small>
+                </span>
+            </label>
+            <button type="button" class="screenshot-boost-protection-info" aria-expanded="false" aria-controls="screenshot-boost-control-info-panel" aria-label="${window.escapeHTML(window.t('screenshotBoostControlInfoAria', {}, lang))}" onclick="toggleScreenshotBoostControlInfo(this)">i</button>
+        </div>
+        <div id="screenshot-boost-control-info-panel" class="screenshot-boost-protection-info-panel" hidden>
+            <strong>${window.escapeHTML(window.t('screenshotBoostControlInfoTitle', {}, lang))}</strong>
+            <p>${window.escapeHTML(window.t('screenshotBoostControlInfoText', {}, lang))}</p>
+        </div>
         <div class="screenshot-boost-control-row screenshot-boost-protection-row${hasProtectionDays ? '' : ' is-disabled'}">
             <label class="screenshot-boost-protection-choice">
                 <input id="screenshot-boost-protection-days" type="checkbox" ${campaign.reward_protection_days && hasProtectionDays ? 'checked' : ''} ${hasProtectionDays ? '' : 'disabled'}>
@@ -940,6 +951,14 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
     `;
     syncScreenshotBoostSettingsToggle();
     syncScreenshotBoostBudgetPreview();
+}
+
+function toggleScreenshotBoostControlInfo(button) {
+    var panel = document.getElementById('screenshot-boost-control-info-panel');
+    if (!panel) return;
+    var open = panel.hidden;
+    panel.hidden = !open;
+    if (button) button.setAttribute('aria-expanded', String(open));
 }
 
 function toggleScreenshotBoostProtectionInfo(button) {

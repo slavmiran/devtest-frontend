@@ -1619,6 +1619,9 @@
                 if (Number(row.imageCount || 0) >= 3) {
                     item.screenshotSeriesCount = (item.screenshotSeriesCount || 0) + 1;
                 }
+                if (Number(row.screenshotSeriesCount || 0) > 0) {
+                    item.screenshotSeriesCount = Math.max(item.screenshotSeriesCount || 0, Number(row.screenshotSeriesCount));
+                }
                 if (Number(row.imageCount || 0) > item.screenshotCount) {
                     item.screenshotCount = Number(row.imageCount || 0);
                     item.screenshotRow = row;
@@ -2110,6 +2113,13 @@
             seriesCount = 1;
         }
 
+        var seriesTotal = Number(
+            t.screenshot_series_total != null
+                ? t.screenshot_series_total
+                : (t.screenshot_series_count != null ? t.screenshot_series_count : 0)
+        );
+        var isRegularScreenshoter = seriesTotal >= 10 || (seriesCount >= 10) || Boolean(t.is_screenshot_regular);
+
         // 3. Достижения в спринтах (Топ-5 / Топ-10)
         var top5 = Number(t.contribution_top5_count || t.top5_count || 0);
         var top10 = Number(t.contribution_top10_count || t.top10_count || 0);
@@ -2117,63 +2127,61 @@
         var seasonRank = t.season_rank != null ? Number(t.season_rank) : null;
         var topBadgeText = '';
         if (top5 > 0 || (bestRank && bestRank <= 5) || (seasonRank && seasonRank <= 5)) {
-            topBadgeText = text('pcContribStatTop5', '🏅 Топ-5');
+            topBadgeText = text('pcContribStatTop5', 'Топ-5');
         } else if (top10 > 0 || (bestRank && bestRank <= 10) || (seasonRank && seasonRank <= 10)) {
-            topBadgeText = text('pcContribStatTop10', '🏅 Топ-10');
+            topBadgeText = text('pcContribStatTop10', 'Топ-10');
         }
 
-        // Текст баллов
-        var pointsLabel = '';
-        if (score > 0) {
-            pointsLabel = text('pcContribStatScore', '🏆 {score} {points_word}', {
-                score: score,
-                points_word: pluralizePoints(score),
-            });
-        } else {
-            pointsLabel = text('pcContribStatScoreVal', '🏆 Вклад: {score}', { score: score });
-        }
+        // Текст вклада: короткое и ёмкое "Вклад: {X}"
+        var pointsLabel = text('pcContribStatScoreVal', 'Вклад: {score}', { score: score });
 
         var toneClass = '';
         var parts = [];
 
-        // Сценарий 4: Квалифицировался серией 3+ скриншотов без текста фидбека
-        if (seriesCount > 0 && !hasFeedbackToday) {
+        // Сценарий 4: Постоянный скриншотер (от 10 серий)
+        // Правило: Если у тестера разовая акция (1-2 серии) — в чипе про скриншоты НЕ пишем вообще!
+        if (isRegularScreenshoter && seriesCount > 0 && !hasFeedbackToday) {
             toneClass = ' pc-contrib-stat-chip--screenshots';
-            parts.push(pointsLabel);
-            var seriesLabel = text('pcContribStatScreenshots', '📸 {count} {series_word} 3+ скринов', {
-                count: seriesCount,
-                series_word: pluralizeSeries(seriesCount),
+            parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
+            var displaySeriesCount = (seriesCount >= 3) ? seriesCount : (seriesTotal >= 10 ? seriesTotal : seriesCount);
+            var seriesLabel = text('pcContribStatScreenshots', '{count} {series_word} скринов', {
+                count: displaySeriesCount,
+                series_word: pluralizeSeries(displaySeriesCount),
             });
-            parts.push(seriesLabel);
+            parts.push({ text: seriesLabel, cls: 'pc-contrib-stat-chip__seg--series' });
         }
         // Сценарий 1: Новичок или отчеты ждут подтверждения разработчика
         // Правило: НИКОГДА не писать "0% принятия"
-        else if (verifiedTotal < 3 || acceptanceRate === null || acceptanceRate === 0) {
-            toneClass = ' pc-contrib-stat-chip--pending';
-            var sc1Points = text('pcContribStatScoreVal', '🏆 Вклад: {score}', { score: score });
-            parts.push(sc1Points);
-            var nPending = pendingCount > 0 ? pendingCount : Math.max(1, pendingToday);
-            var pendingLabel = text('pcContribStatPending', '⏳ {count} на проверке', { count: nPending });
-            parts.push(pendingLabel);
+        else if (pendingCount > 0 || verifiedTotal < 3 || acceptanceRate === null || acceptanceRate === 0) {
+            // Если у тестера разовая акция со скриншотами (1-2 серии) без текста и без отчётов на проверке
+            if (seriesCount > 0 && !hasFeedbackToday && pendingCount === 0 && verifiedTotal === 0) {
+                parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
+            } else {
+                toneClass = ' pc-contrib-stat-chip--pending';
+                parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
+                var nPending = pendingCount > 0 ? pendingCount : Math.max(1, pendingToday);
+                var pendingLabel = text('pcContribStatPending', '{count} на проверке', { count: nPending });
+                parts.push({ text: pendingLabel, cls: 'pc-contrib-stat-chip__seg--pending' });
+            }
         }
-        // Сценарий 3: Низкий процент (<40% при 3+ отчетах), нейтральный стиль
+        // Сценарий 3: Низкий процент (<40% при 3+ отчетах), нейтральный спокойный стиль
         else if (acceptanceRate < 40) {
             toneClass = ' pc-contrib-stat-chip--warn';
-            parts.push(pointsLabel);
-            var warnLabel = text('pcContribStatWarn', '⚠️ {pct}% принято', { pct: Math.round(acceptanceRate) });
-            parts.push(warnLabel);
+            parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
+            var warnLabel = text('pcContribStatWarn', '{pct}% принято', { pct: Math.round(acceptanceRate) });
+            parts.push({ text: warnLabel, cls: 'pc-contrib-stat-chip__seg--warn' });
             if (topBadgeText) {
-                parts.push(topBadgeText);
+                parts.push({ text: topBadgeText, cls: 'pc-contrib-stat-chip__seg--top pc-contrib-stat-chip__top-badge' });
             }
         }
         // Сценарий 2: Опытный с хорошей историей (>=40% при 3+ отчетах)
         else {
             toneClass = ' pc-contrib-stat-chip--good';
-            parts.push(pointsLabel);
-            var acceptLabel = text('pcContribStatAccepted', '🎯 {pct}% принято', { pct: Math.round(acceptanceRate) });
-            parts.push(acceptLabel);
+            parts.push({ text: pointsLabel, cls: 'pc-contrib-stat-chip__seg--score' });
+            var acceptLabel = text('pcContribStatAccepted', '{pct}% принято', { pct: Math.round(acceptanceRate) });
+            parts.push({ text: acceptLabel, cls: 'pc-contrib-stat-chip__seg--rate' });
             if (topBadgeText) {
-                parts.push(topBadgeText);
+                parts.push({ text: topBadgeText, cls: 'pc-contrib-stat-chip__seg--top pc-contrib-stat-chip__top-badge' });
             }
         }
 
@@ -2181,16 +2189,18 @@
         var clickAttr = 'event.stopPropagation(); ' + dossierClick(appId, t);
 
         var segmentsHtml = parts.map(function (p) {
-            var isTop = topBadgeText && p === topBadgeText;
-            var segCls = isTop ? 'pc-contrib-stat-chip__seg pc-contrib-stat-chip__top-badge' : 'pc-contrib-stat-chip__seg';
-            return '<span class="' + segCls + '">' + esc(p) + '</span>';
+            var textVal = (typeof p === 'object' && p !== null) ? p.text : p;
+            var extraCls = (typeof p === 'object' && p !== null && p.cls) ? (' ' + p.cls) : '';
+            return '<span class="pc-contrib-stat-chip__seg' + extraCls + '">' + esc(textVal) + '</span>';
         }).join('<span class="pc-contrib-stat-chip__sep" aria-hidden="true">•</span>');
+
+        var arrowSvg = '<svg class="pc-contrib-stat-chip__arrow" viewBox="0 0 10 6" width="7" height="5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1L5 5L9 1"/></svg>';
 
         return '<button type="button" class="pc-contrib-stat-chip' + toneClass + '"' +
             ' onclick="' + clickAttr + '"' +
             ' title="' + esc(tooltip) + '">' +
             segmentsHtml +
-            '<span class="pc-contrib-stat-chip__arrow" aria-hidden="true">▾</span>' +
+            arrowSvg +
         '</button>';
     }
 
