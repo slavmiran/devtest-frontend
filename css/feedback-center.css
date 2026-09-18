@@ -644,6 +644,10 @@
 #feedback-reward-modal {
     z-index: 260;
 }
+#feedback-reward-modal button,
+#feedback-reward-modal .chip {
+    touch-action: manipulation;
+}
 #feedback-reward-modal .feedback-reward-sheet {
     background: #0e1118;
     border: 0;
@@ -652,6 +656,11 @@
     padding: 8px 16px calc(18px + env(safe-area-inset-bottom));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    will-change: auto;
+    isolation: auto;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    contain: layout;
 }
 #feedback-reward-modal .sheet-handle {
     margin-bottom: 10px;
@@ -698,10 +707,8 @@
     border-radius: 16px;
     padding: 14px 16px;
     margin-bottom: 12px;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.06),
-        0 8px 20px -4px rgba(0, 0, 0, 0.5),
-        0 2px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    contain: layout style;
 }
 #feedback-reward-modal .feedback-reward-block {
     margin-bottom: 12px;
@@ -763,7 +770,7 @@
     font-size: 13px;
     font-weight: 800;
     color: #fff;
-    background: linear-gradient(180deg, hsl(var(--av-hue, 220), 62%, 42%), hsl(var(--av-hue, 220), 58%, 28%));
+    background: linear-gradient(180deg, #3d5a80, #24344f);
     overflow: visible;
     flex-shrink: 0;
 }
@@ -847,6 +854,7 @@
     font-weight: 800;
     letter-spacing: 0.08em;
     color: #7d8796;
+    white-space: nowrap;
 }
 #feedback-reward-modal .feedback-reward-contrib-chip {
     display: inline-flex;
@@ -875,6 +883,7 @@
     background: rgba(255, 255, 255, 0.04);
     color: #c5ccd6;
     border: 1px solid rgba(148, 163, 184, 0.14);
+    touch-action: manipulation;
 }
 #feedback-reward-modal .feedback-reward-bust-chip.is-active {
     background: rgba(192, 132, 252, 0.16);
@@ -897,7 +906,7 @@
     border-radius: 14px;
     background: #0d1119;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+    box-shadow: none;
 }
 #feedback-reward-modal .feedback-reward-stepper-btn {
     width: 40px;
@@ -912,7 +921,7 @@
     cursor: pointer;
 }
 #feedback-reward-modal .feedback-reward-stepper-btn:active {
-    transform: scale(0.96);
+    background: #1f2533;
 }
 #feedback-reward-modal .feedback-reward-stepper-btn:disabled {
     opacity: 0.35;
@@ -966,6 +975,7 @@
     font: inherit;
     appearance: none;
     -webkit-appearance: none;
+    touch-action: manipulation;
 }
 #feedback-reward-modal .feedback-reward-karma-amount {
     font-size: 16px;
@@ -1003,7 +1013,7 @@
     background: #0d1119 !important;
     border: 1px solid rgba(255, 255, 255, 0.07) !important;
     border-radius: 12px !important;
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+    box-shadow: none !important;
     color: #e8edf4;
     padding: 12px;
 }
@@ -1091,6 +1101,11 @@
     font-size: 12px;
     color: #7d8796;
 }
+#feedback-reward-modal .feedback-reward-summary-bust[hidden],
+#feedback-reward-modal .feedback-reward-summary-karma[hidden],
+#feedback-reward-modal .feedback-reward-summary-empty[hidden] {
+    display: none !important;
+}
 
 #feedback-reward-modal .feedback-reward-submit.btn,
 #feedback-reward-modal .feedback-reward-submit {
@@ -1103,7 +1118,7 @@
     color: #fff;
     font-size: 15px;
     font-weight: 700;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    box-shadow: none;
 }
 #feedback-reward-modal .feedback-reward-submit:disabled {
     opacity: 0.4;

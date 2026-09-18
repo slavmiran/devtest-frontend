@@ -3895,6 +3895,7 @@
         var tester = opts.tester || {};
         var appId = opts.appId;
         var testerId = opts.testerId;
+        var project = opts.project || (typeof projectById === 'function' ? projectById(appId) : null);
         var username = opts.username || profile.username || tester.username || '';
         var cleanUsername = String(username || '').replace(/^@+/, '');
 
@@ -3906,16 +3907,30 @@
             ? '<img src="' + esc(avatarUrl) + '" alt="" onerror="this.style.display=\'none\'; if (this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';" /><span style="display:none;">' + esc(initials) + '</span>'
             : '<span>' + esc(initials) + '</span>';
 
+        var karmaIcon = typeof window.karmaIconHtml === 'function'
+            ? window.karmaIconHtml('karma-yin-icon--inline')
+            : '<svg class="karma-yin-icon karma-yin-icon--inline" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false" style="width:12px;height:12px;"><circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle><path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path><circle r="5.5" cy="19" fill="#ffffff"></circle><circle r="5.5" cy="-19" fill="#000000"></circle></svg>';
         var karmaRaw = profile.karma != null ? profile.karma : (tester.karma != null ? tester.karma : 0);
         var karmaNum = Number(karmaRaw || 0);
         var karmaFormatted = karmaNum > 0 ? ('+' + karmaNum) : String(karmaNum);
-        var karmaLabel = text('pcDossierKarma', '⚡️ Карма: {karma}', { karma: karmaFormatted });
+        var karmaLabel = text('pcDossierKarma', 'Карма: {karma}', { karma: karmaFormatted });
 
-        // Quality and Sprint metrics
-        var rawRate = profile.acceptance_rate_pct != null ? profile.acceptance_rate_pct : (tester.acceptance_rate_pct != null ? tester.acceptance_rate_pct : null);
-        var acceptanceRate = (rawRate != null && rawRate !== '' && !isNaN(Number(rawRate))) ? Number(rawRate) : null;
-        var submittedTotal = Number(profile.feedback_submitted_total != null ? profile.feedback_submitted_total : (tester.feedback_submitted_total || 0));
-        var acceptedTotal = Number(profile.feedback_accepted_total != null ? profile.feedback_accepted_total : (tester.feedback_accepted_total || 0));
+        // Platform-wide Quality & Sprint metrics
+        var bugsAccepted = Number(profile.bugs_count || profile.bugs_accepted_count || 0);
+        var bugsPending = Number(profile.bugs_pending_count || 0);
+        var ideasAccepted = Number(profile.ideas_count || profile.ideas_accepted_count || 0);
+        var ideasPending = Number(profile.ideas_pending_count || 0);
+        var reviewsAccepted = Number(profile.play_reviews_count || profile.play_reviews_accepted_count || 0);
+        var reviewsPending = Number(profile.play_reviews_pending_count || 0);
+
+        var allAccepted = bugsAccepted + ideasAccepted + reviewsAccepted;
+        var acceptedTotal = Math.max(allAccepted, Number(profile.feedback_accepted_total || 0));
+        var rejectedTotal = Number(profile.feedback_rejected_total != null ? profile.feedback_rejected_total : (tester.feedback_rejected_total || 0));
+        var resolvedTotal = acceptedTotal + rejectedTotal;
+        var allPending = bugsPending + ideasPending + reviewsPending;
+        var submittedTotal = Number(profile.feedback_submitted_total != null ? profile.feedback_submitted_total : (resolvedTotal + allPending));
+
+        var acceptanceRate = resolvedTotal > 0 ? Math.round((acceptedTotal / resolvedTotal) * 100) : null;
 
         var lifetimeScore = Math.round(Number(profile.contribution_lifetime_score != null ? profile.contribution_lifetime_score : (tester.contribution_lifetime_score || profile.season_score || 0)));
         var wins = Number(profile.contribution_wins_count || tester.contribution_wins_count || 0);
@@ -3926,25 +3941,25 @@
 
         var projectSeries = Number(profile.project_screenshot_series_count != null ? profile.project_screenshot_series_count : (tester.screenshotSeriesCount || 0));
         var totalSeries = Number(profile.screenshot_series_total != null ? profile.screenshot_series_total : (tester.screenshot_series_total || 0));
-        var isNewbie = Boolean(profile.reliability_status === 'newbie' || tester.reliability_status === 'newbie' || submittedTotal < 3);
+        var isNewbie = Boolean(profile.reliability_status === 'newbie' || tester.reliability_status === 'newbie' || resolvedTotal < 3);
 
         // Compute Rank Status
         var rankClass = '--newbie';
         var rankText = text('pcDossierRankNewbie', '🐣 Новый участник');
 
-        if (acceptanceRate != null && acceptanceRate < 40 && submittedTotal >= 3) {
+        if (acceptanceRate != null && acceptanceRate < 40 && resolvedTotal >= 3) {
             rankClass = '--warn';
             rankText = text('pcDossierRankMixed', '⚠️ Смешанная точность');
         } else if (wins > 0 || top5 > 0 || (bestRank && bestRank <= 5) || lifetimeScore > 100) {
             rankClass = '--top5';
             rankText = text('pcDossierRankTop5', '⭐️ Высокая активность / Участник Топ-5');
-        } else if (acceptanceRate != null && acceptanceRate >= 70 && submittedTotal >= 3) {
+        } else if (acceptanceRate != null && acceptanceRate >= 70 && resolvedTotal >= 3) {
             rankClass = '--experienced';
             rankText = text('pcDossierRankExperienced', '🎯 Опытный контрибьютор');
         } else if (projectSeries > 0 || totalSeries >= 10 || Boolean(tester.is_screenshot_regular)) {
             rankClass = '--explorer';
             rankText = text('pcDossierRankExplorer', '📱 Исследователь интерфейса');
-        } else if (isNewbie || submittedTotal < 3) {
+        } else if (isNewbie || resolvedTotal < 3) {
             rankClass = '--newbie';
             rankText = text('pcDossierRankNewbie', '🐣 Новый участник');
         }
@@ -3979,62 +3994,176 @@
             '</div>';
         }
 
-        // Section 2: Feedback Quality
+        // Section 2: Feedback Quality (Strict mathematical consistency)
         var qualityText = '';
         var barFillClass = 'pc-dossier-bar__fill--sky';
         var barWidthPct = 0;
 
-        if (submittedTotal < 3 || acceptanceRate === null) {
+        if (resolvedTotal < 3) {
             qualityText = text('pcDossierQualityPending', '⏳ На рассмотрении (статистика формируется после первых проверок)');
-            barWidthPct = submittedTotal > 0 ? 35 : 15;
+            barWidthPct = (submittedTotal > 0 || allPending > 0) ? 35 : 15;
             barFillClass = 'pc-dossier-bar__fill--sky';
         } else {
             var roundRate = Math.round(acceptanceRate);
             barWidthPct = Math.max(8, Math.min(100, roundRate));
-            qualityText = text('pcDossierAcceptanceRate', '{pct}% принято ({accepted} из {total} одобрено)', {
+            qualityText = text('pcDossierAcceptanceRate', 'Принятие отчётов: {pct}% ({accepted} из {total} одобрено)', {
                 pct: roundRate,
                 accepted: acceptedTotal,
-                total: submittedTotal
+                total: resolvedTotal
             });
             barFillClass = roundRate >= 70 ? 'pc-dossier-bar__fill--good' : (roundRate >= 40 ? 'pc-dossier-bar__fill--warn' : 'pc-dossier-bar__fill--bad');
         }
 
-        var bugsAccepted = Number(profile.bugs_count || profile.bugs_accepted_count || 0);
-        var bugsPending = Number(profile.bugs_pending_count || 0);
-        var ideasAccepted = Number(profile.ideas_count || profile.ideas_accepted_count || 0);
-        var ideasPending = Number(profile.ideas_pending_count || 0);
+        var bugsPendingStr = bugsPending > 0 ? text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: bugsPending }) : '';
+        var ideasPendingStr = ideasPending > 0 ? text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: ideasPending }) : '';
+        var reviewsPendingStr = reviewsPending > 0 ? text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: reviewsPending }) : '';
 
-        var bugsPendingStr = bugsPending > 0 ? text('pcDossierPendingPart', ' • {count} на проверке', { count: bugsPending }) : '';
-        var ideasPendingStr = ideasPending > 0 ? text('pcDossierPendingPart', ' • {count} на проверке', { count: ideasPending }) : '';
-
-        var bugsRowText = text('pcDossierBugsBreakdown', '🐞 Баги: {accepted} принято{pending_str}', { accepted: bugsAccepted, pending_str: bugsPendingStr });
-        var ideasRowText = text('pcDossierIdeasBreakdown', '💡 Рекомендации: {accepted} одобрено{pending_str}', { accepted: ideasAccepted, pending_str: ideasPendingStr });
+        var bugsRowText = text('pcDossierBugsBreakdown', '🐞 Найдено багов: {accepted} принято{pending_str}', { accepted: bugsAccepted, pending_str: bugsPendingStr });
+        var ideasRowText = text('pcDossierIdeasBreakdown', '💡 Рекомендаций: {accepted} одобрено{pending_str}', { accepted: ideasAccepted, pending_str: ideasPendingStr });
+        var reviewsRowText = text('pcDossierReviewsBreakdown', '📝 Отзывов: {accepted} принято{pending_str}', { accepted: reviewsAccepted, pending_str: reviewsPendingStr });
 
         // Section 3: Contribution to Your Project
         var checkinsDone = Number(tester.checkins_count != null ? tester.checkins_count : (profile.project_checkins_count || 0));
-        var checkinsTotal = 14;
-        var checkinsPct = Math.min(100, Math.round((checkinsDone / checkinsTotal) * 100));
-        var checkinsLabel = text('pcDossierCheckinProgress', '{done} из {total} дней • {pct}%', { done: checkinsDone, total: checkinsTotal, pct: checkinsPct });
+        var currentDay = testerDayNumber(tester);
+        if (!currentDay || currentDay < 1) {
+            currentDay = Number(tester.testing_days || tester.testing_day || profile.testing_days || 0);
+        }
+        if (currentDay < 1 && (tester.start_date || profile.project_start_date)) {
+            var sDate = new Date(tester.start_date || profile.project_start_date);
+            if (!isNaN(sDate.getTime())) {
+                var now = new Date();
+                var diff = Math.floor((now - sDate) / (1000 * 60 * 60 * 24)) + 1;
+                if (diff > 0) currentDay = diff;
+            }
+        }
+        var expectedDays = Math.max(1, Math.min(14, Math.max(currentDay || 1, checkinsDone)));
+        var checkinsPct = Math.min(100, Math.round((checkinsDone / expectedDays) * 100));
+        var checkinsLabel = text('pcDossierCheckinProgress', '{done} из {total} дней • {pct}%', { done: checkinsDone, total: expectedDays, pct: checkinsPct });
 
+        var reviewsRequested = Boolean(!project || project.request_reviews !== false);
         var playStatusRaw = String(tester.play_review_status || profile.project_play_review_status || '').toLowerCase();
         var playReviewLabel = text('pcDossierPlayReviewNone', '⚪️ Пока не оставлен');
         var playReviewBadgeClass = 'pc-dossier-badge-status--neutral';
+
         if (playStatusRaw === 'approved' || Boolean(tester.play_feedback_submitted)) {
             playReviewLabel = text('pcDossierPlayReviewApproved', '⭐️ Оставлен и подтверждён');
             playReviewBadgeClass = 'pc-dossier-badge-status--green';
         } else if (playStatusRaw === 'pending' || playStatusRaw === 'submitted') {
             playReviewLabel = text('pcDossierPlayReviewPending', '⏳ На проверке');
             playReviewBadgeClass = 'pc-dossier-badge-status--sky';
+        } else if (!reviewsRequested) {
+            playReviewLabel = text('pcDossierPlayReviewNotRequested', 'Не запрашивался вами');
+            playReviewBadgeClass = 'pc-dossier-badge-status--neutral';
         }
 
         var seriesText = text('pcDossierProjectSeriesCount', '{count} {series_word}', { count: projectSeries, series_word: pluralizeSeries(projectSeries) });
 
+        // Project Feedback Counts
+        var projectBugsTotal = Number(profile.project_bugs_total != null ? profile.project_bugs_total : 0);
+        var projectBugsAccepted = Number(profile.project_bugs_accepted != null ? profile.project_bugs_accepted : 0);
+        var projectIdeasTotal = Number(profile.project_ideas_total != null ? profile.project_ideas_total : 0);
+        var projectIdeasAccepted = Number(profile.project_ideas_accepted != null ? profile.project_ideas_accepted : 0);
+        var projectReviewsTotal = Number(profile.project_reviews_total != null ? profile.project_reviews_total : 0);
+        var projectReviewsAccepted = Number(profile.project_reviews_accepted != null ? profile.project_reviews_accepted : 0);
+
+        if (typeof window !== 'undefined' && Array.isArray(window._activeProjectFeedbackItems) && (!projectBugsTotal && !projectIdeasTotal)) {
+            var pBugs = 0, pBugsAcc = 0, pIdeas = 0, pIdeasAcc = 0, pRevs = 0, pRevsAcc = 0;
+            window._activeProjectFeedbackItems.forEach(function (f) {
+                if (!f || Number(f.tester_id || f.user_id || 0) !== safeTesterId) return;
+                var t = String(f.type || '').toLowerCase();
+                var st = String(f.status || '').toLowerCase();
+                var isAcc = st === 'accepted' || st === 'approved' || st === 'processed' || st === 'tipped';
+                if (t === 'bug') {
+                    pBugs++;
+                    if (isAcc) pBugsAcc++;
+                } else if (t === 'idea') {
+                    pIdeas++;
+                    if (isAcc) pIdeasAcc++;
+                } else if (t.indexOf('review') >= 0) {
+                    pRevs++;
+                    if (isAcc) pRevsAcc++;
+                }
+            });
+            if (pBugs > 0) { projectBugsTotal = pBugs; projectBugsAccepted = pBugsAcc; }
+            if (pIdeas > 0) { projectIdeasTotal = pIdeas; projectIdeasAccepted = pIdeasAcc; }
+            if (pRevs > 0) { projectReviewsTotal = pRevs; projectReviewsAccepted = pRevsAcc; }
+        }
+
+        var projectContributionsHtml = '';
+
+        // 1. Checkin Discipline row
+        projectContributionsHtml += '<div class="pc-dossier-detail-row" style="flex-direction: column; align-items: stretch; gap: 6px;">' +
+            '<div style="display: flex; justify-content: space-between; font-size: 12px;">' +
+                '<span style="color: #94a3b8;">' + esc(text('pcDossierCheckinDiscipline', 'Дисциплина чекинов')) + '</span>' +
+                '<span style="font-weight: 600;">' + esc(checkinsLabel) + '</span>' +
+            '</div>' +
+            '<div class="pc-dossier-bar">' +
+                '<div class="pc-dossier-bar__fill pc-dossier-bar__fill--sky" style="width: ' + checkinsPct + '%;"></div>' +
+            '</div>' +
+        '</div>';
+
+        // 2. Google Play review row
+        projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
+            '<span style="color: #94a3b8;">' + esc(text('pcDossierPlayReview', 'Отзыв в Google Play')) + '</span>' +
+            '<span class="pc-dossier-badge-status ' + playReviewBadgeClass + '">' + esc(playReviewLabel) + '</span>' +
+        '</div>';
+
+        // 3. Screenshot series row (rendered if > 0)
+        if (projectSeries > 0) {
+            projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
+                '<span style="color: #94a3b8;">' + esc(text('pcDossierProjectSeries', 'Серии 3+ скриншотов')) + '</span>' +
+                '<span style="font-weight: 600;">' + esc(seriesText) + '</span>' +
+            '</div>';
+        }
+
+        // 4. Project Bugs (strictly omitted if 0)
+        if (projectBugsTotal > 0) {
+            var bAccStr = projectBugsAccepted > 0
+                ? text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectBugsAccepted })
+                : '';
+            var bugsProjText = text('pcDossierProjectBugs', '🐞 Баги: {total} отправлено{accepted_str}', {
+                total: projectBugsTotal,
+                accepted_str: bAccStr
+            });
+            projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
+                '<span>' + esc(bugsProjText) + '</span>' +
+            '</div>';
+        }
+
+        // 5. Project Ideas (strictly omitted if 0)
+        if (projectIdeasTotal > 0) {
+            var iAccStr = projectIdeasAccepted > 0
+                ? text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectIdeasAccepted })
+                : '';
+            var ideasProjText = text('pcDossierProjectIdeas', '💡 Рекомендации: {total} отправлено{accepted_str}', {
+                total: projectIdeasTotal,
+                accepted_str: iAccStr
+            });
+            projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
+                '<span>' + esc(ideasProjText) + '</span>' +
+            '</div>';
+        }
+
+        // 6. Project Reviews (strictly omitted if 0)
+        if (projectReviewsTotal > 0) {
+            var rAccStr = projectReviewsAccepted > 0
+                ? text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectReviewsAccepted })
+                : '';
+            var revsProjText = text('pcDossierProjectReviews', '📝 Отзывы: {total} отправлено{accepted_str}', {
+                total: projectReviewsTotal,
+                accepted_str: rAccStr
+            });
+            projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
+                '<span>' + esc(revsProjText) + '</span>' +
+            '</div>';
+        }
+
         // Section 4: Smart Summary
-        var isExemplary = (acceptanceRate != null && acceptanceRate >= 70 && submittedTotal >= 3 && (checkinsPct >= 70 || playReviewBadgeClass === 'pc-dossier-badge-status--green'));
+        var isExemplary = (resolvedTotal >= 3 && acceptanceRate != null && acceptanceRate >= 70 && (checkinsPct >= 70 || playReviewBadgeClass === 'pc-dossier-badge-status--green'));
         var summaryClass = '--exemplary';
         var summaryText = text('pcDossierSummaryExemplary', 'Надёжный тестер: стабильные чекины, оставляет содержательные фидбеки и отзыв в Google Play.');
 
-        if (acceptanceRate != null && acceptanceRate < 40 && submittedTotal >= 3) {
+        if (acceptanceRate != null && acceptanceRate < 40 && resolvedTotal >= 3) {
             summaryClass = '--mixed';
             summaryText = text('pcDossierSummaryMixed', 'Некоторые прошлые отчёты отклонялись. Рекомендуется внимательно проверить присланные замечания.');
         } else if (isExemplary) {
@@ -4046,7 +4175,7 @@
         } else if (projectSeries > 0 || totalSeries >= 10 || Boolean(tester.is_screenshot_regular)) {
             summaryClass = '--explorer';
             summaryText = text('pcDossierSummaryExplorer', 'Провёл глубокий прогон приложения с серией скриншотов ключевых экранов.');
-        } else if (isNewbie || submittedTotal < 3) {
+        } else if (isNewbie || resolvedTotal < 3) {
             summaryClass = '--newbie';
             summaryText = text('pcDossierSummaryNewbie', 'Новый участник сообщества. Проходит первые тесты, статистика точности формируется.');
         }
@@ -4058,7 +4187,10 @@
                     '<div id="pc-dossier-tester-name" class="pc-dossier-hero__name notranslate">' + esc(fullName) + '</div>' +
                     '<div class="pc-dossier-hero__sub">' +
                         (cleanUsername ? ('<span class="pc-dossier-hero__username notranslate">@' + esc(cleanUsername) + '</span>') : '') +
-                        '<span class="pc-dossier-karma-badge notranslate">' + esc(karmaLabel) + '</span>' +
+                        '<span class="pc-dossier-karma-badge notranslate">' +
+                            karmaIcon +
+                            '<span>' + esc(karmaLabel) + '</span>' +
+                        '</span>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -4076,7 +4208,7 @@
                 '<div class="pc-dossier-section__title">' +
                     '<span class="pc-dossier-section__title-ico" aria-hidden="true">🎯</span>' +
                     '<span>' + esc(text('pcDossierSecQuality', 'Качество фидбеков')) + '</span>' +
-                    '<span class="pc-dossier-section__subtitle">' + esc(text('pcDossierQualityPlatform', 'История по всей платформе')) + '</span>' +
+                    '<span class="pc-dossier-section__subtitle">' + esc(text('pcDossierQualityPlatform', 'Глобальная история')) + '</span>' +
                 '</div>' +
                 '<div class="pc-dossier-detail-row" style="flex-direction: column; align-items: stretch; gap: 6px;">' +
                     '<div style="display: flex; justify-content: space-between; font-weight: 550; font-size: 12.5px;">' +
@@ -4092,29 +4224,16 @@
                 '<div class="pc-dossier-detail-row">' +
                     '<span>' + esc(ideasRowText) + '</span>' +
                 '</div>' +
+                '<div class="pc-dossier-detail-row">' +
+                    '<span>' + esc(reviewsRowText) + '</span>' +
+                '</div>' +
             '</section>' +
             '<section class="pc-dossier-section">' +
                 '<div class="pc-dossier-section__title">' +
                     '<span class="pc-dossier-section__title-ico" aria-hidden="true">📱</span>' +
                     '<span>' + esc(text('pcDossierSecProject', 'Вклад в ваш проект')) + '</span>' +
                 '</div>' +
-                '<div class="pc-dossier-detail-row" style="flex-direction: column; align-items: stretch; gap: 6px;">' +
-                    '<div style="display: flex; justify-content: space-between; font-size: 12px;">' +
-                        '<span style="color: #94a3b8;">' + esc(text('pcDossierCheckinDiscipline', 'Дисциплина чекинов')) + '</span>' +
-                        '<span style="font-weight: 600;">' + esc(checkinsLabel) + '</span>' +
-                    '</div>' +
-                    '<div class="pc-dossier-bar">' +
-                        '<div class="pc-dossier-bar__fill pc-dossier-bar__fill--sky" style="width: ' + checkinsPct + '%;"></div>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="pc-dossier-detail-row">' +
-                    '<span style="color: #94a3b8;">' + esc(text('pcDossierPlayReview', 'Отзыв в Google Play')) + '</span>' +
-                    '<span class="pc-dossier-badge-status ' + playReviewBadgeClass + '">' + esc(playReviewLabel) + '</span>' +
-                '</div>' +
-                '<div class="pc-dossier-detail-row">' +
-                    '<span style="color: #94a3b8;">' + esc(text('pcDossierProjectSeries', 'Серии 3+ скриншотов')) + '</span>' +
-                    '<span style="font-weight: 600;">' + esc(seriesText) + '</span>' +
-                '</div>' +
+                projectContributionsHtml +
             '</section>' +
             '<section class="pc-dossier-section" style="margin-bottom: 0;">' +
                 '<div class="pc-dossier-summary-card pc-dossier-summary-card' + summaryClass + '">' +

@@ -1300,25 +1300,36 @@ function buildProposeMutualChip(test) {
     return `<button class="meta-chip accent-blue" onclick="createMutualOffer(${Number(test.id || 0)}, ${Number(test.owner_id || 0)}, event)">${window.escapeHTML(window.t('proposeMutualBtn', {}, lang))}</button>`;
 }
 
+function formatOwnerSlaHoursLabel(hoursRaw) {
+    const hoursNum = Number(hoursRaw);
+    if (!Number.isFinite(hoursNum) || hoursNum <= 0) return '';
+    if (typeof formatFeedbackAvgResponseHours === 'function') {
+        return formatFeedbackAvgResponseHours(hoursNum * 3600 * 1000);
+    }
+    const totalMins = Math.max(1, Math.round(hoursNum * 60));
+    if (totalMins < 60) {
+        return lang === 'ru' ? (totalMins + ' мин') : (totalMins + 'm');
+    }
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    if (mins === 0) {
+        return lang === 'ru' ? (hours + ' ч') : (hours + 'h');
+    }
+    return lang === 'ru'
+        ? (hours + ' ч ' + mins + ' мин')
+        : (hours + 'h ' + mins + 'm');
+}
+
 function formatOwnerSlaDisplay(hoursRaw) {
     const hoursNum = Number(hoursRaw);
-    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(hoursNum) && hoursNum >= 0;
-    let label = window.t('feedbackSlaChipDash', {}, lang) || '—';
+    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(hoursNum) && hoursNum > 0;
+    const label = hasValue
+        ? (formatOwnerSlaHoursLabel(hoursNum) || (window.t('feedbackSlaChipDash', {}, lang) || '—'))
+        : (window.t('feedbackSlaChipDash', {}, lang) || '—');
     let tone = '';
     if (hasValue) {
-        const hours = hoursNum;
-        if (hours < 1) {
-            const minutes = Math.max(1, Math.round(hours * 60) || 1);
-            label = window.t('feedbackSlaChipMinutes', { minutes: minutes }, lang) || ('~' + minutes + (lang === 'ru' ? ' мин' : ' m'));
-        } else {
-            const rounded = hours >= 10 ? Math.round(hours) : (Math.round(hours * 10) / 10);
-            const hoursLabel = (Math.abs(rounded - Math.round(rounded)) < 0.05)
-                ? String(Math.round(rounded))
-                : String(rounded).replace(/\.0$/, '');
-            label = window.t('feedbackSlaChipHours', { hours: hoursLabel }, lang) || ('~' + hoursLabel + (lang === 'ru' ? ' ч.' : ' h'));
-        }
-        if (hours > 72) tone = 'slow';
-        else if (hours < 24) tone = 'fast';
+        if (hoursNum > 72) tone = 'slow';
+        else if (hoursNum < 24) tone = 'fast';
     }
     return { label: label, tone: tone, hasValue: hasValue, hours: hasValue ? hoursNum : null };
 }
@@ -2459,13 +2470,16 @@ function syncCheckinDeveloperAccordion(appId, fallbackUsername) {
             '</div>';
     }
 
+    var infoIcon = (typeof window.getMaterialInfoIconSvg === 'function')
+        ? window.getMaterialInfoIconSvg('checkin-dev-accordion__hint-icon')
+        : '';
     body.innerHTML =
-        row('checkinDevNameLabel', window.escapeHTML(name)) +
         row('checkinDevSpeedLabel', window.escapeHTML(formatCheckinDeveloperSpeedLabel(hoursRaw))) +
         row('checkinDevAcceptedLabel', window.escapeHTML(formatCheckinDeveloperAcceptedLabel(accepted, rate))) +
         row('checkinDevQueueLabel', window.escapeHTML(String(pending))) +
         '<p class="checkin-dev-accordion__hint">' +
-            window.escapeHTML(window.t('checkinDevHint', {}, lang)) +
+            infoIcon +
+            '<span>' + window.escapeHTML(window.t('checkinDevHint', {}, lang)) + '</span>' +
         '</p>';
     return root;
 }

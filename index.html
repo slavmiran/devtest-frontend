@@ -36,15 +36,15 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260918-reward-modal-v1"></script>
-    <script src="./i18n/en.js?v=20260918-reward-modal-v1"></script>
+    <script src="./i18n/ru.js?v=20260918-checkin-dev-v2"></script>
+    <script src="./i18n/en.js?v=20260918-checkin-dev-v2"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260917-action-processing-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260918-boost-protection-v1"></script>
+    <script src="./ui/ui-tests.js?v=20260918-checkin-dev-v2"></script>
     <script src="./ui/ui-projects.js?v=20260918-boost-control-info-v1"></script>
     <script src="./js/project-parameters.js?v=20260917-email-params-cue-v1"></script>
-    <script src="./ui/ui-market.js?v=20260918-checkin-dev-v1"></script>
+    <script src="./ui/ui-market.js?v=20260918-checkin-dev-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
@@ -53,7 +53,7 @@
     <script src="./js/app-api.js?v=20260918-checkin-dev-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260918-reward-modal-v1"></script>
+    <script src="./js/app-actions.js?v=20260918-reward-modal-v2"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260917-album-open-v2"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -80,7 +80,7 @@
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260827-dossier-layout-v15">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260918-reward-modal-v1">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20260918-reward-modal-v2">
     <link rel="stylesheet" href="./css/ppc.css?v=20260915-ppc-tight-buffer-v1">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260918-karma-limit-v2">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260916-done-proof-topic-v1">
@@ -100,7 +100,7 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260917-scroll-smooth-v2">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260912-crypto-exit-v1">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260918-checkin-dev-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260918-checkin-dev-v2">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
     <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20260918-boost-control-info-v1">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
@@ -2700,7 +2700,7 @@
                     <div class="feedback-reward-target-subtitle" id="feedback-reward-target-meta">—</div>
                 </div>
                 <div class="feedback-reward-contrib" id="feedback-reward-contrib">
-                    <div class="feedback-reward-contrib-label" data-i18n="feedbackRewardContribLabel">ВКЛАД</div>
+                    <div class="feedback-reward-contrib-label" id="feedback-reward-contrib-label" data-i18n="feedbackRewardContribLabel">ВКЛАД</div>
                     <div class="feedback-reward-contrib-chip" id="feedback-reward-contrib-chip">⚡ +5</div>
                 </div>
             </div>
@@ -2774,7 +2774,14 @@
 
             <div class="feedback-reward-summary" id="feedback-reward-summary">
                 <span class="feedback-reward-summary-label" data-i18n="feedbackRewardSummaryLabel">Итого к отправке:</span>
-                <span class="feedback-reward-summary-badges" id="feedback-reward-summary-badges"></span>
+                <span class="feedback-reward-summary-badges" id="feedback-reward-summary-badges">
+                    <span class="feedback-reward-summary-bust" id="feedback-reward-summary-bust" hidden></span>
+                    <span class="feedback-reward-summary-karma" id="feedback-reward-summary-karma" hidden>
+                        <span id="feedback-reward-summary-karma-amount"></span>
+                        <span data-karma-icon data-karma-class="karma-yin-icon--inline"></span>
+                    </span>
+                    <span class="feedback-reward-summary-empty" id="feedback-reward-summary-empty"></span>
+                </span>
             </div>
 
             <button class="btn btn-primary feedback-reward-submit" id="feedback-reward-submit-btn" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет →</button>

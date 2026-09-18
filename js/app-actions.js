@@ -3564,10 +3564,60 @@ function getFeedbackRewardInitials(item) {
     return (letters.substring(0, 2) || '?').toUpperCase();
 }
 
+function formatFeedbackRewardBustNumber(amount) {
+    if (typeof formatAmountValue === 'function') {
+        return String(formatAmountValue(amount, 1));
+    }
+    var formatted = (typeof formatBustAmount === 'function') ? String(formatBustAmount(amount)) : String(amount || 0);
+    return formatted.replace(/\s*\$BUST\s*$/i, '').trim();
+}
+
+function formatFeedbackRewardBustLabel(amount) {
+    if (typeof formatBustAmount === 'function') return formatBustAmount(amount);
+    return formatFeedbackRewardBustNumber(amount) + ' $BUST';
+}
+
+function getFeedbackRewardLifetimeScore(item) {
+    var scores = [];
+    function pushScore(raw) {
+        if (raw == null || raw === '') return;
+        var n = Number(raw);
+        if (Number.isFinite(n)) scores.push(Math.max(0, Math.round(n)));
+    }
+    pushScore(item && item.contribution_lifetime_score);
+    var testerId = Number((item && item.tester_id) || 0);
+    var project = typeof getFeedbackRewardProject === 'function' ? getFeedbackRewardProject() : null;
+    var testers = (project && project.testers) || [];
+    for (var i = 0; i < testers.length; i++) {
+        if (Number(testers[i].tester_id || testers[i].id || 0) === testerId) {
+            pushScore(testers[i].contribution_lifetime_score);
+            break;
+        }
+    }
+    if (!scores.length) return null;
+    var best = scores[0];
+    for (var s = 1; s < scores.length; s++) {
+        if (scores[s] > best) best = scores[s];
+    }
+    return best;
+}
+
+function _feedbackRewardLightHaptic() {
+    try {
+        if (!(tg && tg.HapticFeedback && typeof tg.HapticFeedback.selectionChanged === 'function')) return;
+        var run = function() {
+            try { tg.HapticFeedback.selectionChanged(); } catch (e) {}
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+        else setTimeout(run, 0);
+    } catch (e) {}
+}
+
 function fillFeedbackRewardAuthorCard(item) {
     var nameEl = document.getElementById('feedback-reward-target-name');
     var metaEl = document.getElementById('feedback-reward-target-meta');
     var contribEl = document.getElementById('feedback-reward-contrib-chip');
+    var contribLabelEl = document.getElementById('feedback-reward-contrib-label');
     var badgeEl = document.getElementById('feedback-reward-type-badge');
     var avatarEl = document.getElementById('feedback-reward-avatar');
     var initialsEl = document.getElementById('feedback-reward-avatar-initials');
@@ -3580,12 +3630,18 @@ function fillFeedbackRewardAuthorCard(item) {
             points: getFeedbackRewardContributionPoints(item)
         }, lang);
     }
+    if (contribLabelEl) {
+        var lifetimeScore = getFeedbackRewardLifetimeScore(item);
+        contribLabelEl.textContent = (lifetimeScore == null)
+            ? window.t('feedbackRewardContribLabel', {}, lang)
+            : window.t('feedbackRewardContribLabelScore', { score: lifetimeScore }, lang);
+    }
     if (badgeEl) badgeEl.textContent = getFeedbackRewardTypeBadge(item);
     if (avatarEl) {
         var existingImg = avatarEl.querySelector('img');
         if (existingImg) existingImg.remove();
         var hue = ((Number((item && item.tester_id) || 0) * 73 + 17) % 360);
-        avatarEl.style.setProperty('--av-hue', String(hue));
+        avatarEl.style.background = 'linear-gradient(180deg, hsl(' + hue + ', 62%, 42%), hsl(' + hue + ', 58%, 28%))';
         if (initialsEl) {
             initialsEl.textContent = getFeedbackRewardInitials(item);
             initialsEl.style.display = 'flex';
@@ -3594,6 +3650,7 @@ function fillFeedbackRewardAuthorCard(item) {
         if (avatarUrl) {
             var img = document.createElement('img');
             img.alt = '';
+            img.decoding = 'async';
             img.src = String(avatarUrl);
             img.addEventListener('load', function() {
                 if (initialsEl) initialsEl.style.display = 'none';
@@ -3607,10 +3664,13 @@ function fillFeedbackRewardAuthorCard(item) {
     }
 }
 
-function setFeedbackRewardBust(amount) {
+function setFeedbackRewardBust(amount, options) {
     var balance = getFeedbackRewardOwnerBalance();
     var next = Math.max(0, Math.round(Number(amount || 0)));
     if (next > balance) next = Math.floor(balance);
+    var prev = _feedbackRewardBust;
+    var syncLimits = !!(options && options.syncLimits);
+    if (next === prev && !syncLimits) return;
     _feedbackRewardBust = next;
     const input = document.getElementById('feedback-reward-bust-input');
     if (input) input.value = String(_feedbackRewardBust);
@@ -3618,10 +3678,12 @@ function setFeedbackRewardBust(amount) {
     if (display) display.textContent = String(_feedbackRewardBust);
     FEEDBACK_REWARD_BUST_PRESETS.forEach(function(value) {
         const chip = document.getElementById('feedback-bust-chip-' + value);
-        if (chip) {
-            chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
-            chip.classList.toggle('is-disabled', Number(value) > balance);
-            chip.disabled = Number(value) > balance;
+        if (!chip) return;
+        chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
+        if (syncLimits) {
+            var overBalance = Number(value) > balance;
+            chip.classList.toggle('is-disabled', overBalance);
+            chip.disabled = overBalance;
         }
     });
     var minusBtn = document.getElementById('feedback-reward-bust-minus');
@@ -3634,7 +3696,7 @@ function setFeedbackRewardBust(amount) {
 function nudgeFeedbackRewardBust(delta) {
     var direction = Number(delta) < 0 ? -1 : 1;
     setFeedbackRewardBust(_feedbackRewardBust + (direction * FEEDBACK_REWARD_BUST_STEP));
-    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    _feedbackRewardLightHaptic();
 }
 
 function applyFeedbackRewardQuickReply(kind) {
@@ -3650,7 +3712,7 @@ function applyFeedbackRewardQuickReply(kind) {
     reply.value = window.t(key, {}, lang);
     syncFeedbackRewardQuickReplyState();
     _updateFeedbackRewardSubmitState();
-    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    _feedbackRewardLightHaptic();
 }
 
 function syncFeedbackRewardQuickReplyState() {
@@ -3658,46 +3720,43 @@ function syncFeedbackRewardQuickReplyState() {
     var current = reply ? String(reply.value || '').trim() : '';
     document.querySelectorAll('#feedback-reward-modal .feedback-reward-quick-chip').forEach(function(chip) {
         var kind = chip.getAttribute('data-quick') || '';
-        var keyMap = {
-            thanks: 'feedbackRewardQuickThanks',
-            bug: 'feedbackRewardQuickBug',
-            idea: 'feedbackRewardQuickIdea',
-            noted: 'feedbackRewardQuickNoted'
-        };
-        var expected = keyMap[kind] ? String(window.t(keyMap[kind], {}, lang) || '').trim() : '';
-        chip.classList.toggle('is-active', !!expected && expected === current);
+        chip.classList.toggle('is-active', !!kind && current === String(chip.textContent || '').trim());
     });
 }
 
 function updateFeedbackRewardSummary() {
-    var wrap = document.getElementById('feedback-reward-summary-badges');
-    if (!wrap) return;
-    var bits = [];
-    if (_feedbackRewardBust > 0) {
-        bits.push('<span class="feedback-reward-summary-bust">' +
-            window.escapeHTML(formatBustAmount(_feedbackRewardBust) + ' $BUST') +
-            '</span>');
+    var bustEl = document.getElementById('feedback-reward-summary-bust');
+    var karmaEl = document.getElementById('feedback-reward-summary-karma');
+    var karmaAmountEl = document.getElementById('feedback-reward-summary-karma-amount');
+    var emptyEl = document.getElementById('feedback-reward-summary-empty');
+    var hasBust = _feedbackRewardBust > 0;
+    var hasKarma = _feedbackRewardKarma > 0;
+    if (bustEl) {
+        bustEl.hidden = !hasBust;
+        if (hasBust) bustEl.textContent = formatFeedbackRewardBustLabel(_feedbackRewardBust);
     }
-    if (_feedbackRewardKarma > 0) {
-        var karmaLabel = window.t('feedbackRewardSummaryKarma', {
+    if (karmaEl) karmaEl.hidden = !hasKarma;
+    if (hasKarma && karmaAmountEl) {
+        karmaAmountEl.textContent = window.t('feedbackRewardSummaryKarma', {
             amount: Number(_feedbackRewardKarma).toFixed(1)
         }, lang);
-        var karmaHtml = (typeof window.withKarmaIcon === 'function')
-            ? window.withKarmaIcon(window.escapeHTML(karmaLabel), 'karma-yin-icon--inline', { after: true })
-            : window.escapeHTML(karmaLabel);
-        bits.push('<span class="feedback-reward-summary-karma">' + karmaHtml + '</span>');
     }
-    if (!bits.length) {
-        wrap.innerHTML = '<span class="feedback-reward-summary-empty">' +
-            window.escapeHTML(window.t('feedbackRewardSummaryEmpty', {}, lang)) +
-            '</span>';
-        return;
+    if (emptyEl) {
+        emptyEl.hidden = hasBust || hasKarma;
+        if (!hasBust && !hasKarma) {
+            emptyEl.textContent = window.t('feedbackRewardSummaryEmpty', {}, lang);
+        }
     }
-    wrap.innerHTML = bits.join('');
 }
 
-function setFeedbackRewardKarma(amount) {
-    var item = getFeedbackRewardItem();
+var _feedbackRewardKarmaGate = {
+    thanksAvailable: true,
+    specialAvailable: true,
+    alreadyThanked: false,
+    alreadySpecial: false
+};
+
+function _readFeedbackRewardKarmaGate(item) {
     var thanksAvailable = item ? (item.thanks_available !== false) : true;
     var specialAvailable = item ? (item.special_available !== false) : true;
     if (item && item.thanks_available == null && item.special_available == null) {
@@ -3715,30 +3774,47 @@ function setFeedbackRewardKarma(amount) {
         alreadyThanked = !!item && !!item.tester_already_rewarded_karma;
         alreadySpecial = alreadyThanked;
     }
+    return {
+        thanksAvailable: thanksAvailable,
+        specialAvailable: specialAvailable,
+        alreadyThanked: alreadyThanked,
+        alreadySpecial: alreadySpecial
+    };
+}
+
+function setFeedbackRewardKarma(amount, options) {
+    var gate = _feedbackRewardKarmaGate || _readFeedbackRewardKarmaGate(getFeedbackRewardItem());
+    var thanksAvailable = gate.thanksAvailable !== false;
+    var specialAvailable = gate.specialAvailable !== false;
+    var alreadyThanked = !!gate.alreadyThanked;
+    var alreadySpecial = !!gate.alreadySpecial;
+    var syncLimits = !!(options && options.syncLimits);
 
     if ((Number(amount) === 1.5 && (!thanksAvailable || alreadyThanked)) ||
         (Number(amount) === 3 && (!specialAvailable || alreadySpecial))) {
         amount = 0;
     }
 
-    _feedbackRewardKarma = Number(amount || 0);
+    var next = Number(amount || 0);
+    if (next === _feedbackRewardKarma && !syncLimits) return;
+    _feedbackRewardKarma = next;
     var mapping = { 0: '0', 1.5: '15', 3: '30' };
     ['0', '15', '30'].forEach(function(code) {
         var chip = document.getElementById('feedback-karma-chip-' + code);
-        if (chip) {
-            chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
-            if (code === '15') {
-                var disabledThanks = !thanksAvailable || alreadyThanked;
-                chip.classList.toggle('is-disabled', disabledThanks);
-                chip.disabled = disabledThanks;
-            } else if (code === '30') {
-                var disabledSpecial = !specialAvailable || alreadySpecial;
-                chip.classList.toggle('is-disabled', disabledSpecial);
-                chip.disabled = disabledSpecial;
-            } else {
-                chip.classList.remove('is-disabled');
-                chip.disabled = false;
-            }
+        if (!chip) return;
+        chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
+        if (!syncLimits) return;
+        if (code === '15') {
+            var disabledThanks = !thanksAvailable || alreadyThanked;
+            chip.classList.toggle('is-disabled', disabledThanks);
+            chip.disabled = disabledThanks;
+        } else if (code === '30') {
+            var disabledSpecial = !specialAvailable || alreadySpecial;
+            chip.classList.toggle('is-disabled', disabledSpecial);
+            chip.disabled = disabledSpecial;
+        } else {
+            chip.classList.remove('is-disabled');
+            chip.disabled = false;
         }
     });
     _updateFeedbackRewardSubmitState();
@@ -4127,9 +4203,14 @@ function openFeedbackRewardModal(appId, feedbackId) {
 
     var balance = getFeedbackRewardOwnerBalance();
     var balanceEl = document.getElementById('feedback-owner-balance');
-    if (balanceEl) balanceEl.textContent = window.t('feedbackRewardBustStatus', { amount: formatBustAmount(balance) }, lang);
+    if (balanceEl) balanceEl.textContent = window.t('feedbackRewardBustStatus', { amount: formatFeedbackRewardBustNumber(balance) }, lang);
 
     fillFeedbackRewardAuthorCard(item);
+    if (typeof window.hydrateKarmaIcons === 'function') {
+        window.hydrateKarmaIcons(document.getElementById('feedback-reward-modal'));
+    }
+
+    _feedbackRewardKarmaGate = _readFeedbackRewardKarmaGate(item);
 
     // Evaluate limits
     var thanksAvailable = item ? (item.thanks_available !== false) : true;
@@ -4178,8 +4259,8 @@ function openFeedbackRewardModal(appId, feedbackId) {
     if (window.openFeedbackRewardModalUi) {
         window.openFeedbackRewardModalUi();
     }
-    setFeedbackRewardBust(0);
-    setFeedbackRewardKarma(0);
+    setFeedbackRewardBust(0, { syncLimits: true });
+    setFeedbackRewardKarma(0, { syncLimits: true });
     const reply = document.getElementById('feedback-reward-reply');
     if (reply) {
         reply.value = '';
@@ -5447,6 +5528,7 @@ window.setFeedbackRewardBust = setFeedbackRewardBust;
 window.setFeedbackRewardKarma = setFeedbackRewardKarma;
 window.openFeedbackRewardModal = openFeedbackRewardModal;
 window.closeFeedbackRewardModal = closeFeedbackRewardModal;
+window.getFeedbackRewardLifetimeScore = getFeedbackRewardLifetimeScore;
 window.getFeedbackRewardContributionPoints = getFeedbackRewardContributionPoints;
 window.getFeedbackRewardTicketKind = getFeedbackRewardTicketKind;
 window.feedbackRewardHasProof = feedbackRewardHasProof;

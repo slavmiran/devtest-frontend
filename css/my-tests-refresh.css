@@ -2192,23 +2192,24 @@ button.ts-section-head {
 .checkin-dev-accordion__summary {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     gap: 6px;
     width: 100%;
     margin: 0;
     padding: 2px 0;
     border: 0;
     background: transparent;
-    color: var(--hint-color, #8b93a7);
-    font-size: 12px;
-    font-weight: 500;
+    color: rgba(139, 147, 167, 0.48);
+    font-size: 11px;
+    font-weight: 400;
     line-height: 1.35;
-    text-align: left;
+    text-align: center;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
 .checkin-dev-accordion__summary-text {
     min-width: 0;
+    max-width: calc(100% - 14px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2279,11 +2280,21 @@ button.ts-section-head {
     line-height: 1.4;
 }
 .checkin-dev-accordion__hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
     margin: 8px 0 0;
     color: rgba(139, 147, 167, 0.82);
     font-size: 11px;
     font-weight: 500;
     line-height: 1.35;
+}
+.checkin-dev-accordion__hint-icon {
+    flex: 0 0 14px;
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
+    opacity: 0.72;
 }
 @media (prefers-reduced-motion: reduce) {
     .checkin-dev-accordion__panel,

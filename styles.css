@@ -551,10 +551,12 @@ button.pc-subtitle-chip--reviews:active {
 #project-feedback-modal .modal-content::before,
 #testing-control-modal .modal-content::before,
 #reliability-alpha-modal .modal-content::before,
+#contributor-dossier-modal .modal-content::before,
+.pc-dossier-sheet::before,
 #screenshot-boost-modal .modal-content::before,
 .screenshot-boost-modal .modal-content::before {
-    content: none;
-    display: none;
+    content: none !important;
+    display: none !important;
 }
 
 /* Centered popups must keep all four rounded corners (modal-content defaults to sheet). */
