@@ -29,6 +29,11 @@
     var optimisticFeedbackBustByTester = {};
     if (typeof window !== 'undefined') {
         window._optimisticFeedbackBustByTester = optimisticFeedbackBustByTester;
+        if (typeof window.openDossierModal !== 'function') {
+            window.openDossierModal = function (username, testerId, appId) {
+                console.log('[DOSSIER STUB]', username, testerId, appId);
+            };
+        }
     }
 
     function text(key, fallback, params) {
@@ -643,10 +648,14 @@
                     'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
                     'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
                 timeAgoHtml +
+                (opts.nameSuffixHtml || '') +
             '</span>';
             timeAgoHtml = '';
         } else {
             nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(primaryName) + '</span>';
+            if (opts.nameSuffixHtml) {
+                nameHtml += opts.nameSuffixHtml;
+            }
         }
 
         if (timeAgoHtml) {
@@ -1379,16 +1388,16 @@
             meta += '<span class="pc-person__device">' + esc(devText) + '</span>';
         }
         var dayNum = Number(row && row.day || 0);
+        var dayHtml = '';
         if (dayNum > 0) {
-            var dayClass = 'pc-person__day' + (!row.received ? ' pc-person__day--control is-control-accent' : '');
-            meta += (meta ? ' • ' : '') +
-                '<span class="' + dayClass + '">' +
-                    esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
-                '</span>';
+            var dayClass = 'pc-person__day pc-person__day--control is-control-accent';
+            dayHtml = '<span class="' + dayClass + '">' +
+                esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
+            '</span>';
         }
         var typeLabel = row.received ? proofTypeLabel(row.proofType) : '';
         if (typeLabel) {
-            meta += ' <span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
+            meta += (meta ? ' ' : '') + '<span class="pc-tag pc-tag--' + esc(row.proofType) + '">' + esc(typeLabel) + '</span>';
         }
         var receipts = controlReminderStates.get(Number(appId));
         var receipt = receipts && (receipts.items || []).find(function(item) {
@@ -1414,6 +1423,7 @@
             received: !!row.received,
             waiting: !row.received,
             metaHtml: meta,
+            nameSuffixHtml: dayHtml,
             actionsHtml: controlActionsHtml(appId, row, context),
             extraHtml: extraHtml,
         });
@@ -1580,11 +1590,13 @@
                         return Number(t && (t.tester_id || t.id) || 0) === testerId;
                     });
                 }
-                var testerObj = rosterTester ? Object.assign({}, rosterTester, row.tester || {}) : (row.tester || {});
+                var cachedProfile = (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache && _dossierProfilesCache[String(testerId)]) || null;
+                var testerObj = Object.assign({}, cachedProfile || {}, rosterTester || {}, row.tester || {});
                 byTester[testerId] = {
                     testerId: testerId,
                     tester: testerObj,
                     screenshotCount: 0,
+                    screenshotSeriesCount: 0,
                     screenshotRow: null,
                     bug: null,
                     idea: null,
@@ -1603,9 +1615,14 @@
                     item.latestCreatedAt = row.tester.last_check_date;
                 }
             }
-            if (row.proofType === 'screenshot' && Number(row.imageCount || 0) > item.screenshotCount) {
-                item.screenshotCount = Number(row.imageCount || 0);
-                item.screenshotRow = row;
+            if (row.proofType === 'screenshot') {
+                if (Number(row.imageCount || 0) >= 3) {
+                    item.screenshotSeriesCount = (item.screenshotSeriesCount || 0) + 1;
+                }
+                if (Number(row.imageCount || 0) > item.screenshotCount) {
+                    item.screenshotCount = Number(row.imageCount || 0);
+                    item.screenshotRow = row;
+                }
             }
             if (row.proofType === 'bug' && !item.bug) item.bug = row;
             if (row.proofType === 'idea' && !item.idea) item.idea = row;
@@ -2022,6 +2039,161 @@
         '</button>';
     }
 
+    function pluralizePoints(score) {
+        var n = Math.abs(Math.round(Number(score || 0))) % 100;
+        var r = n % 10;
+        if (n > 10 && n < 20) return text('countPointsWord_many', 'баллов');
+        if (r > 1 && r < 5) return text('countPointsWord_few', 'балла');
+        if (r === 1) return text('countPointsWord_one', 'балл');
+        return text('countPointsWord_many', 'баллов');
+    }
+
+    function pluralizeSeries(count) {
+        var n = Math.abs(Math.round(Number(count || 0))) % 100;
+        var r = n % 10;
+        if (n > 10 && n < 20) return text('pcContribStatSeries_many', 'серий');
+        if (r > 1 && r < 5) return text('pcContribStatSeries_few', 'серии');
+        if (r === 1) return text('pcContribStatSeries_one', 'серия');
+        return text('pcContribStatSeries_many', 'серий');
+    }
+
+    function contributionTesterStatsChipHtml(appId, tester, item, context) {
+        var t = tester || (item && item.tester) || {};
+        var testerId = Number(t.tester_id || t.id || (item && item.testerId) || 0);
+
+        // 1. Вклад за всё время
+        var score = Math.round(Number(
+            t.contribution_lifetime_score != null
+                ? t.contribution_lifetime_score
+                : (t.all_time_contribution != null
+                    ? t.all_time_contribution
+                    : (t.contribution_score != null ? t.contribution_score : 0))
+        ));
+
+        // 2. Процент принятия фидбеков (0..100)
+        var rawRate = t.acceptance_rate_pct != null ? t.acceptance_rate_pct : t.acceptance_rate;
+        var acceptanceRate = (rawRate != null && rawRate !== '' && !isNaN(Number(rawRate)))
+            ? Number(rawRate)
+            : null;
+
+        // Число проверенных репортов (accepted + rejected)
+        var acceptedTotal = Number(t.feedback_accepted_total != null ? t.feedback_accepted_total : (t.accepted_total || 0));
+        var rejectedTotal = Number(t.feedback_rejected_total != null ? t.feedback_rejected_total : (t.rejected_total || 0));
+        var verifiedTotal = acceptedTotal + rejectedTotal;
+        var submittedTotal = Number(t.feedback_submitted_total != null ? t.feedback_submitted_total : (t.submitted_total || 0));
+        if (verifiedTotal === 0 && submittedTotal > 0 && acceptanceRate !== null) {
+            verifiedTotal = submittedTotal;
+        }
+
+        // Репорты на проверке за сегодня / всего
+        var reasons = (item && item.reasons) || [];
+        var pendingToday = reasons.filter(function (r) {
+            if (!r || r.kind === 'screenshots') return false;
+            var st = String(r.feedbackStatus || '').toLowerCase();
+            return !st || st === 'pending' || st === 'sent' || PROCESSED_STATUSES.indexOf(st) === -1;
+        }).length;
+        var pendingCount = Math.max(pendingToday, Number(t.pending_feedbacks_count || 0));
+
+        // Были ли текстовые репорты сегодня (баг, рекомендация, отзыв)?
+        var hasFeedbackToday = reasons.some(function (r) {
+            return r && (r.kind === 'bug' || r.kind === 'idea' || r.kind === 'play_review');
+        });
+
+        // Серии скриншотов (3+ скринов)
+        var seriesCount = Number((item && item.screenshotSeriesCount) || 0);
+        if (seriesCount <= 0) {
+            seriesCount = reasons.filter(function (r) {
+                return r && (r.kind === 'screenshots' || Number(r.imageCount || 0) >= 3);
+            }).length;
+        }
+        if (seriesCount <= 0 && item && Number(item.screenshotCount || 0) >= 3) {
+            seriesCount = 1;
+        }
+
+        // 3. Достижения в спринтах (Топ-5 / Топ-10)
+        var top5 = Number(t.contribution_top5_count || t.top5_count || 0);
+        var top10 = Number(t.contribution_top10_count || t.top10_count || 0);
+        var bestRank = t.contribution_best_rank != null ? Number(t.contribution_best_rank) : (t.best_rank != null ? Number(t.best_rank) : null);
+        var seasonRank = t.season_rank != null ? Number(t.season_rank) : null;
+        var topBadgeText = '';
+        if (top5 > 0 || (bestRank && bestRank <= 5) || (seasonRank && seasonRank <= 5)) {
+            topBadgeText = text('pcContribStatTop5', '🏅 Топ-5');
+        } else if (top10 > 0 || (bestRank && bestRank <= 10) || (seasonRank && seasonRank <= 10)) {
+            topBadgeText = text('pcContribStatTop10', '🏅 Топ-10');
+        }
+
+        // Текст баллов
+        var pointsLabel = '';
+        if (score > 0) {
+            pointsLabel = text('pcContribStatScore', '🏆 {score} {points_word}', {
+                score: score,
+                points_word: pluralizePoints(score),
+            });
+        } else {
+            pointsLabel = text('pcContribStatScoreVal', '🏆 Вклад: {score}', { score: score });
+        }
+
+        var toneClass = '';
+        var parts = [];
+
+        // Сценарий 4: Квалифицировался серией 3+ скриншотов без текста фидбека
+        if (seriesCount > 0 && !hasFeedbackToday) {
+            toneClass = ' pc-contrib-stat-chip--screenshots';
+            parts.push(pointsLabel);
+            var seriesLabel = text('pcContribStatScreenshots', '📸 {count} {series_word} 3+ скринов', {
+                count: seriesCount,
+                series_word: pluralizeSeries(seriesCount),
+            });
+            parts.push(seriesLabel);
+        }
+        // Сценарий 1: Новичок или отчеты ждут подтверждения разработчика
+        // Правило: НИКОГДА не писать "0% принятия"
+        else if (verifiedTotal < 3 || acceptanceRate === null || acceptanceRate === 0) {
+            toneClass = ' pc-contrib-stat-chip--pending';
+            var sc1Points = text('pcContribStatScoreVal', '🏆 Вклад: {score}', { score: score });
+            parts.push(sc1Points);
+            var nPending = pendingCount > 0 ? pendingCount : Math.max(1, pendingToday);
+            var pendingLabel = text('pcContribStatPending', '⏳ {count} на проверке', { count: nPending });
+            parts.push(pendingLabel);
+        }
+        // Сценарий 3: Низкий процент (<40% при 3+ отчетах), нейтральный стиль
+        else if (acceptanceRate < 40) {
+            toneClass = ' pc-contrib-stat-chip--warn';
+            parts.push(pointsLabel);
+            var warnLabel = text('pcContribStatWarn', '⚠️ {pct}% принято', { pct: Math.round(acceptanceRate) });
+            parts.push(warnLabel);
+            if (topBadgeText) {
+                parts.push(topBadgeText);
+            }
+        }
+        // Сценарий 2: Опытный с хорошей историей (>=40% при 3+ отчетах)
+        else {
+            toneClass = ' pc-contrib-stat-chip--good';
+            parts.push(pointsLabel);
+            var acceptLabel = text('pcContribStatAccepted', '🎯 {pct}% принято', { pct: Math.round(acceptanceRate) });
+            parts.push(acceptLabel);
+            if (topBadgeText) {
+                parts.push(topBadgeText);
+            }
+        }
+
+        var tooltip = text('pcContribStatTooltip', 'Статистика участника · Нажмите, чтобы открыть досье');
+        var clickAttr = 'event.stopPropagation(); ' + dossierClick(appId, t);
+
+        var segmentsHtml = parts.map(function (p) {
+            var isTop = topBadgeText && p === topBadgeText;
+            var segCls = isTop ? 'pc-contrib-stat-chip__seg pc-contrib-stat-chip__top-badge' : 'pc-contrib-stat-chip__seg';
+            return '<span class="' + segCls + '">' + esc(p) + '</span>';
+        }).join('<span class="pc-contrib-stat-chip__sep" aria-hidden="true">•</span>');
+
+        return '<button type="button" class="pc-contrib-stat-chip' + toneClass + '"' +
+            ' onclick="' + clickAttr + '"' +
+            ' title="' + esc(tooltip) + '">' +
+            segmentsHtml +
+            '<span class="pc-contrib-stat-chip__arrow" aria-hidden="true">▾</span>' +
+        '</button>';
+    }
+
     function contributionSheetHtml(appId, items, context) {
         if (!items.length) return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
 
@@ -2064,7 +2236,7 @@
                 tester: item.tester,
                 tone: rewardState.rewardedToday ? 'green' : 'sky',
                 rowClass: 'pc-person--contribution',
-                metaHtml: '',
+                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
                 actionsHtml: headerActionsHtml,
                 avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
                 extraHtml: subrowsHtml,

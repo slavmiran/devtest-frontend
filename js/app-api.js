@@ -1687,6 +1687,11 @@ function _mapTestsFromApi(data) {
             owner_avg_handle_hours: (app.owner_avg_handle_hours == null || app.owner_avg_handle_hours === '')
                 ? null
                 : Number(app.owner_avg_handle_hours),
+            owner_pending_open: Math.max(0, Number(app.owner_pending_open || 0) || 0),
+            owner_accepted_total: Math.max(0, Number(app.owner_accepted_total || 0) || 0),
+            owner_acceptance_rate_pct: (app.owner_acceptance_rate_pct == null || app.owner_acceptance_rate_pct === '')
+                ? null
+                : Number(app.owner_acceptance_rate_pct),
             active_testers_count: app.active_testers_count,
             eligible_testers_count: Number(app.eligible_testers_count || 0),
             days_since_publish: app.days_since_publish,

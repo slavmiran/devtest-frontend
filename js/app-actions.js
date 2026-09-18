@@ -2391,6 +2391,17 @@ function _openStorePackage(pkg, appId) {
     }
 }
 
+// Paid protection days do not require another anti-fraud timer.  When the
+// owner opted into screenshot bonuses, this explicit Open action encourages
+// a real app session while keeping the existing one-tap installation check-in.
+function openProtectionBoostApp(appId, pkg) {
+    if (window.tg && window.tg.HapticFeedback) {
+        try { window.tg.HapticFeedback.selectionChanged(); } catch (e) {}
+    }
+    _openStorePackage(pkg, appId);
+}
+window.openProtectionBoostApp = openProtectionBoostApp;
+
 function _findAttemptedOpenButton(attemptedAppId) {
     if (!attemptedAppId) return null;
     var card = document.getElementById('test-card-' + attemptedAppId);

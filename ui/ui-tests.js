@@ -2242,9 +2242,14 @@ function getScreenshotBoostOffer(test, testingDay) {
     var pool = Math.max(0, Number(campaign.pool_remaining || 0));
     var day = Math.max(0, Number(testingDay || getResolvedTestingDay(test) || 0));
     var run = Math.max(1, Number(test.run_iteration || 1));
+    var protectionDays = Math.max(0, Number(test.paid_protection_days || test.purchased_protection_days || 0));
     if (!reward || pool < reward || !day) return null;
     if (Math.max(1, Number(campaign.run_iteration || 1)) !== run) return null;
     if (String(test.progress_status || 'active').toLowerCase() !== 'active') return null;
+    if (day >= 15) {
+        if (day > 14 + protectionDays) return null;
+        if (campaign.reward_protection_days !== true) return null;
+    }
     if (String(test.app_status || 'active').toLowerCase() === 'pending_completion'
         && isBufferOnlyCatchupSubmission(test, day)) return null;
     if (['completed', 'archived', 'blocked'].indexOf(String(test.app_status || '').toLowerCase()) !== -1) return null;
@@ -2300,12 +2305,25 @@ function getScreenshotBoostPaperclipContent(appId) {
     return html;
 }
 
-function syncScreenshotBoostOfferUi(appId) {
+function syncScreenshotBoostOfferUi(appId, options) {
+    options = options || {};
     var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id || 0) === Number(appId || 0);
     });
     var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
-    ['checkin-options-screenshot-boost', 'report-screenshot-boost'].forEach(function(id) {
+    var fillChooser = options.chooser !== false;
+    var fillReport = options.report !== false;
+    var targets = [];
+    if (fillChooser) targets.push('checkin-options-screenshot-boost');
+    if (fillReport) targets.push('report-screenshot-boost');
+    else {
+        var reportNode = document.getElementById('report-screenshot-boost');
+        if (reportNode) {
+            reportNode.hidden = true;
+            reportNode.textContent = '';
+        }
+    }
+    targets.forEach(function(id) {
         var node = document.getElementById(id);
         if (!node) return;
         node.hidden = !offer;
@@ -2318,11 +2336,138 @@ function syncScreenshotBoostOfferUi(appId) {
             : 'screenshotBoostOfferDetail';
         node.innerHTML = '<span class="screenshot-boost-offer__gift" aria-hidden="true">🎁</span>' +
             '<span class="screenshot-boost-offer__copy">' +
-                '<strong>+' + window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</strong>' +
-                '<span>' + window.escapeHTML(window.t(detailKey, {}, lang)) + '</span>' +
+                '<span class="screenshot-boost-offer__title">' +
+                    '<strong>+' + window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</strong>' +
+                    '<span class="screenshot-boost-offer__chip">' +
+                        window.escapeHTML(window.t('screenshotBoostBonusChip', {}, lang) || (lang === 'en' ? 'Bonus' : 'Бонус')) +
+                    '</span>' +
+                '</span>' +
+                '<span class="screenshot-boost-offer__detail">' + window.escapeHTML(window.t(detailKey, {}, lang)) + '</span>' +
             '</span>';
     });
     return offer;
+}
+
+var _screenshotBoostAdvertisedAppId = 0;
+
+function markScreenshotBoostAdvertisedInChooser(appId, advertised) {
+    _screenshotBoostAdvertisedAppId = advertised ? Number(appId || 0) : 0;
+}
+
+function wasScreenshotBoostAdvertisedInChooser(appId) {
+    var id = Number(appId || 0);
+    return id > 0 && Number(_screenshotBoostAdvertisedAppId || 0) === id;
+}
+
+function getCheckinDeveloperDisplayName(test, fallbackUsername) {
+    var fullName = String((test && test.owner_full_name) || '').trim();
+    var username = String(
+        (test && (test.owner_username || test.external_owner_username)) ||
+        fallbackUsername ||
+        ''
+    ).trim().replace(/^@+/, '');
+    if (fullName) return fullName;
+    if (username) return '@' + username;
+    return window.t('unknownLabel', {}, lang) || '—';
+}
+
+function formatCheckinDeveloperSpeedLabel(hoursRaw) {
+    var sla = typeof formatOwnerSlaDisplay === 'function'
+        ? formatOwnerSlaDisplay(hoursRaw)
+        : { hasValue: false, label: '—', hours: null };
+    if (!sla.hasValue) return window.t('feedbackSlaChipDash', {}, lang) || '—';
+    if (Number(sla.hours) >= 18 && Number(sla.hours) < 40) {
+        return window.t('checkinDevSpeedUpToDay', {}, lang);
+    }
+    return sla.label;
+}
+
+function formatCheckinDeveloperAcceptedLabel(count, rate) {
+    var n = Math.max(0, Number(count || 0) || 0);
+    var pct = (rate == null || rate === '') ? NaN : Number(rate);
+    if (Number.isFinite(pct)) {
+        var pctLabel = (Math.abs(pct - Math.round(pct)) < 0.05)
+            ? String(Math.round(pct))
+            : String(pct).replace(/\.0$/, '');
+        return window.t('checkinDevAcceptedValue', { count: n, pct: pctLabel }, lang);
+    }
+    return String(n);
+}
+
+function collapseCheckinDeveloperAccordion() {
+    var root = document.getElementById('checkin-options-developer');
+    var toggle = document.getElementById('checkin-options-developer-toggle');
+    if (root) root.classList.remove('is-open');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function toggleCheckinDeveloperAccordion(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var root = document.getElementById('checkin-options-developer');
+    var toggle = document.getElementById('checkin-options-developer-toggle');
+    if (!root) return;
+    var open = !root.classList.contains('is-open');
+    root.classList.toggle('is-open', open);
+    if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function syncCheckinDeveloperAccordion(appId, fallbackUsername) {
+    var root = document.getElementById('checkin-options-developer');
+    var summary = document.getElementById('checkin-options-developer-summary');
+    var body = document.getElementById('checkin-options-developer-body');
+    var toggle = document.getElementById('checkin-options-developer-toggle');
+    collapseCheckinDeveloperAccordion();
+    var test = typeof window.getMyTestById === 'function'
+        ? window.getMyTestById(appId)
+        : ((Array.isArray(myTests) ? myTests : []).find(function(item) {
+            return Number(item && item.id || 0) === Number(appId || 0);
+        }) || null);
+    var name = getCheckinDeveloperDisplayName(test, fallbackUsername);
+    if (summary) {
+        summary.textContent = window.t('checkinDevAccordionSummary', { name: name }, lang);
+    }
+    if (toggle) {
+        toggle.setAttribute('aria-label', window.t('checkinDevAccordionAria', {}, lang));
+    }
+    if (!body) return root;
+
+    var hoursRaw = test && (test.owner_avg_handle_hours != null && test.owner_avg_handle_hours !== '')
+        ? test.owner_avg_handle_hours
+        : null;
+    var pending = Math.max(0, Number(test && test.owner_pending_open || 0) || 0);
+    var accepted = Math.max(0, Number(test && test.owner_accepted_total || 0) || 0);
+    var rate = test && (test.owner_acceptance_rate_pct != null && test.owner_acceptance_rate_pct !== '')
+        ? Number(test.owner_acceptance_rate_pct)
+        : null;
+    var hasHours = hoursRaw != null && hoursRaw !== '' && Number.isFinite(Number(hoursRaw));
+    var isNew = !hasHours && pending <= 0 && accepted <= 0;
+
+    if (isNew) {
+        body.innerHTML = '<p class="checkin-dev-accordion__empty">' +
+            window.escapeHTML(window.t('checkinDevEmpty', {}, lang)) +
+            '</p>';
+        return root;
+    }
+
+    function row(labelKey, valueHtml) {
+        return '<div class="checkin-dev-accordion__row">' +
+            '<span>' + window.escapeHTML(window.t(labelKey, {}, lang)) + '</span>' +
+            '<strong>' + valueHtml + '</strong>' +
+            '</div>';
+    }
+
+    body.innerHTML =
+        row('checkinDevNameLabel', window.escapeHTML(name)) +
+        row('checkinDevSpeedLabel', window.escapeHTML(formatCheckinDeveloperSpeedLabel(hoursRaw))) +
+        row('checkinDevAcceptedLabel', window.escapeHTML(formatCheckinDeveloperAcceptedLabel(accepted, rate))) +
+        row('checkinDevQueueLabel', window.escapeHTML(String(pending))) +
+        '<p class="checkin-dev-accordion__hint">' +
+            window.escapeHTML(window.t('checkinDevHint', {}, lang)) +
+        '</p>';
+    return root;
 }
 
 function syncCheckinCatchupNoteUi(appId) {
@@ -2352,7 +2497,12 @@ window.hasOpenControlProofCatchup = hasOpenControlProofCatchup;
 window.getScreenshotBoostOffer = getScreenshotBoostOffer;
 window.getScreenshotBoostPaperclipContent = getScreenshotBoostPaperclipContent;
 window.syncScreenshotBoostOfferUi = syncScreenshotBoostOfferUi;
+window.markScreenshotBoostAdvertisedInChooser = markScreenshotBoostAdvertisedInChooser;
+window.wasScreenshotBoostAdvertisedInChooser = wasScreenshotBoostAdvertisedInChooser;
 window.syncCheckinCatchupNoteUi = syncCheckinCatchupNoteUi;
+window.syncCheckinDeveloperAccordion = syncCheckinDeveloperAccordion;
+window.toggleCheckinDeveloperAccordion = toggleCheckinDeveloperAccordion;
+window.collapseCheckinDeveloperAccordion = collapseCheckinDeveloperAccordion;
 
 function removeControlProofCatchupInfoDialog() {
     const dialog = document.getElementById('pc-catchup-tester-dialog');
@@ -2852,20 +3002,27 @@ function renderTests(force) {
             const testingDay = userTestingDay || 999;
             if (testingDay >= 15) {
                 const hintHtml = renderCheckinRewardHint(test, testingDay, lang);
+                const extensionBoostOffer = getScreenshotBoostOffer(test, testingDay);
                 // Do NOT show the karma-only hint when pool is empty — it promises a "Protection Bonus" that doesn't exist
 
-
-                actionsHtml = `
-                    <div class="action-row">
+                const extensionConfirmHtml = `
+                    <div class="action-row${extensionBoostOffer ? ' extension-boost-confirm-row' : ''}">
                         <div class="split-btn-group${isFeedbackCheckinPending ? ' is-feedback-pending' : ''}" style="width: 100%; flex: 1;">
                             <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
                                 ${isFeedbackCheckinPending ? feedbackPendingBtnInner : window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed')}
                             </button>
-                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${getScreenshotBoostOffer(test, testingDay) ? ' has-screenshot-boost' : ''}${hasOpenControlProofCatchup(test) ? ' has-catchup-proof' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang) + (hasOpenControlProofCatchup(test) ? ' · ' + window.t('checkinOptionsCatchupAria', {}, lang) : ''))}">
+                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${extensionBoostOffer ? ' has-screenshot-boost' : ''}${hasOpenControlProofCatchup(test) ? ' has-catchup-proof' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang) + (hasOpenControlProofCatchup(test) ? ' · ' + window.t('checkinOptionsCatchupAria', {}, lang) : ''))}">
                                 ${getScreenshotBoostPaperclipContent(test.id)}
                             </button>`}
                         </div>
-                    </div>
+                    </div>`;
+                actionsHtml = `
+                    ${extensionBoostOffer ? `<div class="checkin-actions checkin-actions--stacked extension-boost-actions">
+                        <button type="button" class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="openProtectionBoostApp(${test.id}, '${safePackage}')">
+                            ${t.openBtn}
+                        </button>
+                        ${extensionConfirmHtml}
+                    </div>` : extensionConfirmHtml}
                     ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                     ${hintHtml}
                 `;

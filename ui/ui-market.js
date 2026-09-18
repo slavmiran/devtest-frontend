@@ -3321,6 +3321,9 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     var testingDay = test ? getResolvedTestingDay(test) : null;
     _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
     if (_checkinOptionsIsControlDay && isScreenshotOnlyControlDay(testingDay)) {
+        if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
+            window.markScreenshotBoostAdvertisedInChooser(appId, false);
+        }
         handleScreenshotAndConfirm(appId, ownerUsername || '');
         return;
     }
@@ -3389,10 +3392,16 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     }
     renderCheckinReviewOptions();
     if (typeof window.syncScreenshotBoostOfferUi === 'function') {
-        window.syncScreenshotBoostOfferUi(appId);
+        window.syncScreenshotBoostOfferUi(appId, { report: false });
+    }
+    if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
+        window.markScreenshotBoostAdvertisedInChooser(appId, !!screenshotBoostOffer);
     }
     if (typeof window.syncCheckinCatchupNoteUi === 'function') {
         window.syncCheckinCatchupNoteUi(appId);
+    }
+    if (typeof window.syncCheckinDeveloperAccordion === 'function') {
+        window.syncCheckinDeveloperAccordion(appId, ownerUsername || (test && test.owner_username) || '');
     }
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
@@ -3432,6 +3441,9 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
         reviewBtn.style.display = 'none';
     }
     renderCheckinReviewOptions();
+    if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
+        window.markScreenshotBoostAdvertisedInChooser(appId, false);
+    }
     ['checkin-options-screenshot-boost', 'report-screenshot-boost'].forEach(function(id) {
         var node = document.getElementById(id);
         if (node) {
@@ -3442,6 +3454,9 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     var catchupNote = document.getElementById('checkin-options-catchup-note');
     if (catchupNote) catchupNote.hidden = true;
     modal.classList.remove('has-catchup-note');
+    if (typeof window.syncCheckinDeveloperAccordion === 'function') {
+        window.syncCheckinDeveloperAccordion(appId, _checkinOptionsOwner);
+    }
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -4464,7 +4479,12 @@ function openReportModal(appId, ownerUsername, options) {
         var cancelLabel = document.getElementById('t-checkinProofCancel');
         if (cancelLabel) cancelLabel.textContent = window.t('checkinProofCancel', {}, lang);
         if (typeof window.syncScreenshotBoostOfferUi === 'function') {
-            window.syncScreenshotBoostOfferUi(appId);
+            var hideDuplicateBoost = typeof window.wasScreenshotBoostAdvertisedInChooser === 'function'
+                && window.wasScreenshotBoostAdvertisedInChooser(appId);
+            window.syncScreenshotBoostOfferUi(appId, {
+                chooser: false,
+                report: !hideDuplicateBoost && !isCatchupSubmission
+            });
         }
         var reportBoostOffer = !isCatchupSubmission && typeof window.getScreenshotBoostOffer === 'function'
             ? window.getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0)

@@ -826,6 +826,7 @@ function normalizeScreenshotBoostCampaign(campaign, appId, runIteration) {
         paid_total: Math.max(0, Number(campaign.paid_total || 0)),
         returned_total: Math.max(0, Number(campaign.returned_total || 0)),
         reward_control_days: campaign.reward_control_days === true,
+        reward_protection_days: campaign.reward_protection_days === true,
         enabled: campaign.enabled === true,
     };
 }
@@ -851,6 +852,8 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
     var body = document.getElementById('screenshot-boost-modal-body');
     if (!body || !project) return;
     campaign = normalizeScreenshotBoostCampaign(campaign, project.id || project.app_id, project.run_iteration);
+    var protectionDays = Math.max(0, Number(project.purchased_protection_days || project.paid_protection_days || 0));
+    var hasProtectionDays = protectionDays > 0;
     var safeName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang) || 'Project');
     body.innerHTML = `
         <div class="screenshot-boost-sheet__handle" aria-hidden="true"></div>
@@ -897,6 +900,21 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
             <span class="screenshot-boost-control-check" aria-hidden="true"></span>
             <span><strong>${window.escapeHTML(window.t('screenshotBoostControlLabel', {}, lang))}</strong><small>1 · 4 · 7 · 10 · 14</small></span>
         </label>
+        <div class="screenshot-boost-control-row screenshot-boost-protection-row${hasProtectionDays ? '' : ' is-disabled'}">
+            <label class="screenshot-boost-protection-choice">
+                <input id="screenshot-boost-protection-days" type="checkbox" ${campaign.reward_protection_days && hasProtectionDays ? 'checked' : ''} ${hasProtectionDays ? '' : 'disabled'}>
+                <span class="screenshot-boost-control-check" aria-hidden="true"></span>
+                <span>
+                    <strong>${window.escapeHTML(window.t('screenshotBoostProtectionLabel', {}, lang))}</strong>
+                    <small>${window.escapeHTML(window.t(hasProtectionDays ? 'screenshotBoostProtectionHint' : 'screenshotBoostProtectionUnavailable', { count: protectionDays }, lang))}</small>
+                </span>
+            </label>
+            <button type="button" class="screenshot-boost-protection-info" aria-expanded="false" aria-controls="screenshot-boost-protection-info-panel" aria-label="${window.escapeHTML(window.t('screenshotBoostProtectionInfoAria', {}, lang))}" onclick="toggleScreenshotBoostProtectionInfo(this)">i</button>
+        </div>
+        <div id="screenshot-boost-protection-info-panel" class="screenshot-boost-protection-info-panel" hidden>
+            <strong>${window.escapeHTML(window.t('screenshotBoostProtectionInfoTitle', {}, lang))}</strong>
+            <p>${window.escapeHTML(window.t('screenshotBoostProtectionInfoText', {}, lang))}</p>
+        </div>
         <div class="screenshot-boost-balance">
             <span>${window.escapeHTML(window.t('screenshotBoostBalanceAvailable', { amount: formatScreenshotBoostAmount(balanceBust) }, lang))}</span>
             <span>${window.escapeHTML(window.t('screenshotBoostPoolReserved', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</span>
@@ -922,6 +940,14 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
     `;
     syncScreenshotBoostSettingsToggle();
     syncScreenshotBoostBudgetPreview();
+}
+
+function toggleScreenshotBoostProtectionInfo(button) {
+    var panel = document.getElementById('screenshot-boost-protection-info-panel');
+    if (!panel) return;
+    var open = panel.hidden;
+    panel.hidden = !open;
+    if (button) button.setAttribute('aria-expanded', String(open));
 }
 
 function changeScreenshotBoostAmount(field, delta) {
@@ -973,6 +999,9 @@ async function openScreenshotBoostSettings(appId, event) {
         if (!response.ok || payload.status !== 'success') throw new Error(payload.code || payload.error || 'load_failed');
         if (_screenshotBoostModalAppId !== Number(appId || 0) || !modal.classList.contains('active')) return;
         _screenshotBoostModalBalance = Number(payload.balance_bust || 0);
+        if (payload.purchased_protection_days != null) {
+            project.purchased_protection_days = Math.max(0, Number(payload.purchased_protection_days || 0));
+        }
         project.screenshot_boost_campaign = normalizeScreenshotBoostCampaign(payload.campaign, project.id, project.run_iteration);
         if (window.ProjectParameters) window.ProjectParameters.recordSaved(project, 'screenshot_boost_campaign');
         _screenshotBoostSettingsLoaded = true;
@@ -1025,9 +1054,10 @@ async function saveScreenshotBoostSettings() {
     var rewardNode = document.getElementById('screenshot-boost-reward');
     var poolNode = document.getElementById('screenshot-boost-pool');
     var controlNode = document.getElementById('screenshot-boost-control-days');
+    var protectionNode = document.getElementById('screenshot-boost-protection-days');
     var saveButton = document.getElementById('screenshot-boost-save');
     var errorNode = document.getElementById('screenshot-boost-settings-error');
-    if (!project || !enabledNode || !rewardNode || !poolNode || !controlNode) return;
+    if (!project || !enabledNode || !rewardNode || !poolNode || !controlNode || !protectionNode) return;
     var enabled = !!enabledNode.checked;
     var reward = Number(rewardNode.value || 0);
     var pool = Number(poolNode.value || 0);
@@ -1054,6 +1084,7 @@ async function saveScreenshotBoostSettings() {
                 reward_bust: reward,
                 pool_bust: enabled ? pool : 0,
                 reward_control_days: !!controlNode.checked,
+                reward_protection_days: !protectionNode.disabled && !!protectionNode.checked,
                 init_data: initData,
             }),
         });
@@ -6477,6 +6508,17 @@ function applyOwnerProfileIdentityToTest(test, profileData) {
     if (typeof profileData.karma !== 'undefined') test.owner_karma = profileData.karma;
     if (typeof profileData.avg_handle_hours !== 'undefined') {
         test.owner_avg_handle_hours = profileData.avg_handle_hours;
+    }
+    if (typeof profileData.owner_pending_open !== 'undefined') {
+        test.owner_pending_open = Number(profileData.owner_pending_open || 0);
+    }
+    if (typeof profileData.owner_accepted_total !== 'undefined') {
+        test.owner_accepted_total = Number(profileData.owner_accepted_total || 0);
+    }
+    if (typeof profileData.owner_acceptance_rate_pct !== 'undefined') {
+        test.owner_acceptance_rate_pct = profileData.owner_acceptance_rate_pct == null || profileData.owner_acceptance_rate_pct === ''
+            ? null
+            : Number(profileData.owner_acceptance_rate_pct);
     }
 }
 
