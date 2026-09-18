@@ -3072,7 +3072,12 @@ function markTestFeedbackCheckinPending(appId) {
     // through Open → timer again with no explanation.
     clearActiveTimerForApp(normalizedId);
     applyTestFeedbackCheckinPendingUi(normalizedId);
+    scheduleFeedbackPendingHint(normalizedId);
 }
+
+var FEEDBACK_PENDING_HINT_DELAY_MS = 7000;
+var _feedbackPendingHintShownAppIds = {};
+var _feedbackPendingHintTimers = {};
 
 function _removeFeedbackPendingHint(card) {
     if (!card) return;
@@ -3081,21 +3086,77 @@ function _removeFeedbackPendingHint(card) {
     });
 }
 
+function isFeedbackPendingHintVisible(appId) {
+    return !!_feedbackPendingHintShownAppIds[Number(appId || 0)];
+}
+
+function _clearFeedbackPendingHintTimer(appId) {
+    var key = String(Number(appId || 0));
+    if (!key || key === '0') return;
+    if (_feedbackPendingHintTimers[key]) {
+        clearTimeout(_feedbackPendingHintTimers[key]);
+        delete _feedbackPendingHintTimers[key];
+    }
+}
+
 function _ensureFeedbackPendingHint(card) {
     if (!card || card.querySelector('.feedback-pending-hint')) return;
     var hint = document.createElement('div');
     hint.className = 'feedback-pending-hint';
     hint.textContent = window.t('feedbackCheckinPendingHint', {}, lang);
-    var anchor = card.querySelector('.checkin-actions')
+    var actions = card.querySelector('[id^="actions-"]');
+    var anchor = (actions && (actions.querySelector('.checkin-actions') || actions.querySelector('.action-row') || actions.querySelector('.tstep-flow')))
+        || card.querySelector('.checkin-actions')
         || card.querySelector('.action-row')
-        || card.querySelector('.tstep-flow')
-        || card.querySelector('[id^="actions-"]');
+        || card.querySelector('.tstep-flow');
     if (anchor) {
         anchor.insertAdjacentElement('afterend', hint);
         return;
     }
+    if (actions) {
+        actions.appendChild(hint);
+        return;
+    }
     card.appendChild(hint);
 }
+
+function revealFeedbackPendingHint(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0 || !isTestFeedbackCheckinPending(normalizedId)) return false;
+    _clearFeedbackPendingHintTimer(normalizedId);
+    _feedbackPendingHintShownAppIds[normalizedId] = Date.now();
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (card) {
+        _ensureFeedbackPendingHint(card);
+    }
+    return true;
+}
+
+function scheduleFeedbackPendingHint(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0 || !isTestFeedbackCheckinPending(normalizedId)) return;
+    if (isFeedbackPendingHintVisible(normalizedId)) {
+        revealFeedbackPendingHint(normalizedId);
+        return;
+    }
+    var key = String(normalizedId);
+    if (_feedbackPendingHintTimers[key]) return;
+    _feedbackPendingHintTimers[key] = setTimeout(function() {
+        delete _feedbackPendingHintTimers[key];
+        revealFeedbackPendingHint(normalizedId);
+    }, FEEDBACK_PENDING_HINT_DELAY_MS);
+}
+
+function revealAllFeedbackPendingHints() {
+    Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
+        revealFeedbackPendingHint(Number(key));
+    });
+}
+
+window.isFeedbackPendingHintVisible = isFeedbackPendingHintVisible;
+window.revealFeedbackPendingHint = revealFeedbackPendingHint;
+window.scheduleFeedbackPendingHint = scheduleFeedbackPendingHint;
+window.revealAllFeedbackPendingHints = revealAllFeedbackPendingHints;
 
 function restoreCheckinReadyAfterFeedbackPending(appId) {
     var normalizedId = Number(appId || 0);
@@ -3110,6 +3171,8 @@ function restoreCheckinReadyAfterFeedbackPending(appId) {
         _setSplitOptionsHidden(card.querySelector('.split-btn-options'), false);
         _removeFeedbackPendingHint(card);
     }
+    _clearFeedbackPendingHintTimer(normalizedId);
+    delete _feedbackPendingHintShownAppIds[normalizedId];
     var payload = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(normalizedId) : null;
     var hasOpenToken = !!(typeof _getCheckinOpenToken === 'function' && _getCheckinOpenToken(normalizedId));
     if (payload || hasOpenToken) {
@@ -3133,6 +3196,8 @@ function clearTestFeedbackCheckinPending(appId) {
     try {
         localStorage.setItem('pending_feedback_checkins_v1', JSON.stringify(_pendingFeedbackCheckinAppIds));
     } catch (e) {}
+    _clearFeedbackPendingHintTimer(normalizedId);
+    delete _feedbackPendingHintShownAppIds[normalizedId];
     var confirmBtn = document.getElementById('btn-confirm-' + normalizedId);
     if (confirmBtn) {
         confirmBtn.removeAttribute('data-feedback-pending');
@@ -3181,7 +3246,11 @@ function applyTestFeedbackCheckinPendingUi(appId) {
 
     if (!card) return;
     _setSplitOptionsHidden(card.querySelector('.split-btn-options'), true);
-    _ensureFeedbackPendingHint(card);
+    if (isFeedbackPendingHintVisible(normalizedId)) {
+        _ensureFeedbackPendingHint(card);
+    } else {
+        scheduleFeedbackPendingHint(normalizedId);
+    }
 }
 
 function reapplyAllFeedbackCheckinPendingUi() {

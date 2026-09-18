@@ -630,18 +630,21 @@
             : '';
         var rawUsername = String(tester.username || '').trim().replace(/^@+/, '');
         var nameHtml = '';
-        var hasDistinctFullName = fullName && rawUsername
-            && fullName.replace(/^@/, '').toLowerCase() !== rawUsername.toLowerCase();
-
-        if (hasDistinctFullName) {
-            nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(fullName) + '</span>' +
-                '<span class="pc-person__handle pc-person__handle--link" onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" title="Написать в Telegram">@' + esc(rawUsername) + '</span>';
-        } else if (rawUsername) {
-            nameHtml = '<span class="pc-person__handle pc-person__handle--link" onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" title="Написать в Telegram">@' + esc(rawUsername) + '</span>';
-        } else if (fullName) {
-            nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(fullName) + '</span>';
+        // Activity tabs keep the identity compact: the first tap reveals the
+        // Telegram handle, and only the second tap (on that handle) opens DM.
+        // A username is also the fallback primary label for legacy profiles
+        // that have not supplied a Telegram full name yet.
+        var primaryName = fullName || rawUsername || handleOf(tester);
+        if (rawUsername) {
+            nameHtml = '<span class="pc-person__identity">' +
+                '<button type="button" class="pc-person__fullname pc-person__fullname-main pc-person__fullname--reveal" ' +
+                    'onclick="window.pcRevealTesterNickname(this, event)" aria-expanded="false">' + esc(primaryName) + '</button>' +
+                '<button type="button" class="pc-person__handle pc-person__handle--link pc-person__handle--reveal" ' +
+                    'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
+                    'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
+            '</span>';
         } else {
-            nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(handleOf(tester)) + '</span>';
+            nameHtml = '<span class="pc-person__fullname pc-person__fullname-main">' + esc(primaryName) + '</span>';
         }
 
         if (timeAgoHtml) {
@@ -3173,6 +3176,17 @@
         if (typeof showToast === 'function') {
             showToast(msg);
         }
+    };
+
+    window.pcRevealTesterNickname = function (trigger, event) {
+        if (event) event.stopPropagation();
+        var identity = trigger && trigger.closest ? trigger.closest('.pc-person__identity') : null;
+        if (!identity || identity.classList.contains('is-nickname-revealed')) return;
+        identity.classList.add('is-nickname-revealed');
+        trigger.setAttribute('aria-expanded', 'true');
+        var handle = identity.querySelector('.pc-person__handle--reveal');
+        if (handle) handle.removeAttribute('tabindex');
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
     window.pcSetActivityFilter = function (appId, filter) {

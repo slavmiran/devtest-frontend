@@ -2641,7 +2641,9 @@ function renderTests(force) {
             ? getFeedbackCheckinPendingLabelHtml()
             : window.escapeHTML(feedbackPendingBtnLabel);
         const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
-        const feedbackPendingHintHtml = isFeedbackCheckinPending
+        const feedbackPendingHintHtml = (isFeedbackCheckinPending
+            && typeof isFeedbackPendingHintVisible === 'function'
+            && isFeedbackPendingHintVisible(test.id))
             ? `<div class="feedback-pending-hint">${window.escapeHTML(window.t('feedbackCheckinPendingHint', {}, lang))}</div>`
             : '';
 

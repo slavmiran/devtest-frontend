@@ -42,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!document.hidden) {
                 _syncActiveTimerState();
                 var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
+                if (hasPendingFeedback && typeof revealAllFeedbackPendingHints === 'function') {
+                    revealAllFeedbackPendingHints();
+                }
                 // Drop stale Confirm-ready state when local calendar day rolls over.
                 if (typeof _loadTimerReadyState === 'function') {
                     _loadTimerReadyState();
@@ -72,6 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('focus', function() {
             _syncActiveTimerState();
             var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
+            if (hasPendingFeedback && typeof revealAllFeedbackPendingHints === 'function') {
+                revealAllFeedbackPendingHints();
+            }
             if (hasPendingFeedback) {
                 _lastFetchTimes.tests = 0;
                 if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
@@ -90,6 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.addEventListener('pageshow', function() {
             _syncActiveTimerState();
+            if (typeof hasPendingFeedbackCheckins === 'function'
+                && hasPendingFeedbackCheckins()
+                && typeof revealAllFeedbackPendingHints === 'function') {
+                revealAllFeedbackPendingHints();
+            }
             if (typeof window.refreshVisibleTests === 'function') {
                 window.refreshVisibleTests().catch(function() {});
             }
@@ -114,6 +125,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof initTelegramBackButton === 'function') {
             initTelegramBackButton();
         }
+        try {
+            var webApp = (window.Telegram && window.Telegram.WebApp) || window.tg;
+            if (webApp && typeof webApp.onEvent === 'function') {
+                webApp.onEvent('activated', function() {
+                    if (typeof hasPendingFeedbackCheckins === 'function'
+                        && hasPendingFeedbackCheckins()
+                        && typeof revealAllFeedbackPendingHints === 'function') {
+                        revealAllFeedbackPendingHints();
+                    }
+                });
+            }
+        } catch (e) {}
 
         console.log('[DEBUG] bootstrap IIFE started');
         var profileSyncResult = await bootstrapProfileSyncPromise;
