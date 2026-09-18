@@ -597,7 +597,9 @@
     function dossierClick(appId, tester) {
         var username = dossierUsername(tester);
         var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
-        return 'openDossierModal(\'' + safeUser + '\', ' + Number(tester && (tester.tester_id || tester.id) || 0) + ', ' + Number(appId) + ')';
+        var testerId = Number(tester && (tester.tester_id || tester.id) || 0);
+        var safeAppId = Number(appId || 0);
+        return '(window.openContributorDossierModal || window.openDossierModal)(\'' + safeUser + '\', ' + testerId + ', ' + safeAppId + ')';
     }
 
     function attentionTone(item) {
@@ -3846,5 +3848,350 @@
             title: row ? handleOf(row.tester) : '',
             subtitle: row ? workspaceText('День ', 'Day ') + row.day : '',
         });
+    };
+
+    /* ==========================================================================
+       Contributor Dossier Modal Implementation
+       ========================================================================== */
+
+    var _contributorDossierSeq = 0;
+
+    function setupDossierSwipeDown(modalEl) {
+        var sheet = modalEl ? modalEl.querySelector('.pc-dossier-sheet') : null;
+        if (!sheet || sheet._hasSwipeListener) return;
+        sheet._hasSwipeListener = true;
+        var startY = 0;
+        var currentY = 0;
+        var isDragging = false;
+
+        sheet.addEventListener('touchstart', function (e) {
+            if (sheet.scrollTop > 5) return;
+            startY = e.touches[0].clientY;
+            isDragging = true;
+        }, { passive: true });
+
+        sheet.addEventListener('touchmove', function (e) {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            var delta = currentY - startY;
+            if (delta > 0 && sheet.scrollTop <= 0) {
+                sheet.style.transform = 'translateY(' + delta + 'px)';
+            }
+        }, { passive: true });
+
+        sheet.addEventListener('touchend', function () {
+            if (!isDragging) return;
+            isDragging = false;
+            var delta = currentY - startY;
+            sheet.style.transform = '';
+            if (delta > 90) {
+                window.closeContributorDossierModal();
+            }
+        });
+    }
+
+    function renderContributorDossierHtml(opts) {
+        var profile = opts.profile || {};
+        var tester = opts.tester || {};
+        var appId = opts.appId;
+        var testerId = opts.testerId;
+        var username = opts.username || profile.username || tester.username || '';
+        var cleanUsername = String(username || '').replace(/^@+/, '');
+
+        // 1. Hero identity
+        var fullName = profile.full_name || tester.full_name || cleanUsername || ('ID: ' + testerId);
+        var avatarUrl = profile.avatar_url || tester.avatar_url || '';
+        var initials = (fullName.trim().split(/\s+/).map(function (w) { return w[0] || ''; }).join('').slice(0, 2) || cleanUsername.slice(0, 2) || '?').toUpperCase();
+        var avatarHtml = avatarUrl
+            ? '<img src="' + esc(avatarUrl) + '" alt="" onerror="this.style.display=\'none\'; if (this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';" /><span style="display:none;">' + esc(initials) + '</span>'
+            : '<span>' + esc(initials) + '</span>';
+
+        var karmaRaw = profile.karma != null ? profile.karma : (tester.karma != null ? tester.karma : 0);
+        var karmaNum = Number(karmaRaw || 0);
+        var karmaFormatted = karmaNum > 0 ? ('+' + karmaNum) : String(karmaNum);
+        var karmaLabel = text('pcDossierKarma', '⚡️ Карма: {karma}', { karma: karmaFormatted });
+
+        // Quality and Sprint metrics
+        var rawRate = profile.acceptance_rate_pct != null ? profile.acceptance_rate_pct : (tester.acceptance_rate_pct != null ? tester.acceptance_rate_pct : null);
+        var acceptanceRate = (rawRate != null && rawRate !== '' && !isNaN(Number(rawRate))) ? Number(rawRate) : null;
+        var submittedTotal = Number(profile.feedback_submitted_total != null ? profile.feedback_submitted_total : (tester.feedback_submitted_total || 0));
+        var acceptedTotal = Number(profile.feedback_accepted_total != null ? profile.feedback_accepted_total : (tester.feedback_accepted_total || 0));
+
+        var lifetimeScore = Math.round(Number(profile.contribution_lifetime_score != null ? profile.contribution_lifetime_score : (tester.contribution_lifetime_score || profile.season_score || 0)));
+        var wins = Number(profile.contribution_wins_count || tester.contribution_wins_count || 0);
+        var top5 = Number(profile.contribution_top5_count || tester.contribution_top5_count || 0);
+        var top10 = Number(profile.contribution_top10_count || tester.contribution_top10_count || 0);
+        var topFinishes = top5 + top10;
+        var bestRank = profile.contribution_best_rank != null ? Number(profile.contribution_best_rank) : (tester.contribution_best_rank != null ? Number(tester.contribution_best_rank) : (profile.season_rank != null ? Number(profile.season_rank) : null));
+
+        var projectSeries = Number(profile.project_screenshot_series_count != null ? profile.project_screenshot_series_count : (tester.screenshotSeriesCount || 0));
+        var totalSeries = Number(profile.screenshot_series_total != null ? profile.screenshot_series_total : (tester.screenshot_series_total || 0));
+        var isNewbie = Boolean(profile.reliability_status === 'newbie' || tester.reliability_status === 'newbie' || submittedTotal < 3);
+
+        // Compute Rank Status
+        var rankClass = '--newbie';
+        var rankText = text('pcDossierRankNewbie', '🐣 Новый участник');
+
+        if (acceptanceRate != null && acceptanceRate < 40 && submittedTotal >= 3) {
+            rankClass = '--warn';
+            rankText = text('pcDossierRankMixed', '⚠️ Смешанная точность');
+        } else if (wins > 0 || top5 > 0 || (bestRank && bestRank <= 5) || lifetimeScore > 100) {
+            rankClass = '--top5';
+            rankText = text('pcDossierRankTop5', '⭐️ Высокая активность / Участник Топ-5');
+        } else if (acceptanceRate != null && acceptanceRate >= 70 && submittedTotal >= 3) {
+            rankClass = '--experienced';
+            rankText = text('pcDossierRankExperienced', '🎯 Опытный контрибьютор');
+        } else if (projectSeries > 0 || totalSeries >= 10 || Boolean(tester.is_screenshot_regular)) {
+            rankClass = '--explorer';
+            rankText = text('pcDossierRankExplorer', '📱 Исследователь интерфейса');
+        } else if (isNewbie || submittedTotal < 3) {
+            rankClass = '--newbie';
+            rankText = text('pcDossierRankNewbie', '🐣 Новый участник');
+        }
+
+        // Section 1: Sprints & Achievements
+        var sprintsContent = '';
+        var hasSprintParticipation = (lifetimeScore > 0 || wins > 0 || topFinishes > 0 || (bestRank && bestRank > 0));
+        if (!hasSprintParticipation) {
+            sprintsContent = '<div class="pc-dossier-card-empty">' +
+                '<div style="font-size: 16px; margin-bottom: 4px;" aria-hidden="true">⏱️</div>' +
+                '<div>' + esc(text('pcDossierSprintsEmpty', 'Ещё не участвовал в сезонных спринтах')) + '</div>' +
+            '</div>';
+        } else {
+            var bestRankStr = bestRank ? text('pcDossierRankPlace', '#{rank} место', { rank: bestRank }) : '—';
+            sprintsContent = '<div class="pc-dossier-grid">' +
+                '<div class="pc-dossier-stat-card">' +
+                    '<div class="pc-dossier-stat-card__val notranslate">' + lifetimeScore + '</div>' +
+                    '<div class="pc-dossier-stat-card__lbl">' + esc(text('pcDossierLifetimeScore', 'Вклад за всё время')) + '</div>' +
+                '</div>' +
+                '<div class="pc-dossier-stat-card">' +
+                    '<div class="pc-dossier-stat-card__val notranslate">' + wins + '</div>' +
+                    '<div class="pc-dossier-stat-card__lbl">' + esc(text('pcDossierWins', 'Победы (1-е место)')) + '</div>' +
+                '</div>' +
+                '<div class="pc-dossier-stat-card">' +
+                    '<div class="pc-dossier-stat-card__val notranslate">' + topFinishes + '</div>' +
+                    '<div class="pc-dossier-stat-card__lbl">' + esc(text('pcDossierTopFinishes', 'В Топ-5 / Топ-10')) + '</div>' +
+                '</div>' +
+                '<div class="pc-dossier-stat-card">' +
+                    '<div class="pc-dossier-stat-card__val notranslate">' + esc(bestRankStr) + '</div>' +
+                    '<div class="pc-dossier-stat-card__lbl">' + esc(text('pcDossierBestRank', 'Лучший результат')) + '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // Section 2: Feedback Quality
+        var qualityText = '';
+        var barFillClass = 'pc-dossier-bar__fill--sky';
+        var barWidthPct = 0;
+
+        if (submittedTotal < 3 || acceptanceRate === null) {
+            qualityText = text('pcDossierQualityPending', '⏳ На рассмотрении (статистика формируется после первых проверок)');
+            barWidthPct = submittedTotal > 0 ? 35 : 15;
+            barFillClass = 'pc-dossier-bar__fill--sky';
+        } else {
+            var roundRate = Math.round(acceptanceRate);
+            barWidthPct = Math.max(8, Math.min(100, roundRate));
+            qualityText = text('pcDossierAcceptanceRate', '{pct}% принято ({accepted} из {total} одобрено)', {
+                pct: roundRate,
+                accepted: acceptedTotal,
+                total: submittedTotal
+            });
+            barFillClass = roundRate >= 70 ? 'pc-dossier-bar__fill--good' : (roundRate >= 40 ? 'pc-dossier-bar__fill--warn' : 'pc-dossier-bar__fill--bad');
+        }
+
+        var bugsAccepted = Number(profile.bugs_count || profile.bugs_accepted_count || 0);
+        var bugsPending = Number(profile.bugs_pending_count || 0);
+        var ideasAccepted = Number(profile.ideas_count || profile.ideas_accepted_count || 0);
+        var ideasPending = Number(profile.ideas_pending_count || 0);
+
+        var bugsPendingStr = bugsPending > 0 ? text('pcDossierPendingPart', ' • {count} на проверке', { count: bugsPending }) : '';
+        var ideasPendingStr = ideasPending > 0 ? text('pcDossierPendingPart', ' • {count} на проверке', { count: ideasPending }) : '';
+
+        var bugsRowText = text('pcDossierBugsBreakdown', '🐞 Баги: {accepted} принято{pending_str}', { accepted: bugsAccepted, pending_str: bugsPendingStr });
+        var ideasRowText = text('pcDossierIdeasBreakdown', '💡 Рекомендации: {accepted} одобрено{pending_str}', { accepted: ideasAccepted, pending_str: ideasPendingStr });
+
+        // Section 3: Contribution to Your Project
+        var checkinsDone = Number(tester.checkins_count != null ? tester.checkins_count : (profile.project_checkins_count || 0));
+        var checkinsTotal = 14;
+        var checkinsPct = Math.min(100, Math.round((checkinsDone / checkinsTotal) * 100));
+        var checkinsLabel = text('pcDossierCheckinProgress', '{done} из {total} дней • {pct}%', { done: checkinsDone, total: checkinsTotal, pct: checkinsPct });
+
+        var playStatusRaw = String(tester.play_review_status || profile.project_play_review_status || '').toLowerCase();
+        var playReviewLabel = text('pcDossierPlayReviewNone', '⚪️ Пока не оставлен');
+        var playReviewBadgeClass = 'pc-dossier-badge-status--neutral';
+        if (playStatusRaw === 'approved' || Boolean(tester.play_feedback_submitted)) {
+            playReviewLabel = text('pcDossierPlayReviewApproved', '⭐️ Оставлен и подтверждён');
+            playReviewBadgeClass = 'pc-dossier-badge-status--green';
+        } else if (playStatusRaw === 'pending' || playStatusRaw === 'submitted') {
+            playReviewLabel = text('pcDossierPlayReviewPending', '⏳ На проверке');
+            playReviewBadgeClass = 'pc-dossier-badge-status--sky';
+        }
+
+        var seriesText = text('pcDossierProjectSeriesCount', '{count} {series_word}', { count: projectSeries, series_word: pluralizeSeries(projectSeries) });
+
+        // Section 4: Smart Summary
+        var isExemplary = (acceptanceRate != null && acceptanceRate >= 70 && submittedTotal >= 3 && (checkinsPct >= 70 || playReviewBadgeClass === 'pc-dossier-badge-status--green'));
+        var summaryClass = '--exemplary';
+        var summaryText = text('pcDossierSummaryExemplary', 'Надёжный тестер: стабильные чекины, оставляет содержательные фидбеки и отзыв в Google Play.');
+
+        if (acceptanceRate != null && acceptanceRate < 40 && submittedTotal >= 3) {
+            summaryClass = '--mixed';
+            summaryText = text('pcDossierSummaryMixed', 'Некоторые прошлые отчёты отклонялись. Рекомендуется внимательно проверить присланные замечания.');
+        } else if (isExemplary) {
+            summaryClass = '--exemplary';
+            summaryText = text('pcDossierSummaryExemplary', 'Надёжный тестер: стабильные чекины, оставляет содержательные фидбеки и отзыв в Google Play.');
+        } else if (bugsPending > 0 || ideasPending > 0 || (tester && tester.hasPendingFeedback)) {
+            summaryClass = '--pending';
+            summaryText = text('pcDossierSummaryPending', 'Отправил свежий отчёт в ваш проект. Ознакомьтесь с ним в списке фидбеков для начисления баллов.');
+        } else if (projectSeries > 0 || totalSeries >= 10 || Boolean(tester.is_screenshot_regular)) {
+            summaryClass = '--explorer';
+            summaryText = text('pcDossierSummaryExplorer', 'Провёл глубокий прогон приложения с серией скриншотов ключевых экранов.');
+        } else if (isNewbie || submittedTotal < 3) {
+            summaryClass = '--newbie';
+            summaryText = text('pcDossierSummaryNewbie', 'Новый участник сообщества. Проходит первые тесты, статистика точности формируется.');
+        }
+
+        return '' +
+            '<div class="pc-dossier-hero">' +
+                '<div class="pc-dossier-avatar">' + avatarHtml + '</div>' +
+                '<div class="pc-dossier-hero__info">' +
+                    '<div id="pc-dossier-tester-name" class="pc-dossier-hero__name notranslate">' + esc(fullName) + '</div>' +
+                    '<div class="pc-dossier-hero__sub">' +
+                        (cleanUsername ? ('<span class="pc-dossier-hero__username notranslate">@' + esc(cleanUsername) + '</span>') : '') +
+                        '<span class="pc-dossier-karma-badge notranslate">' + esc(karmaLabel) + '</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="pc-dossier-rank-badge pc-dossier-rank-badge' + rankClass + '">' +
+                esc(rankText) +
+            '</div>' +
+            '<section class="pc-dossier-section">' +
+                '<div class="pc-dossier-section__title">' +
+                    '<span class="pc-dossier-section__title-ico" aria-hidden="true">🏆</span>' +
+                    '<span>' + esc(text('pcDossierSecSprints', 'Спринты и достижения')) + '</span>' +
+                '</div>' +
+                sprintsContent +
+            '</section>' +
+            '<section class="pc-dossier-section">' +
+                '<div class="pc-dossier-section__title">' +
+                    '<span class="pc-dossier-section__title-ico" aria-hidden="true">🎯</span>' +
+                    '<span>' + esc(text('pcDossierSecQuality', 'Качество фидбеков')) + '</span>' +
+                    '<span class="pc-dossier-section__subtitle">' + esc(text('pcDossierQualityPlatform', 'История по всей платформе')) + '</span>' +
+                '</div>' +
+                '<div class="pc-dossier-detail-row" style="flex-direction: column; align-items: stretch; gap: 6px;">' +
+                    '<div style="display: flex; justify-content: space-between; font-weight: 550; font-size: 12.5px;">' +
+                        '<span>' + esc(qualityText) + '</span>' +
+                    '</div>' +
+                    '<div class="pc-dossier-bar">' +
+                        '<div class="pc-dossier-bar__fill ' + barFillClass + '" style="width: ' + barWidthPct + '%;"></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="pc-dossier-detail-row">' +
+                    '<span>' + esc(bugsRowText) + '</span>' +
+                '</div>' +
+                '<div class="pc-dossier-detail-row">' +
+                    '<span>' + esc(ideasRowText) + '</span>' +
+                '</div>' +
+            '</section>' +
+            '<section class="pc-dossier-section">' +
+                '<div class="pc-dossier-section__title">' +
+                    '<span class="pc-dossier-section__title-ico" aria-hidden="true">📱</span>' +
+                    '<span>' + esc(text('pcDossierSecProject', 'Вклад в ваш проект')) + '</span>' +
+                '</div>' +
+                '<div class="pc-dossier-detail-row" style="flex-direction: column; align-items: stretch; gap: 6px;">' +
+                    '<div style="display: flex; justify-content: space-between; font-size: 12px;">' +
+                        '<span style="color: #94a3b8;">' + esc(text('pcDossierCheckinDiscipline', 'Дисциплина чекинов')) + '</span>' +
+                        '<span style="font-weight: 600;">' + esc(checkinsLabel) + '</span>' +
+                    '</div>' +
+                    '<div class="pc-dossier-bar">' +
+                        '<div class="pc-dossier-bar__fill pc-dossier-bar__fill--sky" style="width: ' + checkinsPct + '%;"></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="pc-dossier-detail-row">' +
+                    '<span style="color: #94a3b8;">' + esc(text('pcDossierPlayReview', 'Отзыв в Google Play')) + '</span>' +
+                    '<span class="pc-dossier-badge-status ' + playReviewBadgeClass + '">' + esc(playReviewLabel) + '</span>' +
+                '</div>' +
+                '<div class="pc-dossier-detail-row">' +
+                    '<span style="color: #94a3b8;">' + esc(text('pcDossierProjectSeries', 'Серии 3+ скриншотов')) + '</span>' +
+                    '<span style="font-weight: 600;">' + esc(seriesText) + '</span>' +
+                '</div>' +
+            '</section>' +
+            '<section class="pc-dossier-section" style="margin-bottom: 0;">' +
+                '<div class="pc-dossier-summary-card pc-dossier-summary-card' + summaryClass + '">' +
+                    '<div class="pc-dossier-summary-card__head">' + esc(text('pcDossierSecSummary', 'Резюме по тестеру')) + '</div>' +
+                    '<div class="pc-dossier-summary-card__text">' + esc(summaryText) + '</div>' +
+                '</div>' +
+            '</section>';
+    }
+
+    window.closeContributorDossierModal = function (event) {
+        if (event && event.target && event.target.id !== 'contributor-dossier-modal' && !event.target.closest('.pc-dossier-sheet__close')) return;
+        var modal = document.getElementById('contributor-dossier-modal');
+        if (modal) modal.classList.remove('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    };
+
+    window.openContributorDossierModal = async function (username, testerId, appId) {
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+            try { window.Telegram.WebApp.HapticFeedback.selectionChanged(); } catch (_) {}
+        }
+        var modal = document.getElementById('contributor-dossier-modal');
+        var bodyEl = document.getElementById('contributor-dossier-body');
+        if (!modal || !bodyEl) {
+            if (typeof openDossierModal === 'function') {
+                return openDossierModal(username, testerId, appId);
+            }
+            return;
+        }
+
+        var openSeq = ++_contributorDossierSeq;
+        modal.classList.add('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+
+        var safeTesterId = Number(testerId || 0);
+        var safeAppId = Number(appId || 0);
+        var project = projectById(safeAppId);
+        var rosterTester = null;
+        if (project && Array.isArray(project.testers)) {
+            rosterTester = project.testers.find(function (t) {
+                return Number(t && (t.tester_id || t.id) || 0) === safeTesterId;
+            });
+        }
+        var cachedProfile = (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache && _dossierProfilesCache[String(safeTesterId)]) || null;
+
+        bodyEl.innerHTML = renderContributorDossierHtml({
+            username: username || (rosterTester && rosterTester.username) || '',
+            testerId: safeTesterId,
+            appId: safeAppId,
+            project: project,
+            tester: rosterTester || {},
+            profile: cachedProfile || rosterTester || {},
+            isLoading: !cachedProfile
+        });
+
+        setupDossierSwipeDown(modal);
+
+        try {
+            var url = API_BASE + '/users/' + safeTesterId + '/profile' + (safeAppId ? ('?app_id=' + safeAppId) : '');
+            var resp = await fetch(url);
+            if (resp.ok) {
+                var freshProfile = await resp.json();
+                if (openSeq !== _contributorDossierSeq) return;
+                if (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache) {
+                    _dossierProfilesCache[String(safeTesterId)] = Object.assign({}, cachedProfile || {}, freshProfile);
+                }
+                bodyEl.innerHTML = renderContributorDossierHtml({
+                    username: username || freshProfile.username || (rosterTester && rosterTester.username) || '',
+                    testerId: safeTesterId,
+                    appId: safeAppId,
+                    project: project,
+                    tester: rosterTester || {},
+                    profile: freshProfile,
+                    isLoading: false
+                });
+            }
+        } catch (fetchErr) {
+            console.warn('[ContributorDossier] profile fetch error:', fetchErr);
+        }
     };
 })();
