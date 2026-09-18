@@ -25,12 +25,16 @@
     function priority(item) {
         return (item.reasons || []).reduce(function (result, reason) {
             var value = 4;
-            if (reason.code === 'skips') value = 0;
-            else if (reason.code === 'tester_left') value = 1;
+            if (reason.code === 'skips') {
+                var s = Number(reason.skips || (item.tester && item.tester.consecutive_skips) || 0);
+                value = s >= 3 ? 0 : 2;
+            } else if (reason.code === 'tester_left') value = 1;
             else if (reason.code === 'not_opened') value = 2;
             else if (reason.code === 'missed_control') {
                 value = reason.proofRequested && !reason.proofReceived ? 3 : 2;
-            }
+            } else if (reason.code === 'debt') value = 3;
+            else if (reason.code === 'direct_invite') value = 3;
+            else if (reason.code === 'broken_link') value = 3;
             return Math.min(result, value);
         }, 4);
     }

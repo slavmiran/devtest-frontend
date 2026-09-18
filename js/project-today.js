@@ -283,6 +283,7 @@
     var ATTENTION_ICONS = {
         debt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13ZM6.5 5a.5.5 0 0 0-.5.5v2h12v-2a.5.5 0 0 0-.5-.5h-11ZM6 10v8.5c0 .28.22.5.5.5h11a.5.5 0 0 0 .5-.5V10H6Zm3 2h6v2H9v-2Zm0 3h4v2H9v-2Z"/></svg>',
         skips: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3 1.7 20.5h20.6L12 3Zm1 13h-2V9h2v7Zm0 3h-2v-2h2v2Z"/></svg>',
+        skips_2: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z"/></svg>',
         missed_control: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10v2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3V2Zm2 2h6V3H9v1Zm11 4H4v12h16V8Zm-8 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm1 1v2.59l1.7 1.7-1.4 1.41L11 14v-3h2Z"/></svg>',
         not_opened: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5c5.3 0 9.27 4.11 10.5 7-1.23 2.89-5.2 7-10.5 7S2.73 14.89 1.5 12C2.73 9.11 6.7 5 12 5Zm0 2c-3.96 0-7.16 2.86-8.39 5 1.23 2.14 4.43 5 8.39 5s7.16-2.86 8.39-5C19.16 9.86 15.96 7 12 7Zm0 2.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Zm-7.7 9.34L18.6 4.3l1.41 1.41L5.71 20 4.3 18.59Z"/></svg>',
         direct_invite: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>',
@@ -1760,16 +1761,6 @@
             var proofReceived = candidateState === 'proof_received' || candidateState === 'completed';
             var catchupResolved = candidateState === 'owner_closed' || candidateState === 'closed';
 
-            // Real issue: not_opened (only before buffer)
-            var neverOpened = !isBuffer && !tester.last_check_date;
-            if (neverOpened) {
-                reasons.push({
-                    code: 'not_opened',
-                    label: text('statusNotOpened', 'Not opened yet'),
-                });
-                hasRealIssue = true;
-            }
-
             // Real issue: missed_control
             if (!catchupResolved && (requestableMissedDay > 0 || requestedCatchupDay > 0 || (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
                 reasons.push({
@@ -1789,36 +1780,47 @@
                 hasRealIssue = true;
             }
 
-            // Real issue: skips >= 3 (only before buffer)
             var skips = (typeof calculateConsecutiveSkips === 'function')
                 ? Number(calculateConsecutiveSkips(tester) || 0)
                 : Number(tester.consecutive_skips || 0);
-            if (!isBuffer && skips >= 3) {
-                reasons.push({
-                    code: 'skips',
-                    label: skipsLabel(skips),
-                    skips: skips,
-                });
-                hasRealIssue = true;
-            }
 
-            // Secondary state: debt
             var joinType = String(tester.join_type || '').toLowerCase();
-            if ((joinType === 'mutual' || joinType === 'prelaunch') && tester.is_mutual_debt) {
-                reasons.push({
-                    code: 'debt',
-                    label: text('pcAttentionDebtLabel', 'Your project still needs to be tested'),
-                });
-            }
-
-            // Secondary state: direct_invite (only before buffer)
+            var isDebt = (joinType === 'mutual' || joinType === 'prelaunch') && !!tester.is_mutual_debt;
             var isDirectInvite = !isBuffer && (joinType === 'invite' || joinType === 'direct' || !joinType)
                 && !tester.reciprocal_app_id;
-            if (isDirectInvite) {
-                reasons.push({
-                    code: 'direct_invite',
-                    label: text('pcAttentionDirectInvite', 'Direct testing · No mutual obligation'),
-                });
+
+            // Scenario a: Debt with skip (is_mutual_debt + skips >= 1)
+            // Stable debt testers (skips == 0) DO NOT enter Attention.
+            if (isDebt) {
+                if (skips >= 1) {
+                    reasons.push({
+                        code: 'debt',
+                        label: text('pcAttentionDebtTitle', '⚖️ Партнёр завершил свой проект'),
+                        skips: skips,
+                    });
+                    hasRealIssue = true;
+                }
+            } else if (isDirectInvite) {
+                // Scenario d: Direct invite with skip (direct_invite + skips >= 1)
+                // Stable direct invite testers (skips == 0) DO NOT enter Attention.
+                if (skips >= 1) {
+                    reasons.push({
+                        code: 'direct_invite',
+                        label: text('pcAttentionDirectTitle', '🔗 Вход по прямой ссылке'),
+                        skips: skips,
+                    });
+                    hasRealIssue = true;
+                }
+            } else {
+                // Scenarios b & c: Regular mutual test with skips >= 2
+                if (!isBuffer && skips >= 2) {
+                    reasons.push({
+                        code: 'skips',
+                        label: skipsLabel(skips),
+                        skips: skips,
+                    });
+                    hasRealIssue = true;
+                }
             }
 
             if (!reasons.length) return;
@@ -2329,135 +2331,165 @@
 
     function getAttentionReasonMeta(reason, tester, appId, testerId) {
         var code = String(reason && reason.code || '').toLowerCase();
-        var reasonIcon = ATTENTION_ICONS[code] || ATTENTION_ICONS.not_opened;
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || (tester && (tester.tester_id || tester.id)) || 0);
         var subKey = reason.missedDay ? ('_' + reason.missedDay) : (reason.feedbackId ? ('_' + reason.feedbackId) : '');
-        var key = String(testerId) + '_' + code + subKey;
-        var title = '';
-        var summaryHtml = '';
-        var desc = '';
-        var bodyHtml = '';
-        var actionHtml = '';
+        var key = String(safeTesterId) + '_' + code + subKey;
 
-        if (reason.action === 'left_status' || reason.action === 'link_status') {
-            reasonIcon = ATTENTION_ICONS[code] || ATTENTION_ICONS.direct_invite;
-            actionHtml = iconAct('process', reason.actionLabel || workspaceText('Подробнее', 'Details'),
-                (reason.action === 'left_status' ? 'openLeftTesterLinkStatus' : 'openTesterLinkStatusFromRow') +
-                '(' + Number(appId) + ',' + Number(testerId) + ', event)');
-            if (code === 'tester_left') {
-                title = workspaceText('Участник вышел из проекта', 'Participant left project');
-                summaryHtml = '<span class="pc-att-tag pc-att-tag--danger">' + esc(workspaceText('Тестер вышел', 'Tester left')) + '</span>';
-                desc = workspaceText('Тестировщик прервал или закончил участие. Примите решение по освободившемуся месту.', 'Participant ended participation. Review the slot to reassign or close.');
+        var reasonIcon = ATTENTION_ICONS[code] || ATTENTION_ICONS.skips;
+        var title = '';
+        var subtitle = '';
+        var spoilerText = '';
+        var bodyHtml = '';
+        var actions = [];
+        var hasAccordion = true;
+        var isDone = false;
+        var reminded = isTesterRemindedToday(safeAppId, safeTesterId);
+
+        var isLeftAction = reason.action === 'left_status' || code === 'tester_left';
+        var isBrokenLink = reason.action === 'link_status' || code === 'broken_link';
+
+        if (isLeftAction || isBrokenLink) {
+            reasonIcon = ATTENTION_ICONS.tester_left;
+            title = text('pcAttentionLeftTitle', '🚫 Тестер прервал участие');
+            subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен · Вы можете выйти из его теста');
+            spoilerText = text('pcAttentionLeftDrawer', 'Участник покинул проект или исключён платформой со штрафом к Карме. Вы больше не обязаны тестировать его приложение: перейдите в проект партнёра, чтобы закрыть тест без штрафа и удалить приложение, либо скройте тестера из списка.');
+            hasAccordion = true;
+            isDone = false;
+
+            var hasReciprocalApp = Number(tester && tester.reciprocal_app_id || 0) > 0;
+            if (hasReciprocalApp) {
+                actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openLeftTesterLinkStatus(' + safeAppId + ',' + safeTesterId + ', event)">' +
+                    esc(text('pcAttentionExitPartnerShort', '🚪 Проект партнёра (Выйти)')) + '</button>');
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(' + safeAppId + ',' + safeTesterId + ')">' +
+                    esc(text('pcAttentionHide', '👁️ Скрыть')) + '</button>');
             } else {
-                title = workspaceText('Связь взаимного теста нарушена', 'Mutual link broken');
-                summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(workspaceText('Связь разорвана', 'Link broken')) + '</span>';
-                desc = workspaceText('Связь между проектами прервана из-за удаления проекта или выхода участника.', 'Connection was interrupted due to project cancellation or leave.');
-            }
-        } else if (code === 'skips') {
-            var skips = Number(reason.skips || tester.consecutive_skips || 0);
-            title = workspaceText('Пропуски активности', 'Inactivity skips');
-            summaryHtml = '<span class="pc-att-tag pc-att-tag--skips">' + esc(workspaceText(skips + ' дн. подряд', skips + ' days missed')) + '</span>';
-            var lastDate = tester && tester.last_check_date ? formatAttentionDate(tester.last_check_date) : '';
-            desc = workspaceText('Тестировщик не заходил уже ' + skips + ' дн. подряд.', 'Tester has skipped ' + skips + ' days consecutively.');
-            if (lastDate) {
-                desc += ' ' + workspaceText('Последний вход: ' + lastDate + '.', 'Last active: ' + lastDate + '.');
-            } else {
-                desc += ' ' + workspaceText('Входов в приложение не зафиксировано.', 'No app activity recorded.');
-            }
-            desc += ' ' + workspaceText('Напомните о необходимости запускать приложение для зачёта Google Play.', 'Remind the tester to launch the app for Google Play requirements.');
-            actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
-                'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'skips\', { skips: ' + skips + ' })');
-        } else if (code === 'not_opened') {
-            var curDay = testerDayNumber(tester);
-            title = workspaceText('Приложение не запущено', 'App not launched');
-            summaryHtml = '<span class="pc-att-tag pc-att-tag--not_opened">' + esc(workspaceText('День ' + curDay + ' · Не запускал', 'Day ' + curDay + ' · Not launched')) + '</span>';
-            desc = workspaceText('С момента добавления прошло уже ' + curDay + ' дн., но приложение ни разу не открывалось. Тестирование фактически не начато.', 'Already ' + curDay + ' days in project, but app was never launched. Testing has not started.');
-            actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
-                'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'not_opened\')');
-        } else if (code === 'missed_control') {
-            var missedDay = Number(reason.missedDay || 0);
-            if (reason.proofReceived) {
-                title = workspaceText('Контрольный отчёт (день ' + missedDay + ')', 'Control proof (day ' + missedDay + ')');
-                summaryHtml = '<span class="pc-att-tag pc-att-tag--success">' + esc(workspaceText('Скриншот получен ✓', 'Proof received ✓')) + '</span>';
-                desc = workspaceText('Тестировщик прикрепил скриншот за контрольный день ' + missedDay + '. Ознакомьтесь со скриншотом и подтвердите проверку.', 'Tester submitted screenshot for day ' + missedDay + '. Please review the proof.');
-                if (reason.completedProofId > 0) {
-                    actionHtml += iconAct('image', text('pcViewProof', 'View proof'),
-                        'pcOpenProof(' + Number(appId) + ',' + Number(reason.completedProofId) + ',0)');
-                }
-                if (reason.proofRequestId > 0) {
-                    actionHtml += iconAct('done', text('pcCloseProofRequest', 'Done'),
-                        'pcCloseCatchupProofRequest(' + Number(appId) + ',' + Number(reason.proofRequestId) + ')');
-                }
-            } else if (reason.proofRequested) {
-                title = workspaceText('Контрольный отчёт (день ' + missedDay + ')', 'Control proof (day ' + missedDay + ')');
-                summaryHtml = '<span class="pc-att-tag pc-att-tag--pending">' + esc(workspaceText('Запрос отправлен · Ожидание', 'Requested · Pending')) + '</span>';
-                var reqTime = reason.requestedAt ? formatAttentionDateTime(reason.requestedAt) : '';
-                desc = workspaceText('Запрос подтверждения за день ' + missedDay + ' отправлен' + (reqTime ? ' (' + reqTime + ')' : '') + '. Ожидаем скриншот от тестировщика.', 'Verification request for day ' + missedDay + ' sent' + (reqTime ? ' (' + reqTime + ')' : '') + '. Awaiting screenshot.');
-                actionHtml = '<span class="pc-iconact pc-iconact--done" title="' + esc(text('pcProofRequested', 'Requested')) + '">' +
-                    ICONS.done + '<span class="pc-iconact__label">' + esc(text('pcProofRequested', 'Requested')) + '</span></span>';
-            } else {
-                title = text('pcAttentionMissedReportTitle', 'Пропущен обязательный отчёт');
-                summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(workspaceText('Контрольный день ' + missedDay, 'Control day ' + missedDay)) + '</span>';
-                desc = workspaceText('В обязательный контрольный день ' + missedDay + ' не был отправлен подтверждающий скриншот.', 'Mandatory control proof was not submitted for day ' + missedDay + '.');
-                if (isCatchupControlDay(missedDay)) {
-                    actionHtml = iconAct('image', text('pcRequestProof', 'Request'),
-                        'pcRequestCatchupProof(' + Number(appId) + ',' + Number(testerId) + ')');
-                }
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(' + safeAppId + ',' + safeTesterId + ')">' +
+                    esc(text('pcAttentionHideFromList', '👁️ Скрыть из списка')) + '</button>');
             }
         } else if (code === 'debt') {
-            title = text('pcAttentionDebtTitle', 'Partner finished their project.');
-            summaryHtml = '<span class="pc-attention-tile__subtitle">' +
-                esc(text('pcAttentionDebtSubtitle', 'Must finish testing your app')) + '</span>';
-            var projectName = String(tester && tester.reciprocal_app_name || '').trim()
+            reasonIcon = ATTENTION_ICONS.debt;
+            title = text('pcAttentionDebtTitle', '⚖️ Партнёр завершил свой проект');
+            subtitle = text('pcAttentionDebtSubtitle', 'Обязан дотестировать ваш · ⚠️ Пропустил чекин');
+
+            var projectName = String(tester && (tester.reciprocal_app_name || tester.reciprocal_app_title) || '').trim()
                 || workspaceText('Ответный тест', 'Reciprocal test');
             var finishedDaysAgo = daysSince(reciprocalProjectFinishedDate(tester));
-            var statusLine = finishedDaysAgo == null
-                ? workspaceText('Завершён', 'Finished')
-                : (finishedDaysAgo <= 0
-                    ? text('pcAttentionDebtProjectStatusToday', 'Finished today')
-                    : text('pcAttentionDebtProjectStatus', 'Finished {days} d. ago', { days: finishedDaysAgo }));
-            var debtDay = testerDayNumber(tester);
             var remainingDays = testerDaysRemaining(tester);
-            bodyHtml = '<div class="pc-attention-debt">' +
-                '<div class="pc-attention-debt__project">' +
-                    '<div class="pc-attention-debt__name">' + esc(projectName) + '</div>' +
-                    '<div class="pc-attention-debt__meta">' + esc(statusLine) + '</div>' +
-                    '<div class="pc-attention-debt__meta">' + esc(text(
-                        'pcAttentionDebtTimeline',
-                        'Still need to test you: {remaining} d. (day {day} of 14)',
-                        { remaining: remainingDays, day: debtDay }
-                    )) + '</div>' +
-                '</div>' +
-                '<p class="pc-attention-tile__desc">' + esc(text(
-                    'pcAttentionDebtDesc',
-                    'The partner no longer has a direct reciprocal incentive — testing continues under mutual-obligation rules. Watch check-ins and send reminders on time.'
-                )) + '</p>' +
-                '<p class="pc-attention-tile__desc pc-attention-debt__warn">' + esc(text(
-                    'pcAttentionDebtWarn',
-                    'Most important — do not let them uninstall the app: if the tester removes it and the active tester base drops below 12 people, Google Play will reset the project\'s entire 14-day progress.'
-                )) + '</p>' +
-            '</div>';
-            actionHtml = iconAct('remind', text('pcRemindBtn', 'Remind'),
-                'pcRemindTester(' + Number(appId) + ',' + Number(testerId) + ', \'debt\')');
-            actionHtml += iconAct('process', workspaceText('Связь', 'Link'),
-                'openTesterLinkStatusFromRow(' + Number(appId) + ',' + Number(testerId) + ', event)');
-        } else if (code === 'direct_invite') {
-            title = workspaceText('Прямое тестирование', 'Direct testing');
-            summaryHtml = '<span class="pc-att-tag pc-att-tag--neutral">' + esc(workspaceText('Без взаимки', 'No mutual')) + '</span>';
-            desc = workspaceText('Тестер выполняет проверку без ответного обязательства. Вы можете предложить протестировать его приложение взаимно.', 'Tester joined via direct link without reciprocal obligation. You can offer a mutual exchange.');
-            var isPending = isMutualOfferPending(testerId);
-            if (isPending) {
-                actionHtml = '<span class="pc-btn-pending" title="' + esc(text('pcAttentionOfferPending', 'Awaiting reply')) + '">' +
-                    esc(text('pcAttentionOfferPending', 'Awaiting reply')) + '</span>';
+            var finishedDaysStr = (finishedDaysAgo == null || finishedDaysAgo <= 0) ? '0' : String(finishedDaysAgo);
+
+            spoilerText = text('pcAttentionDebtDrawer', '{name} завершён {days} дн. назад. Осталось тестировать вас: {remaining} из 14 дн. У партнёра больше нет прямого стимула — контролируйте чекины.', {
+                name: projectName,
+                days: finishedDaysStr,
+                remaining: remainingDays,
+            });
+            hasAccordion = true;
+            isDone = reminded;
+
+            if (reminded) {
+                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
+                    esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
             } else {
-                actionHtml = '<button type="button" class="pc-btn-mutual-offer" onclick="event.stopPropagation(); pcOfferMutual(' +
-                    Number(appId) + ',' + Number(testerId) + ', event)">' +
-                    esc(text('pcAttentionDirectInviteAction', 'Offer mutual')) + '</button>';
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'debt\')">' +
+                    esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
+            }
+        } else if (code === 'direct_invite') {
+            reasonIcon = ATTENTION_ICONS.direct_invite;
+            title = text('pcAttentionDirectTitle', '🔗 Вход по прямой ссылке');
+            subtitle = text('pcAttentionDirectSubtitle', 'Нет взаимного обязательства · Пропустил чекин');
+            spoilerText = text('pcAttentionDirectDrawer', 'Участник тестирует проект без взаимного обмена. Предложите взаимку, чтобы закрепить обязательства.');
+            hasAccordion = true;
+
+            var isPendingOffer = isMutualOfferPending(safeTesterId);
+            isDone = isPendingOffer || reminded;
+
+            if (isPendingOffer) {
+                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
+                    esc(text('pcAttentionOfferPending', '✓ Ожидает ответа')) + '</button>');
+            } else {
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcOfferMutual(' + safeAppId + ',' + safeTesterId + ', event)">' +
+                    esc(text('pcAttentionOfferMutual', '🤝 Предложить взаимку')) + '</button>');
+            }
+
+            if (reminded) {
+                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
+                    esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+            } else {
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'direct_invite\')">' +
+                    esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
+            }
+        } else if (code === 'skips') {
+            var skips = Number(reason.skips || (tester && tester.consecutive_skips) || 0);
+            if (skips <= 2) {
+                reasonIcon = ATTENTION_ICONS.skips_2 || ATTENTION_ICONS.skips;
+                title = text('pcAttentionSkips2Title', '⏳ 2 дня без чекина');
+                subtitle = text('pcAttentionSkips2Subtitle', 'Риск отставания по графику 14 дней');
+                hasAccordion = false;
+                spoilerText = '';
+                isDone = reminded;
+
+                if (reminded) {
+                    actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
+                        esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+                } else {
+                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: 2 })">' +
+                        esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
+                }
+            } else {
+                reasonIcon = ATTENTION_ICONS.skips;
+                title = text('pcAttentionSkipsCriticalTitle', '⚠️ {skips} дн. без чекина подряд', { skips: skips });
+                subtitle = text('pcAttentionSkipsCriticalSubtitle', 'Критический простой · Доступен выход без штрафа');
+                spoilerText = text('pcAttentionSkipsCriticalDrawer', 'Участник не чекинит 3+ дня подряд. Вы можете выйти из тестирования его проекта без штрафа к репутации и карме, либо продолжить тест ради наград и гранта.');
+                hasAccordion = true;
+                isDone = reminded;
+
+                actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' + safeAppId + ',' + safeTesterId + ', event)">' +
+                    esc(text('pcAttentionExitPartner', '🚪 Выйти из теста партнёра')) + '</button>');
+
+                if (reminded) {
+                    actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
+                        esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+                } else {
+                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: ' + skips + ' })">' +
+                        esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
+                }
+            }
+        } else if (code === 'missed_control') {
+            var missedDay = Number(reason.missedDay || 0);
+            reasonIcon = ATTENTION_ICONS.missed_control;
+            title = text('pcAttentionMissedControlTitle', '📸 Не сдан контрольный отчёт');
+            subtitle = text('pcAttentionMissedControlSubtitle', 'День {day} · Обязательный скриншот', { day: missedDay });
+            spoilerText = text('pcAttentionMissedControlDrawer', 'В обязательный контрольный день {day} не был отправлен подтверждающий скриншот.', { day: missedDay });
+            hasAccordion = true;
+
+            if (reason.proofReceived) {
+                isDone = true;
+                if (reason.completedProofId > 0) {
+                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcOpenProof(' + safeAppId + ',' + Number(reason.completedProofId) + ',0)">👁️ ' +
+                        esc(text('pcViewProof', 'Смотреть')) + '</button>');
+                }
+                if (reason.proofRequestId > 0) {
+                    actions.push('<button type="button" class="pc-attention-btn is-done" onclick="event.stopPropagation(); pcCloseCatchupProofRequest(' + safeAppId + ',' + Number(reason.proofRequestId) + ')">✓ ' +
+                        esc(text('pcCloseProofRequest', 'Готово')) + '</button>');
+                }
+            } else if (reason.proofRequested) {
+                isDone = true;
+                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>✓ ' +
+                    esc(text('pcProofRequested', 'Запрос отправлен')) + '</button>');
+            } else {
+                isDone = false;
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRequestCatchupProof(' + safeAppId + ',' + safeTesterId + ')">' +
+                    esc(text('pcAttentionRequestProof', '📩 Запросить отчёт')) + '</button>');
             }
         } else {
             title = esc(reason.label || workspaceText('Требуется внимание', 'Attention needed'));
-            summaryHtml = '<span class="pc-att-tag pc-att-tag--warn">' + esc(reason.label || workspaceText('Внимание', 'Attention')) + '</span>';
-            desc = esc(reason.description || reason.label || '');
-            if (reason.actionHtml) actionHtml = reason.actionHtml;
+            subtitle = '';
+            spoilerText = esc(reason.description || reason.label || '');
+            hasAccordion = !!spoilerText;
+            isDone = false;
+            if (reason.actionHtml) {
+                actions.push(reason.actionHtml);
+            }
         }
 
         return {
@@ -2465,10 +2497,12 @@
             code: code,
             icon: reasonIcon,
             title: title,
-            summaryHtml: summaryHtml,
-            desc: desc,
+            subtitle: subtitle,
+            spoilerText: spoilerText,
             bodyHtml: bodyHtml,
-            actionHtml: actionHtml,
+            actions: actions,
+            hasAccordion: hasAccordion,
+            isDone: isDone,
         };
     }
 
@@ -2478,7 +2512,7 @@
             event.preventDefault();
         }
         var tile = el && el.closest ? el.closest('.pc-attention-tile') : null;
-        if (!tile) return;
+        if (!tile || tile.classList.contains('no-accordion')) return;
         var key = tile.getAttribute('data-reason-key');
         var isExpanded = tile.classList.toggle('is-expanded');
         if (key) {
@@ -2493,9 +2527,10 @@
 
     function attentionSheetHtml(appId, items) {
         if (!items.length) return emptySheetHtml(text('pcAttentionEmpty', 'Nobody needs attention right now'));
-        var monitoringShown = false;
+        var safeAppId = Number(appId || 0);
         return '<ul class="pc-act-list">' + items.map(function (item) {
             var tester = item.tester || {};
+            var safeTesterId = Number(item.testerId || tester.tester_id || 0);
             var currentDay = testerDayNumber(tester);
             var linkedIcon = String(tester.reciprocal_app_icon_url || '').trim();
             var avatarMarkerHtml = linkedIcon
@@ -2506,42 +2541,67 @@
                 testerKarmaMetaHtml(tester) +
                 '<span class="pc-person__day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>';
 
-            var safeTesterId = Number(item.testerId || tester.tester_id || 0);
+            var stepsHtml = (item.reasons || []).map(function (reason) {
+                var meta = getAttentionReasonMeta(reason, tester, safeAppId, safeTesterId);
+                var isExpanded = meta.hasAccordion && expandedAttentionReasons.has(meta.key);
+                var headerClick = meta.hasAccordion ? ' onclick="pcToggleAttentionReason(this, event)"' : '';
+                var chevronHtml = meta.hasAccordion
+                    ? '<div class="pc-attention-tile__toggle" aria-hidden="true">' +
+                        '<svg class="pc-attention-tile__chevron" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>' +
+                      '</div>'
+                    : '';
 
-            var tilesHtml = '<div class="pc-attention-tiles">' + (item.reasons || []).map(function (reason) {
-                var meta = getAttentionReasonMeta(reason, tester, appId, safeTesterId);
-                var isExpanded = expandedAttentionReasons.has(meta.key);
-                return '<div class="pc-attention-tile pc-attention-tile--' + esc(meta.code) + (isExpanded ? ' is-expanded' : '') + '" data-reason-key="' + esc(meta.key) + '" onclick="event.stopPropagation()">' +
-                    '<div class="pc-attention-tile__header" onclick="pcToggleAttentionReason(this, event)">' +
+                var drawerHtml = '';
+                if (meta.hasAccordion && (meta.bodyHtml || meta.spoilerText)) {
+                    var contentHtml = meta.bodyHtml || ('<p class="pc-attention-tile__desc">' + esc(meta.spoilerText) + '</p>');
+                    drawerHtml = '<div class="pc-attention-tile__drawer">' +
+                        '<div class="pc-attention-tile__drawer-inner">' +
+                            '<div class="pc-attention-tile__content">' +
+                                contentHtml +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                }
+
+                var actionsBarHtml = '';
+                if (meta.actions && meta.actions.length) {
+                    actionsBarHtml = '<div class="pc-attention-tile__actions-bar">' +
+                        meta.actions.join('') +
+                    '</div>';
+                }
+
+                var tileHtml = '<div class="pc-attention-tile pc-attention-tile--' + esc(meta.code) +
+                    (!meta.hasAccordion ? ' no-accordion' : '') +
+                    (isExpanded ? ' is-expanded' : '') + '" data-reason-key="' + esc(meta.key) + '" onclick="event.stopPropagation()">' +
+                    '<div class="pc-attention-tile__header"' + headerClick + '>' +
                         '<div class="pc-attention-tile__info">' +
                             '<span class="pc-attention-tile__icon" aria-hidden="true">' + meta.icon + '</span>' +
                             '<div class="pc-attention-tile__text">' +
                                 '<div class="pc-attention-tile__title">' + esc(meta.title) + '</div>' +
-                                (meta.summaryHtml ? '<div class="pc-attention-tile__summary">' + meta.summaryHtml + '</div>' : '') +
+                                (meta.subtitle ? '<div class="pc-attention-tile__subtitle">' + esc(meta.subtitle) + '</div>' : '') +
                             '</div>' +
                         '</div>' +
-                        '<div class="pc-attention-tile__toggle" aria-hidden="true">' +
-                            '<svg class="pc-attention-tile__chevron" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>' +
-                        '</div>' +
+                        chevronHtml +
                     '</div>' +
-                    '<div class="pc-attention-tile__drawer">' +
-                        '<div class="pc-attention-tile__drawer-inner">' +
-                            '<div class="pc-attention-tile__content">' +
-                                (meta.bodyHtml || (meta.desc ? '<p class="pc-attention-tile__desc">' + esc(meta.desc) + '</p>' : '')) +
-                                (meta.actionHtml ? '<div class="pc-attention-tile__action">' + meta.actionHtml + '</div>' : '') +
-                            '</div>' +
-                        '</div>' +
-                    '</div>' +
+                    drawerHtml +
+                    actionsBarHtml +
                 '</div>';
-            }).join('') + '</div>';
 
-            var sectionLabel = '';
-            if (!monitoringShown && Number(item.priority) >= 4) {
-                monitoringShown = true;
-                sectionLabel = '<li class="pc-attention-section-label" role="presentation">' + esc(workspaceText('Наблюдение', 'Monitoring')) + '</li>';
-            }
-            return sectionLabel + personRowHtml({
-                appId: appId,
+                var nodeIcon = meta.isDone
+                    ? '<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                    : '';
+
+                return '<div class="pc-activity-timeline-step pc-activity-timeline-step--attention' +
+                    (meta.isDone ? ' is-completed' : ' is-pending') + '">' +
+                    '<span class="pc-activity-timeline-node pc-status-circle" aria-hidden="true">' + nodeIcon + '</span>' +
+                    tileHtml +
+                '</div>';
+            }).join('');
+
+            var tilesHtml = '<div class="pc-activity-timeline-group">' + stepsHtml + '</div>';
+
+            return personRowHtml({
+                appId: safeAppId,
                 tester: tester,
                 tone: attentionTone(item),
                 rowClass: 'pc-person--attention',
@@ -2775,10 +2835,10 @@
             return text('pcHintContribution', 'Today they did more than a regular check-in: reports, bugs, recommendations, or 3+ screenshots.');
         }
         if (filter === 'attention') {
-            return text('pcHintAttention', 'These testers may stall the test or need an action from you.');
+            return text('pcHintAttention', 'Риски срыва и пропуски активности');
         }
         if (filter === 'control') {
-            return text('pcHintControl', 'Today they must confirm testing with a control report.');
+            return text('pcHintControl', 'Обязательные контрольные отчёты сегодня');
         }
         return text('pcHintAll', 'Everyone in the current test.');
     }
@@ -2788,15 +2848,25 @@
             return text('pcHintCriteriaContribution', 'Value: testers who sent a bug, idea, review, or 3+ screenshots today.');
         }
         if (filter === 'attention') {
-            return workspaceText(
-                'Внимание: участники с пропусками 3+ дней, выходом из теста или вопросами по взаимке. Проверьте риски, чтобы вовремя заменить неактивных.',
-                'Attention: participants with 3+ missed days, who left the test, or with mutual-test issues. Check the risks so you can replace inactive testers in time.'
-            );
+            return text('pcHintCriteriaAttention', 'Внимание: участники, требующие реакции. Пропуски чекинов (от 1 дня для должников и инвайтов, от 2 дней для взаимки), выходы из проекта, сорванные контрольные отчёты и нарушенные связи. При 3+ пропусках партнёра доступен выход из его теста без штрафа.');
         }
         if (filter === 'control') {
-            return text('pcHintCriteriaControl', 'Control: testers whose today is a mandatory proof day (1, 4, 7, 10, 14).');
+            return text('pcHintCriteriaControl', 'Контроль: обязательные контрольные отчёты сегодня (1, 4, 7, 10, 14 дни).');
         }
         return text('pcHintCriteriaAll', 'All: the full current roster of this test.');
+    }
+
+    function hasCriticalAttentionIssue(items) {
+        return (items || []).some(function (item) {
+            var reasons = item && item.reasons || [];
+            return reasons.some(function (r) {
+                var code = String(r && r.code || '').toLowerCase();
+                if (code === 'tester_left') return true;
+                if (code === 'missed_control') return true;
+                if (code === 'skips' && Number(r.skips || (item.tester && item.tester.consecutive_skips) || 0) >= 3) return true;
+                return false;
+            });
+        });
     }
 
     function filterCount(key, data) {
@@ -2856,7 +2926,7 @@
         var labels = {
             contribution: text('pcFilterContribution', 'Contribution'),
             attention: text('pcFilterAttention', 'Attention'),
-            control: workspaceText('Контроль', 'Control'),
+            control: text('pcFilterControl', 'Control'),
             testers: text('pcFilterAll', 'All'),
         };
         return '<div class="pc-activity__filters tabs-row" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
@@ -2879,7 +2949,8 @@
                         }
                     }
                 }
-                var countHtml = '<span class="pc-activity__count' + (key === 'attention' ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + count + '</span>';
+                var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
+                var countHtml = '<span class="pc-activity__count' + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + count + '</span>';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
                     '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
@@ -2955,8 +3026,8 @@
 
         var hints = {
             contribution: workspaceText('Больше обычного чекина', 'Beyond a regular check-in'),
-            attention: workspaceText('Риски срыва', 'Disruption risks'),
-            control: workspaceText('Контрольные отчёты сегодня', 'Control reports today'),
+            attention: text('pcHintAttention', 'Риски срыва и пропуски активности'),
+            control: text('pcHintControl', 'Обязательные контрольные отчёты сегодня'),
             testers: workspaceText('Текущий состав команды', 'Current team'),
         };
         var hintText = historyOn ? workspaceText('Выбранная категория за всё время', 'Selected category over time') : hints[filter];
