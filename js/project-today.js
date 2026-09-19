@@ -349,6 +349,21 @@
         return Math.max(total, activeFeedbackBust, optimisticBust, rosterBust, contextBust);
     }
 
+    function isCatchupCompletedProof(appId, progressId, proofId) {
+        var proof = Number(proofId || 0);
+        if (proof <= 0) return false;
+        var entry = getCacheEntry(appId);
+        var catchup = entry && entry.catchupByProgress
+            ? entry.catchupByProgress[Number(progressId || 0)]
+            : null;
+        var requests = catchup && Array.isArray(catchup.requests) ? catchup.requests : [];
+        return requests.some(function (req) {
+            var state = String(req && req.state || '').toLowerCase();
+            return Number(req && req.completed_proof_id || 0) === proof
+                && (state === 'proof_received' || state === 'owner_closed' || state === 'closed');
+        });
+    }
+
     function getTesterBoostBust(context, testerId, item) {
         var safeTesterId = Number(testerId || 0);
         if (safeTesterId <= 0) return 0;
@@ -361,25 +376,25 @@
                 }
             });
         }
-        if (proofBoost > 0) return proofBoost;
-
-        var project = context && context.project;
-        var campaign = (project && project.screenshot_boost_campaign) || (context && context.screenshotBoostCampaign) || null;
-        if (campaign && (campaign.enabled === true || campaign.is_active === true || campaign.enabled == null)) {
-            var campaignReward = Math.max(0, Number(campaign.reward_bust || campaign.bonus_bust || 0));
-            if (campaignReward > 0) {
-                var hasThreeScreenshots = item && Number(item.screenshotCount || 0) >= 3;
-                var hasMediaFeedback = item && Array.isArray(item.reasons) && item.reasons.some(function (r) {
-                    return Boolean(r.hasMedia || Number(r.imageCount || 0) > 0);
-                });
-                if (hasThreeScreenshots || hasMediaFeedback) {
-                    return campaignReward;
-                }
-            }
+        if (item && Number(item.boostBust || item.boost_bust || 0) > 0) {
+            proofBoost = Math.max(proofBoost, Number(item.boostBust || item.boost_bust || 0));
         }
-
-        var contextBoost = Number(context && context.boostBustByTester && context.boostBustByTester[safeTesterId] || 0);
-        return contextBoost;
+        // Catch-up proofs consume the campaign day with $0. Never infer a
+        // bonus from "campaign enabled + 3 screenshots" — that made дозапрос
+        // look like an extra-report payout.
+        var appId = Number(context && context.project && (context.project.id || context.project.app_id) || 0);
+        var progressId = Number(item && (item.progressId || (item.screenshotRow && item.screenshotRow.progressId)) || 0);
+        var proofId = Number(item && (item.proofId || (item.screenshotRow && item.screenshotRow.proofId)) || 0);
+        if (!proofId && item && Array.isArray(item.reasons)) {
+            item.reasons.forEach(function (reason) {
+                if (!proofId && Number(reason && reason.proofId || 0) > 0) {
+                    proofId = Number(reason.proofId);
+                    progressId = progressId || Number(reason.progressId || 0);
+                }
+            });
+        }
+        if (isCatchupCompletedProof(appId, progressId, proofId)) return 0;
+        return proofBoost;
     }
 
     function boostRewardBadgeHtml(amount) {
@@ -1206,6 +1221,13 @@
         // that showed yesterday's reward on today's new ticket.
 
         var boostBust = Number(item && (item.boostBust || item.boost_bust) || 0);
+        var proofProgressId = Number(item && (item.progressId || item.progress_id) || 0);
+        if (!proofProgressId && opts && opts.item) {
+            proofProgressId = Number(opts.item.progressId || (opts.item.screenshotRow && opts.item.screenshotRow.progressId) || 0);
+        }
+        if (isCatchupCompletedProof(safeAppId, proofProgressId, proofId)) {
+            boostBust = 0;
+        }
         if (!boostBust && targetTesterId > 0 && opts && opts.context) {
             var testerBoost = getTesterBoostBust(opts.context, targetTesterId, opts.item || { reasons: opts.reasons });
             if (testerBoost > 0) {
@@ -1221,6 +1243,9 @@
                     boostBust = testerBoost;
                 }
             }
+        }
+        if (isCatchupCompletedProof(safeAppId, proofProgressId, proofId)) {
+            boostBust = 0;
         }
 
         var mainClick = '';
@@ -1606,6 +1631,7 @@
                 byTester[testerId] = {
                     testerId: testerId,
                     tester: testerObj,
+                    progressId: Number(row.progressId || 0),
                     screenshotCount: 0,
                     screenshotSeriesCount: 0,
                     screenshotRow: null,
@@ -1650,6 +1676,7 @@
                     kind: 'screenshots',
                     label: contributionScreenshotsLabel(item.screenshotCount),
                     proofId: item.screenshotRow.proofId,
+                    progressId: item.screenshotRow.progressId,
                     imageCount: item.screenshotCount,
                     feedbackId: 0,
                     boostBust: Number(item.screenshotRow.boostBust || 0),
@@ -2382,7 +2409,7 @@
             var hasReciprocalApp = Number(tester && tester.reciprocal_app_id || 0) > 0;
             if (hasReciprocalApp) {
                 actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openLeftTesterLinkStatus(' + safeAppId + ',' + safeTesterId + ', event)">' +
-                    esc(text('pcAttentionExitPartnerShort', '🚪 Проект партнёра (Выйти)')) + '</button>');
+                    esc(text('pcAttentionExitPartnerShort', 'Проект партнёра (Выйти)')) + '</button>');
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(' + safeAppId + ',' + safeTesterId + ')">' +
                     esc(text('pcAttentionHide', '👁️ Скрыть')) + '</button>');
             } else {
@@ -2470,7 +2497,7 @@
                 isDone = reminded;
 
                 actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' + safeAppId + ',' + safeTesterId + ', event)">' +
-                    esc(text('pcAttentionExitPartner', '🚪 Выйти из теста партнёра')) + '</button>');
+                    esc(text('pcAttentionExitPartner', 'Выйти из теста партнёра')) + '</button>');
 
                 if (reminded) {
                     actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +

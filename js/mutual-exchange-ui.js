@@ -1467,21 +1467,23 @@
     }
 
     function startMutualBreakFromBalance() {
-        if (!_balanceState) {
+        var state = _balanceState || window._balanceState;
+        if (!state) {
             if (typeof showToast === 'function') showToast(_t('loadError'));
             return;
         }
-        var appId = Number(_balanceState.appId || 0);
-        var context = _balanceState.context || 'tests';
-        var projectId = Number(_balanceState.projectId || appId);
-        var testerId = Number(_balanceState.testerId || 0);
-        var joinType = _normalizeJoinType(_balanceState.joinType || 'mutual');
+        var appId = Number(state.appId || 0);
+        var context = state.context || 'tests';
+        var projectId = Number(state.projectId || appId);
+        var testerId = Number(state.testerId || 0);
+        var joinType = _normalizeJoinType(state.joinType || 'mutual');
         var forceUnlink = _isMutualJoin(joinType);
 
         // Close balance without wiping copied ids (close clears _balanceState).
         var modal = document.getElementById('mutual-balance-modal');
         if (modal) modal.classList.remove('active');
         _balanceState = null;
+        window._balanceState = null;
 
         if (context === 'projects') {
             if (projectId <= 0 || testerId <= 0) {
@@ -1493,8 +1495,8 @@
             if (typeof openKick === 'function') {
                 try {
                     openKick(projectId, testerId, null, {
-                        forceUnlink: forceUnlink,
-                        unlinkReciprocal: forceUnlink,
+                        forceUnlink: false,
+                        unlinkReciprocal: _isMutualJoin(joinType),
                     });
                 } catch (error) {
                     console.error('openKickTesterModal failed', error);

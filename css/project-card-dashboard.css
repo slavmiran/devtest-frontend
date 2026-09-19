@@ -6891,20 +6891,20 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .screenshot-boost-sheet__close { width:38px; height:38px; flex:0 0 38px; border:0; border-radius:50%; color:rgba(226,232,240,.72); background:rgba(148,163,184,.12); font-size:25px; line-height:1; }
 .screenshot-boost-sheet__intro { margin:14px 0; color:rgba(203,213,225,.72); font-size:13px; line-height:1.45; }
 .screenshot-boost-sheet__hint { margin:14px 0 8px; color:rgba(203,213,225,.72); font-size:13px; line-height:1.45; }
-.screenshot-boost-return { margin:0 2px 8px; overflow-anchor:none; }
-.screenshot-boost-return-link { display:inline-flex; align-items:center; min-height:28px; padding:5px 11px; border:1px solid rgba(148,163,184,.22); border-radius:999px; background:rgba(255,255,255,.04); color:rgba(203,213,225,.78); font-size:12px; font-weight:550; line-height:1.2; text-decoration:none; cursor:pointer; }
-.screenshot-boost-return-link[aria-expanded="true"] { border-color:rgba(148,163,184,.3); background:rgba(255,255,255,.06); }
-.screenshot-boost-return-link:disabled { opacity:.45; cursor:default; }
-.screenshot-boost-return-panel { display:grid; grid-template-rows:0fr; opacity:0; margin-top:0; transition:grid-template-rows 280ms ease, opacity 220ms ease, margin-top 280ms ease; }
-.screenshot-boost-return-panel.is-open { grid-template-rows:1fr; opacity:1; margin-top:10px; }
-.screenshot-boost-return-panel__inner { min-height:0; overflow:hidden; }
-.screenshot-boost-return-panel__card { padding:11px 12px; border:1px solid rgba(148,163,184,.16); border-radius:12px; background:rgba(15,23,42,.45); }
-.screenshot-boost-return-panel__card p { margin:0 0 10px; color:rgba(203,213,225,.78); font-size:12px; line-height:1.4; }
-.screenshot-boost-return-btn { width:100%; min-height:38px; border:1px solid rgba(148,163,184,.22); border-radius:10px; background:rgba(148,163,184,.08); color:#e2e8f0; font-size:13px; font-weight:650; cursor:pointer; }
-.screenshot-boost-return-btn:disabled { opacity:.5; cursor:default; }
-@media (prefers-reduced-motion: reduce) {
-    .screenshot-boost-return-panel { transition:none; }
-}
+.screenshot-boost-pause-banner { margin:8px 2px 0; padding:8px 11px; border:1px solid rgba(246,200,95,.22); border-radius:10px; background:rgba(246,200,95,.08); color:#e8d7a3; font-size:12px; line-height:1.35; }
+.screenshot-boost-pause-banner[hidden] { display:none; }
+.screenshot-boost-settings-wrap { position:relative; margin-top:10px; }
+.screenshot-boost-settings.is-disabled { opacity:.4; pointer-events:none; }
+.screenshot-boost-settings__unlock { display:none; position:absolute; inset:0; z-index:3; border:0; padding:0; margin:0; background:transparent; cursor:pointer; }
+.screenshot-boost-settings-wrap.is-locked .screenshot-boost-settings__unlock { display:block; }
+.screenshot-boost-field__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; min-height:28px; }
+.screenshot-boost-field__head>label { min-height:0; }
+.screenshot-boost-return-inline { flex:0 0 auto; margin:0; padding:0; border:0; background:transparent; color:#93c5fd; font-size:11px; font-weight:600; line-height:1.2; text-decoration:none; cursor:pointer; }
+.screenshot-boost-return-inline[hidden] { display:none; }
+.screenshot-boost-return-inline:disabled { opacity:.45; cursor:default; }
+.screenshot-boost-refund-link { display:block; width:100%; margin:2px 0 0; padding:6px 4px 0; border:0; background:transparent; color:rgba(148,163,184,.88); font-size:12px; font-weight:550; line-height:1.35; text-align:center; cursor:pointer; }
+.screenshot-boost-refund-link[hidden] { display:none; }
+.screenshot-boost-refund-link:disabled { opacity:.45; cursor:default; }
 .screenshot-boost-switch-row,.screenshot-boost-control-row { display:flex; align-items:center; gap:11px; padding:12px; border:1px solid rgba(148,163,184,.14); border-radius:14px; background:rgba(15,23,42,.5); }
 .screenshot-boost-switch-row>span:first-child,.screenshot-boost-control-row>span:last-child { min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
 .screenshot-boost-switch-row strong,.screenshot-boost-control-row strong { color:#e2e8f0; font-size:13px; }
@@ -6915,6 +6915,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .screenshot-boost-switch-row input:checked+.screenshot-boost-switch { background:#3b82f6; }
 .screenshot-boost-switch-row input:checked+.screenshot-boost-switch::after { transform:translateX(18px); }
 .screenshot-boost-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:10px; }
+.screenshot-boost-settings .screenshot-boost-fields { margin-top:0; }
 .screenshot-boost-field { min-width:0; padding:10px; border:1px solid rgba(148,163,184,.14); border-radius:13px; background:rgba(15,23,42,.42); }
 .screenshot-boost-field>label { min-height:28px; display:block; color:rgba(203,213,225,.7); font-size:11px; line-height:1.25; }
 .screenshot-boost-stepper { display:flex; align-items:center; gap:3px; margin-top:5px; padding:3px; border:1px solid rgba(148,163,184,.24); border-radius:10px; background:rgba(15,23,42,.55); }
@@ -6945,7 +6946,8 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .screenshot-boost-protection-info-panel p { margin:0; font-size:11.5px; line-height:1.48; }
 .screenshot-boost-balance { margin-top:10px; padding:10px 12px; display:flex; flex-wrap:wrap; gap:4px 14px; border-radius:12px; color:rgba(203,213,225,.76); background:rgba(59,130,246,.07); font-size:11px; }
 .screenshot-boost-settings-error { margin:10px 0 0; padding:9px 11px; border-radius:10px; color:#fca5a5; background:rgba(239,68,68,.1); font-size:12px; }
-.screenshot-boost-sheet__actions { margin-top:14px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+.screenshot-boost-sheet__actions { margin-top:14px; display:grid; grid-template-columns:1fr; gap:4px; }
+.screenshot-boost-sheet__actions .btn-primary:disabled { opacity:.45; cursor:default; pointer-events:none; }
 .screenshot-boost-sheet__actions--single { grid-template-columns:1fr; }
 .screenshot-boost-info-card { margin-top:15px; padding:15px; display:flex; flex-direction:column; gap:8px; border:1px solid rgba(246,200,95,.2); border-radius:15px; background:rgba(246,200,95,.07); }
 .screenshot-boost-info-card p,.screenshot-boost-info-card span { margin:0; color:rgba(226,232,240,.76); font-size:13px; line-height:1.4; }

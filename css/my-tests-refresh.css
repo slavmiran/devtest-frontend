@@ -2017,7 +2017,9 @@ button.ts-section-head {
     transition: opacity 0.2s ease;
 }
 
-.split-btn-options.has-screenshot-boost {
+.split-btn-options.has-screenshot-boost,
+.checkin-confirm-btn.has-screenshot-boost {
+    position: relative !important;
     overflow: visible !important;
     z-index: 2;
 }

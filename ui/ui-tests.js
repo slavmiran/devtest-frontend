@@ -2316,6 +2316,52 @@ function getScreenshotBoostPaperclipContent(appId) {
     return html;
 }
 
+function getScreenshotBoostConfirmStickerHtml(test, testingDay) {
+    if (!test) return '';
+    var day = testingDay || (typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : 0);
+    var offer = getScreenshotBoostOffer(test, day);
+    if (!offer) return '';
+    return '<span class="split-btn-options__boost checkin-confirm-btn__boost" aria-hidden="true">+$' +
+        window.escapeHTML(formatScreenshotBoostStickerAmount(offer.reward)) + '</span>';
+}
+
+function syncScreenshotBoostConfirmButton(btn, appId) {
+    if (!btn) return;
+    var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    if (!test && Array.isArray(myTests)) {
+        test = myTests.find(function(item) { return Number(item && item.id) === Number(appId); });
+    }
+    if (!test) return;
+    var testingDay = typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date, test.testing_days)
+        : (typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : Number(test.testing_days || 0));
+    var offer = typeof window.getScreenshotBoostOffer === 'function'
+        ? window.getScreenshotBoostOffer(test, testingDay)
+        : null;
+    var isControlDay = (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDay))
+        || (Number(test.checkins_count || 0) <= 0 && !String(test.last_check_date || '').trim());
+    var showSticker = !!(offer && (isControlDay || offer.isControlDay));
+
+    btn.classList.toggle('has-screenshot-boost', showSticker);
+    var existingSticker = btn.querySelector('.checkin-confirm-btn__boost');
+    if (showSticker) {
+        var stickerAmount = typeof formatScreenshotBoostStickerAmount === 'function'
+            ? formatScreenshotBoostStickerAmount(offer.reward)
+            : Number(offer.reward || 0).toFixed(2);
+        if (existingSticker) {
+            existingSticker.textContent = '+$' + stickerAmount;
+        } else {
+            var span = document.createElement('span');
+            span.className = 'split-btn-options__boost checkin-confirm-btn__boost';
+            span.setAttribute('aria-hidden', 'true');
+            span.textContent = '+$' + stickerAmount;
+            btn.appendChild(span);
+        }
+    } else if (existingSticker) {
+        existingSticker.remove();
+    }
+}
+
 function syncScreenshotBoostOfferUi(appId, options) {
     options = options || {};
     var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
@@ -2517,6 +2563,8 @@ window.syncCheckinCatchupNoteUi = syncCheckinCatchupNoteUi;
 window.syncCheckinDeveloperAccordion = syncCheckinDeveloperAccordion;
 window.toggleCheckinDeveloperAccordion = toggleCheckinDeveloperAccordion;
 window.collapseCheckinDeveloperAccordion = collapseCheckinDeveloperAccordion;
+window.getScreenshotBoostConfirmStickerHtml = getScreenshotBoostConfirmStickerHtml;
+window.syncScreenshotBoostConfirmButton = syncScreenshotBoostConfirmButton;
 
 function removeControlProofCatchupInfoDialog() {
     const dialog = document.getElementById('pc-catchup-tester-dialog');
@@ -2917,9 +2965,14 @@ function renderTests(force) {
                 `;
                 
                 if (isScreenshotDay) {
+                    const claimBoostOffer = getScreenshotBoostOffer(test, testingDay);
+                    const claimBoostStickerHtml = claimBoostOffer
+                        ? `<span class="split-btn-options__boost checkin-confirm-btn__boost" aria-hidden="true">+$${window.escapeHTML(formatScreenshotBoostStickerAmount(claimBoostOffer.reward))}</span>`
+                        : '';
                     secondaryActions += `
-                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
+                        <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn ${claimBoostOffer ? 'has-screenshot-boost' : ''}" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
                             ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.t('completeControlDayBtn', {}, lang)}
+                            ${claimBoostStickerHtml}
                         </button>
                     `;
                 } else {
@@ -3049,16 +3102,21 @@ function renderTests(force) {
                 const screenshotWarningText = '';
 
                 if (isScreenshotDay) {
+                    const controlBoostOffer = getScreenshotBoostOffer(test, testingDay);
                     const confirmLabel = isFeedbackCheckinPending
                         ? feedbackPendingBtnInner
                         : window.escapeHTML(isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
+                    const controlBoostStickerHtml = controlBoostOffer
+                        ? `<span class="split-btn-options__boost checkin-confirm-btn__boost" aria-hidden="true">+$${window.escapeHTML(formatScreenshotBoostStickerAmount(controlBoostOffer.reward))}</span>`
+                        : '';
                     actionsHtml = `
                         <div class="checkin-actions checkin-actions--stacked">
                             <button class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn ${controlBoostOffer ? 'has-screenshot-boost' : ''}" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
                                 ${confirmLabel}
+                                ${controlBoostStickerHtml}
                             </button>
                             ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}

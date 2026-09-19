@@ -848,6 +848,20 @@ function closeScreenshotBoostModal(event) {
     }, 220);
 }
 
+function getScreenshotBoostDraftPool() {
+    var poolNode = document.getElementById('screenshot-boost-pool');
+    return Math.max(0, Math.round(Number(poolNode && poolNode.value || 0) || 0));
+}
+
+function getScreenshotBoostSavedPool() {
+    var settings = document.getElementById('screenshot-boost-settings');
+    if (settings && settings.dataset.savedPool != null) {
+        return Math.max(0, Number(settings.dataset.savedPool || 0));
+    }
+    var project = getScreenshotBoostProject(_screenshotBoostModalAppId);
+    return Math.max(0, Number(project && project.screenshot_boost_campaign && project.screenshot_boost_campaign.pool_remaining || 0));
+}
+
 function renderScreenshotBoostSettings(project, campaign, balanceBust) {
     var body = document.getElementById('screenshot-boost-modal-body');
     if (!body || !project) return;
@@ -868,7 +882,7 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
         <label class="screenshot-boost-switch-row">
             <span>
                 <strong>${window.escapeHTML(window.t('screenshotBoostEnabledLabel', {}, lang))}</strong>
-                <small>${window.escapeHTML(window.t(campaign.enabled ? 'screenshotBoostQuickOn' : 'screenshotBoostQuickOff', {
+                <small id="screenshot-boost-switch-hint">${window.escapeHTML(window.t(campaign.enabled ? 'screenshotBoostQuickOn' : 'screenshotBoostQuickOff', {
                     amount: formatScreenshotBoostAmount(campaign.reward_bust),
                     pool: formatScreenshotBoostAmount(campaign.pool_remaining),
                 }, lang))}</small>
@@ -876,89 +890,71 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
             <input id="screenshot-boost-enabled" type="checkbox" ${campaign.enabled ? 'checked' : ''} onchange="syncScreenshotBoostSettingsToggle()">
             <span class="screenshot-boost-switch" aria-hidden="true"></span>
         </label>
-        <div class="screenshot-boost-fields">
-            <div class="screenshot-boost-field">
-                <label for="screenshot-boost-reward">${window.escapeHTML(window.t('screenshotBoostRewardLabel', {}, lang))}</label>
-                <div class="screenshot-boost-stepper">
-                    <button type="button" onclick="changeScreenshotBoostAmount('reward', -1)" aria-label="${window.escapeHTML(window.t('screenshotBoostDecrease', {}, lang))}">−</button>
-                    <div class="screenshot-boost-input-wrap"><input id="screenshot-boost-reward" type="number" inputmode="numeric" min="1" max="100000" step="1" value="${Math.round(campaign.reward_bust)}" oninput="syncScreenshotBoostBudgetPreview()"><b>$BUST</b></div>
-                    <button type="button" onclick="changeScreenshotBoostAmount('reward', 1)" aria-label="${window.escapeHTML(window.t('screenshotBoostIncrease', {}, lang))}">+</button>
-                </div>
-            </div>
-            <div class="screenshot-boost-field">
-                <label for="screenshot-boost-pool">${window.escapeHTML(window.t('screenshotBoostPoolLabel', {}, lang))}</label>
-                <div class="screenshot-boost-stepper">
-                    <button type="button" onclick="changeScreenshotBoostAmount('pool', -10)" aria-label="${window.escapeHTML(window.t('screenshotBoostDecrease', {}, lang))}">−</button>
-                    <div class="screenshot-boost-input-wrap"><input id="screenshot-boost-pool" type="number" inputmode="numeric" min="0" step="1" value="${Math.round(campaign.pool_remaining)}" oninput="syncScreenshotBoostBudgetPreview()"><b>$BUST</b></div>
-                    <button type="button" onclick="changeScreenshotBoostAmount('pool', 10)" aria-label="${window.escapeHTML(window.t('screenshotBoostIncrease', {}, lang))}">+</button>
-                </div>
-            </div>
-        </div>
-        <p id="screenshot-boost-budget-preview" class="screenshot-boost-budget-preview" aria-live="polite"></p>
-        <div class="screenshot-boost-control-row screenshot-boost-protection-row">
-            <label class="screenshot-boost-protection-choice">
-                <input id="screenshot-boost-control-days" type="checkbox" ${campaign.reward_control_days ? 'checked' : ''}>
-                <span class="screenshot-boost-control-check" aria-hidden="true"></span>
-                <span>
-                    <strong>${window.escapeHTML(window.t('screenshotBoostControlLabel', {}, lang))}</strong>
-                    <small>${window.escapeHTML(window.t('screenshotBoostControlHint', {}, lang))}</small>
-                    <small class="screenshot-boost-control-note">${window.escapeHTML(window.t('screenshotBoostControlNote', {}, lang))}</small>
-                </span>
-            </label>
-            <button type="button" class="screenshot-boost-protection-info" aria-expanded="false" aria-controls="screenshot-boost-control-info-panel" aria-label="${window.escapeHTML(window.t('screenshotBoostControlInfoAria', {}, lang))}" onclick="toggleScreenshotBoostControlInfo(this)">i</button>
-        </div>
-        <div id="screenshot-boost-control-info-panel" class="screenshot-boost-protection-info-panel" hidden>
-            <strong>${window.escapeHTML(window.t('screenshotBoostControlInfoTitle', {}, lang))}</strong>
-            <p>${window.escapeHTML(window.t('screenshotBoostControlInfoText', {}, lang))}</p>
-        </div>
-        <div class="screenshot-boost-control-row screenshot-boost-protection-row${hasProtectionDays ? '' : ' is-disabled'}">
-            <label class="screenshot-boost-protection-choice">
-                <input id="screenshot-boost-protection-days" type="checkbox" ${campaign.reward_protection_days && hasProtectionDays ? 'checked' : ''} ${hasProtectionDays ? '' : 'disabled'}>
-                <span class="screenshot-boost-control-check" aria-hidden="true"></span>
-                <span>
-                    <strong>${window.escapeHTML(window.t('screenshotBoostProtectionLabel', {}, lang))}</strong>
-                    <small>${window.escapeHTML(window.t(hasProtectionDays ? 'screenshotBoostProtectionHint' : 'screenshotBoostProtectionUnavailable', { count: protectionDays }, lang))}</small>
-                </span>
-            </label>
-            <button type="button" class="screenshot-boost-protection-info" aria-expanded="false" aria-controls="screenshot-boost-protection-info-panel" aria-label="${window.escapeHTML(window.t('screenshotBoostProtectionInfoAria', {}, lang))}" onclick="toggleScreenshotBoostProtectionInfo(this)">i</button>
-        </div>
-        <div id="screenshot-boost-protection-info-panel" class="screenshot-boost-protection-info-panel" hidden>
-            <strong>${window.escapeHTML(window.t('screenshotBoostProtectionInfoTitle', {}, lang))}</strong>
-            <p>${window.escapeHTML(window.t('screenshotBoostProtectionInfoText', {}, lang))}</p>
-        </div>
-        <div class="screenshot-boost-balance">
-            <span>${window.escapeHTML(window.t('screenshotBoostBalanceAvailable', { amount: formatScreenshotBoostAmount(balanceBust) }, lang))}</span>
-            <span>${window.escapeHTML(window.t('screenshotBoostPoolReserved', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</span>
-        </div>
-        <p class="screenshot-boost-sheet__hint">${window.escapeHTML(window.t('screenshotBoostPoolHint', {}, lang))}</p>
-        ${campaign.pool_remaining > 0 ? `
-        <div class="screenshot-boost-return">
-            <button type="button" class="screenshot-boost-return-link" aria-expanded="false" aria-controls="screenshot-boost-return-panel" onclick="toggleScreenshotBoostReturnConfirm()">${window.escapeHTML(window.t('screenshotBoostReturnLink', {}, lang))}</button>
-            <div id="screenshot-boost-return-panel" class="screenshot-boost-return-panel" aria-hidden="true">
-                <div class="screenshot-boost-return-panel__inner">
-                    <div class="screenshot-boost-return-panel__card">
-                        <p>${window.escapeHTML(window.t('screenshotBoostReturnText', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</p>
-                        <button id="screenshot-boost-return-confirm" type="button" class="screenshot-boost-return-btn" onclick="returnScreenshotBoostPool()">${window.escapeHTML(window.t('screenshotBoostReturnBtn', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</button>
+        <p id="screenshot-boost-pause-banner" class="screenshot-boost-pause-banner" hidden></p>
+        <div id="screenshot-boost-settings-wrap" class="screenshot-boost-settings-wrap">
+            <div id="screenshot-boost-settings" class="screenshot-boost-settings" data-saved-pool="${Math.round(campaign.pool_remaining)}">
+                <div class="screenshot-boost-fields">
+                    <div class="screenshot-boost-field">
+                        <label for="screenshot-boost-reward">${window.escapeHTML(window.t('screenshotBoostRewardLabel', {}, lang))}</label>
+                        <div class="screenshot-boost-stepper">
+                            <button type="button" onclick="changeScreenshotBoostAmount('reward', -1)" aria-label="${window.escapeHTML(window.t('screenshotBoostDecrease', {}, lang))}">−</button>
+                            <div class="screenshot-boost-input-wrap"><input id="screenshot-boost-reward" type="number" inputmode="numeric" min="1" max="100000" step="1" value="${Math.round(campaign.reward_bust)}" oninput="syncScreenshotBoostBudgetPreview()"><b>$BUST</b></div>
+                            <button type="button" onclick="changeScreenshotBoostAmount('reward', 1)" aria-label="${window.escapeHTML(window.t('screenshotBoostIncrease', {}, lang))}">+</button>
+                        </div>
+                    </div>
+                    <div class="screenshot-boost-field screenshot-boost-field--pool">
+                        <div class="screenshot-boost-field__head">
+                            <label for="screenshot-boost-pool">${window.escapeHTML(window.t('screenshotBoostPoolLabel', {}, lang))}</label>
+                            <button type="button" id="screenshot-boost-return-inline" class="screenshot-boost-return-inline" hidden onclick="returnScreenshotBoostPool()">${window.escapeHTML(window.t('screenshotBoostReturnToBalance', {}, lang))}</button>
+                        </div>
+                        <div class="screenshot-boost-stepper">
+                            <button type="button" onclick="changeScreenshotBoostAmount('pool', -10)" aria-label="${window.escapeHTML(window.t('screenshotBoostDecrease', {}, lang))}">−</button>
+                            <div class="screenshot-boost-input-wrap"><input id="screenshot-boost-pool" type="number" inputmode="numeric" min="0" step="1" value="${Math.round(campaign.pool_remaining)}" oninput="syncScreenshotBoostBudgetPreview()"><b>$BUST</b></div>
+                            <button type="button" onclick="changeScreenshotBoostAmount('pool', 10)" aria-label="${window.escapeHTML(window.t('screenshotBoostIncrease', {}, lang))}">+</button>
+                        </div>
                     </div>
                 </div>
+                <p id="screenshot-boost-budget-preview" class="screenshot-boost-budget-preview" aria-live="polite"></p>
+                <label class="screenshot-boost-control-row">
+                    <input id="screenshot-boost-control-days" type="checkbox" ${campaign.reward_control_days ? 'checked' : ''}>
+                    <span class="screenshot-boost-control-check" aria-hidden="true"></span>
+                    <span>
+                        <strong>${window.escapeHTML(window.t('screenshotBoostControlLabel', {}, lang))}</strong>
+                        <small>${window.escapeHTML(window.t('screenshotBoostControlHint', {}, lang))}</small>
+                        <small class="screenshot-boost-control-note">${window.escapeHTML(window.t('screenshotBoostControlNote', {}, lang))}</small>
+                    </span>
+                </label>
+                <div class="screenshot-boost-control-row screenshot-boost-protection-row${hasProtectionDays ? '' : ' is-disabled'}">
+                    <label class="screenshot-boost-protection-choice">
+                        <input id="screenshot-boost-protection-days" type="checkbox" ${campaign.reward_protection_days && hasProtectionDays ? 'checked' : ''} ${hasProtectionDays ? '' : 'disabled'}>
+                        <span class="screenshot-boost-control-check" aria-hidden="true"></span>
+                        <span>
+                            <strong>${window.escapeHTML(window.t('screenshotBoostProtectionLabel', {}, lang))}</strong>
+                            <small>${window.escapeHTML(window.t(hasProtectionDays ? 'screenshotBoostProtectionHint' : 'screenshotBoostProtectionUnavailable', { count: protectionDays }, lang))}</small>
+                        </span>
+                    </label>
+                    <button type="button" class="screenshot-boost-protection-info" aria-expanded="false" aria-controls="screenshot-boost-protection-info-panel" aria-label="${window.escapeHTML(window.t('screenshotBoostProtectionInfoAria', {}, lang))}" onclick="toggleScreenshotBoostProtectionInfo(this)">i</button>
+                </div>
+                <div id="screenshot-boost-protection-info-panel" class="screenshot-boost-protection-info-panel" hidden>
+                    <strong>${window.escapeHTML(window.t('screenshotBoostProtectionInfoTitle', {}, lang))}</strong>
+                    <p>${window.escapeHTML(window.t('screenshotBoostProtectionInfoText', {}, lang))}</p>
+                </div>
+                <div class="screenshot-boost-balance">
+                    <span id="screenshot-boost-balance-available">${window.escapeHTML(window.t('screenshotBoostBalanceAvailable', { amount: formatScreenshotBoostAmount(balanceBust) }, lang))}</span>
+                    <span id="screenshot-boost-balance-reserved">${window.escapeHTML(window.t('screenshotBoostPoolReserved', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</span>
+                </div>
+                <p class="screenshot-boost-sheet__hint">${window.escapeHTML(window.t('screenshotBoostPoolHint', {}, lang))}</p>
             </div>
-        </div>` : ''}
+            <button type="button" id="screenshot-boost-settings-unlock" class="screenshot-boost-settings__unlock" hidden onclick="enableScreenshotBoostSettings(event)" aria-label="${window.escapeHTML(window.t('screenshotBoostUnlockSettingsAria', {}, lang))}"></button>
+        </div>
         <div id="screenshot-boost-settings-error" class="screenshot-boost-settings-error" hidden></div>
-        <div class="screenshot-boost-sheet__actions">
-            <button type="button" class="btn btn-secondary" onclick="closeScreenshotBoostModal()">${window.escapeHTML(window.t('screenshotBoostCancel', {}, lang))}</button>
+        <div class="screenshot-boost-sheet__actions screenshot-boost-sheet__actions--single">
             <button id="screenshot-boost-save" type="button" class="btn btn-primary" onclick="saveScreenshotBoostSettings()">${window.escapeHTML(window.t('screenshotBoostSave', {}, lang))}</button>
+            <button type="button" id="screenshot-boost-refund-link" class="screenshot-boost-refund-link" hidden onclick="returnScreenshotBoostPool()"></button>
         </div>
     `;
     syncScreenshotBoostSettingsToggle();
     syncScreenshotBoostBudgetPreview();
-}
-
-function toggleScreenshotBoostControlInfo(button) {
-    var panel = document.getElementById('screenshot-boost-control-info-panel');
-    if (!panel) return;
-    var open = panel.hidden;
-    panel.hidden = !open;
-    if (button) button.setAttribute('aria-expanded', String(open));
 }
 
 function toggleScreenshotBoostProtectionInfo(button) {
@@ -980,17 +976,102 @@ function changeScreenshotBoostAmount(field, delta) {
 
 function syncScreenshotBoostBudgetPreview() {
     var reward = document.getElementById('screenshot-boost-reward');
-    var pool = document.getElementById('screenshot-boost-pool');
     var preview = document.getElementById('screenshot-boost-budget-preview');
-    if (!reward || !pool || !preview) return;
-    var count = Number(reward.value) > 0 ? Math.floor(Math.max(0, Number(pool.value) || 0) / Number(reward.value)) : 0;
-    preview.textContent = window.t('screenshotBoostBudgetPreview', { count: count }, lang);
+    var draftPool = getScreenshotBoostDraftPool();
+    var savedPool = getScreenshotBoostSavedPool();
+    if (reward && preview) {
+        var count = Number(reward.value) > 0 ? Math.floor(draftPool / Number(reward.value)) : 0;
+        preview.textContent = window.t('screenshotBoostBudgetPreview', { count: count }, lang);
+    }
+    var availableNode = document.getElementById('screenshot-boost-balance-available');
+    var reservedNode = document.getElementById('screenshot-boost-balance-reserved');
+    if (availableNode) {
+        availableNode.textContent = window.t('screenshotBoostBalanceAvailable', {
+            amount: formatScreenshotBoostAmount(_screenshotBoostModalBalance + savedPool - draftPool),
+        }, lang);
+    }
+    if (reservedNode) {
+        reservedNode.textContent = window.t('screenshotBoostPoolReserved', {
+            amount: formatScreenshotBoostAmount(draftPool),
+        }, lang);
+    }
+    syncScreenshotBoostSettingsToggle();
+}
+
+function enableScreenshotBoostSettings(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var enabled = document.getElementById('screenshot-boost-enabled');
+    if (!enabled || enabled.disabled) return;
+    enabled.checked = true;
+    syncScreenshotBoostSettingsToggle();
+    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
 }
 
 function syncScreenshotBoostSettingsToggle() {
     var enabled = document.getElementById('screenshot-boost-enabled');
+    var saveButton = document.getElementById('screenshot-boost-save');
+    var refundLink = document.getElementById('screenshot-boost-refund-link');
+    var returnInline = document.getElementById('screenshot-boost-return-inline');
+    var settings = document.getElementById('screenshot-boost-settings');
+    var wrap = document.getElementById('screenshot-boost-settings-wrap');
+    var unlock = document.getElementById('screenshot-boost-settings-unlock');
+    var banner = document.getElementById('screenshot-boost-pause-banner');
+    var hint = document.getElementById('screenshot-boost-switch-hint');
     var sheet = document.querySelector('#screenshot-boost-modal .screenshot-boost-sheet');
-    if (sheet) sheet.classList.toggle('is-enabled', !!(enabled && enabled.checked));
+    var isOn = !!(enabled && enabled.checked);
+    var draftPool = getScreenshotBoostDraftPool();
+    var savedPool = getScreenshotBoostSavedPool();
+    var canPause = !isOn && savedPool > 0;
+    if (sheet) sheet.classList.toggle('is-enabled', isOn);
+    if (settings) settings.classList.toggle('is-disabled', !isOn);
+    if (wrap) wrap.classList.toggle('is-locked', !isOn);
+    if (unlock) {
+        unlock.hidden = isOn;
+        unlock.disabled = !_screenshotBoostSettingsLoaded || (enabled && enabled.disabled);
+    }
+    if (banner) {
+        banner.hidden = !canPause;
+        if (canPause) {
+            banner.textContent = window.t('screenshotBoostPauseBanner', {
+                amount: formatScreenshotBoostAmount(savedPool),
+            }, lang);
+        }
+    }
+    if (hint) {
+        var rewardNode = document.getElementById('screenshot-boost-reward');
+        hint.textContent = window.t(isOn ? 'screenshotBoostQuickOn' : 'screenshotBoostQuickOff', {
+            amount: formatScreenshotBoostAmount(Number(rewardNode && rewardNode.value || 0)),
+            pool: formatScreenshotBoostAmount(draftPool),
+        }, lang);
+    }
+    if (returnInline) {
+        returnInline.hidden = !isOn || draftPool <= 0;
+        returnInline.disabled = !_screenshotBoostSettingsLoaded;
+    }
+    if (refundLink) {
+        refundLink.hidden = !canPause;
+        refundLink.disabled = !_screenshotBoostSettingsLoaded;
+        if (canPause) {
+            refundLink.textContent = window.t('screenshotBoostDisableAndRefund', {
+                amount: formatScreenshotBoostAmount(savedPool),
+            }, lang);
+        }
+    }
+    if (saveButton) {
+        saveButton.disabled = !_screenshotBoostSettingsLoaded;
+        if (isOn) {
+            saveButton.textContent = draftPool > 0
+                ? window.t('screenshotBoostSavePool', { amount: formatScreenshotBoostAmount(draftPool) }, lang)
+                : window.t('screenshotBoostSaveActivate', {}, lang);
+        } else if (canPause) {
+            saveButton.textContent = window.t('screenshotBoostPauseKeepReserve', {}, lang);
+        } else {
+            saveButton.textContent = window.t('screenshotBoostSaveChanges', {}, lang);
+        }
+    }
 }
 
 async function openScreenshotBoostSettings(appId, event) {
@@ -1006,7 +1087,7 @@ async function openScreenshotBoostSettings(appId, event) {
     _screenshotBoostSettingsLoaded = false;
     _screenshotBoostModalBalance = Number(visibilityStats && visibilityStats.balance_bust || 0);
     renderScreenshotBoostSettings(project, project.screenshot_boost_campaign, _screenshotBoostModalBalance);
-    body.querySelectorAll('input, .screenshot-boost-stepper button, #screenshot-boost-save, #screenshot-boost-return-confirm, .screenshot-boost-return-link').forEach(function(node) {
+    body.querySelectorAll('input, .screenshot-boost-stepper button, #screenshot-boost-save, #screenshot-boost-return-inline, #screenshot-boost-refund-link, #screenshot-boost-settings-unlock').forEach(function(node) {
         node.disabled = true;
     });
     modal.classList.add('active');
@@ -1064,9 +1145,11 @@ function openScreenshotBoostInfo(appId, event) {
     modal.classList.add('active');
 }
 
-async function saveScreenshotBoostSettings() {
+async function saveScreenshotBoostSettings(options) {
     // Never reserve/refund funds from cached defaults if the fresh settings failed to load.
     if (!_screenshotBoostSettingsLoaded) return;
+    if (options && options.type) options = {};
+    options = options && typeof options === 'object' ? options : {};
     var appId = Number(_screenshotBoostModalAppId || 0);
     var project = getScreenshotBoostProject(appId);
     var enabledNode = document.getElementById('screenshot-boost-enabled');
@@ -1075,13 +1158,20 @@ async function saveScreenshotBoostSettings() {
     var controlNode = document.getElementById('screenshot-boost-control-days');
     var protectionNode = document.getElementById('screenshot-boost-protection-days');
     var saveButton = document.getElementById('screenshot-boost-save');
+    var refundLink = document.getElementById('screenshot-boost-refund-link');
+    var returnInline = document.getElementById('screenshot-boost-return-inline');
     var errorNode = document.getElementById('screenshot-boost-settings-error');
     if (!project || !enabledNode || !rewardNode || !poolNode || !controlNode || !protectionNode) return;
     var enabled = !!enabledNode.checked;
     var reward = Number(rewardNode.value || 0);
-    var pool = Number(poolNode.value || 0);
-    var previousPool = Math.max(0, Number(project.screenshot_boost_campaign && project.screenshot_boost_campaign.pool_remaining || 0));
-    if (pool === 0) enabled = false;
+    var pool = getScreenshotBoostDraftPool();
+    var previousPool = getScreenshotBoostSavedPool();
+    if (options.refund) {
+        enabled = false;
+        pool = 0;
+    } else if (!enabled) {
+        pool = previousPool;
+    }
     if (!Number.isInteger(reward) || reward <= 0 || reward > 100000 || !Number.isSafeInteger(pool) || pool < 0 || (enabled && pool < reward)) {
         if (errorNode) {
             errorNode.hidden = false;
@@ -1090,8 +1180,8 @@ async function saveScreenshotBoostSettings() {
         return;
     }
     if (saveButton) saveButton.disabled = true;
-    var returnButton = document.getElementById('screenshot-boost-return-confirm');
-    if (returnButton) returnButton.disabled = true;
+    if (refundLink) refundLink.disabled = true;
+    if (returnInline) returnInline.disabled = true;
     if (errorNode) errorNode.hidden = true;
     try {
         var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((window.tg && window.tg.initData) || '');
@@ -1101,7 +1191,7 @@ async function saveScreenshotBoostSettings() {
             body: JSON.stringify({
                 enabled: enabled,
                 reward_bust: reward,
-                pool_bust: enabled ? pool : 0,
+                pool_bust: pool,
                 reward_control_days: !!controlNode.checked,
                 reward_protection_days: !protectionNode.disabled && !!protectionNode.checked,
                 init_data: initData,
@@ -1119,8 +1209,9 @@ async function saveScreenshotBoostSettings() {
         closeScreenshotBoostModal();
         if (typeof renderProjects === 'function') renderProjects(true);
         if (typeof showToast === 'function') {
-            var refunded = previousPool > 0 && (!enabled || pool === 0);
-            showToast(window.t(refunded ? 'screenshotBoostReturned' : 'screenshotBoostSaved', {}, lang));
+            var refunded = previousPool > 0 && pool === 0;
+            var paused = !enabled && pool > 0;
+            showToast(window.t(refunded ? 'screenshotBoostReturned' : (paused ? 'screenshotBoostPaused' : 'screenshotBoostSaved'), {}, lang));
         }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
@@ -1133,71 +1224,24 @@ async function saveScreenshotBoostSettings() {
                     : window.t('screenshotBoostSaveError', {}, lang);
         }
     } finally {
-        if (saveButton) saveButton.disabled = false;
-        if (returnButton) returnButton.disabled = false;
+        syncScreenshotBoostSettingsToggle();
+        if (refundLink) refundLink.disabled = false;
+        if (returnInline) returnInline.disabled = false;
     }
-}
-
-function toggleScreenshotBoostReturnConfirm() {
-    var panel = document.getElementById('screenshot-boost-return-panel');
-    var chip = document.querySelector('.screenshot-boost-return-link');
-    var sheet = document.querySelector('#screenshot-boost-modal .screenshot-boost-sheet');
-    if (!panel) return;
-    var opening = !panel.classList.contains('is-open');
-    panel.classList.toggle('is-open', opening);
-    panel.setAttribute('aria-hidden', opening ? 'false' : 'true');
-    if (chip) chip.setAttribute('aria-expanded', opening ? 'true' : 'false');
-    if (opening) {
-        followScreenshotBoostReturnReveal(sheet, panel);
-        return;
-    }
-    window.setTimeout(function() {
-        if (!sheet || panel.classList.contains('is-open')) return;
-        sheet.style.height = '';
-        sheet.style.maxHeight = '';
-        delete sheet.dataset.returnHeightLocked;
-    }, 320);
-}
-
-function followScreenshotBoostReturnReveal(sheet, panel) {
-    if (!sheet || !panel) return;
-    var maxHeight = Math.min(window.innerHeight * 0.88, 760);
-    if (!sheet.dataset.returnHeightLocked) {
-        sheet.style.maxHeight = maxHeight + 'px';
-        sheet.style.height = sheet.getBoundingClientRect().height + 'px';
-        sheet.dataset.returnHeightLocked = '1';
-    }
-    var start = performance.now();
-    var duration = 320;
-    function frame(now) {
-        var wrap = panel.closest('.screenshot-boost-return') || panel;
-        var sheetRect = sheet.getBoundingClientRect();
-        var wrapRect = wrap.getBoundingClientRect();
-        var overflow = wrapRect.bottom - (sheetRect.bottom - 18);
-        if (overflow > 0.5) sheet.scrollTop += overflow;
-        if (now - start < duration) requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
 }
 
 function returnScreenshotBoostPool() {
-    var enabledNode = document.getElementById('screenshot-boost-enabled');
-    var poolNode = document.getElementById('screenshot-boost-pool');
-    if (enabledNode) enabledNode.checked = false;
-    if (poolNode) poolNode.value = 0;
-    syncScreenshotBoostSettingsToggle();
-    syncScreenshotBoostBudgetPreview();
-    saveScreenshotBoostSettings();
+    saveScreenshotBoostSettings({ refund: true });
 }
 
 window.openScreenshotBoostSettings = openScreenshotBoostSettings;
 window.openScreenshotBoostInfo = openScreenshotBoostInfo;
 window.closeScreenshotBoostModal = closeScreenshotBoostModal;
 window.syncScreenshotBoostSettingsToggle = syncScreenshotBoostSettingsToggle;
+window.enableScreenshotBoostSettings = enableScreenshotBoostSettings;
 window.saveScreenshotBoostSettings = saveScreenshotBoostSettings;
 window.changeScreenshotBoostAmount = changeScreenshotBoostAmount;
 window.syncScreenshotBoostBudgetPreview = syncScreenshotBoostBudgetPreview;
-window.toggleScreenshotBoostReturnConfirm = toggleScreenshotBoostReturnConfirm;
 window.returnScreenshotBoostPool = returnScreenshotBoostPool;
 
 function captureProjectViewportAnchor(container) {
@@ -8030,6 +8074,27 @@ async function toggleProjectVisibility(projectId, isChecked) {
     }
 }
 
+function getMutualCatalogCandidateCount() {
+    var seeking = (typeof mutualSeeking !== 'undefined' && Array.isArray(mutualSeeking)) ? mutualSeeking : null;
+    if (seeking && (seeking.length > 0 || window._marketLoadedOnce)) {
+        return seeking.length;
+    }
+    try {
+        var cached = typeof getMarketCache === 'function' ? getMarketCache() : null;
+        var cachedSeeking = cached && cached.mutual && Array.isArray(cached.mutual.seeking)
+            ? cached.mutual.seeking
+            : [];
+        if (cachedSeeking.length > 0) return cachedSeeking.length;
+    } catch (error) {}
+    return seeking ? seeking.length : 0;
+}
+
+function _syncAttractCatalogAvailableBadge() {
+    var badge = document.getElementById('attract-catalog-available-badge');
+    if (!badge) return;
+    badge.textContent = window.t('badgeAvailable', { count: getMutualCatalogCandidateCount() }, lang);
+}
+
 function getGuestProjectsCount() {
     if (typeof _externalCounts !== 'undefined' && _externalCounts && typeof _externalCounts.guest_projects_count !== 'undefined') {
         return Math.max(0, Number(_externalCounts.guest_projects_count));
@@ -8055,6 +8120,7 @@ function getLeadsRadarCount() {
 
 window.toggleProjectVisibility = toggleProjectVisibility;
 window.toggleProjectSettingsDrawer = toggleProjectSettingsDrawer;
+window.getMutualCatalogCandidateCount = getMutualCatalogCandidateCount;
 
 // --- Attract Testers Bottom Sheet Helper Functions ---
 var _gtActiveOrdersCache = null;
@@ -8644,7 +8710,6 @@ function _fillAttractTestersSheet(projectId, project, activeOrders) {
     var content = document.getElementById('attract-testers-sheet-content');
     if (!content) return;
 
-    var massInviteMeta = getProjectMassInviteMeta(project);
     var guestCount = getGuestProjectsCount();
     var leadsCount = getLeadsRadarCount();
     var testersList = Array.isArray(project.testers) ? project.testers : [];
@@ -8659,7 +8724,7 @@ function _fillAttractTestersSheet(projectId, project, activeOrders) {
                 <div class="attract-sheet-hub-info">
                     <div class="attract-sheet-item-title-row">
                         <div class="attract-sheet-item-title">${window.escapeHTML(window.t('attractMutualCatalogTitle', {}, lang))}</div>
-                        <span class="attract-sheet-item-badge accent-green">${window.escapeHTML(window.t('badgeAvailable', { count: massInviteMeta.maxRecipients }, lang))}</span>
+                        <span id="attract-catalog-available-badge" class="attract-sheet-item-badge accent-green">${window.escapeHTML(window.t('badgeAvailable', { count: getMutualCatalogCandidateCount() }, lang))}</span>
                     </div>
                     <div class="attract-sheet-item-subtitle">${window.escapeHTML(window.t('attractMutualCatalogSubtitle', {}, lang))}</div>
                 </div>
@@ -8753,6 +8818,14 @@ function openAttractTestersSheet(projectId) {
         });
     }
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+
+    if (typeof loadMutualFeed === 'function') {
+        Promise.resolve(loadMutualFeed()).then(function () {
+            if (!overlay.classList.contains('is-active')) return;
+            if (overlay.getAttribute('data-project-id') !== String(projectId)) return;
+            _syncAttractCatalogAvailableBadge();
+        }).catch(function () {});
+    }
 
     loadVisibleGuaranteedOrders(false).then(function (orders) {
         if (!overlay.classList.contains('is-active')) return;

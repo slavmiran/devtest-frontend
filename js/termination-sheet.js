@@ -246,7 +246,7 @@
                 : _t('termUnlinkLeaveHint');
         }
 
-        var forceUnlink = options.forceUnlink === true || options.unlinkReciprocal === true;
+        var forceUnlink = options.forceUnlink === true;
         if (reciprocal) {
             reciprocal.checked = options.unlinkReciprocal === false ? false : true;
             if (forceUnlink) reciprocal.checked = true;

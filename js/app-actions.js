@@ -793,6 +793,14 @@ function _setConfirmButtonLabel(btn, text) {
         label.textContent = text;
         return;
     }
+    var boostEl = btn.querySelector('.checkin-confirm-btn__boost');
+    if (boostEl) {
+        Array.from(btn.childNodes).forEach(function(node) {
+            if (node !== boostEl) node.remove();
+        });
+        btn.insertAdjacentText('afterbegin', text);
+        return;
+    }
     btn.innerText = text;
 }
 
@@ -1290,10 +1298,14 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     btn.style.cursor = 'pointer';
     btn.classList.add('btn-success', 'btn-confirm-ready');
     if (isScreenshot) {
+        var screenshotBtnText = isFirstDayScreenshot
+            ? window.t('screenshotBtn', {}, lang)
+            : window.t('completeControlDayBtn', {}, lang);
+        _setConfirmButtonLabel(btn, screenshotBtnText);
+        if (typeof window.syncScreenshotBoostConfirmButton === 'function') {
+            window.syncScreenshotBoostConfirmButton(btn, finishedId);
+        }
         if (isExternalTest) {
-            btn.innerText = isFirstDayScreenshot
-                ? window.t('screenshotBtn', {}, lang)
-                : window.t('completeControlDayBtn', {}, lang);
             btn.onclick = function(event) {
                 if (event) {
                     event.preventDefault();
@@ -1311,9 +1323,6 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             };
             return true;
         }
-        btn.innerText = isFirstDayScreenshot
-            ? window.t('screenshotBtn', {}, lang)
-            : window.t('completeControlDayBtn', {}, lang);
         btn.onclick = function() {
             if (isFirstDayScreenshot) {
                 handleScreenshotAndConfirm(finishedId, resolvedOwnerUsername || '');
@@ -1503,11 +1512,7 @@ function _startActiveTimerInterval(id) {
         }
         if (liveBtn && !liveBtn.getAttribute('data-feedback-pending')) {
             var timerText = t.timerRemaining.replace('{sec}', remaining);
-            if (liveBtn.classList.contains('tstep__row') || !!liveBtn.closest('.tstep-flow')) {
-                _setConfirmButtonLabel(liveBtn, timerText);
-            } else {
-                liveBtn.innerText = timerText;
-            }
+            _setConfirmButtonLabel(liveBtn, timerText);
         }
         if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
             window.syncCheckinOptionsJustConfirmTimer(id, remaining);
@@ -2662,15 +2667,10 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
     _timerLocalDate = getLocalDate();
     _persistActiveTimer();
     var timerCountdownText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
-    var isTstepBtn = btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow');
-    if (isTstepBtn) {
-        _setConfirmButtonLabel(btn, timerCountdownText);
-    } else {
-        btn.innerText = timerCountdownText;
-        // Normal days: show green active 📎 immediately while confirm stays on the countdown.
-        if (!isScreenshotDay) {
-            _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
-        }
+    _setConfirmButtonLabel(btn, timerCountdownText);
+    // Normal days: show green active 📎 immediately while confirm stays on the countdown.
+    if (!isScreenshotDay) {
+        _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
     }
     _startActiveTimerInterval(id);
 
@@ -2707,14 +2707,9 @@ function _restoreActiveTimer() {
         _syncActiveTimerState();
     } else {
         var timerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
-        var isTstep = btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow');
-        if (isTstep) {
-            _setConfirmButtonLabel(btn, timerText);
-        } else {
-            btn.innerText = timerText;
-            if (!_timerIsScreenshot) {
-                _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
-            }
+        _setConfirmButtonLabel(btn, timerText);
+        if (!_timerIsScreenshot) {
+            _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
         }
         _persistActiveTimer();
         _startActiveTimerInterval(activeTimerAppId);
