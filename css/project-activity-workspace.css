@@ -1141,6 +1141,19 @@
     background: transparent !important;
     box-shadow: none !important;
 }
+.pc-activity--workspace .pc-person__actions .pc-smart-bell-btn {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 4px 10px !important;
+    border-radius: 10px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    box-sizing: border-box !important;
+    flex: 0 0 auto !important;
+}
 .pc-activity--workspace .pc-person__actions .pc-iconact--remind svg {
     width: 22px !important;
     height: 22px !important;

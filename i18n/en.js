@@ -3643,7 +3643,7 @@
             pcActivityCardProfile: "Tester profile",
             pcActivityBadgeNormal: "Normal",
             pcActivityBadgeDelay: "Delay",
-            pcActivityBadgeSkipsNormal: "Normal (≤ 2)",
+            pcActivityBadgeSkipsNormal: "Normal",
             pcActivityBadgeSkipsExceeded: "Exceeded",
             pcActivityBadgeOnSchedule: "On schedule",
             pcActivityBadgeLowRating: "Low rating",

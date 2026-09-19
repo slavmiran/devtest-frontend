@@ -3649,7 +3649,7 @@
             pcActivityCardProfile: "Профиль тестера",
             pcActivityBadgeNormal: "Норма",
             pcActivityBadgeDelay: "Задержка",
-            pcActivityBadgeSkipsNormal: "В норме (≤ 2)",
+            pcActivityBadgeSkipsNormal: "В норме",
             pcActivityBadgeSkipsExceeded: "Превышение",
             pcActivityBadgeOnSchedule: "В графике",
             pcActivityBadgeLowRating: "Низкий рейтинг",

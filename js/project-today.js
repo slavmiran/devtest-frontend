@@ -1426,20 +1426,35 @@
         return '<div class="pc-contribution-cards pc-activity-timeline-group">' + stepsHtml + '</div>';
     }
 
+    var _controlActivityAssessments = new Map();
+    var _controlRowsByAppAndTester = new Map();
+
     function smartBellButtonHtml(appId, row) {
-        var assessment = row.activityAssessment || calculateTesterControlActivityAssessment(row, projectById(appId));
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(row && (row.testerId || (row.tester && (row.tester.id || row.tester.tester_id))) || 0);
+        var assessment = row.activityAssessment || calculateTesterControlActivityAssessment(row, projectById(safeAppId));
+        row.activityAssessment = assessment;
+        if (safeAppId > 0 && safeTesterId > 0) {
+            var cacheKey = safeAppId + ':' + safeTesterId;
+            _controlActivityAssessments.set(cacheKey, assessment);
+            _controlRowsByAppAndTester.set(cacheKey, row);
+        }
         var score = assessment ? Number(assessment.riskScore || 0) : 0;
         var dotPhase = score >= 4 ? 4 : (score >= 2 ? (score === 3 ? 3 : 2) : score);
         var ariaLabel = text('pcActivitySheetSubtitle', 'Activity assessment') + ': ' + score + '/4';
-        return '<button type="button" class="pc-smart-bell-btn pc-smart-bell--' + dotPhase + ' pc-iconact--remind"' +
-            ' onclick="event.stopPropagation(); pcOpenTesterControlActivitySheet(' + Number(appId) + ',' + Number(row.testerId) + ')"' +
+        var wavePath = score >= 2
+            ? '<path class="pc-smart-bell__wave" d="M2.2 5.8a4 4 0 0 0 0 4.4M13.8 5.8a4 4 0 0 1 0 4.4" stroke-width="1.3"/>'
+            : '';
+        return '<button type="button" class="pc-smart-bell-btn pc-smart-bell--' + dotPhase + '"' +
+            ' onclick="event.stopPropagation(); pcOpenTesterControlActivitySheet(' + safeAppId + ',' + safeTesterId + ')"' +
             ' aria-label="' + esc(ariaLabel) + '"' +
             ' title="' + esc(ariaLabel) + '">' +
             '<span class="pc-smart-bell__icon-wrap">' +
-                '<svg class="pc-smart-bell__icon" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<path d="M4.5 6.5a3.5 3.5 0 0 1 7 0c0 2.5 1 3.5 1.5 4h-10c.5-.5 1.5-1.5 1.5-4Z"/>' +
-                    '<path d="M6.5 12.5a1.5 1.5 0 0 0 3 0"/>' +
-                    (score >= 2 ? '<path class="pc-smart-bell__wave" d="M13.5 5.5a4.5 4.5 0 0 1 0 5M2.5 5.5a4.5 4.5 0 0 0 0 5" stroke-width="1.3"/>' : '') +
+                '<svg class="pc-smart-bell__icon" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<path d="M8 2.2a1.3 1.3 0 0 0-1.3 1.3v.5h2.6v-.5A1.3 1.3 0 0 0 8 2.2z"/>' +
+                    '<path class="pc-smart-bell__body" d="M8 4c-2 0-3.5 1.5-3.5 3.5 0 2-.8 3-1.5 3.5h10c-.7-.5-1.5-1.5-1.5-3.5 0-2-1.5-3.5-3.5-3.5z"/>' +
+                    '<path d="M6.8 12.2a1.2 1.2 0 0 0 2.4 0"/>' +
+                    wavePath +
                 '</svg>' +
             '</span>' +
             '<span class="pc-smart-bell__matrix" aria-hidden="true">' +
@@ -1592,9 +1607,11 @@
         var today = String(opts.today || todayString() || '').slice(0, 10);
         var yesterday = shiftDateString(today, -1);
         var now = opts.now ? new Date(opts.now) : new Date();
+        var systemTz = (typeof getUserSystemTimezone === 'function' ? getUserSystemTimezone() : undefined)
+            || (typeof Intl !== 'undefined' && Intl.DateTimeFormat ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined);
         var authorTimezone = opts.timeZone
-            || (proj && (proj.time_zone || proj.timezone || proj.author_timezone))
-            || (typeof getUserSystemTimezone === 'function' ? getUserSystemTimezone() : undefined);
+            || systemTz
+            || (proj && (proj.time_zone || proj.timezone || proj.author_timezone));
 
         // 1. Вчерашний день:
         // Был ли запуск приложения вчера.
@@ -1673,9 +1690,12 @@
         }
 
         // 3. Ритм чекинов:
-        // Точное время, когда истекают 24 часа с момента прошлого теста (в часовом поясе автора проекта, например: 18:44).
-        // Если 24 часа уже прошли — риск («Интервал превышен, дедлайн был в 18:44»).
-        // Если ещё есть запас по времени — норма («В графике, дедлайн сегодня в 18:44»).
+        // Привычное время активности тестера (часы и минуты последнего чекина),
+        // переведённое в часовой пояс автора проекта.
+        // Проецируем этот час на сегодняшний день автора:
+        // - Если у автора сейчас МЕНЬШЕ привычного времени: тестер ещё в графике дня -> Норма (risk: false).
+        //   Даже если вчера был пропуск, с утра этот пункт не горит красным (нет двойного штрафа).
+        // - Если у автора сейчас БОЛЬШЕ привычного времени: привычный час активности прошёл -> Риск (risk: true).
         var lastCheckinRaw = (row && row.lastCheckinAt)
             || tester.last_checkin_at
             || tester.last_checked_at
@@ -1706,15 +1726,9 @@
             hasExplicitTime = true;
         }
 
-        // 3. Ритм чекинов:
-        // Привычное время активности тестера (часы и минуты последнего чекина),
-        // переведённое в часовой пояс автора проекта.
-        // Проецируем этот час на сегодняшний день автора:
-        // - Если у автора сейчас МЕНЬШЕ привычного времени: тестер ещё в графике дня -> Норма (risk: false).
-        //   Даже если вчера был пропуск, с утра этот пункт не горит красным (нет двойного штрафа).
-        // - Если у автора сейчас БОЛЬШЕ привычного времени: привычный час активности прошёл -> Риск (risk: true).
         var rhythmRisk = false;
-        var habitualTimeStr = '';
+        var habitualTimeStr = '19:00';
+        var habitualTotalMinutes = 19 * 60;
         var rhythmExceeded = false;
         var nowParts = getTimePartsInTimezone(now, authorTimezone);
 
@@ -1724,16 +1738,21 @@
                 var lastParts = getTimePartsInTimezone(lastDate, authorTimezone);
                 if (lastParts) {
                     habitualTimeStr = lastParts.timeStr;
-                    rhythmExceeded = (nowParts && lastParts) ? (nowParts.totalMinutes > lastParts.totalMinutes) : false;
-                    rhythmRisk = rhythmExceeded;
+                    habitualTotalMinutes = lastParts.totalMinutes;
                 }
             }
         }
 
-        if (!habitualTimeStr) {
-            rhythmExceeded = false;
+        if (currentDay <= 1 && !lastCheckinRaw) {
+            // First day of testing without previous checkin: no risk, calm default 19:00
             rhythmRisk = false;
+            rhythmExceeded = false;
             habitualTimeStr = '19:00';
+        } else {
+            if (nowParts) {
+                rhythmExceeded = (nowParts.totalMinutes > habitualTotalMinutes);
+                rhythmRisk = rhythmExceeded;
+            }
         }
 
         var rhythmText = rhythmRisk
@@ -4385,7 +4404,13 @@
         });
         if (!project || !tester) return;
 
-        var assessment = calculateTesterControlActivityAssessment(tester, project);
+        var cacheKey = safeAppId + ':' + safeTesterId;
+        var cachedRow = _controlRowsByAppAndTester.get(cacheKey);
+        var assessment = (cachedRow && cachedRow.activityAssessment)
+            || _controlActivityAssessments.get(cacheKey)
+            || (cachedRow ? calculateTesterControlActivityAssessment(cachedRow, project) : null)
+            || (tester && tester.activityAssessment)
+            || calculateTesterControlActivityAssessment(tester, project);
         var score = assessment ? Number(assessment.riskScore || 0) : 0;
         var dotPhase = score >= 4 ? 4 : (score >= 2 ? (score === 3 ? 3 : 2) : score);
 
@@ -4407,7 +4432,7 @@
         // Card 2: Skips
         var sData = (assessment && assessment.skips) || {};
         var sBadgeClass = sData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
-        var sBadgeText = sData.risk ? text('pcActivityBadgeSkipsExceeded', 'Превышение') : text('pcActivityBadgeSkipsNormal', 'В норме (≤ 2)');
+        var sBadgeText = sData.risk ? text('pcActivityBadgeSkipsExceeded', 'Превышение') : text('pcActivityBadgeSkipsNormal', 'В норме');
         var sIconClass = sData.risk ? 'pc-activity-card__icon is-warn' : 'pc-activity-card__icon is-ok';
         var sIconSvg = sData.risk
             ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l6 10.5H2L8 2.5z"/><line x1="8" y1="7" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.75" fill="currentColor"/></svg>'
@@ -4470,7 +4495,7 @@
                     '<div class="pc-tester-activity-sheet__subtitle">' + esc(subtitleText) + '</div>' +
                 '</div>' +
                 '<div class="pc-activity-cards-grid">' +
-                    '<div class="pc-activity-card">' +
+                    '<div class="pc-activity-card' + (yData.risk ? ' is-risk' : '') + '">' +
                         '<div class="pc-activity-card__header">' +
                             '<span class="pc-activity-card__category">' + esc(text('pcActivityCardYesterday', 'Вчерашний день')) + '</span>' +
                             '<span class="pc-activity-badge ' + yBadgeClass + '">' + esc(yBadgeText) + '</span>' +
@@ -4480,7 +4505,7 @@
                             '<span class="pc-activity-card__text">' + esc(yData.text || '') + '</span>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="pc-activity-card">' +
+                    '<div class="pc-activity-card' + (sData.risk ? ' is-risk' : '') + '">' +
                         '<div class="pc-activity-card__header">' +
                             '<span class="pc-activity-card__category">' + esc(text('pcActivityCardSkips', 'История пропусков')) + '</span>' +
                             '<span class="pc-activity-badge ' + sBadgeClass + '">' + esc(sBadgeText) + '</span>' +
@@ -4490,7 +4515,7 @@
                             '<span class="pc-activity-card__text">' + esc(sData.text || '') + '</span>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="pc-activity-card">' +
+                    '<div class="pc-activity-card' + (rData.risk ? ' is-risk' : '') + '">' +
                         '<div class="pc-activity-card__header">' +
                             '<span class="pc-activity-card__category">' + esc(text('pcActivityCardRhythm', 'Ритм активности')) + '</span>' +
                             '<span class="pc-activity-badge ' + rBadgeClass + '">' + esc(rBadgeText) + '</span>' +
@@ -4500,7 +4525,7 @@
                             '<span class="pc-activity-card__text">' + esc(rData.text || '') + '</span>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="pc-activity-card">' +
+                    '<div class="pc-activity-card' + (pData.risk ? ' is-risk' : '') + '">' +
                         '<div class="pc-activity-card__header">' +
                             '<span class="pc-activity-card__category">' + esc(text('pcActivityCardProfile', 'Профиль тестера')) + '</span>' +
                             '<span class="pc-activity-badge ' + pBadgeClass + '">' + esc(pBadgeText) + '</span>' +
