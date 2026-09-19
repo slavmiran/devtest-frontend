@@ -1651,8 +1651,8 @@
 
         var yesterdayRisk = !launchedYesterday;
         var yesterdayText = yesterdayRisk
-            ? text('pcRiskYesterdayMissed', 'Пропущен вчера')
-            : text('pcRiskYesterdayLaunched', 'Был запуск вчера');
+            ? text('pcRiskYesterdayMissed', '⚠️ День не закрыт')
+            : text('pcRiskYesterdayLaunched', '✓ Успешный запуск');
 
         // 2. История пропусков:
         // Сколько всего пропусков накопилось за всё время тестирования этого приложения.
@@ -1672,26 +1672,11 @@
         }
 
         var skipsRisk = totalSkips >= 3;
-        var skipsText = '';
-        if (skipsRisk) {
-            var mod10 = totalSkips % 10;
-            var mod100 = totalSkips % 100;
-            if (mod10 === 1 && mod100 !== 11) {
-                skipsText = text('pcRiskSkipsExceededOne', 'Накоплен {count} пропуск', { count: totalSkips });
-            } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-                skipsText = text('pcRiskSkipsExceededFew', 'Накоплено {count} пропуска', { count: totalSkips });
-            } else {
-                skipsText = text('pcRiskSkipsExceeded', 'Накоплено {count} пропусков', { count: totalSkips });
-            }
-        } else {
-            if (totalSkips === 0) {
-                skipsText = text('pcRiskSkipsNormalZero', 'Нет пропусков');
-            } else if (totalSkips === 1) {
-                skipsText = text('pcRiskSkipsNormalOne', '1 пропуск');
-            } else {
-                skipsText = text('pcRiskSkipsNormalFew', '{count} пропуска', { count: totalSkips });
-            }
-        }
+        var skipsText = skipsRisk
+            ? text('pcRiskSkipsExceeded', '⚠️ Накоплено: {count} (норма ≤ 3)', { count: totalSkips })
+            : (totalSkips === 0
+                ? text('pcRiskSkipsNormalZero', '✓ Нет пропусков (норма ≤ 3)')
+                : text('pcRiskSkipsNormal', '✓ Накоплено: {count} (норма ≤ 3)', { count: totalSkips }));
 
         // 3. Ритм чекинов:
         // Привычное время активности тестера (часы и минуты последнего чекина),
@@ -1760,8 +1745,8 @@
         }
 
         var rhythmText = rhythmRisk
-            ? text('pcRiskRhythmExceeded', 'Вне привычного ритма (было в {time})', { time: habitualTimeStr })
-            : text('pcRiskRhythmOnSchedule', 'В привычном ритме: {time}', { time: habitualTimeStr });
+            ? text('pcRiskRhythmExceeded', '🕒 Ориентир был в {time}', { time: habitualTimeStr })
+            : text('pcRiskRhythmOnSchedule', '🕒 Ориентир сегодня: {time}', { time: habitualTimeStr });
 
         // 4. Профиль тестера:
         // Общая репутация на платформе: карма и надежность (reliability в %).
@@ -4464,12 +4449,14 @@
         var titleText = cleanUsername
             ? text('pcActivitySheetTitle', 'Оценка активности: @{username}', { username: cleanUsername })
             : text('pcActivitySheetTitleFallback', 'Оценка активности: {name}', { name: tester.full_name || 'Тестер' });
-        var subtitleText = text('pcActivitySheetSubtitle', 'Четыре сигнала для решения о напоминании');
+        var subtitleText = text('pcActivitySheetSubtitle', 'Сигналы риска');
 
         // Card 1: Yesterday
         var yData = (assessment && assessment.yesterday) || {};
         var yBadgeClass = yData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
-        var yBadgeText = yData.risk ? text('pcActivityBadgeDelay', 'Задержка') : text('pcActivityBadgeNormal', 'Норма');
+        var yBadgeText = yData.risk
+            ? text('pcActivityBadgeMiss', 'Пропуск')
+            : text('pcActivityBadgeNormal', 'Норма');
         var yIconClass = yData.risk ? 'pc-activity-card__icon is-warn' : 'pc-activity-card__icon is-ok';
         var yIconSvg = yData.risk
             ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l6 10.5H2L8 2.5z"/><line x1="8" y1="7" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.75" fill="currentColor"/></svg>'
@@ -4478,7 +4465,9 @@
         // Card 2: Skips
         var sData = (assessment && assessment.skips) || {};
         var sBadgeClass = sData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
-        var sBadgeText = sData.risk ? text('pcActivityBadgeSkipsExceeded', 'Превышение') : text('pcActivityBadgeSkipsNormal', 'В норме');
+        var sBadgeText = sData.risk
+            ? text('pcActivityBadgeSkipsExceeded', 'Превышение')
+            : text('pcActivityBadgeSkipsNormal', 'Норма');
         var sIconClass = sData.risk ? 'pc-activity-card__icon is-warn' : 'pc-activity-card__icon is-ok';
         var sIconSvg = sData.risk
             ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l6 10.5H2L8 2.5z"/><line x1="8" y1="7" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.75" fill="currentColor"/></svg>'
@@ -4497,12 +4486,32 @@
         var pIconSvg = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l5 2v4c0 3.5-2.5 5.5-5 6.5-2.5-1-5-3-5-6.5v-4l5-2z"/><circle cx="8" cy="7" r="1.5"/></svg>';
         var rVal = (pData.reliability != null) ? pData.reliability : 100;
         var kVal = (pData.karma != null) ? (pData.karma > 0 ? '+' + pData.karma : pData.karma) : 0;
-        var pText = text('pcActivityProfileText', 'Надёжность {reliability}% · Карма {karma}', { reliability: rVal, karma: kVal });
+        var pRelText = text('pcActivityProfileReliability', 'Надёжность {reliability}%', { reliability: rVal });
+        var pKarmaText = text('pcActivityProfileKarma', 'Карма {karma}', { karma: kVal });
+        var pTextHtml = '<span class="pc-activity-card__text pc-activity-card__text--profile">' +
+            '<span class="pc-activity-card__metric">' + esc(pRelText) + '</span>' +
+            '<span class="pc-activity-card__metric">' + esc(pKarmaText) + '</span>' +
+        '</span>';
 
-        // Summary Banner
-        var summaryText = score > 0
-            ? text('pcActivitySummaryRisk', 'Есть {riskScore} из 4 сигналов внимания. Проверьте детали и решите, нужно ли напоминание.', { riskScore: score })
-            : text('pcActivitySummaryNormal', 'Сигналов внимания нет. Вы можете отправить напоминание, если считаете это нужным.');
+        // Summary Banner — meaningful verdict by signal count
+        var summaryText = '';
+        if (score <= 0) {
+            summaryText = text(
+                'pcActivitySummaryNormal',
+                'Сигналов внимания нет. Тестер идёт по графику, но вы можете отправить напоминание при необходимости.'
+            );
+        } else if (score === 1) {
+            summaryText = text(
+                'pcActivitySummaryOne',
+                'Зафиксирован 1 сигнал внимания. Ситуация стабильная — напоминание сейчас не критично.'
+            );
+        } else {
+            summaryText = text(
+                'pcActivitySummaryRisk',
+                'Сработали {riskScore} из 4 сигналов внимания. Темп тестера сбит — напоминание поможет не сорвать день.',
+                { riskScore: score }
+            );
+        }
 
         var infoIconSvg = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7" x2="8" y2="11.5"/><circle cx="8" cy="5" r="0.75" fill="currentColor"/></svg>';
 
@@ -4578,7 +4587,7 @@
                         '</div>' +
                         '<div class="pc-activity-card__body">' +
                             '<span class="pc-activity-card__icon pc-activity-card__icon--profile" aria-hidden="true">' + pIconSvg + '</span>' +
-                            '<span class="pc-activity-card__text">' + esc(pText) + '</span>' +
+                            pTextHtml +
                         '</div>' +
                     '</div>' +
                 '</div>' +
