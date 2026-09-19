@@ -3626,7 +3626,20 @@
             pcProofOpenVerb: "Открыть",
             pcProofOpenTopicTail: "в топике",
             pcTopicSwipeDownToast: "Сообщение выделено в топике. Смахните бота вниз, чтобы увидеть его.",
-
+            pcRiskYesterdayLaunched: "Был запуск вчера",
+            pcRiskYesterdayMissed: "Пропущен вчера",
+            pcRiskSkipsNormalZero: "Нет пропусков",
+            pcRiskSkipsNormalOne: "1 пропуск",
+            pcRiskSkipsNormalFew: "{count} пропуска",
+            pcRiskSkipsExceeded: "Накоплено {count} пропусков",
+            pcRiskSkipsExceededFew: "Накоплено {count} пропуска",
+            pcRiskSkipsExceededOne: "Накоплен {count} пропуск",
+            pcRiskRhythmOnSchedule: "В привычном ритме: {time}",
+            pcRiskRhythmExceeded: "Вне привычного ритма (было в {time})",
+            pcRiskProfileHigh: "Высокая надёжность",
+            pcRiskProfileLow: "Низкий рейтинг",
+            pcRiskRemindYes: "Рекомендуется напомнить",
+            pcRiskRemindNo: "В графике, напоминание не требуется",
     };
     window.I18N_RU = window.I18NRU;
 })();

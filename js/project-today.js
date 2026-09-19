@@ -875,10 +875,16 @@
         return {
             progressId: Number(item.progress_id || 0),
             testerId: Number(item.tester && item.tester.id || 0),
-            tester: item.tester || {},
+            tester: Object.assign({}, item.tester || {}, {
+                last_check_date: item.last_check_date || (item.tester && item.tester.last_check_date) || null,
+                last_checkin_at: item.last_checkin_at || (item.tester && item.tester.last_checkin_at) || null,
+            }),
             day: Number(item.current_day || 0),
             device: item.device || null,
             received: !!checked,
+            lastCheckDate: item.last_check_date || null,
+            lastCheckinAt: item.last_checkin_at || null,
+            timeline: item.timeline || [],
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
             createdAt: String(proof && proof.created_at || ''),
@@ -1002,7 +1008,18 @@
                     if (isExcludedControlTester(project, item)) return;
                     var row = buildRow(item, thumbnailByProofId);
                     if (row.day <= 0) return;
-                    if (isControlDay(row.day)) control.push(row);
+                    if (isControlDay(row.day)) {
+                        if (!row.received) {
+                            var assessment = calculateTesterControlActivityAssessment(row, project);
+                            row.activityAssessment = assessment;
+                            row.activity_assessment = assessment;
+                            if (row.tester) {
+                                row.tester.activityAssessment = assessment;
+                                row.tester.activity_assessment = assessment;
+                            }
+                        }
+                        control.push(row);
+                    }
                     else if (row.proofId > 0) {
                         others.push(row);
                         seenOtherProofIds[row.proofId] = true;
@@ -1467,6 +1484,308 @@
 
     /* ───────────────────────── control block rendering ─────────────────────── */
 
+    function getTimePartsInTimezone(date, timeZone) {
+        if (!date || !Number.isFinite(date.getTime())) return null;
+        if (timeZone) {
+            try {
+                var dtf = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: timeZone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                });
+                var parts = dtf.formatToParts(date);
+                var hour = 0;
+                var minute = 0;
+                for (var i = 0; i < parts.length; i++) {
+                    if (parts[i].type === 'hour') hour = parseInt(parts[i].value, 10);
+                    if (parts[i].type === 'minute') minute = parseInt(parts[i].value, 10);
+                }
+                var timeStr = (hour < 10 ? '0' : '') + hour + ':' + (minute < 10 ? '0' : '') + minute;
+                return {
+                    hour: hour,
+                    minute: minute,
+                    timeStr: timeStr,
+                    totalMinutes: hour * 60 + minute,
+                };
+            } catch (_) {}
+        }
+        var hours = date.getHours();
+        var minutes = date.getMinutes();
+        var str = (hours < 10 ? '0' : '') + hours + ':' + (minutes < 10 ? '0' : '') + minutes;
+        return {
+            hour: hours,
+            minute: minutes,
+            timeStr: str,
+            totalMinutes: hours * 60 + minutes,
+        };
+    }
+
+    function formatDeadlineTime(date, timeZone) {
+        var parts = getTimePartsInTimezone(date, timeZone);
+        return parts ? parts.timeStr : '';
+    }
+
+    function parseIsoTimestamp(raw) {
+        if (!raw) return null;
+        if (raw instanceof Date) return Number.isFinite(raw.getTime()) ? raw : null;
+        var s = String(raw).trim();
+        if (!s) return null;
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
+            s = s.replace(' ', 'T');
+        }
+        var d = new Date(s);
+        return Number.isFinite(d.getTime()) ? d : null;
+    }
+
+    function calculateTesterControlActivityAssessment(rowOrTester, project, options) {
+        var opts = options || {};
+        var row = (rowOrTester && typeof rowOrTester === 'object' && ('tester' in rowOrTester || 'testerId' in rowOrTester))
+            ? rowOrTester
+            : null;
+        var directTester = row ? (row.tester || {}) : (rowOrTester || {});
+        var appId = (project && project.id) || (row && row.appId) || opts.appId || 0;
+        var proj = project || projectById(appId);
+        var testerId = Number(directTester.tester_id || directTester.id || (row && row.testerId) || 0);
+        var rosterTester = ((proj && proj.testers) || []).find(function (person) {
+            return Number(person.tester_id || person.id || 0) === testerId;
+        });
+        var tester = Object.assign({}, rosterTester || {}, directTester);
+
+        var currentDay = Number(
+            (row && row.day)
+            || tester.current_day
+            || testerDayNumber(tester)
+            || 0
+        );
+
+        var today = String(opts.today || todayString() || '').slice(0, 10);
+        var yesterday = shiftDateString(today, -1);
+        var now = opts.now ? new Date(opts.now) : new Date();
+        var authorTimezone = opts.timeZone
+            || (proj && (proj.time_zone || proj.timezone || proj.author_timezone))
+            || (typeof getUserSystemTimezone === 'function' ? getUserSystemTimezone() : undefined);
+
+        // 1. Вчерашний день:
+        // Был ли запуск приложения вчера.
+        // Если вчера был пропуск — засчитываем как риск («Пропущен вчера»).
+        // Если запуск был — всё отлично («Был запуск вчера»).
+        var launchedYesterday = false;
+        var timeline = (row && row.timeline) || tester.timeline || [];
+        var yesterdayDay = currentDay - 1;
+
+        if (currentDay <= 1) {
+            // First day of testing: no yesterday exists for this test cycle.
+            launchedYesterday = true;
+        } else {
+            var yesterdayTimelineEntry = null;
+            if (Array.isArray(timeline)) {
+                yesterdayTimelineEntry = timeline.find(function (t) {
+                    return Number(t && t.day) === yesterdayDay;
+                });
+            }
+            if (yesterdayTimelineEntry) {
+                var yState = String(yesterdayTimelineEntry.state || '').toLowerCase();
+                launchedYesterday = (yState === 'checked' || yState === 'checked_overtime' || yState === 'external_checked');
+            } else if (tester.last_check_date) {
+                launchedYesterday = (String(tester.last_check_date).slice(0, 10) === yesterday);
+            } else if (tester.daily_timeline && typeof tester.daily_timeline === 'string') {
+                var markerIdx = yesterdayDay - 1;
+                if (markerIdx >= 0 && markerIdx < tester.daily_timeline.length) {
+                    var marker = tester.daily_timeline.charAt(markerIdx);
+                    launchedYesterday = (marker === '1' || marker === '2' || marker === '6');
+                }
+            }
+        }
+
+        var yesterdayRisk = !launchedYesterday;
+        var yesterdayText = yesterdayRisk
+            ? text('pcRiskYesterdayMissed', 'Пропущен вчера')
+            : text('pcRiskYesterdayLaunched', 'Был запуск вчера');
+
+        // 2. История пропусков:
+        // Сколько всего пропусков накопилось за всё время тестирования этого приложения.
+        // Если 3 или больше — это риск («Накоплено X пропусков»). До 2 пропусков включительно — норма.
+        var totalSkips = 0;
+        if (tester.skips_count != null && !isNaN(Number(tester.skips_count))) {
+            totalSkips = Math.max(0, Number(tester.skips_count));
+        } else if (typeof countGrantSkips === 'function') {
+            totalSkips = countGrantSkips(tester);
+        } else if (tester.daily_timeline && typeof tester.daily_timeline === 'string') {
+            totalSkips = (tester.daily_timeline.match(/[03]/g) || []).length;
+        } else if (Array.isArray(timeline)) {
+            totalSkips = timeline.filter(function (t) {
+                var s = String(t && t.state || '').toLowerCase();
+                return s === 'skipped' || s === 'skipped_overtime';
+            }).length;
+        }
+
+        var skipsRisk = totalSkips >= 3;
+        var skipsText = '';
+        if (skipsRisk) {
+            var mod10 = totalSkips % 10;
+            var mod100 = totalSkips % 100;
+            if (mod10 === 1 && mod100 !== 11) {
+                skipsText = text('pcRiskSkipsExceededOne', 'Накоплен {count} пропуск', { count: totalSkips });
+            } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+                skipsText = text('pcRiskSkipsExceededFew', 'Накоплено {count} пропуска', { count: totalSkips });
+            } else {
+                skipsText = text('pcRiskSkipsExceeded', 'Накоплено {count} пропусков', { count: totalSkips });
+            }
+        } else {
+            if (totalSkips === 0) {
+                skipsText = text('pcRiskSkipsNormalZero', 'Нет пропусков');
+            } else if (totalSkips === 1) {
+                skipsText = text('pcRiskSkipsNormalOne', '1 пропуск');
+            } else {
+                skipsText = text('pcRiskSkipsNormalFew', '{count} пропуска', { count: totalSkips });
+            }
+        }
+
+        // 3. Ритм чекинов:
+        // Точное время, когда истекают 24 часа с момента прошлого теста (в часовом поясе автора проекта, например: 18:44).
+        // Если 24 часа уже прошли — риск («Интервал превышен, дедлайн был в 18:44»).
+        // Если ещё есть запас по времени — норма («В графике, дедлайн сегодня в 18:44»).
+        var lastCheckinRaw = (row && row.lastCheckinAt)
+            || tester.last_checkin_at
+            || tester.last_checked_at
+            || null;
+
+        if (!lastCheckinRaw && Array.isArray(timeline)) {
+            for (var i = timeline.length - 1; i >= 0; i -= 1) {
+                var tEntry = timeline[i];
+                var tState = String(tEntry && tEntry.state || '').toLowerCase();
+                if (tState === 'checked' || tState === 'checked_overtime' || tState === 'external_checked') {
+                    if (tEntry.created_at) {
+                        lastCheckinRaw = tEntry.created_at;
+                        break;
+                    }
+                    if (tEntry.proof && tEntry.proof.created_at) {
+                        lastCheckinRaw = tEntry.proof.created_at;
+                        break;
+                    }
+                }
+            }
+        }
+
+        var hasExplicitTime = lastCheckinRaw && /[T\s]\d{1,2}:\d{2}/.test(String(lastCheckinRaw));
+        if (!hasExplicitTime && (tester.last_check_time || (row && row.lastCheckTime))) {
+            var checkDatePart = String(tester.last_check_date || today).slice(0, 10);
+            var checkTimePart = String(tester.last_check_time || (row && row.lastCheckTime));
+            lastCheckinRaw = checkDatePart + 'T' + checkTimePart;
+            hasExplicitTime = true;
+        }
+
+        // 3. Ритм чекинов:
+        // Привычное время активности тестера (часы и минуты последнего чекина),
+        // переведённое в часовой пояс автора проекта.
+        // Проецируем этот час на сегодняшний день автора:
+        // - Если у автора сейчас МЕНЬШЕ привычного времени: тестер ещё в графике дня -> Норма (risk: false).
+        //   Даже если вчера был пропуск, с утра этот пункт не горит красным (нет двойного штрафа).
+        // - Если у автора сейчас БОЛЬШЕ привычного времени: привычный час активности прошёл -> Риск (risk: true).
+        var rhythmRisk = false;
+        var habitualTimeStr = '';
+        var rhythmExceeded = false;
+        var nowParts = getTimePartsInTimezone(now, authorTimezone);
+
+        if (lastCheckinRaw) {
+            var lastDate = parseIsoTimestamp(lastCheckinRaw);
+            if (lastDate && Number.isFinite(lastDate.getTime())) {
+                var lastParts = getTimePartsInTimezone(lastDate, authorTimezone);
+                if (lastParts) {
+                    habitualTimeStr = lastParts.timeStr;
+                    rhythmExceeded = (nowParts && lastParts) ? (nowParts.totalMinutes > lastParts.totalMinutes) : false;
+                    rhythmRisk = rhythmExceeded;
+                }
+            }
+        }
+
+        if (!habitualTimeStr) {
+            rhythmExceeded = false;
+            rhythmRisk = false;
+            habitualTimeStr = '19:00';
+        }
+
+        var rhythmText = rhythmRisk
+            ? text('pcRiskRhythmExceeded', 'Вне привычного ритма (было в {time})', { time: habitualTimeStr })
+            : text('pcRiskRhythmOnSchedule', 'В привычном ритме: {time}', { time: habitualTimeStr });
+
+        // 4. Профиль тестера:
+        // Общая репутация на платформе: карма и надежность (reliability в %).
+        // Если карма отрицательная ИЛИ надежность ниже 60% — это риск («Низкий рейтинг»).
+        // Иначе — норма («Высокая надёжность»).
+        var karma = (tester.karma != null && !isNaN(Number(tester.karma)))
+            ? Number(tester.karma)
+            : null;
+        var karmaNegative = (karma !== null && karma < 0);
+
+        var reliability = null;
+        if (tester.reliability_index != null && !isNaN(Number(tester.reliability_index))) {
+            reliability = Math.round(Number(tester.reliability_index));
+        } else if (tester.reliability != null && !isNaN(Number(tester.reliability))) {
+            reliability = Math.round(Number(tester.reliability));
+        } else if (tester.total_expected_checkins != null && Number(tester.total_expected_checkins) > 0) {
+            reliability = Math.round((Number(tester.total_actual_checkins || 0) / Number(tester.total_expected_checkins)) * 100);
+        }
+
+        var lowReliability = false;
+        if (reliability !== null) {
+            lowReliability = (reliability < 60);
+        } else if (tester.reliability_status === 'bad') {
+            lowReliability = true;
+        }
+
+        var profileRisk = karmaNegative || lowReliability;
+        var profileText = profileRisk
+            ? text('pcRiskProfileLow', 'Низкий рейтинг')
+            : text('pcRiskProfileHigh', 'Высокая надёжность');
+
+        // Total risk factors (0 to 4)
+        var riskScore = (yesterdayRisk ? 1 : 0)
+            + (skipsRisk ? 1 : 0)
+            + (rhythmRisk ? 1 : 0)
+            + (profileRisk ? 1 : 0);
+
+        var shouldRemind = riskScore > 0;
+
+        return {
+            riskScore: riskScore,
+            shouldRemind: shouldRemind,
+            recommendReminder: shouldRemind,
+            recommendation: shouldRemind ? 'yes' : 'no',
+            recommendationText: shouldRemind
+                ? text('pcRiskRemindYes', 'Рекомендуется напомнить')
+                : text('pcRiskRemindNo', 'В графике, напоминание не требуется'),
+            yesterday: {
+                risk: yesterdayRisk,
+                status: yesterdayRisk ? 'risk' : 'normal',
+                launched: launchedYesterday,
+                text: yesterdayText,
+            },
+            skips: {
+                risk: skipsRisk,
+                status: skipsRisk ? 'risk' : 'normal',
+                count: totalSkips,
+                text: skipsText,
+            },
+            rhythm: {
+                risk: rhythmRisk,
+                status: rhythmRisk ? 'risk' : 'normal',
+                habitualTime: habitualTimeStr,
+                deadlineTime: habitualTimeStr,
+                exceeded: rhythmExceeded,
+                text: rhythmText,
+            },
+            profile: {
+                risk: profileRisk,
+                status: profileRisk ? 'risk' : 'normal',
+                karma: karma,
+                reliability: reliability,
+                text: profileText,
+            },
+        };
+    }
+
     function fallbackControlRows(project) {
         if (!project || project.status === 'pending_completion' || project.app_status === 'pending_completion') {
             return [];
@@ -1476,7 +1795,7 @@
             if (tester.is_left_soft || tester.is_guest_tester || tester.is_external) return false;
             return isControlDay(Number(tester.testing_days || 0));
         }).map(function (tester) {
-            return {
+            var row = {
                 progressId: Number(tester.progress_id || 0),
                 testerId: Number(tester.tester_id || 0),
                 tester: tester,
@@ -1491,6 +1810,16 @@
                 feedbackStatus: '',
                 slots: [],
             };
+            if (!row.received) {
+                var assessment = calculateTesterControlActivityAssessment(row, project);
+                row.activityAssessment = assessment;
+                row.activity_assessment = assessment;
+                if (row.tester) {
+                    row.tester.activityAssessment = assessment;
+                    row.tester.activity_assessment = assessment;
+                }
+            }
+            return row;
         });
     }
 
@@ -2730,7 +3059,19 @@
 
     function controlNowHtml(appId, rows, context) {
         if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
+        var project = projectById(appId);
         var pendingRows = rows.filter(function (row) { return !row.received; });
+        pendingRows.forEach(function (row) {
+            if (!row.activityAssessment) {
+                var assessment = calculateTesterControlActivityAssessment(row, project);
+                row.activityAssessment = assessment;
+                row.activity_assessment = assessment;
+                if (row.tester) {
+                    row.tester.activityAssessment = assessment;
+                    row.tester.activity_assessment = assessment;
+                }
+            }
+        });
         var receivedRows = rows.filter(function (row) { return row.received; });
         var pendingCount = pendingRows.length;
         var receivedCount = receivedRows.length;
@@ -3510,6 +3851,8 @@
         getCacheEntry: getCacheEntry,
         recordFeedbackReward: recordFeedbackReward,
         getAttentionReasonMeta: getAttentionReasonMeta,
+        calculateTesterControlActivityAssessment: calculateTesterControlActivityAssessment,
+        calculateTesterControlRisk: calculateTesterControlActivityAssessment,
         invalidate: function (appId) {
             var safeAppId = Number(appId || 0);
             var current = cache.get(safeAppId);
@@ -4517,4 +4860,7 @@
             console.warn('[ContributorDossier] profile fetch error:', fetchErr);
         }
     };
+
+    window.calculateTesterControlActivityAssessment = calculateTesterControlActivityAssessment;
+    window.calculateTesterControlRisk = calculateTesterControlActivityAssessment;
 })();

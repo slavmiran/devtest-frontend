@@ -3620,7 +3620,20 @@
             pcProofOpenVerb: "Open",
             pcProofOpenTopicTail: "in topic",
             pcTopicSwipeDownToast: "Message highlighted in topic. Swipe the bot down to view.",
-
+            pcRiskYesterdayLaunched: "Launched yesterday",
+            pcRiskYesterdayMissed: "Missed yesterday",
+            pcRiskSkipsNormalZero: "No skips",
+            pcRiskSkipsNormalOne: "1 skip",
+            pcRiskSkipsNormalFew: "{count} skips",
+            pcRiskSkipsExceeded: "{count} skips accumulated",
+            pcRiskSkipsExceededFew: "{count} skips accumulated",
+            pcRiskSkipsExceededOne: "{count} skip accumulated",
+            pcRiskRhythmOnSchedule: "In usual rhythm: {time}",
+            pcRiskRhythmExceeded: "Out of usual rhythm (was at {time})",
+            pcRiskProfileHigh: "High reliability",
+            pcRiskProfileLow: "Low rating",
+            pcRiskRemindYes: "Reminder recommended",
+            pcRiskRemindNo: "On schedule, no reminder needed",
     };
     window.I18N_EN = window.I18NEN;
 })();
