@@ -103,17 +103,6 @@
 .pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__mode { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(128,145,168,.08); }
 .pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__mode button { min-height: 40px; padding: 6px 13px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
 .pc-activity--workspace:not(:has(.participants-inset-card)) .pc-activity__mode button.is-active { background: var(--bg-surface-2, #24303f); color: var(--text-primary); }
-.pc-activity__list--swap {
-    animation: pc-activity-list-swap 0.22s ease-out;
-}
-@keyframes pc-activity-list-swap {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-    .pc-activity__list--swap { animation: none; }
-    .pc-activity--workspace .pc-activity__filter { transition: none; }
-}
 
 .pc-activity--workspace .pc-act-list { border: 0; border-radius: 0; background: transparent; }
 .pc-activity--workspace .pc-person { padding: 12px 0; background: transparent; border-radius: 0; border-bottom: 1px solid rgba(148,163,184,.12); }
@@ -1146,8 +1135,8 @@
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 8px !important;
-    padding: 4px 10px !important;
+    gap: 10px !important;
+    padding: 0 12px !important;
     border-radius: 10px !important;
     height: 32px !important;
     min-height: 32px !important;
@@ -1515,14 +1504,11 @@
     font-size: 11px;
     font-weight: 650;
     letter-spacing: -.01em;
-    transform: translateX(-3px);
-    transition: max-width .22s cubic-bezier(.2,.75,.25,1), opacity .16s ease, transform .22s ease;
 }
 
 .pc-activity--workspace .pc-activity__filter.is-active .pc-activity__filter-label {
     max-width: 82px;
     opacity: 1;
-    transform: translateX(0);
 }
 
 .pc-activity--workspace .participants-inset-card .pc-activity__count,

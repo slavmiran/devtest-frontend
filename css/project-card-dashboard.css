@@ -7068,135 +7068,135 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     height: 32px;
     min-height: 32px;
-    padding: 4px 10px;
+    padding: 0 12px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--text-secondary, #94a3b8);
     cursor: pointer;
     box-sizing: border-box;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     flex: 0 0 auto;
 }
 
 .pc-smart-bell-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
 }
 
 .pc-smart-bell__icon-wrap {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 14px;
-    height: 14px;
+    width: 17px;
+    height: 17px;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__icon {
-    width: 14px;
-    height: 14px;
+    width: 17px;
+    height: 17px;
     display: block;
     transition: all 0.2s ease;
 }
 
 .pc-smart-bell__matrix {
     display: grid;
-    grid-template-columns: repeat(2, 4px);
-    grid-template-rows: repeat(2, 4px);
-    gap: 3px;
+    grid-template-columns: repeat(2, 5.2px);
+    grid-template-rows: repeat(2, 5.2px);
+    gap: 3.2px;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__dot {
-    width: 4px;
-    height: 4px;
+    width: 5.2px;
+    height: 5.2px;
     border-radius: 50%;
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    background: transparent;
+    border: 1.2px solid rgba(148, 163, 184, 0.32);
+    background: rgba(15, 23, 42, 0.8);
     box-sizing: border-box;
     transition: all 0.2s ease;
 }
 
-/* Phase 0/4: Calm neutral dark (0 risks) */
+/* Phase 0/4: Inactive / Sleep (0 risks) */
 .pc-smart-bell--0 {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #111722;
+    border: 1px solid rgba(148, 163, 184, 0.18);
     color: #64748b;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .pc-smart-bell--0 .pc-smart-bell__icon {
-    stroke: #64748b;
-    fill: none;
-}
-.pc-smart-bell--0 .pc-smart-bell__dot {
-    border-color: rgba(100, 116, 139, 0.45);
-    background: transparent;
+    color: #64748b;
 }
 
 /* Phase 1/4: Soft blue (1 risk) - top-left dot glowing #388bfd */
 .pc-smart-bell--1 {
-    background: rgba(56, 139, 253, 0.06);
-    border: 1px solid rgba(56, 139, 253, 0.28);
-    color: #cbd5e1;
+    background: #121d2d;
+    border: 1px solid rgba(56, 139, 253, 0.32);
+    color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 .pc-smart-bell--1 .pc-smart-bell__icon {
-    stroke: #cbd5e1;
-    fill: none;
+    color: #f1f5f9;
 }
 .pc-smart-bell--1 .pc-smart-bell__dot.is-lit {
     background: #388bfd;
-    border-color: #58a6ff;
-    box-shadow: 0 0 6px rgba(56, 139, 253, 0.75);
+    border-color: #60a5fa;
+    box-shadow: 0 0 5px rgba(56, 139, 253, 0.7);
 }
 
-/* Phase 2/4: Cyan/blue sound waves (2 risks) - top two dots lit */
+/* Phase 2/4: Electric cyan (2 risks) - top two dots lit + acoustic arcs */
 .pc-smart-bell--2 {
-    background: rgba(56, 139, 253, 0.09);
-    border: 1px solid rgba(56, 189, 248, 0.38);
-    box-shadow: 0 0 8px rgba(56, 189, 248, 0.15);
-    color: #e0f2fe;
+    background: #122238;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: #38bdf8;
+    box-shadow: 0 0 9px rgba(56, 189, 248, 0.15), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 .pc-smart-bell--2 .pc-smart-bell__icon {
-    stroke: #38bdf8;
-    fill: none;
-}
-.pc-smart-bell--2 .pc-smart-bell__wave {
-    stroke: #38bdf8;
-    fill: none;
+    color: #38bdf8;
 }
 .pc-smart-bell--2 .pc-smart-bell__dot.is-lit {
-    background: #388bfd;
-    border-color: #38bdf8;
-    box-shadow: 0 0 7px rgba(56, 189, 248, 0.85);
+    background: #38bdf8;
+    border-color: #7dd3fc;
+    box-shadow: 0 0 5px rgba(56, 189, 248, 0.75);
 }
 
-/* Phase 3/4 and 4/4: Solid filled bell + dense sky-blue glow (#58a6ff), translucent blue pill */
-.pc-smart-bell--3,
-.pc-smart-bell--4 {
+/* Phase 3/4: High risk (3 risks) - 3 lit dots + 4th accent ring + solid filled bell */
+.pc-smart-bell--3 {
+    background: #142742;
+    border: 1px solid rgba(88, 166, 255, 0.65);
+    color: #58a6ff;
+    box-shadow: 0 0 12px rgba(56, 139, 253, 0.22), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.pc-smart-bell--3 .pc-smart-bell__icon {
+    color: #58a6ff;
+}
+.pc-smart-bell--3 .pc-smart-bell__dot.is-lit {
+    background: #58a6ff;
+    border-color: #93c5fd;
+    box-shadow: 0 0 6px rgba(88, 166, 255, 0.8);
+}
+.pc-smart-bell--3 .pc-smart-bell__dot.is-accent-outline {
+    border-color: rgba(88, 166, 255, 0.7);
     background: rgba(56, 139, 253, 0.14);
-    border: 1px solid rgba(88, 166, 255, 0.48);
-    box-shadow: 0 0 12px rgba(56, 139, 253, 0.28);
-    color: #f0f9ff;
+    box-shadow: none;
 }
-.pc-smart-bell--3 .pc-smart-bell__icon,
+
+/* Phase 4/4: Maximum risk (4 risks) - all 4 dots lit + solid filled bell + glowing halo */
+.pc-smart-bell--4 {
+    background: #162e52;
+    border: 1px solid rgba(88, 166, 255, 0.85);
+    color: #58a6ff;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.28), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
 .pc-smart-bell--4 .pc-smart-bell__icon {
-    stroke: #38bdf8;
-    fill: #58a6ff;
+    color: #58a6ff;
 }
-.pc-smart-bell--3 .pc-smart-bell__wave,
-.pc-smart-bell--4 .pc-smart-bell__wave {
-    stroke: #38bdf8;
-    fill: none;
-}
-.pc-smart-bell--3 .pc-smart-bell__dot.is-lit,
 .pc-smart-bell--4 .pc-smart-bell__dot.is-lit {
     background: #58a6ff;
-    border-color: #7dd3fc;
-    box-shadow: 0 0 8px rgba(88, 166, 255, 0.95);
+    border-color: #bae6fd;
+    box-shadow: 0 0 6px rgba(88, 166, 255, 0.85);
 }
 
 /* ───────────────── Tester Activity Bottom Sheet ───────────────── */

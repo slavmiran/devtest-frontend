@@ -695,6 +695,7 @@
         }
 
         return '<li class="pc-person is-' + esc(tone) + stateCls + rowCls + '"' +
+            (testerId ? ' data-tester-id="' + testerId + '"' : '') +
             ' onclick="' + dossierClick(opts.appId, tester) + '">' +
             '<div class="pc-person__top">' +
                 identityAvatar +
@@ -1443,25 +1444,40 @@
         var dotPhase = score >= 4 ? 4 : (score >= 2 ? (score === 3 ? 3 : 2) : score);
         var ariaLabel = text('pcActivitySheetSubtitle', 'Activity assessment') + ': ' + score + '/4';
         var wavePath = score >= 2
-            ? '<path class="pc-smart-bell__wave" d="M2.2 5.8a4 4 0 0 0 0 4.4M13.8 5.8a4 4 0 0 1 0 4.4" stroke-width="1.3"/>'
+            ? '<path class="pc-smart-bell__wave" d="M2.2 5.2 C 1.0 7, 1.0 9.6, 2.2 11.4 M13.8 5.2 C 15.0 7, 15.0 9.6, 13.8 11.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'
             : '';
+        var clapperPath = '<path d="M7 11.5 C 7 12.7, 9 12.7, 9 11.5 Z" fill="currentColor"/>';
+        var bellContent = '';
+        if (score >= 3) {
+            bellContent = '<path d="M7 3 C 7 1.7, 9 1.7, 9 3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' +
+                '<path d="M8 2.8 C 6.5 2.8, 5.4 4, 5.4 6.8 C 5.4 8.5, 4.8 9.5, 3.8 10.2 C 3.5 10.4, 3.6 10.8, 4 10.8 L 12 10.8 C 12.4 10.8, 12.5 10.4, 12.2 10.2 C 11.2 9.5, 10.6 8.5, 10.6 6.8 C 10.6 4, 9.5 2.8, 8 2.8 Z" fill="currentColor"/>' +
+                clapperPath +
+                wavePath;
+        } else {
+            bellContent = '<path d="M7 3 C 7 1.7, 9 1.7, 9 3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' +
+                '<path d="M8 3 C 6.5 3, 5.4 4.2, 5.4 6.8 C 5.4 8.5, 4.8 9.5, 3.8 10.2 C 3.5 10.4, 3.6 10.8, 4 10.8 L 12 10.8 C 12.4 10.8, 12.5 10.4, 12.2 10.2 C 11.2 9.5, 10.6 8.5, 10.6 6.8 C 10.6 4.2, 9.5 3, 8 3 Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' +
+                clapperPath +
+                wavePath;
+        }
+        var dot1 = score >= 1 ? ' is-lit' : '';
+        var dot2 = score >= 2 ? ' is-lit' : '';
+        var dot3 = score >= 3 ? ' is-lit' : '';
+        var dot4 = score >= 4 ? ' is-lit' : (score === 3 ? ' is-accent-outline' : '');
+
         return '<button type="button" class="pc-smart-bell-btn pc-smart-bell--' + dotPhase + '"' +
             ' onclick="event.stopPropagation(); pcOpenTesterControlActivitySheet(' + safeAppId + ',' + safeTesterId + ')"' +
             ' aria-label="' + esc(ariaLabel) + '"' +
             ' title="' + esc(ariaLabel) + '">' +
             '<span class="pc-smart-bell__icon-wrap">' +
-                '<svg class="pc-smart-bell__icon" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<path d="M8 2.2a1.3 1.3 0 0 0-1.3 1.3v.5h2.6v-.5A1.3 1.3 0 0 0 8 2.2z"/>' +
-                    '<path class="pc-smart-bell__body" d="M8 4c-2 0-3.5 1.5-3.5 3.5 0 2-.8 3-1.5 3.5h10c-.7-.5-1.5-1.5-1.5-3.5 0-2-1.5-3.5-3.5-3.5z"/>' +
-                    '<path d="M6.8 12.2a1.2 1.2 0 0 0 2.4 0"/>' +
-                    wavePath +
+                '<svg class="pc-smart-bell__icon" viewBox="0 0 16 16" width="17" height="17" stroke-linecap="round" stroke-linejoin="round">' +
+                    bellContent +
                 '</svg>' +
             '</span>' +
             '<span class="pc-smart-bell__matrix" aria-hidden="true">' +
-                '<span class="pc-smart-bell__dot' + (score >= 1 ? ' is-lit' : '') + '"></span>' +
-                '<span class="pc-smart-bell__dot' + (score >= 2 ? ' is-lit' : '') + '"></span>' +
-                '<span class="pc-smart-bell__dot' + (score >= 3 ? ' is-lit' : '') + '"></span>' +
-                '<span class="pc-smart-bell__dot' + (score >= 4 ? ' is-lit' : '') + '"></span>' +
+                '<span class="pc-smart-bell__dot' + dot1 + '"></span>' +
+                '<span class="pc-smart-bell__dot' + dot2 + '"></span>' +
+                '<span class="pc-smart-bell__dot' + dot3 + '"></span>' +
+                '<span class="pc-smart-bell__dot' + dot4 + '"></span>' +
             '</span>' +
         '</button>';
     }
@@ -3410,43 +3426,69 @@
         lastSeenTabSignatures.set(Number(appId) + ':' + key, sig);
     }
 
+    function filterLabel(key) {
+        if (key === 'contribution') return text('pcFilterContribution', 'Contribution');
+        if (key === 'attention') return text('pcFilterAttention', 'Attention');
+        if (key === 'control') return text('pcFilterControl', 'Control');
+        return text('pcFilterAll', 'All');
+    }
+
+    function tabIsUnread(appId, key, isActive, count, data) {
+        if (key === 'testers' || isActive || count < 1) return false;
+        var tabKey = Number(appId) + ':' + key;
+        if (!lastSeenTabSignatures.has(tabKey)) return true;
+        return lastSeenTabSignatures.get(tabKey) !== computeTabSignature(key, data);
+    }
+
+    function syncFilterButtonState(btn, appId, key, active, data) {
+        var count = filterCount(key, data || {});
+        var isActive = key === active;
+        if (isActive) markTabSeen(appId, key, data);
+        var hasUnread = tabIsUnread(appId, key, isActive, count, data);
+        var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        btn.setAttribute('aria-label', filterLabel(key) + ' ' + count);
+        var countEl = btn.querySelector('.pc-activity__count');
+        if (countEl) {
+            countEl.textContent = String(count);
+            countEl.classList.toggle('is-warn', !!isAttentionWarn);
+            countEl.classList.toggle('has-unread', !!hasUnread);
+        }
+    }
+
+    function syncFilterbar(filterbarEl, appId, visible, active, data, project) {
+        var filtersEl = filterbarEl && filterbarEl.querySelector('.pc-activity__filters');
+        var buttons = filtersEl ? Array.prototype.slice.call(filtersEl.querySelectorAll('[data-activity-filter]')) : [];
+        var keys = buttons.map(function (btn) { return btn.getAttribute('data-activity-filter'); });
+        if (!filterbarEl || keys.join() !== (visible || []).join()) {
+            var next = document.createElement('div');
+            next.innerHTML = filterbarHtml(appId, visible, active, data, project);
+            if (next.firstChild && filterbarEl) filterbarEl.replaceWith(next.firstChild);
+            return;
+        }
+        buttons.forEach(function (btn) {
+            syncFilterButtonState(btn, appId, btn.getAttribute('data-activity-filter'), active, data);
+        });
+    }
+
     function filtersHtml(appId, visible, active, data) {
         visible = visible && visible.length ? visible : ['testers'];
-        var labels = {
-            contribution: text('pcFilterContribution', 'Contribution'),
-            attention: text('pcFilterAttention', 'Attention'),
-            control: text('pcFilterControl', 'Control'),
-            testers: text('pcFilterAll', 'All'),
-        };
         return '<div class="pc-activity__filters tabs-row" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
             visible.map(function (key) {
                 var count = filterCount(key, data || {});
                 var isActive = key === active;
-                if (isActive) {
-                    markTabSeen(appId, key, data);
-                }
-                var hasUnread = false;
-                if (key !== 'testers' && !isActive && count > 0) {
-                    var tabKey = Number(appId) + ':' + key;
-                    if (!lastSeenTabSignatures.has(tabKey)) {
-                        hasUnread = true;
-                    } else {
-                        var prevSig = lastSeenTabSignatures.get(tabKey);
-                        var curSig = computeTabSignature(key, data);
-                        if (prevSig !== curSig) {
-                            hasUnread = true;
-                        }
-                    }
-                }
+                if (isActive) markTabSeen(appId, key, data);
+                var hasUnread = tabIsUnread(appId, key, isActive, count, data);
                 var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
                 var countHtml = '<span class="pc-activity__count' + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + count + '</span>';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
                     '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
-                    '" aria-label="' + esc(labels[key] + ' ' + count) +
+                    '" aria-label="' + esc(filterLabel(key) + ' ' + count) +
                     '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
                     filterIcon(key) +
-                    '<span class="pc-activity__filter-label">' + esc(labels[key]) + '</span>' +
+                    '<span class="pc-activity__filter-label">' + esc(filterLabel(key)) + '</span>' +
                     countHtml +
                     '</button>';
             }).join('') +
@@ -3601,17 +3643,41 @@
         return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
 
-    function flashActivityList(appId) {
-        var listEl = document.getElementById('pc-activity-list-' + Number(appId || 0));
-        if (!listEl || prefersReducedMotion()) return;
-        listEl.classList.remove('pc-activity__list--swap');
-        void listEl.offsetWidth;
-        listEl.classList.add('pc-activity__list--swap');
+    function refreshControlReminderUi(appId) {
+        var safeAppId = Number(appId || 0);
+        var folder = document.querySelector('#pc-today-' + safeAppId + ' .pc-activity__folder-body');
+        var nowEl = document.getElementById('pc-activity-now-' + safeAppId);
+        if (!folder || folder.getAttribute('data-active-filter') !== 'control' || !nowEl || nowEl.hidden) return;
+        var project = projectById(safeAppId);
+        if (!project) return;
+        var data = activityCounts(project);
+        var next = document.createElement('div');
+        next.innerHTML = controlNowHtml(project.id, data.controlRows, contextFor(project));
+        var currentPanel = nowEl.querySelector('.pc-control-reminder-panel');
+        var nextPanel = next.querySelector('.pc-control-reminder-panel');
+        if (currentPanel && nextPanel) currentPanel.replaceWith(nextPanel);
+        else if (!currentPanel && nextPanel) {
+            var pending = nowEl.querySelector('.pc-control-section--pending');
+            if (pending) pending.insertAdjacentElement('afterend', nextPanel);
+            else nowEl.insertBefore(nextPanel, nowEl.firstChild);
+        } else if (currentPanel && !nextPanel) {
+            currentPanel.remove();
+        }
+        // Keep row actions (including the custom reminder bell) mounted.
+        // Only reminder receipts in meta may change after the status fetch.
+        Array.prototype.forEach.call(next.querySelectorAll('.pc-person[data-tester-id]'), function (row) {
+            var current = nowEl.querySelector('.pc-person[data-tester-id="' + row.getAttribute('data-tester-id') + '"]');
+            if (!current) return;
+            var curMeta = current.querySelector('.pc-person__meta');
+            var nextMeta = row.querySelector('.pc-person__meta');
+            if (curMeta && nextMeta && curMeta.innerHTML !== nextMeta.innerHTML) {
+                curMeta.innerHTML = nextMeta.innerHTML;
+            }
+        });
     }
 
     function refreshActivityWorkspace(appId, options) {
         var safeAppId = Number(appId || 0);
-        var animate = !!(options && options.animate);
         var root = document.getElementById('pc-today-' + safeAppId);
         var project = projectById(safeAppId);
         if (!root || !project) return;
@@ -3620,7 +3686,6 @@
         if (!shell || !insetCard) {
             root.innerHTML = innerHtml(project);
             afterPaint(safeAppId);
-            if (animate) flashActivityList(safeAppId);
             return;
         }
         var data = activityCounts(project);
@@ -3635,12 +3700,7 @@
         var nowEl = document.getElementById('pc-activity-now-' + safeAppId);
         var histEl = document.getElementById('pc-activity-history-' + safeAppId);
         var visible = visibleFilters(data);
-        var newFilterbarMarkup = filterbarHtml(safeAppId, visible, filter, data, project);
-        if (filterbarEl) {
-            var nextFilterbar = document.createElement('div');
-            nextFilterbar.innerHTML = newFilterbarMarkup;
-            if (nextFilterbar.firstChild) filterbarEl.replaceWith(nextFilterbar.firstChild);
-        }
+        if (filterbarEl) syncFilterbar(filterbarEl, safeAppId, visible, filter, data, project);
         if (folderBodyEl) folderBodyEl.setAttribute('data-active-filter', filter);
         if (captionEl) {
             var nextCaption = document.createElement('div');
@@ -3655,7 +3715,6 @@
         }
         if (histEl) histEl.hidden = mode !== 'history';
         afterPaint(safeAppId);
-        if (animate) flashActivityList(safeAppId);
     }
 
     function sheetIsOpen() {
@@ -3964,7 +4023,7 @@
                 attention: collectAttention(projectById(appId)),
             });
         }
-        refreshActivityWorkspace(appId, { animate: true });
+        refreshActivityWorkspace(appId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
@@ -3987,7 +4046,7 @@
         var filter = resolvedFilter(prefs, activityCounts(project || { testers: [] }));
         prefs.modes[filter] = mode === 'history' ? 'history' : 'now';
         writePrefs(appId, prefs);
-        refreshActivityWorkspace(appId, { animate: true });
+        refreshActivityWorkspace(appId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
@@ -4169,7 +4228,7 @@
         try {
             var payload = await requestJson(API_BASE + '/projects/' + Number(appId) + '/testing-control/reminders?init_data=' + encodeURIComponent(initData()));
             controlReminderStates.set(Number(appId), Object.assign({}, payload, { loadedAt: Date.now(), loading: false }));
-            refreshActivityWorkspace(appId);
+            refreshControlReminderUi(appId);
         } catch (_) {
             controlReminderStates.set(Number(appId), Object.assign({}, previous, { loadedAt: Date.now(), loading: false }));
         }
@@ -4235,7 +4294,7 @@
         var project = projectById(safeAppId);
         if (!project || controlReminderSending.has(safeAppId)) return;
         controlReminderSending.add(safeAppId);
-        refreshActivityWorkspace(safeAppId);
+        refreshControlReminderUi(safeAppId);
         try {
             var response = await fetch(API_BASE + '/projects/' + safeAppId + '/testing-control/reminders', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ init_data: initData() }),
@@ -4250,7 +4309,7 @@
             controlReminderStates.set(safeAppId, Object.assign({}, previous, { error: true }));
         } finally {
             controlReminderSending.delete(safeAppId);
-            refreshActivityWorkspace(safeAppId);
+            refreshControlReminderUi(safeAppId);
         }
     };
 
