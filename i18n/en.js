@@ -3636,7 +3636,8 @@
             pcRiskRemindNo: "On schedule, no reminder needed",
             pcActivitySheetTitle: "Activity assessment: @{username}",
             pcActivitySheetTitleFallback: "Activity assessment: {name}",
-            pcActivitySheetSubtitle: "Activity assessment before sending a reminder",
+            pcActivityBellAria: "Activity assessment: {count} of 4 signals",
+            pcActivitySheetSubtitle: "Four signals to help decide on a reminder",
             pcActivityCardYesterday: "Yesterday",
             pcActivityCardSkips: "Skip history",
             pcActivityCardRhythm: "Activity rhythm",
@@ -3648,12 +3649,12 @@
             pcActivityBadgeOnSchedule: "On schedule",
             pcActivityBadgeLowRating: "Low rating",
             pcActivityProfileText: "Reliability {reliability}% · Karma {karma}",
-            pcActivitySummaryRisk: "Recommended candidate: pacing slowed down or skips detected ({riskScore} of 4 factors). Sending a reminder will increase the chance of completing today.",
-            pcActivitySummaryNormal: "Tester is proceeding at a steady pace. A reminder is not required, but you can send one if needed.",
-            pcActivitySendRemindBtn: "🔔 Send reminder",
+            pcActivitySummaryRisk: "{riskScore} of 4 signals need attention. Review the details and decide whether to send a reminder.",
+            pcActivitySummaryNormal: "No signals need attention. You can still send a reminder if you think it is useful.",
+            pcActivitySendRemindBtn: "Send reminder",
             pcActivityRemindAlreadySent: "✓ Reminder already sent",
             pcActivityRemindSent: "✓ Reminder sent",
-            pcActivityCloseBtn: "Cancel / Close",
+            pcActivityCloseBtn: "Close",
     };
     window.I18N_EN = window.I18NEN;
 })();

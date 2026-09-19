@@ -7064,158 +7064,150 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 
 /* ───────────────── Smart-Bell 2x2 Widget Button ───────────────── */
 .pc-smart-bell-btn {
+    --pc-bell-accent: #8797a7;
+    --pc-bell-icon: #8797a7;
+    --pc-bell-border: rgba(148, 163, 184, 0.22);
+    --pc-bell-surface: #1c2530;
     display: inline-flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    height: 32px;
-    min-height: 32px;
+    gap: 12px;
+    width: 102px;
+    height: 48px;
+    min-height: 48px;
     padding: 0 12px;
-    border-radius: 10px;
+    border: 1px solid var(--pc-bell-border);
+    border-radius: 15px;
+    background: var(--pc-bell-surface);
+    color: var(--pc-bell-icon);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.035), 0 2px 5px rgba(0, 0, 0, 0.13);
     cursor: pointer;
     box-sizing: border-box;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell-btn:active {
-    transform: scale(0.96);
+    transform: scale(0.97);
+}
+
+.pc-smart-bell-btn:focus-visible {
+    outline: 2px solid #a1c7bb;
+    outline-offset: 3px;
 }
 
 .pc-smart-bell__icon-wrap {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 17px;
-    height: 17px;
+    width: 32px;
+    height: 32px;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__icon {
-    width: 17px;
-    height: 17px;
+    width: 32px;
+    height: 32px;
     display: block;
-    transition: all 0.2s ease;
+    color: var(--pc-bell-icon);
+}
+
+.pc-smart-bell__waves {
+    opacity: 0;
+    transition: opacity 0.18s ease;
 }
 
 .pc-smart-bell__matrix {
     display: grid;
-    grid-template-columns: repeat(2, 5.2px);
-    grid-template-rows: repeat(2, 5.2px);
-    gap: 3.2px;
+    grid-template-columns: repeat(2, 9px);
+    grid-template-rows: repeat(2, 9px);
+    gap: 4px;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__dot {
-    width: 5.2px;
-    height: 5.2px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    border: 1.2px solid rgba(148, 163, 184, 0.32);
-    background: rgba(15, 23, 42, 0.8);
+    border: 1.5px solid rgba(157, 174, 188, 0.48);
+    background: rgba(17, 26, 36, 0.62);
     box-sizing: border-box;
-    transition: all 0.2s ease;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 
-/* Phase 0/4: Inactive / Sleep (0 risks) */
+.pc-smart-bell__dot.is-lit {
+    background: var(--pc-bell-accent);
+    border-color: var(--pc-bell-accent);
+}
+
+/* Five calm levels; the matrix position always names the specific signal. */
 .pc-smart-bell--0 {
-    background: #111722;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    color: #64748b;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-.pc-smart-bell--0 .pc-smart-bell__icon {
-    color: #64748b;
+    --pc-bell-border: rgba(148, 163, 184, 0.20);
+    --pc-bell-surface: #1b232e;
 }
 
-/* Phase 1/4: Soft blue (1 risk) - top-left dot glowing #388bfd */
 .pc-smart-bell--1 {
-    background: #121d2d;
-    border: 1px solid rgba(56, 139, 253, 0.32);
-    color: #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-}
-.pc-smart-bell--1 .pc-smart-bell__icon {
-    color: #f1f5f9;
-}
-.pc-smart-bell--1 .pc-smart-bell__dot.is-lit {
-    background: #388bfd;
-    border-color: #60a5fa;
-    box-shadow: 0 0 5px rgba(56, 139, 253, 0.7);
+    --pc-bell-accent: #a5bab8;
+    --pc-bell-icon: #c9d4d6;
+    --pc-bell-border: rgba(156, 177, 183, 0.26);
+    --pc-bell-surface: #1d2731;
 }
 
-/* Phase 2/4: Electric cyan (2 risks) - top two dots lit + acoustic arcs */
 .pc-smart-bell--2 {
-    background: #122238;
-    border: 1px solid rgba(56, 189, 248, 0.45);
-    color: #38bdf8;
-    box-shadow: 0 0 9px rgba(56, 189, 248, 0.15), 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-.pc-smart-bell--2 .pc-smart-bell__icon {
-    color: #38bdf8;
-}
-.pc-smart-bell--2 .pc-smart-bell__dot.is-lit {
-    background: #38bdf8;
-    border-color: #7dd3fc;
-    box-shadow: 0 0 5px rgba(56, 189, 248, 0.75);
+    --pc-bell-accent: #9ebfb5;
+    --pc-bell-icon: #b8d0c9;
+    --pc-bell-border: rgba(150, 190, 179, 0.34);
+    --pc-bell-surface: #1e2b31;
 }
 
-/* Phase 3/4: High risk (3 risks) - 3 lit dots + 4th accent ring + solid filled bell */
 .pc-smart-bell--3 {
-    background: #142742;
-    border: 1px solid rgba(88, 166, 255, 0.65);
-    color: #58a6ff;
-    box-shadow: 0 0 12px rgba(56, 139, 253, 0.22), 0 1px 3px rgba(0, 0, 0, 0.4);
-}
-.pc-smart-bell--3 .pc-smart-bell__icon {
-    color: #58a6ff;
-}
-.pc-smart-bell--3 .pc-smart-bell__dot.is-lit {
-    background: #58a6ff;
-    border-color: #93c5fd;
-    box-shadow: 0 0 6px rgba(88, 166, 255, 0.8);
-}
-.pc-smart-bell--3 .pc-smart-bell__dot.is-accent-outline {
-    border-color: rgba(88, 166, 255, 0.7);
-    background: rgba(56, 139, 253, 0.14);
-    box-shadow: none;
+    --pc-bell-accent: #a4c8bc;
+    --pc-bell-icon: #b9d8cc;
+    --pc-bell-border: rgba(162, 200, 186, 0.43);
+    --pc-bell-surface: #20302f;
 }
 
-/* Phase 4/4: Maximum risk (4 risks) - all 4 dots lit + solid filled bell + glowing halo */
 .pc-smart-bell--4 {
-    background: #162e52;
-    border: 1px solid rgba(88, 166, 255, 0.85);
-    color: #58a6ff;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.28), 0 1px 3px rgba(0, 0, 0, 0.4);
+    --pc-bell-accent: #b3d6c8;
+    --pc-bell-icon: #cce1d6;
+    --pc-bell-border: rgba(174, 213, 195, 0.56);
+    --pc-bell-surface: #23352f;
 }
-.pc-smart-bell--4 .pc-smart-bell__icon {
-    color: #58a6ff;
+
+.pc-smart-bell--2 .pc-smart-bell__waves,
+.pc-smart-bell--3 .pc-smart-bell__waves,
+.pc-smart-bell--4 .pc-smart-bell__waves {
+    opacity: 1;
 }
-.pc-smart-bell--4 .pc-smart-bell__dot.is-lit {
-    background: #58a6ff;
-    border-color: #bae6fd;
-    box-shadow: 0 0 6px rgba(88, 166, 255, 0.85);
+
+.pc-smart-bell--3 .pc-smart-bell__body {
+    fill: currentColor;
+    fill-opacity: 0.10;
+}
+
+.pc-smart-bell--4 .pc-smart-bell__body {
+    fill: currentColor;
+    fill-opacity: 0.18;
 }
 
 /* ───────────────── Tester Activity Bottom Sheet ───────────────── */
 .pc-tester-activity-modal.modal-overlay {
     z-index: 10040;
-    background: rgba(8, 12, 20, 0.78);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(8, 12, 17, 0.76);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
 }
 
 .pc-tester-activity-sheet.modal-content {
     max-height: min(90vh, 680px);
-    padding: 14px 18px calc(20px + env(safe-area-inset-bottom, 0px));
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    border: 1px solid rgba(167, 189, 184, 0.16);
     border-bottom: 0;
-    background:
-        radial-gradient(circle at 85% 0%, rgba(53, 119, 224, 0.14), transparent 45%),
-        #131a24;
-    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.45);
+    background: #18212b;
+    box-shadow: 0 -14px 42px rgba(0, 0, 0, 0.34);
     border-radius: 20px 20px 0 0;
 }
 
@@ -7224,43 +7216,33 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-tester-activity-sheet__header {
-    margin-bottom: 14px;
+    margin-bottom: 17px;
 }
 
 .pc-tester-activity-sheet__title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 12px;
 }
 
-.pc-tester-activity-sheet__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+.pc-tester-activity-sheet__signal-count {
     flex: 0 0 auto;
-}
-.pc-tester-activity-sheet__dot--0 {
-    background: #64748b;
-}
-.pc-tester-activity-sheet__dot--1 {
-    background: #388bfd;
-    box-shadow: 0 0 6px rgba(56, 139, 253, 0.8);
-}
-.pc-tester-activity-sheet__dot--2 {
-    background: #38bdf8;
-    box-shadow: 0 0 7px rgba(56, 189, 248, 0.85);
-}
-.pc-tester-activity-sheet__dot--3,
-.pc-tester-activity-sheet__dot--4 {
-    background: #58a6ff;
-    box-shadow: 0 0 8px rgba(88, 166, 255, 0.95);
+    padding: 5px 8px;
+    border: 1px solid rgba(165, 194, 184, 0.23);
+    border-radius: 8px;
+    background: rgba(165, 194, 184, 0.08);
+    color: #b6cfc5;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
 .pc-tester-activity-sheet__title {
     margin: 0;
     font-size: 16.5px;
     font-weight: 700;
-    color: #ffffff;
+    color: #f1f5f5;
     line-height: 1.25;
     letter-spacing: -0.015em;
     overflow: hidden;
@@ -7269,36 +7251,34 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-tester-activity-sheet__subtitle {
-    margin: 3px 0 0 16px;
+    margin: 6px 0 0;
     font-size: 12px;
-    color: #8fa3bf;
-    line-height: 1.35;
+    color: #a0abb7;
+    line-height: 1.4;
 }
 
 /* 2x2 Grid of dark graphite cards */
 .pc-activity-cards-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 9px;
+    margin-bottom: 13px;
 }
 
 .pc-activity-card {
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: #202b36;
+    border: 1px solid rgba(167, 184, 191, 0.12);
     border-radius: 12px;
-    padding: 9px 10px;
+    padding: 11px;
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-width: 0;
-    transition: all 0.2s ease;
 }
 
 .pc-activity-card.is-risk {
-    background: rgba(56, 139, 253, 0.07);
-    border-color: rgba(56, 139, 253, 0.32);
-    box-shadow: 0 0 10px rgba(56, 139, 253, 0.12);
+    background: #23342f;
+    border-color: rgba(169, 207, 188, 0.35);
 }
 
 .pc-activity-card__header {
@@ -7310,9 +7290,12 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-card__category {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 6px;
     font-size: 11px;
     font-weight: 600;
-    color: #94a3b8;
+    color: #abb7c1;
     line-height: 1.25;
     white-space: normal;
     overflow: visible;
@@ -7320,6 +7303,21 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     overflow-wrap: break-word;
     flex: 1 1 auto;
     min-width: 0;
+}
+
+.pc-activity-card__category::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    margin-top: 3px;
+    border: 1px solid #748792;
+    border-radius: 50%;
+}
+
+.pc-activity-card.is-risk .pc-activity-card__category::before {
+    background: #aacdbb;
+    border-color: #aacdbb;
 }
 
 .pc-activity-badge {
@@ -7335,16 +7333,16 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-badge--ok {
-    background: rgba(255, 255, 255, 0.06);
-    color: #94a3b8;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(170, 184, 193, 0.07);
+    color: #aebbc4;
+    border: 1px solid rgba(170, 184, 193, 0.13);
 }
 
 .pc-activity-badge--warn,
 .pc-activity-badge--risk {
-    background: rgba(56, 139, 253, 0.18);
-    color: #79c0ff;
-    border: 1px solid rgba(56, 189, 248, 0.4);
+    background: rgba(163, 201, 181, 0.12);
+    color: #c2d9c8;
+    border: 1px solid rgba(163, 201, 181, 0.25);
 }
 
 .pc-activity-card__body {
@@ -7367,25 +7365,25 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-card__icon.is-ok {
-    color: #4ade80;
+    color: #9aaca9;
 }
 
 .pc-activity-card__icon.is-warn {
-    color: #58a6ff;
+    color: #b8d2c0;
 }
 
 .pc-activity-card__icon--clock {
-    color: #93c5fd;
+    color: #a5b7bd;
 }
 
 .pc-activity-card__icon--profile {
-    color: #a78bfa;
+    color: #a5b7bd;
 }
 
 .pc-activity-card__text {
     font-size: 11px;
     line-height: 1.35;
-    color: #e2e8f0;
+    color: #d6e0e3;
     word-break: break-word;
 }
 
@@ -7396,14 +7394,18 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     gap: 9px;
     padding: 10px 12px;
     border-radius: 11px;
-    background: rgba(56, 139, 253, 0.08);
-    border: 1px solid rgba(56, 139, 253, 0.2);
+    background: #202b34;
+    border: 1px solid rgba(168, 187, 189, 0.16);
     margin-bottom: 14px;
+}
+
+.pc-activity-summary-banner.has-signals {
+    border-color: rgba(168, 204, 185, 0.28);
 }
 
 .pc-activity-summary-banner__icon {
     flex: 0 0 auto;
-    color: #60a5fa;
+    color: #a8bdba;
     margin-top: 1px;
 }
 
@@ -7414,7 +7416,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .pc-activity-summary-banner__text {
     font-size: 11.5px;
     line-height: 1.42;
-    color: #c7d8ee;
+    color: #c3d0d3;
 }
 
 /* Footer buttons */
@@ -7430,15 +7432,25 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     border-radius: 12px;
     font-size: 14px;
     font-weight: 650;
-    background: var(--accent-primary, #388bfd);
-    color: #ffffff;
-    border: none;
+    background: #365d59;
+    color: #eef7f3;
+    border: 1px solid #527973;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 7px;
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.pc-activity-sheet__send-btn:hover:not(:disabled) {
+    background: #416d66;
+}
+
+.pc-activity-sheet__send-btn:focus-visible,
+.pc-activity-sheet__cancel-btn:focus-visible {
+    outline: 2px solid #a1c7bb;
+    outline-offset: 2px;
 }
 
 .pc-activity-sheet__send-btn:active:not(:disabled) {
@@ -7457,7 +7469,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     width: 100%;
     height: 36px;
     background: transparent;
-    color: #8da2be;
+    color: #a1afb8;
     border: none;
     font-size: 13px;
     font-weight: 550;

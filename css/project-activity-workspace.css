@@ -1135,11 +1135,12 @@
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 10px !important;
+    gap: 12px !important;
     padding: 0 12px !important;
-    border-radius: 10px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+    border-radius: 15px !important;
+    width: 102px !important;
+    height: 48px !important;
+    min-height: 48px !important;
     box-sizing: border-box !important;
     flex: 0 0 auto !important;
 }
@@ -2128,4 +2129,3 @@
     color: #e2e8f0;
     font-weight: 450;
 }
-

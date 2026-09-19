@@ -3642,7 +3642,8 @@
             pcRiskRemindNo: "В графике, напоминание не требуется",
             pcActivitySheetTitle: "Оценка активности: @{username}",
             pcActivitySheetTitleFallback: "Оценка активности: {name}",
-            pcActivitySheetSubtitle: "Оценка активности перед отправкой напоминания",
+            pcActivityBellAria: "Оценка активности: {count} из 4 сигналов",
+            pcActivitySheetSubtitle: "Четыре сигнала для решения о напоминании",
             pcActivityCardYesterday: "Вчерашний день",
             pcActivityCardSkips: "История пропусков",
             pcActivityCardRhythm: "Ритм активности",
@@ -3654,12 +3655,12 @@
             pcActivityBadgeOnSchedule: "В графике",
             pcActivityBadgeLowRating: "Низкий рейтинг",
             pcActivityProfileText: "Надёжность {reliability}% · Карма {karma}",
-            pcActivitySummaryRisk: "Рекомендуемый кандидат: замедлен темп или есть пропуски ({riskScore} из 4 факторов). Отправка напоминания повысит вероятность закрытия дня.",
-            pcActivitySummaryNormal: "Тестер идёт в стабильном темпе. Напоминание не требуется, но вы можете отправить его при необходимости.",
-            pcActivitySendRemindBtn: "🔔 Отправить напоминание",
+            pcActivitySummaryRisk: "Есть {riskScore} из 4 сигналов внимания. Проверьте детали и решите, нужно ли напоминание.",
+            pcActivitySummaryNormal: "Сигналов внимания нет. Вы можете отправить напоминание, если считаете это нужным.",
+            pcActivitySendRemindBtn: "Отправить напоминание",
             pcActivityRemindAlreadySent: "✓ Напоминание уже отправлено",
             pcActivityRemindSent: "✓ Напоминание отправлено",
-            pcActivityCloseBtn: "Отмена / Закрыть",
+            pcActivityCloseBtn: "Закрыть",
     };
     window.I18N_RU = window.I18NRU;
 })();

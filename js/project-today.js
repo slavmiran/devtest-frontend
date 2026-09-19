@@ -1430,6 +1430,17 @@
     var _controlActivityAssessments = new Map();
     var _controlRowsByAppAndTester = new Map();
 
+    function activitySignalMatrixHtml(assessment) {
+        var signals = ['yesterday', 'skips', 'rhythm', 'profile'];
+        return '<span class="pc-smart-bell__matrix" aria-hidden="true">' +
+            signals.map(function (key) {
+                return '<span class="pc-smart-bell__dot' +
+                    (assessment && assessment[key] && assessment[key].risk ? ' is-lit' : '') +
+                    '"></span>';
+            }).join('') +
+        '</span>';
+    }
+
     function smartBellButtonHtml(appId, row) {
         var safeAppId = Number(appId || 0);
         var safeTesterId = Number(row && (row.testerId || (row.tester && (row.tester.id || row.tester.tester_id))) || 0);
@@ -1440,45 +1451,22 @@
             _controlActivityAssessments.set(cacheKey, assessment);
             _controlRowsByAppAndTester.set(cacheKey, row);
         }
-        var score = assessment ? Number(assessment.riskScore || 0) : 0;
-        var dotPhase = score >= 4 ? 4 : (score >= 2 ? (score === 3 ? 3 : 2) : score);
-        var ariaLabel = text('pcActivitySheetSubtitle', 'Activity assessment') + ': ' + score + '/4';
-        var wavePath = score >= 2
-            ? '<path class="pc-smart-bell__wave" d="M2.2 5.2 C 1.0 7, 1.0 9.6, 2.2 11.4 M13.8 5.2 C 15.0 7, 15.0 9.6, 13.8 11.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'
-            : '';
-        var clapperPath = '<path d="M7 11.5 C 7 12.7, 9 12.7, 9 11.5 Z" fill="currentColor"/>';
-        var bellContent = '';
-        if (score >= 3) {
-            bellContent = '<path d="M7 3 C 7 1.7, 9 1.7, 9 3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' +
-                '<path d="M8 2.8 C 6.5 2.8, 5.4 4, 5.4 6.8 C 5.4 8.5, 4.8 9.5, 3.8 10.2 C 3.5 10.4, 3.6 10.8, 4 10.8 L 12 10.8 C 12.4 10.8, 12.5 10.4, 12.2 10.2 C 11.2 9.5, 10.6 8.5, 10.6 6.8 C 10.6 4, 9.5 2.8, 8 2.8 Z" fill="currentColor"/>' +
-                clapperPath +
-                wavePath;
-        } else {
-            bellContent = '<path d="M7 3 C 7 1.7, 9 1.7, 9 3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' +
-                '<path d="M8 3 C 6.5 3, 5.4 4.2, 5.4 6.8 C 5.4 8.5, 4.8 9.5, 3.8 10.2 C 3.5 10.4, 3.6 10.8, 4 10.8 L 12 10.8 C 12.4 10.8, 12.5 10.4, 12.2 10.2 C 11.2 9.5, 10.6 8.5, 10.6 6.8 C 10.6 4.2, 9.5 3, 8 3 Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' +
-                clapperPath +
-                wavePath;
-        }
-        var dot1 = score >= 1 ? ' is-lit' : '';
-        var dot2 = score >= 2 ? ' is-lit' : '';
-        var dot3 = score >= 3 ? ' is-lit' : '';
-        var dot4 = score >= 4 ? ' is-lit' : (score === 3 ? ' is-accent-outline' : '');
+        var score = Math.max(0, Math.min(4, Number(assessment && assessment.riskScore || 0)));
+        var ariaLabel = text('pcActivityBellAria', 'Оценка активности: {count} из 4 сигналов', { count: score });
 
-        return '<button type="button" class="pc-smart-bell-btn pc-smart-bell--' + dotPhase + '"' +
+        return '<button type="button" class="pc-smart-bell-btn pc-smart-bell--' + score + '"' +
             ' onclick="event.stopPropagation(); pcOpenTesterControlActivitySheet(' + safeAppId + ',' + safeTesterId + ')"' +
             ' aria-label="' + esc(ariaLabel) + '"' +
             ' title="' + esc(ariaLabel) + '">' +
             '<span class="pc-smart-bell__icon-wrap">' +
-                '<svg class="pc-smart-bell__icon" viewBox="0 0 16 16" width="17" height="17" stroke-linecap="round" stroke-linejoin="round">' +
-                    bellContent +
+                '<svg class="pc-smart-bell__icon" viewBox="0 0 36 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<path class="pc-smart-bell__waves" d="M8.3 9.1c-2.3 2.3-3.4 4.8-3.4 7.6m22.8-7.6c2.3 2.3 3.4 4.8 3.4 7.6"/>' +
+                    '<path class="pc-smart-bell__body" d="M18 9.3c-4.6 0-7.3 3.4-7.3 8.2v6.1l-2.5 2h19.6l-2.5-2v-6.1c0-4.8-2.7-8.2-7.3-8.2Z"/>' +
+                    '<path d="M18 9.2V6.7"/>' +
+                    '<path d="M15.4 29.1c.4 1.5 1.2 2.3 2.6 2.3s2.2-.8 2.6-2.3"/>' +
                 '</svg>' +
             '</span>' +
-            '<span class="pc-smart-bell__matrix" aria-hidden="true">' +
-                '<span class="pc-smart-bell__dot' + dot1 + '"></span>' +
-                '<span class="pc-smart-bell__dot' + dot2 + '"></span>' +
-                '<span class="pc-smart-bell__dot' + dot3 + '"></span>' +
-                '<span class="pc-smart-bell__dot' + dot4 + '"></span>' +
-            '</span>' +
+            activitySignalMatrixHtml(assessment) +
         '</button>';
     }
 
@@ -4470,14 +4458,13 @@
             || (cachedRow ? calculateTesterControlActivityAssessment(cachedRow, project) : null)
             || (tester && tester.activityAssessment)
             || calculateTesterControlActivityAssessment(tester, project);
-        var score = assessment ? Number(assessment.riskScore || 0) : 0;
-        var dotPhase = score >= 4 ? 4 : (score >= 2 ? (score === 3 ? 3 : 2) : score);
+        var score = Math.max(0, Math.min(4, Number(assessment && assessment.riskScore || 0)));
 
         var cleanUsername = String(tester.username || '').replace(/^@+/, '');
         var titleText = cleanUsername
             ? text('pcActivitySheetTitle', 'Оценка активности: @{username}', { username: cleanUsername })
             : text('pcActivitySheetTitleFallback', 'Оценка активности: {name}', { name: tester.full_name || 'Тестер' });
-        var subtitleText = text('pcActivitySheetSubtitle', 'Оценка активности перед отправкой напоминания');
+        var subtitleText = text('pcActivitySheetSubtitle', 'Четыре сигнала для решения о напоминании');
 
         // Card 1: Yesterday
         var yData = (assessment && assessment.yesterday) || {};
@@ -4513,9 +4500,9 @@
         var pText = text('pcActivityProfileText', 'Надёжность {reliability}% · Карма {karma}', { reliability: rVal, karma: kVal });
 
         // Summary Banner
-        var summaryText = score >= 2
-            ? text('pcActivitySummaryRisk', 'Рекомендуемый кандидат: замедлен темп или есть пропуски ({riskScore} из 4 факторов). Отправка напоминания повысит вероятность закрытия дня.', { riskScore: score })
-            : text('pcActivitySummaryNormal', 'Тестер идёт в стабильном темпе. Напоминание не требуется, но вы можете отправить его при необходимости.');
+        var summaryText = score > 0
+            ? text('pcActivitySummaryRisk', 'Есть {riskScore} из 4 сигналов внимания. Проверьте детали и решите, нужно ли напоминание.', { riskScore: score })
+            : text('pcActivitySummaryNormal', 'Сигналов внимания нет. Вы можете отправить напоминание, если считаете это нужным.');
 
         var infoIconSvg = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7" x2="8" y2="11.5"/><circle cx="8" cy="5" r="0.75" fill="currentColor"/></svg>';
 
@@ -4538,20 +4525,20 @@
             ? '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn is-sent" disabled>' +
                 esc(text('pcActivityRemindAlreadySent', '✓ Напоминание уже отправлено')) + '</button>'
             : '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn" onclick="pcSubmitActivitySheetReminder(' + safeAppId + ',' + safeTesterId + ')">' +
-                esc(text('pcActivitySendRemindBtn', '🔔 Отправить напоминание')) + '</button>';
+                esc(text('pcActivitySendRemindBtn', 'Отправить напоминание')) + '</button>';
 
         var cancelBtnHtml = '<button type="button" class="pc-activity-sheet__cancel-btn" onclick="pcCloseTesterControlActivitySheet()">' +
-            esc(text('pcActivityCloseBtn', 'Отмена / Закрыть')) + '</button>';
+            esc(text('pcActivityCloseBtn', 'Закрыть')) + '</button>';
 
         var html = '<div id="pc-tester-activity-dialog" class="modal-overlay pc-tester-activity-modal" role="presentation" onclick="if (event.target === this) pcCloseTesterControlActivitySheet()">' +
-            '<section class="modal-content pc-tester-activity-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-tester-activity-title">' +
+            '<section class="modal-content pc-tester-activity-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-tester-activity-title" aria-describedby="pc-tester-activity-subtitle">' +
                 '<div class="sheet-handle" aria-hidden="true"></div>' +
                 '<div class="pc-tester-activity-sheet__header">' +
                     '<div class="pc-tester-activity-sheet__title-row">' +
-                        '<span class="pc-tester-activity-sheet__dot pc-tester-activity-sheet__dot--' + dotPhase + '" aria-hidden="true"></span>' +
                         '<h3 id="pc-tester-activity-title" class="pc-tester-activity-sheet__title">' + esc(titleText) + '</h3>' +
+                        '<span class="pc-tester-activity-sheet__signal-count">' + score + '/4</span>' +
                     '</div>' +
-                    '<div class="pc-tester-activity-sheet__subtitle">' + esc(subtitleText) + '</div>' +
+                    '<div id="pc-tester-activity-subtitle" class="pc-tester-activity-sheet__subtitle">' + esc(subtitleText) + '</div>' +
                 '</div>' +
                 '<div class="pc-activity-cards-grid">' +
                     '<div class="pc-activity-card' + (yData.risk ? ' is-risk' : '') + '">' +
@@ -4595,7 +4582,7 @@
                         '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div class="pc-activity-summary-banner">' +
+                '<div class="pc-activity-summary-banner' + (score > 0 ? ' has-signals' : '') + '">' +
                     '<span class="pc-activity-summary-banner__icon" aria-hidden="true">' + infoIconSvg + '</span>' +
                     '<span class="pc-activity-summary-banner__text">' + esc(summaryText) + '</span>' +
                 '</div>' +
