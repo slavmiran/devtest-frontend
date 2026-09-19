@@ -2036,6 +2036,17 @@
     font-size: 12px;
 }
 
+.pc-dossier-detail-row strong,
+.pc-dossier-row-label {
+    font-weight: 600;
+    color: inherit;
+}
+
+.pc-dossier-subtext {
+    color: var(--text-tertiary, #8493a7);
+    font-weight: 400;
+}
+
 .pc-dossier-detail-row:last-child {
     margin-bottom: 0;
 }

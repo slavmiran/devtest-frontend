@@ -4181,13 +4181,22 @@
             barFillClass = roundRate >= 70 ? 'pc-dossier-bar__fill--good' : (roundRate >= 40 ? 'pc-dossier-bar__fill--warn' : 'pc-dossier-bar__fill--bad');
         }
 
-        var bugsPendingStr = bugsPending > 0 ? text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: bugsPending }) : '';
-        var ideasPendingStr = ideasPending > 0 ? text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: ideasPending }) : '';
-        var reviewsPendingStr = reviewsPending > 0 ? text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: reviewsPending }) : '';
+        var bugsPendingHtml = bugsPending > 0
+            ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: bugsPending })) + '</span>'
+            : '';
+        var ideasPendingHtml = ideasPending > 0
+            ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: ideasPending })) + '</span>'
+            : '';
+        var reviewsPendingHtml = reviewsPending > 0
+            ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: reviewsPending })) + '</span>'
+            : '';
 
-        var bugsRowText = text('pcDossierBugsBreakdown', '🐞 Найдено багов: {accepted} принято{pending_str}', { accepted: bugsAccepted, pending_str: bugsPendingStr });
-        var ideasRowText = text('pcDossierIdeasBreakdown', '💡 Рекомендаций: {accepted} одобрено{pending_str}', { accepted: ideasAccepted, pending_str: ideasPendingStr });
-        var reviewsRowText = text('pcDossierReviewsBreakdown', '📝 Отзывов: {accepted} принято{pending_str}', { accepted: reviewsAccepted, pending_str: reviewsPendingStr });
+        var bugsRowHtml = '🐞 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelBugs', 'Найдено багов:')) + '</strong> ' +
+            esc(text('pcDossierAcceptedCount', '{count} принято', { count: bugsAccepted })) + bugsPendingHtml;
+        var ideasRowHtml = '💡 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelIdeas', 'Рекомендаций:')) + '</strong> ' +
+            esc(text('pcDossierApprovedCount', '{count} одобрено', { count: ideasAccepted })) + ideasPendingHtml;
+        var reviewsRowHtml = '📝 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelReviews', 'Отзывов:')) + '</strong> ' +
+            esc(text('pcDossierAcceptedCount', '{count} принято', { count: reviewsAccepted })) + reviewsPendingHtml;
 
         // Section 3: Contribution to Your Project
         var checkinsDone = Number(tester.checkins_count != null ? tester.checkins_count : (profile.project_checkins_count || 0));
@@ -4285,43 +4294,37 @@
 
         // 4. Project Bugs (strictly omitted if 0)
         if (projectBugsTotal > 0) {
-            var bAccStr = projectBugsAccepted > 0
-                ? text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectBugsAccepted })
+            var bAccHtml = projectBugsAccepted > 0
+                ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectBugsAccepted })) + '</span>'
                 : '';
-            var bugsProjText = text('pcDossierProjectBugs', '🐞 Баги: {total} отправлено{accepted_str}', {
-                total: projectBugsTotal,
-                accepted_str: bAccStr
-            });
+            var bugsProjHtml = '🐞 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelProjectBugs', 'Баги:')) + '</strong> ' +
+                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectBugsTotal })) + bAccHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
-                '<span>' + esc(bugsProjText) + '</span>' +
+                '<span>' + bugsProjHtml + '</span>' +
             '</div>';
         }
 
         // 5. Project Ideas (strictly omitted if 0)
         if (projectIdeasTotal > 0) {
-            var iAccStr = projectIdeasAccepted > 0
-                ? text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectIdeasAccepted })
+            var iAccHtml = projectIdeasAccepted > 0
+                ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectIdeasAccepted })) + '</span>'
                 : '';
-            var ideasProjText = text('pcDossierProjectIdeas', '💡 Рекомендации: {total} отправлено{accepted_str}', {
-                total: projectIdeasTotal,
-                accepted_str: iAccStr
-            });
+            var ideasProjHtml = '💡 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelProjectIdeas', 'Рекомендации:')) + '</strong> ' +
+                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectIdeasTotal })) + iAccHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
-                '<span>' + esc(ideasProjText) + '</span>' +
+                '<span>' + ideasProjHtml + '</span>' +
             '</div>';
         }
 
         // 6. Project Reviews (strictly omitted if 0)
         if (projectReviewsTotal > 0) {
-            var rAccStr = projectReviewsAccepted > 0
-                ? text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectReviewsAccepted })
+            var rAccHtml = projectReviewsAccepted > 0
+                ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectReviewsAccepted })) + '</span>'
                 : '';
-            var revsProjText = text('pcDossierProjectReviews', '📝 Отзывы: {total} отправлено{accepted_str}', {
-                total: projectReviewsTotal,
-                accepted_str: rAccStr
-            });
+            var revsProjHtml = '📝 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelProjectReviews', 'Отзывы:')) + '</strong> ' +
+                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectReviewsTotal })) + rAccHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
-                '<span>' + esc(revsProjText) + '</span>' +
+                '<span>' + revsProjHtml + '</span>' +
             '</div>';
         }
 
@@ -4386,13 +4389,13 @@
                     '</div>' +
                 '</div>' +
                 '<div class="pc-dossier-detail-row">' +
-                    '<span>' + esc(bugsRowText) + '</span>' +
+                    '<span>' + bugsRowHtml + '</span>' +
                 '</div>' +
                 '<div class="pc-dossier-detail-row">' +
-                    '<span>' + esc(ideasRowText) + '</span>' +
+                    '<span>' + ideasRowHtml + '</span>' +
                 '</div>' +
                 '<div class="pc-dossier-detail-row">' +
-                    '<span>' + esc(reviewsRowText) + '</span>' +
+                    '<span>' + reviewsRowHtml + '</span>' +
                 '</div>' +
             '</section>' +
             '<section class="pc-dossier-section">' +

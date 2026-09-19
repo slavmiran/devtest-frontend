@@ -51,7 +51,35 @@
         var campaign = project.screenshot_boost_campaign || {};
         var reward = Math.max(0, Number(campaign.reward_bust || 0));
         var pool = Math.max(0, Number(campaign.pool_remaining || 0));
-        return { reward: reward, pool: pool, on: campaign.enabled === true && reward > 0 && pool >= reward, reports: reward > 0 ? Math.floor((pool + 1e-8) / reward) : 0 };
+        var enabled = campaign.enabled === true;
+        return {
+            reward: reward,
+            pool: pool,
+            on: enabled && reward > 0 && pool >= reward,
+            reports: reward > 0 ? Math.floor((pool + 1e-8) / reward) : 0,
+            depleted: enabled && reward > 0 && pool + 1e-8 < reward
+        };
+    }
+    function boostCueHtml() {
+        return '<span class="pc-project-params__boost-cue" title="' + esc(text('pcParamsBoostDepletedHint')) + '" aria-hidden="true"></span>';
+    }
+    function relocateBoostCue(panel, open) {
+        var cue = panel && panel.querySelector('.pc-project-params__boost-cue');
+        var slot = panel && panel.querySelector(open
+            ? '.pc-project-params__boost-cue-slot--pool'
+            : '.pc-project-params__boost-cue-slot--head');
+        if (!cue || !slot || cue.parentElement === slot) return;
+        var from = cue.getBoundingClientRect();
+        slot.appendChild(cue);
+        var to = cue.getBoundingClientRect();
+        if (!from.width || !to.width) return;
+        var dx = from.left - to.left;
+        var dy = from.top - to.top;
+        if ((Math.abs(dx) < 1 && Math.abs(dy) < 1) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+        cue.animate(
+            [{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }],
+            { duration: 240, easing: 'cubic-bezier(.2,.7,.2,1)' }
+        );
     }
     function amount(value) { return typeof formatScreenshotBoostAmount === 'function' ? formatScreenshotBoostAmount(value) : String(value); }
     function plural(count, one, few, many) {
@@ -86,6 +114,7 @@
         var version = androidVersion(project);
         var code = language(project);
         var boost = boostMeta(project);
+        var depleted = boost.depleted;
         var toggleLabel = text(open ? 'pcParamsCollapse' : 'pcParamsExpand');
         var languageValue = code === 'RU' ? '🇷🇺 RU' : code === 'EN' ? '🇬🇧 EN' : 'ALL';
         var onLabel = text('pcParamsOn');
@@ -98,16 +127,18 @@
         var boostAriaValue = isEnabled
             ? '$BUST ' + poolAmountText + ' ' + text('pcParamsBoostPoolLead') + ' • ' + rewardAmountText + ' ' + text('pcParamsBoostRewardRest')
             : text('pcParamsBoostNoteInactive');
+        var cue = depleted ? boostCueHtml() : '';
         // Keep the BUST label visually distinct, matching the compact state
         // chips used by the other project settings while leaving the amounts
         // and explanatory text quiet and readable.
         var boostValueHtml = isEnabled
-            ? '<span class="pc-project-boost-bust-state">$BUST</span> ' + esc(poolAmountText) + ' ' + esc(text('pcParamsBoostPoolLead')) + ' • ' + esc(rewardAmountText) + ' ' + esc(text('pcParamsBoostRewardRest'))
+            ? '<span class="pc-project-boost-bust-state">$BUST</span> <span class="pc-project-boost-pool"><span class="pc-project-params__boost-cue-slot pc-project-params__boost-cue-slot--pool">' + (open ? cue : '') + '</span>' + esc(poolAmountText) + '</span> ' + esc(text('pcParamsBoostPoolLead')) + ' • ' + esc(rewardAmountText) + ' ' + esc(text('pcParamsBoostRewardRest'))
             : esc(text('pcParamsBoostNoteInactive'));
         return '<div class="pc-project-params__head">' +
-            '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '">' +
+            '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '"' + (depleted ? ' aria-description="' + esc(text('pcParamsBoostDepletedHint')) + '"' : '') + '>' +
                 '<span class="pc-project-params__title">' + esc(text('pcParamsTitle')) + '</span>' +
                 '<span class="pc-project-params__count" title="' + esc(text('pcParamsCountHint')) + '"><i aria-hidden="true"></i>' + esc(countLabel) + '</span>' +
+                '<span class="pc-project-params__boost-cue-slot pc-project-params__boost-cue-slot--head">' + (!open ? cue : '') + '</span>' +
                 '<span class="pc-project-params__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
             '</button>' +
             '<span class="pc-ping-slot" data-pc-ping-slot="' + id + '">' +
@@ -135,7 +166,7 @@
         return String(project && project.test_mode || '').toLowerCase() === 'email_list';
     }
     function build(project) {
-        return '<section class="pc-project-params' + (expanded.has(projectKey(project)) ? ' is-expanded' : '') + (isEmailList(project) ? ' is-email-list' : '') + '" id="project-parameters-' + Number(project.id || project.app_id) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
+        return '<section class="pc-project-params' + (expanded.has(projectKey(project)) ? ' is-expanded' : '') + (isEmailList(project) ? ' is-email-list' : '') + (boostMeta(project).depleted ? ' has-boost-depleted' : '') + '" id="project-parameters-' + Number(project.id || project.app_id) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
     }
     function stop(event) { if (event) { event.preventDefault(); event.stopPropagation(); } }
     function toggle(id, event) {
@@ -145,12 +176,14 @@
         if (!project || !panel) return;
         var open = !panel.classList.contains('is-expanded');
         if (open) expanded.add(projectKey(project)); else expanded.delete(projectKey(project));
+        if (!open) relocateBoostCue(panel, false);
         panel.classList.toggle('is-expanded', open);
         panel.querySelector('.pc-project-params__toggle').setAttribute('aria-expanded', String(open));
         panel.querySelector('.pc-project-params__toggle').title = text(open ? 'pcParamsCollapse' : 'pcParamsExpand');
         var body = panel.querySelector('.pc-project-params__body');
         body.inert = !open;
         if (open) body.removeAttribute('aria-hidden'); else body.setAttribute('aria-hidden', 'true');
+        if (open) relocateBoostCue(panel, true);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     }
     function update(project) {
@@ -159,6 +192,7 @@
         var focusKey = panel.contains(document.activeElement) ? document.activeElement.getAttribute('data-project-param') : null;
         panel.classList.toggle('is-expanded', expanded.has(projectKey(project)));
         panel.classList.toggle('is-email-list', isEmailList(project));
+        panel.classList.toggle('has-boost-depleted', boostMeta(project).depleted);
         panel.innerHTML = content(project);
         if (focusKey) {
             var target = panel.querySelector('[data-project-param="' + focusKey + '"]');

@@ -34,6 +34,24 @@
 .pc-project-params.is-email-list:not(.is-expanded) .pc-project-params__count i {
     background: var(--stage-buffer, #ffb84d);
 }
+.pc-project-params__boost-cue-slot {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+.pc-project-params__boost-cue-slot:empty { display: none; }
+.pc-project-params__boost-cue {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--warning, var(--stage-buffer, #ffb020));
+    opacity: .62;
+}
+.pc-project-boost-pool {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
 .pc-project-params__chevron { display: flex; flex: 0 0 10px; margin-right: auto; color: #73839b; transition: transform 200ms ease; }
 .pc-project-params__chevron svg { width: 10px; height: 6px; }
 .pc-project-params.is-expanded .pc-project-params__chevron { transform: rotate(180deg); }
