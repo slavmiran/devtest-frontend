@@ -9491,22 +9491,11 @@ function _renderDossierLinkedExchangeCard(rel, options) {
             : Number(tester.testing_days || 0);
         theirSkips = Number(tester.skips_count != null ? tester.skips_count : 0);
     }
-    let myDays = viewerMetrics && viewerMetrics.testing_days != null
-        ? Number(viewerMetrics.testing_days || 0)
-        : 0;
-    if (!viewerMetrics && rel && rel.viewer_testing_days != null) {
-        myDays = Number(rel.viewer_testing_days || 0);
-    }
-    let mySkips = viewerMetrics && viewerMetrics.skips != null
-        ? Number(viewerMetrics.skips || 0)
-        : (rel && rel.viewer_skips != null ? Number(rel.viewer_skips || 0) : 0);
     if (Array.isArray(myTests) && !viewerMetrics && !(rel && rel.viewer_testing_days != null)) {
         const reciprocalTest = myTests.find(function(item) {
             return Number(item.id || item.app_id || 0) === Number(pair.theirAppId || 0);
         });
         if (reciprocalTest) {
-            myDays = Number(reciprocalTest.testing_days || 0);
-            mySkips = Number(reciprocalTest.skips_count || 0);
             if (!pair.theirIcon && reciprocalTest.icon_url) {
                 pair.theirIcon = reciprocalTest.icon_url;
             }
@@ -9521,12 +9510,10 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
-    const dayValue = isMutualDebt && relationDebtHolder === 'viewer'
-        ? (myDays || 0)
-        : (theirDays || myDays || 0);
-    const skipValue = isMutualDebt && relationDebtHolder === 'viewer'
-        ? (mySkips || 0)
-        : (theirSkips || mySkips || 0);
+    // This compact line describes the partner testing our project. Zero is a
+    // valid partner value; never replace it with the viewer's own metrics.
+    const dayValue = theirDays;
+    const skipValue = theirSkips;
     const skipWarn = skipValue >= 3;
     const completedBadge = `<span class="linked-side-done">${window.escapeHTML(window.t('linkedSideCompleted', {}, lang))}</span>`;
     const statsParts = [];
