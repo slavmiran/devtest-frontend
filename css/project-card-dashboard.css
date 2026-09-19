@@ -7061,3 +7061,400 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
         opacity: 1;
     }
 }
+
+/* ───────────────── Smart-Bell 2x2 Widget Button ───────────────── */
+.pc-smart-bell-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.pc-smart-bell-btn:active {
+    transform: scale(0.95);
+}
+
+.pc-smart-bell__icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+}
+
+.pc-smart-bell__icon {
+    width: 14px;
+    height: 14px;
+    display: block;
+    transition: all 0.2s ease;
+}
+
+.pc-smart-bell__matrix {
+    display: grid;
+    grid-template-columns: repeat(2, 4px);
+    grid-template-rows: repeat(2, 4px);
+    gap: 2.5px;
+    align-items: center;
+    justify-content: center;
+}
+
+.pc-smart-bell__dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: transparent;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+/* Phase 0/4: Calm neutral dark */
+.pc-smart-bell--0 {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #64748b;
+}
+.pc-smart-bell--0 .pc-smart-bell__icon {
+    stroke: #64748b;
+}
+
+/* Phase 1/4: Soft blue (matching remind-all tone) on top-left dot */
+.pc-smart-bell--1 {
+    background: rgba(56, 139, 253, 0.06);
+    border-color: rgba(56, 139, 253, 0.32);
+    color: #cbd5e1;
+}
+.pc-smart-bell--1 .pc-smart-bell__icon {
+    stroke: #e2e8f0;
+}
+.pc-smart-bell--1 .pc-smart-bell__dot.is-lit {
+    background: #388bfd;
+    border-color: #60a5fa;
+    box-shadow: 0 0 5px rgba(56, 139, 253, 0.85);
+}
+
+/* Phase 2/4: Warm golden/amber on 2 top dots, soft warm glow */
+.pc-smart-bell--2 {
+    background: rgba(245, 158, 11, 0.06);
+    border-color: rgba(245, 158, 11, 0.38);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.16);
+    color: #fef3c7;
+}
+.pc-smart-bell--2 .pc-smart-bell__icon {
+    stroke: #fbbf24;
+}
+.pc-smart-bell--2 .pc-smart-bell__dot.is-lit {
+    background: #f59e0b;
+    border-color: #fbbf24;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.9);
+}
+
+/* Phase 3/4 and 4/4: Expressive warm amber glow, 3 or 4 lit dots */
+.pc-smart-bell--3,
+.pc-smart-bell--4 {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.28);
+    color: #fef3c7;
+}
+.pc-smart-bell--3 .pc-smart-bell__icon,
+.pc-smart-bell--4 .pc-smart-bell__icon {
+    stroke: #f59e0b;
+    fill: rgba(245, 158, 11, 0.15);
+}
+.pc-smart-bell--3 .pc-smart-bell__dot.is-lit,
+.pc-smart-bell--4 .pc-smart-bell__dot.is-lit {
+    background: #f59e0b;
+    border-color: #fbbf24;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.95);
+}
+
+/* ───────────────── Tester Activity Bottom Sheet ───────────────── */
+.pc-tester-activity-modal.modal-overlay {
+    z-index: 10040;
+    background: rgba(8, 12, 20, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.pc-tester-activity-sheet.modal-content {
+    max-height: min(90vh, 680px);
+    padding: 14px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 0;
+    background:
+        radial-gradient(circle at 85% 0%, rgba(53, 119, 224, 0.14), transparent 45%),
+        #131a24;
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.45);
+    border-radius: 20px 20px 0 0;
+}
+
+.pc-tester-activity-sheet .sheet-handle {
+    margin-bottom: 14px;
+}
+
+.pc-tester-activity-sheet__header {
+    margin-bottom: 14px;
+}
+
+.pc-tester-activity-sheet__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pc-tester-activity-sheet__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.pc-tester-activity-sheet__dot--0 {
+    background: #64748b;
+}
+.pc-tester-activity-sheet__dot--1 {
+    background: #388bfd;
+    box-shadow: 0 0 6px rgba(56, 139, 253, 0.8);
+}
+.pc-tester-activity-sheet__dot--2,
+.pc-tester-activity-sheet__dot--3,
+.pc-tester-activity-sheet__dot--4 {
+    background: #f59e0b;
+    box-shadow: 0 0 7px rgba(245, 158, 11, 0.85);
+}
+
+.pc-tester-activity-sheet__title {
+    margin: 0;
+    font-size: 16.5px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pc-tester-activity-sheet__subtitle {
+    margin: 3px 0 0 16px;
+    font-size: 12px;
+    color: #8fa3bf;
+    line-height: 1.35;
+}
+
+/* 2x2 Grid of dark graphite cards */
+.pc-activity-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.pc-activity-card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 9px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pc-activity-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.pc-activity-card__category {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-activity-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1.5px 5px;
+    border-radius: 5px;
+    font-size: 9.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.pc-activity-badge--ok {
+    background: rgba(56, 139, 253, 0.12);
+    color: #79b8ff;
+    border: 1px solid rgba(56, 139, 253, 0.25);
+}
+
+.pc-activity-badge--warn {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.pc-activity-card__body {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+.pc-activity-card__icon {
+    font-size: 12px;
+    line-height: 1.2;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    margin-top: 1px;
+}
+
+.pc-activity-card__icon svg {
+    display: block;
+}
+
+.pc-activity-card__icon.is-ok {
+    color: #4ade80;
+}
+
+.pc-activity-card__icon.is-warn {
+    color: #fbbf24;
+}
+
+.pc-activity-card__icon--clock {
+    color: #93c5fd;
+}
+
+.pc-activity-card__icon--profile {
+    color: #a78bfa;
+}
+
+.pc-activity-card__text {
+    font-size: 11px;
+    line-height: 1.35;
+    color: #e2e8f0;
+    word-break: break-word;
+}
+
+/* Info Summary banner */
+.pc-activity-summary-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    background: rgba(56, 139, 253, 0.08);
+    border: 1px solid rgba(56, 139, 253, 0.2);
+    margin-bottom: 14px;
+}
+
+.pc-activity-summary-banner__icon {
+    flex: 0 0 auto;
+    color: #60a5fa;
+    margin-top: 1px;
+}
+
+.pc-activity-summary-banner__icon svg {
+    display: block;
+}
+
+.pc-activity-summary-banner__text {
+    font-size: 11.5px;
+    line-height: 1.42;
+    color: #c7d8ee;
+}
+
+/* Footer buttons */
+.pc-activity-sheet__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pc-activity-sheet__send-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 650;
+    background: var(--accent-primary, #388bfd);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: all 0.15s ease;
+}
+
+.pc-activity-sheet__send-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.pc-activity-sheet__send-btn.is-sent,
+.pc-activity-sheet__send-btn:disabled {
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    cursor: default;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pc-activity-sheet__cancel-btn {
+    width: 100%;
+    height: 36px;
+    background: transparent;
+    color: #8da2be;
+    border: none;
+    font-size: 13px;
+    font-weight: 550;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pc-activity-sheet__cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+}
+
+@media (max-width: 340px) {
+    .pc-tester-activity-sheet.modal-content {
+        padding: 12px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+    .pc-activity-cards-grid {
+        gap: 6px;
+    }
+    .pc-activity-card {
+        padding: 7px 8px;
+    }
+    .pc-activity-card__category {
+        font-size: 9px;
+    }
+    .pc-activity-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+    .pc-activity-card__text {
+        font-size: 10.5px;
+    }
+}
+
+

@@ -592,6 +592,12 @@
                 list.push(Number(testerId));
                 localStorage.setItem(key, JSON.stringify(list));
             }
+            var sheetSendBtn = document.getElementById('pc-activity-sheet-send-btn');
+            if (sheetSendBtn) {
+                sheetSendBtn.disabled = true;
+                sheetSendBtn.classList.add('is-sent');
+                sheetSendBtn.textContent = text('pcActivityRemindSent', '✓ Напоминание отправлено');
+            }
         } catch (_) {}
     }
 
@@ -1420,11 +1426,35 @@
         return '<div class="pc-contribution-cards pc-activity-timeline-group">' + stepsHtml + '</div>';
     }
 
+    function smartBellButtonHtml(appId, row) {
+        var assessment = row.activityAssessment || calculateTesterControlActivityAssessment(row, projectById(appId));
+        var score = assessment ? Number(assessment.riskScore || 0) : 0;
+        var dotPhase = score >= 4 ? 4 : (score >= 2 ? (score === 3 ? 3 : 2) : score);
+        var ariaLabel = text('pcActivitySheetSubtitle', 'Activity assessment') + ': ' + score + '/4';
+        return '<button type="button" class="pc-smart-bell-btn pc-smart-bell--' + dotPhase + ' pc-iconact--remind"' +
+            ' onclick="event.stopPropagation(); pcOpenTesterControlActivitySheet(' + Number(appId) + ',' + Number(row.testerId) + ')"' +
+            ' aria-label="' + esc(ariaLabel) + '"' +
+            ' title="' + esc(ariaLabel) + '">' +
+            '<span class="pc-smart-bell__icon-wrap">' +
+                '<svg class="pc-smart-bell__icon" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<path d="M4.5 6.5a3.5 3.5 0 0 1 7 0c0 2.5 1 3.5 1.5 4h-10c.5-.5 1.5-1.5 1.5-4Z"/>' +
+                    '<path d="M6.5 12.5a1.5 1.5 0 0 0 3 0"/>' +
+                    (score >= 2 ? '<path class="pc-smart-bell__wave" d="M13.5 5.5a4.5 4.5 0 0 1 0 5M2.5 5.5a4.5 4.5 0 0 0 0 5" stroke-width="1.3"/>' : '') +
+                '</svg>' +
+            '</span>' +
+            '<span class="pc-smart-bell__matrix" aria-hidden="true">' +
+                '<span class="pc-smart-bell__dot' + (score >= 1 ? ' is-lit' : '') + '"></span>' +
+                '<span class="pc-smart-bell__dot' + (score >= 2 ? ' is-lit' : '') + '"></span>' +
+                '<span class="pc-smart-bell__dot' + (score >= 3 ? ' is-lit' : '') + '"></span>' +
+                '<span class="pc-smart-bell__dot' + (score >= 4 ? ' is-lit' : '') + '"></span>' +
+            '</span>' +
+        '</button>';
+    }
+
     function controlActionsHtml(appId, row, context) {
         var html = '';
         if (!row.received) {
-            return iconAct('remind', text('pcRemindBtn', 'Remind'),
-                'pcRemindTester(' + Number(appId) + ',' + Number(row.testerId) + ', \'control\', { day: ' + Number(row.day || 0) + ' })');
+            return smartBellButtonHtml(appId, row);
         }
         if (row.proofId <= 0 && row.feedbackId > 0 && !isProcessed(row)) {
             html += iconAct('process', '',
@@ -4062,6 +4092,9 @@
             controlDay: day,
             onSent: function (target) {
                 markTesterRemindedToday(safeAppId, safeTesterId);
+                if (extraData && typeof extraData.onSent === 'function') {
+                    try { extraData.onSent(target); } catch (_) {}
+                }
                 if (target !== 'dm') {
                     refreshActivityWorkspace(safeAppId);
                     return;
@@ -4327,6 +4360,199 @@
         } catch (_) {
             if (typeof showToast === 'function') showToast(text('pcCatchupCloseFailed', 'Could not close proof request'));
         }
+    };
+
+    function removeTesterControlActivitySheet() {
+        var dialog = document.getElementById('pc-tester-activity-dialog');
+        if (dialog && dialog.parentNode) dialog.parentNode.removeChild(dialog);
+    }
+
+    window.pcCloseTesterControlActivitySheet = function () {
+        var dialog = document.getElementById('pc-tester-activity-dialog');
+        if (!dialog) return;
+        dialog.classList.remove('active');
+        window.setTimeout(removeTesterControlActivitySheet, 220);
+    };
+    window.closeTesterControlActivitySheet = window.pcCloseTesterControlActivitySheet;
+
+    window.pcOpenTesterControlActivitySheet = function (appId, testerId) {
+        removeTesterControlActivitySheet();
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        var project = projectById(safeAppId) || (typeof _fixtureProject !== 'undefined' ? _fixtureProject : null);
+        var tester = project && (project.testers || []).find(function (item) {
+            return Number(item && (item.tester_id || item.id) || 0) === safeTesterId;
+        });
+        if (!project || !tester) return;
+
+        var assessment = calculateTesterControlActivityAssessment(tester, project);
+        var score = assessment ? Number(assessment.riskScore || 0) : 0;
+        var dotPhase = score >= 4 ? 4 : (score >= 2 ? (score === 3 ? 3 : 2) : score);
+
+        var cleanUsername = String(tester.username || '').replace(/^@+/, '');
+        var titleText = cleanUsername
+            ? text('pcActivitySheetTitle', 'Оценка активности: @{username}', { username: cleanUsername })
+            : text('pcActivitySheetTitleFallback', 'Оценка активности: {name}', { name: tester.full_name || 'Тестер' });
+        var subtitleText = text('pcActivitySheetSubtitle', 'Оценка активности перед отправкой напоминания');
+
+        // Card 1: Yesterday
+        var yData = (assessment && assessment.yesterday) || {};
+        var yBadgeClass = yData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
+        var yBadgeText = yData.risk ? text('pcActivityBadgeDelay', 'Задержка') : text('pcActivityBadgeNormal', 'Норма');
+        var yIconClass = yData.risk ? 'pc-activity-card__icon is-warn' : 'pc-activity-card__icon is-ok';
+        var yIconSvg = yData.risk
+            ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l6 10.5H2L8 2.5z"/><line x1="8" y1="7" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.75" fill="currentColor"/></svg>'
+            : '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5 6.5-7"/></svg>';
+
+        // Card 2: Skips
+        var sData = (assessment && assessment.skips) || {};
+        var sBadgeClass = sData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
+        var sBadgeText = sData.risk ? text('pcActivityBadgeSkipsExceeded', 'Превышение') : text('pcActivityBadgeSkipsNormal', 'В норме (≤ 2)');
+        var sIconClass = sData.risk ? 'pc-activity-card__icon is-warn' : 'pc-activity-card__icon is-ok';
+        var sIconSvg = sData.risk
+            ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l6 10.5H2L8 2.5z"/><line x1="8" y1="7" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.75" fill="currentColor"/></svg>'
+            : '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5 6.5-7"/></svg>';
+
+        // Card 3: Rhythm
+        var rData = (assessment && assessment.rhythm) || {};
+        var rBadgeClass = rData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
+        var rBadgeText = rData.risk ? text('pcActivityBadgeDelay', 'Задержка') : text('pcActivityBadgeOnSchedule', 'В графике');
+        var rIconSvg = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg>';
+
+        // Card 4: Profile
+        var pData = (assessment && assessment.profile) || {};
+        var pBadgeClass = pData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
+        var pBadgeText = pData.risk ? text('pcActivityBadgeLowRating', 'Низкий рейтинг') : text('pcActivityBadgeNormal', 'Норма');
+        var pIconSvg = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l5 2v4c0 3.5-2.5 5.5-5 6.5-2.5-1-5-3-5-6.5v-4l5-2z"/><circle cx="8" cy="7" r="1.5"/></svg>';
+        var rVal = (pData.reliability != null) ? pData.reliability : 100;
+        var kVal = (pData.karma != null) ? (pData.karma > 0 ? '+' + pData.karma : pData.karma) : 0;
+        var pText = text('pcActivityProfileText', 'Надёжность {reliability}% · Карма {karma}', { reliability: rVal, karma: kVal });
+
+        // Summary Banner
+        var summaryText = score >= 2
+            ? text('pcActivitySummaryRisk', 'Рекомендуемый кандидат: замедлен темп или есть пропуски ({riskScore} из 4 факторов). Отправка напоминания повысит вероятность закрытия дня.', { riskScore: score })
+            : text('pcActivitySummaryNormal', 'Тестер идёт в стабильном темпе. Напоминание не требуется, но вы можете отправить его при необходимости.');
+
+        var infoIconSvg = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7" x2="8" y2="11.5"/><circle cx="8" cy="5" r="0.75" fill="currentColor"/></svg>';
+
+        // Remind check: personal reminder already sent today?
+        var currentDay = Number(tester.current_day || tester.testing_days || 0);
+        var alreadyReminded = isTesterRemindedToday(safeAppId, safeTesterId);
+        if (!alreadyReminded) {
+            var receipts = controlReminderStates.get(safeAppId);
+            if (receipts && Array.isArray(receipts.items)) {
+                var found = receipts.items.find(function (item) {
+                    return Number(item.tester_id) === safeTesterId && (!currentDay || Number(item.day) === currentDay);
+                });
+                if (found && found.personal_dm_opened_at) {
+                    alreadyReminded = true;
+                }
+            }
+        }
+
+        var sendBtnHtml = alreadyReminded
+            ? '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn is-sent" disabled>' +
+                esc(text('pcActivityRemindAlreadySent', '✓ Напоминание уже отправлено')) + '</button>'
+            : '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn" onclick="pcSubmitActivitySheetReminder(' + safeAppId + ',' + safeTesterId + ')">' +
+                esc(text('pcActivitySendRemindBtn', '🔔 Отправить напоминание')) + '</button>';
+
+        var cancelBtnHtml = '<button type="button" class="pc-activity-sheet__cancel-btn" onclick="pcCloseTesterControlActivitySheet()">' +
+            esc(text('pcActivityCloseBtn', 'Отмена / Закрыть')) + '</button>';
+
+        var html = '<div id="pc-tester-activity-dialog" class="modal-overlay pc-tester-activity-modal" role="presentation" onclick="if (event.target === this) pcCloseTesterControlActivitySheet()">' +
+            '<section class="modal-content pc-tester-activity-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-tester-activity-title">' +
+                '<div class="sheet-handle" aria-hidden="true"></div>' +
+                '<div class="pc-tester-activity-sheet__header">' +
+                    '<div class="pc-tester-activity-sheet__title-row">' +
+                        '<span class="pc-tester-activity-sheet__dot pc-tester-activity-sheet__dot--' + dotPhase + '" aria-hidden="true"></span>' +
+                        '<h3 id="pc-tester-activity-title" class="pc-tester-activity-sheet__title">' + esc(titleText) + '</h3>' +
+                    '</div>' +
+                    '<div class="pc-tester-activity-sheet__subtitle">' + esc(subtitleText) + '</div>' +
+                '</div>' +
+                '<div class="pc-activity-cards-grid">' +
+                    '<div class="pc-activity-card">' +
+                        '<div class="pc-activity-card__header">' +
+                            '<span class="pc-activity-card__category">' + esc(text('pcActivityCardYesterday', 'Вчерашний день')) + '</span>' +
+                            '<span class="pc-activity-badge ' + yBadgeClass + '">' + esc(yBadgeText) + '</span>' +
+                        '</div>' +
+                        '<div class="pc-activity-card__body">' +
+                            '<span class="' + yIconClass + '" aria-hidden="true">' + yIconSvg + '</span>' +
+                            '<span class="pc-activity-card__text">' + esc(yData.text || '') + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="pc-activity-card">' +
+                        '<div class="pc-activity-card__header">' +
+                            '<span class="pc-activity-card__category">' + esc(text('pcActivityCardSkips', 'История пропусков')) + '</span>' +
+                            '<span class="pc-activity-badge ' + sBadgeClass + '">' + esc(sBadgeText) + '</span>' +
+                        '</div>' +
+                        '<div class="pc-activity-card__body">' +
+                            '<span class="' + sIconClass + '" aria-hidden="true">' + sIconSvg + '</span>' +
+                            '<span class="pc-activity-card__text">' + esc(sData.text || '') + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="pc-activity-card">' +
+                        '<div class="pc-activity-card__header">' +
+                            '<span class="pc-activity-card__category">' + esc(text('pcActivityCardRhythm', 'Ритм активности')) + '</span>' +
+                            '<span class="pc-activity-badge ' + rBadgeClass + '">' + esc(rBadgeText) + '</span>' +
+                        '</div>' +
+                        '<div class="pc-activity-card__body">' +
+                            '<span class="pc-activity-card__icon pc-activity-card__icon--clock" aria-hidden="true">' + rIconSvg + '</span>' +
+                            '<span class="pc-activity-card__text">' + esc(rData.text || '') + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="pc-activity-card">' +
+                        '<div class="pc-activity-card__header">' +
+                            '<span class="pc-activity-card__category">' + esc(text('pcActivityCardProfile', 'Профиль тестера')) + '</span>' +
+                            '<span class="pc-activity-badge ' + pBadgeClass + '">' + esc(pBadgeText) + '</span>' +
+                        '</div>' +
+                        '<div class="pc-activity-card__body">' +
+                            '<span class="pc-activity-card__icon pc-activity-card__icon--profile" aria-hidden="true">' + pIconSvg + '</span>' +
+                            '<span class="pc-activity-card__text">' + esc(pText) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="pc-activity-summary-banner">' +
+                    '<span class="pc-activity-summary-banner__icon" aria-hidden="true">' + infoIconSvg + '</span>' +
+                    '<span class="pc-activity-summary-banner__text">' + esc(summaryText) + '</span>' +
+                '</div>' +
+                '<div class="pc-activity-sheet__footer">' +
+                    sendBtnHtml +
+                    cancelBtnHtml +
+                '</div>' +
+            '</section>' +
+        '</div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+        var dialog = document.getElementById('pc-tester-activity-dialog');
+        window.requestAnimationFrame(function () {
+            if (dialog) dialog.classList.add('active');
+        });
+    };
+    window.openTesterControlActivitySheet = window.pcOpenTesterControlActivitySheet;
+
+    window.pcSubmitActivitySheetReminder = function (appId, testerId) {
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        var project = projectById(safeAppId) || (typeof _fixtureProject !== 'undefined' ? _fixtureProject : null);
+        var tester = project && (project.testers || []).find(function (item) {
+            return Number(item && (item.tester_id || item.id) || 0) === safeTesterId;
+        });
+        if (!tester) return;
+        var day = Number(tester.current_day || tester.testing_days || 0);
+        var skips = Number(tester.consecutive_skips || 0);
+
+        pcRemindTester(safeAppId, safeTesterId, 'control', {
+            day: day,
+            skips: skips,
+            onSent: function () {
+                var sendBtn = document.getElementById('pc-activity-sheet-send-btn');
+                if (sendBtn) {
+                    sendBtn.disabled = true;
+                    sendBtn.classList.add('is-sent');
+                    sendBtn.textContent = text('pcActivityRemindSent', '✓ Напоминание отправлено');
+                }
+            },
+        });
     };
 
     window.pcOpenProof = function (appId, proofId, mediaIndex, extraOptions) {
@@ -4861,6 +5087,7 @@
         }
     };
 
+    window.smartBellButtonHtml = smartBellButtonHtml;
     window.calculateTesterControlActivityAssessment = calculateTesterControlActivityAssessment;
     window.calculateTesterControlRisk = calculateTesterControlActivityAssessment;
 })();
