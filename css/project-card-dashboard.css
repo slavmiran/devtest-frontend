@@ -3774,16 +3774,19 @@ button.pc-act-reason {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    flex: 0 0 32px;
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.06);
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
 }
 .pc-attention-tile__icon svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
 }
 .pc-attention-tile--skips .pc-attention-tile__icon { color: #e5a49f; background: rgba(213, 144, 139, 0.15); }
 .pc-attention-tile--missed_control .pc-attention-tile__icon { color: #d9c498; background: rgba(197, 173, 124, 0.15); }
@@ -3966,6 +3969,14 @@ button.pc-act-reason {
 }
 .pc-attention-btn--danger:active {
     background: rgba(242, 139, 130, 0.15);
+}
+.pc-attention-btn--accent {
+    background: rgba(56, 139, 253, 0.15);
+    border-color: rgba(56, 139, 253, 0.35);
+    color: #79c0ff;
+}
+.pc-attention-btn--accent:active {
+    background: rgba(56, 139, 253, 0.25);
 }
 .pc-attention-btn.is-done {
     background: rgba(148, 163, 184, 0.08);

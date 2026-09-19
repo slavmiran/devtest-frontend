@@ -600,6 +600,14 @@
         var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
         var testerId = Number(tester && (tester.tester_id || tester.id) || 0);
         var safeAppId = Number(appId || 0);
+        return 'window.openDossierModal(\'' + safeUser + '\', ' + testerId + ', ' + safeAppId + ')';
+    }
+
+    function contributorDossierClick(appId, tester) {
+        var username = dossierUsername(tester);
+        var safeUser = typeof escapeInlineJsString === 'function' ? escapeInlineJsString(username) : username.replace(/'/g, "\\'");
+        var testerId = Number(tester && (tester.tester_id || tester.id) || 0);
+        var safeAppId = Number(appId || 0);
         return '(window.openContributorDossierModal || window.openDossierModal)(\'' + safeUser + '\', ' + testerId + ', ' + safeAppId + ')';
     }
 
@@ -2187,7 +2195,7 @@
         }
 
         var tooltip = text('pcContribStatTooltip', 'Статистика участника · Нажмите, чтобы открыть досье');
-        var clickAttr = 'event.stopPropagation(); ' + dossierClick(appId, t);
+        var clickAttr = 'event.stopPropagation(); ' + contributorDossierClick(appId, t);
 
         var segmentsHtml = parts.map(function (p) {
             var textVal = (typeof p === 'object' && p !== null) ? p.text : p;
@@ -2329,6 +2337,18 @@
         return null;
     }
 
+    var ATTENTION_GLYPHS = {
+        debt: '⚖️',
+        skips: '⏳',
+        skips_2: '⚠️',
+        missed_control_unrequested: '📸',
+        missed_control_pending: '📸',
+        missed_control_received: '📸',
+        direct_invite: '🔗',
+        tester_left: '🚫',
+        broken_link: '🚫',
+    };
+
     function getAttentionReasonMeta(reason, tester, appId, testerId) {
         var code = String(reason && reason.code || '').toLowerCase();
         var safeAppId = Number(appId || 0);
@@ -2336,7 +2356,8 @@
         var subKey = reason.missedDay ? ('_' + reason.missedDay) : (reason.feedbackId ? ('_' + reason.feedbackId) : '');
         var key = String(safeTesterId) + '_' + code + subKey;
 
-        var reasonIcon = ATTENTION_ICONS[code] || ATTENTION_ICONS.skips;
+        var reasonIcon = ATTENTION_GLYPHS[code] || '⚠️';
+        var priorityLevel = 'p2';
         var title = '';
         var subtitle = '';
         var spoilerText = '';
@@ -2350,8 +2371,9 @@
         var isBrokenLink = reason.action === 'link_status' || code === 'broken_link';
 
         if (isLeftAction || isBrokenLink) {
-            reasonIcon = ATTENTION_ICONS.tester_left;
-            title = text('pcAttentionLeftTitle', '🚫 Тестер прервал участие');
+            priorityLevel = 'p1';
+            reasonIcon = ATTENTION_GLYPHS.tester_left;
+            title = text('pcAttentionLeftTitle', 'Тестер прервал участие');
             subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен · Вы можете выйти из его теста');
             spoilerText = text('pcAttentionLeftDrawer', 'Участник покинул проект или исключён платформой со штрафом к Карме. Вы больше не обязаны тестировать его приложение: перейдите в проект партнёра, чтобы закрыть тест без штрафа и удалить приложение, либо скройте тестера из списка.');
             hasAccordion = true;
@@ -2368,8 +2390,9 @@
                     esc(text('pcAttentionHideFromList', '👁️ Скрыть из списка')) + '</button>');
             }
         } else if (code === 'debt') {
-            reasonIcon = ATTENTION_ICONS.debt;
-            title = text('pcAttentionDebtTitle', '⚖️ Партнёр завершил свой проект');
+            priorityLevel = 'p2';
+            reasonIcon = ATTENTION_GLYPHS.debt;
+            title = text('pcAttentionDebtTitle', 'Партнёр завершил свой проект');
             subtitle = text('pcAttentionDebtSubtitle', 'Обязан дотестировать ваш · ⚠️ Пропустил чекин');
 
             var projectName = String(tester && (tester.reciprocal_app_name || tester.reciprocal_app_title) || '').trim()
@@ -2394,8 +2417,9 @@
                     esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
             }
         } else if (code === 'direct_invite') {
-            reasonIcon = ATTENTION_ICONS.direct_invite;
-            title = text('pcAttentionDirectTitle', '🔗 Вход по прямой ссылке');
+            priorityLevel = 'p2';
+            reasonIcon = ATTENTION_GLYPHS.direct_invite;
+            title = text('pcAttentionDirectTitle', 'Вход по прямой ссылке');
             subtitle = text('pcAttentionDirectSubtitle', 'Нет взаимного обязательства · Пропустил чекин');
             spoilerText = text('pcAttentionDirectDrawer', 'Участник тестирует проект без взаимного обмена. Предложите взаимку, чтобы закрепить обязательства.');
             hasAccordion = true;
@@ -2421,8 +2445,9 @@
         } else if (code === 'skips') {
             var skips = Number(reason.skips || (tester && tester.consecutive_skips) || 0);
             if (skips <= 2) {
-                reasonIcon = ATTENTION_ICONS.skips_2 || ATTENTION_ICONS.skips;
-                title = text('pcAttentionSkips2Title', '⏳ 2 дня без чекина');
+                priorityLevel = 'p2';
+                reasonIcon = ATTENTION_GLYPHS.skips_2;
+                title = text('pcAttentionSkips2Title', '2 дня без чекина');
                 subtitle = text('pcAttentionSkips2Subtitle', 'Риск отставания по графику 14 дней');
                 hasAccordion = false;
                 spoilerText = '';
@@ -2436,8 +2461,9 @@
                         esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
                 }
             } else {
-                reasonIcon = ATTENTION_ICONS.skips;
-                title = text('pcAttentionSkipsCriticalTitle', '⚠️ {skips} дн. без чекина подряд', { skips: skips });
+                priorityLevel = 'p1';
+                reasonIcon = ATTENTION_GLYPHS.skips;
+                title = text('pcAttentionSkipsCriticalTitle', '{skips} дн. без чекина подряд', { skips: skips });
                 subtitle = text('pcAttentionSkipsCriticalSubtitle', 'Критический простой · Доступен выход без штрафа');
                 spoilerText = text('pcAttentionSkipsCriticalDrawer', 'Участник не чекинит 3+ дня подряд. Вы можете выйти из тестирования его проекта без штрафа к репутации и карме, либо продолжить тест ради наград и гранта.');
                 hasAccordion = true;
@@ -2456,30 +2482,49 @@
             }
         } else if (code === 'missed_control') {
             var missedDay = Number(reason.missedDay || 0);
-            reasonIcon = ATTENTION_ICONS.missed_control;
-            title = text('pcAttentionMissedControlTitle', '📸 Не сдан контрольный отчёт');
-            subtitle = text('pcAttentionMissedControlSubtitle', 'День {day} · Обязательный скриншот', { day: missedDay });
-            spoilerText = text('pcAttentionMissedControlDrawer', 'В обязательный контрольный день {day} не был отправлен подтверждающий скриншот.', { day: missedDay });
             hasAccordion = true;
 
             if (reason.proofReceived) {
+                priorityLevel = 'p3';
+                reasonIcon = ATTENTION_GLYPHS.missed_control_received;
+                title = text('pcAttentionMissedControlReceivedTitle', 'Получен отчёт по дозапросу');
+                subtitle = text('pcAttentionMissedControlReceivedSubtitle', 'День {day} · Скриншот загружен тестером', { day: missedDay });
+                spoilerText = text('pcAttentionMissedControlReceivedDrawer', 'Тестер загрузил подтверждающий скриншот за контрольный день {day}. Проверьте отчёт и примите его.', { day: missedDay });
                 isDone = true;
+
                 if (reason.completedProofId > 0) {
-                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcOpenProof(' + safeAppId + ',' + Number(reason.completedProofId) + ',0)">👁️ ' +
-                        esc(text('pcViewProof', 'Смотреть')) + '</button>');
+                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcOpenProof(' + safeAppId + ',' + Number(reason.completedProofId) + ',0)">' +
+                        esc(text('pcAttentionOpenProof', '👁️ Открыть')) + '</button>');
                 }
                 if (reason.proofRequestId > 0) {
-                    actions.push('<button type="button" class="pc-attention-btn is-done" onclick="event.stopPropagation(); pcCloseCatchupProofRequest(' + safeAppId + ',' + Number(reason.proofRequestId) + ')">✓ ' +
-                        esc(text('pcCloseProofRequest', 'Готово')) + '</button>');
+                    actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--accent" onclick="event.stopPropagation(); pcCloseCatchupProofRequest(' + safeAppId + ',' + Number(reason.proofRequestId) + ')">' +
+                        esc(text('pcAttentionAcceptReport', '✓ Принять отчёт')) + '</button>');
                 }
             } else if (reason.proofRequested) {
-                isDone = true;
-                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>✓ ' +
-                    esc(text('pcProofRequested', 'Запрос отправлен')) + '</button>');
+                priorityLevel = 'p2';
+                reasonIcon = ATTENTION_GLYPHS.missed_control_pending;
+                title = text('pcAttentionMissedControlPendingTitle', 'Ожидание отчёта по дозапросу');
+                subtitle = text('pcAttentionMissedControlPendingSubtitle', 'День {day} · Дозапрос отправлен тестеру', { day: missedDay });
+                spoilerText = text('pcAttentionMissedControlPendingDrawer', 'Дозапрос на скриншот за контрольный день {day} отправлен. Ожидайте загрузки отчёта тестером.', { day: missedDay });
+                isDone = reminded;
+
+                if (reminded) {
+                    actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
+                        esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+                } else {
+                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'missed_control\', { day: ' + missedDay + ' })">' +
+                        esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
+                }
             } else {
+                priorityLevel = 'p1';
+                reasonIcon = ATTENTION_GLYPHS.missed_control_unrequested;
+                title = text('pcAttentionMissedControlUnrequestedTitle', 'Пропущен контрольный день');
+                subtitle = text('pcAttentionMissedControlUnrequestedSubtitle', 'День {day} · Требуется отправить дозапрос', { day: missedDay });
+                spoilerText = text('pcAttentionMissedControlUnrequestedDrawer', 'В обязательный контрольный день {day} не был отправлен подтверждающий скриншот. Отправьте дозапрос тестеру, чтобы зафиксировать выполнение.', { day: missedDay });
                 isDone = false;
+
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRequestCatchupProof(' + safeAppId + ',' + safeTesterId + ')">' +
-                    esc(text('pcAttentionRequestProof', '📩 Запросить отчёт')) + '</button>');
+                    esc(text('pcAttentionSendCatchupRequest', '📩 Отправить дозапрос')) + '</button>');
             }
         } else {
             title = esc(reason.label || workspaceText('Требуется внимание', 'Attention needed'));
@@ -2487,6 +2532,7 @@
             spoilerText = esc(reason.description || reason.label || '');
             hasAccordion = !!spoilerText;
             isDone = false;
+            priorityLevel = 'p2';
             if (reason.actionHtml) {
                 actions.push(reason.actionHtml);
             }
@@ -2495,6 +2541,7 @@
         return {
             key: key,
             code: code,
+            priorityLevel: priorityLevel,
             icon: reasonIcon,
             title: title,
             subtitle: subtitle,
@@ -2587,13 +2634,14 @@
                     actionsBarHtml +
                 '</div>';
 
+                var pLevel = meta.priorityLevel || 'p2';
                 var nodeIcon = meta.isDone
                     ? '<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
                     : '';
 
-                return '<div class="pc-activity-timeline-step pc-activity-timeline-step--attention' +
+                return '<div class="pc-activity-timeline-step pc-activity-timeline-step--attention pc-activity-timeline-step--' + esc(pLevel) +
                     (meta.isDone ? ' is-completed' : ' is-pending') + '">' +
-                    '<span class="pc-activity-timeline-node pc-status-circle" aria-hidden="true">' + nodeIcon + '</span>' +
+                    '<span class="pc-activity-timeline-node pc-status-circle pc-status-circle--' + esc(pLevel) + '" aria-hidden="true">' + nodeIcon + '</span>' +
                     tileHtml +
                 '</div>';
             }).join('');
@@ -2862,7 +2910,11 @@
             return reasons.some(function (r) {
                 var code = String(r && r.code || '').toLowerCase();
                 if (code === 'tester_left') return true;
-                if (code === 'missed_control') return true;
+                if (code === 'missed_control') {
+                    var proofRequested = Boolean(r.proofRequested || r.proof_requested);
+                    var proofReceived = Boolean(r.proofReceived || r.proof_uploaded);
+                    return !proofRequested && !proofReceived;
+                }
                 if (code === 'skips' && Number(r.skips || (item.tester && item.tester.consecutive_skips) || 0) >= 3) return true;
                 return false;
             });
@@ -3410,6 +3462,7 @@
         isControlDay: isControlDay,
         getCacheEntry: getCacheEntry,
         recordFeedbackReward: recordFeedbackReward,
+        getAttentionReasonMeta: getAttentionReasonMeta,
         invalidate: function (appId) {
             var safeAppId = Number(appId || 0);
             var current = cache.get(safeAppId);

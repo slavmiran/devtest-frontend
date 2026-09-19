@@ -24,19 +24,24 @@
 
     function priority(item) {
         return (item.reasons || []).reduce(function (result, reason) {
-            var value = 4;
-            if (reason.code === 'skips') {
+            var value = 7;
+            var code = String(reason && reason.code || '').toLowerCase();
+            if (code === 'skips') {
                 var s = Number(reason.skips || (item.tester && item.tester.consecutive_skips) || 0);
-                value = s >= 3 ? 0 : 2;
-            } else if (reason.code === 'tester_left') value = 1;
-            else if (reason.code === 'not_opened') value = 2;
-            else if (reason.code === 'missed_control') {
-                value = reason.proofRequested && !reason.proofReceived ? 3 : 2;
-            } else if (reason.code === 'debt') value = 3;
-            else if (reason.code === 'direct_invite') value = 3;
-            else if (reason.code === 'broken_link') value = 3;
+                value = s >= 3 ? 0 : 4; // P1: 3+ skips (0), P2: 2 skips (4)
+            } else if (code === 'tester_left' || code === 'broken_link') {
+                value = 1; // P1: tester left (1)
+            } else if (code === 'missed_control') {
+                if (reason.proofReceived) value = 3; // P3 Review: report received, ready for owner check
+                else if (reason.proofRequested) value = 5; // P2 Waiting: request sent, waiting for tester
+                else value = 2; // P1 Critical: report unrequested
+            } else if (code === 'not_opened') {
+                value = 4;
+            } else if (code === 'debt' || code === 'direct_invite') {
+                value = 6; // P2 Waiting: early 1-skip warning
+            }
             return Math.min(result, value);
-        }, 4);
+        }, 7);
     }
 
     // Keeps the existing collector's proof/catch-up objects intact; only enriches

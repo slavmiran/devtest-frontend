@@ -450,16 +450,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    flex: 0 0 32px;
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.06);
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
 }
 .pc-activity--workspace .pc-attention-tile__icon svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
 }
 .pc-activity--workspace .pc-attention-tile--skips .pc-attention-tile__icon {
     color: #e5a49f;
@@ -755,6 +758,14 @@
 .pc-activity--workspace .pc-attention-btn--danger:active {
     background: rgba(242, 139, 130, 0.15);
 }
+.pc-activity--workspace .pc-attention-btn--accent {
+    background: rgba(56, 139, 253, 0.15);
+    border-color: rgba(56, 139, 253, 0.35);
+    color: #79c0ff;
+}
+.pc-activity--workspace .pc-attention-btn--accent:active {
+    background: rgba(56, 139, 253, 0.25);
+}
 .pc-activity--workspace .pc-attention-btn.is-done {
     background: rgba(148, 163, 184, 0.08);
     border-color: rgba(148, 163, 184, 0.14);
@@ -901,6 +912,58 @@
     --node-color: #93c5fd;
     --node-glow: rgba(147, 197, 253, 0.3);
     --node-text: #0f172a;
+}
+.pc-activity-timeline-step--p1 {
+    --node-color: #f87171;
+    --node-glow: rgba(248, 113, 113, 0.35);
+}
+.pc-activity-timeline-step--p2 {
+    --node-color: #94a3b8;
+    --node-glow: rgba(148, 163, 184, 0.2);
+}
+.pc-activity-timeline-step--p3 {
+    --node-color: #60a5fa;
+    --node-glow: rgba(96, 165, 250, 0.35);
+}
+
+/* Priority status circle indicators for Attention timeline */
+.pc-activity-timeline-step--attention.pc-activity-timeline-step--p1 .pc-status-circle--p1 {
+    border-color: rgba(248, 113, 113, 0.45);
+    background: rgba(248, 113, 113, 0.08);
+    box-shadow: 0 0 6px rgba(248, 113, 113, 0.2);
+}
+.pc-activity-timeline-step--attention.pc-activity-timeline-step--p1.is-pending .pc-status-circle--p1::after {
+    content: '' !important;
+    display: block !important;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f87171;
+    box-shadow: 0 0 8px rgba(248, 113, 113, 0.75), 0 0 2px #f87171;
+}
+
+.pc-activity-timeline-step--attention.pc-activity-timeline-step--p2 .pc-status-circle--p2 {
+    border-color: rgba(148, 163, 184, 0.35);
+    background: rgba(148, 163, 184, 0.04);
+}
+.pc-activity-timeline-step--attention.pc-activity-timeline-step--p2.is-pending .pc-status-circle--p2::after {
+    display: none !important;
+    content: none !important;
+}
+
+.pc-activity-timeline-step--attention.pc-activity-timeline-step--p3 .pc-status-circle--p3 {
+    border-color: rgba(96, 165, 250, 0.45);
+    background: rgba(96, 165, 250, 0.08);
+    box-shadow: 0 0 6px rgba(96, 165, 250, 0.2);
+}
+.pc-activity-timeline-step--attention.pc-activity-timeline-step--p3.is-pending .pc-status-circle--p3::after {
+    content: '' !important;
+    display: block !important;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #60a5fa;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.7), 0 0 2px #60a5fa;
 }
 
 .pc-proof-album-card,
