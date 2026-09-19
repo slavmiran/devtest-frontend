@@ -2527,7 +2527,8 @@
                 isDone = true;
 
                 if (reason.completedProofId > 0) {
-                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcOpenProof(' + safeAppId + ',' + Number(reason.completedProofId) + ',0)">' +
+                    var proofOptStr = '{testerId:' + safeTesterId + ',day:' + missedDay + '}';
+                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcOpenProofOverview(' + safeAppId + ',' + Number(reason.completedProofId) + ',1,' + proofOptStr + ')">' +
                         esc(text('pcAttentionOpenProof', '👁️ Открыть')) + '</button>');
                 }
                 if (reason.proofRequestId > 0) {
@@ -3985,17 +3986,30 @@
         }
     };
 
-    window.pcOpenProof = function (appId, proofId, mediaIndex) {
+    window.pcOpenProof = function (appId, proofId, mediaIndex, extraOptions) {
+        if (mediaIndex == null && typeof pcOpenProofOverview === 'function') {
+            return pcOpenProofOverview(appId, proofId, 1, extraOptions);
+        }
         var row = findRow(appId, proofId);
+        var project = (typeof projectById === 'function' && appId) ? projectById(appId) : null;
+        var tester = (row && row.tester) || null;
+        var day = (row && row.day) || (extraOptions && extraOptions.day) || 0;
+        if (!tester && extraOptions && extraOptions.testerId && project && Array.isArray(project.testers)) {
+            tester = project.testers.find(function (t) {
+                return Number(t && (t.tester_id || t.id) || 0) === Number(extraOptions.testerId);
+            }) || null;
+        }
+        var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
+        var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
         if (typeof openCheckinProofPreview !== 'function') return;
-        openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
-            imageCount: Number(row && row.imageCount || 1),
-            title: row ? handleOf(row.tester) : '',
-            subtitle: row ? workspaceText('День ', 'Day ') + row.day : '',
+        return openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
+            imageCount: Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || 1),
+            title: fallbackTitle,
+            subtitle: fallbackSubtitle,
         });
     };
 
-    window.pcOpenProofOverview = function(appId, proofId, fallbackCount) {
+    window.pcOpenProofOverview = function(appId, proofId, fallbackCount, extraOptions) {
         var pid = Number(proofId || 0);
         if (pid > 0) {
             sessionReviewedItems.add('proof:' + pid);
@@ -4009,12 +4023,32 @@
             }
         }
         var row = findRow(appId, proofId);
-        if (typeof openCheckinProofOverview !== 'function') return;
-        openCheckinProofOverview(Number(proofId), {
-            imageCount: Number(row && row.imageCount || fallbackCount || 1),
-            title: row ? handleOf(row.tester) : '',
-            subtitle: row ? workspaceText('День ', 'Day ') + row.day : '',
-        });
+        var project = (typeof projectById === 'function' && appId) ? projectById(appId) : null;
+        var tester = (row && row.tester) || null;
+        var day = (row && row.day) || (extraOptions && extraOptions.day) || 0;
+        if (!tester && extraOptions && extraOptions.testerId && project && Array.isArray(project.testers)) {
+            tester = project.testers.find(function (t) {
+                return Number(t && (t.tester_id || t.id) || 0) === Number(extraOptions.testerId);
+            }) || null;
+        }
+        var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
+        var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
+        var fallbackImageCount = Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || fallbackCount || 1);
+
+        if (typeof openCheckinProofOverview === 'function') {
+            return openCheckinProofOverview(Number(proofId), {
+                imageCount: fallbackImageCount,
+                title: fallbackTitle,
+                subtitle: fallbackSubtitle,
+            });
+        }
+        if (typeof openCheckinProofPreview === 'function') {
+            return openCheckinProofPreview(Number(proofId || 0), 0, {
+                imageCount: fallbackImageCount,
+                title: fallbackTitle,
+                subtitle: fallbackSubtitle,
+            });
+        }
     };
 
     /* ==========================================================================
