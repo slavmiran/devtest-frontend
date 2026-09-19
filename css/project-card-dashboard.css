@@ -7064,10 +7064,10 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 
 /* ───────────────── Smart-Bell 2x2 Widget Button ───────────────── */
 .pc-smart-bell-btn {
-    --pc-bell-accent: #8797a7;
-    --pc-bell-icon: #8797a7;
+    --pc-bell-accent: #788e9f;
+    --pc-bell-icon: #859bb0;
     --pc-bell-border: rgba(148, 163, 184, 0.22);
-    --pc-bell-surface: #1c2530;
+    --pc-bell-surface: #18212c;
     display: inline-flex;
     flex-direction: row;
     align-items: center;
@@ -7093,7 +7093,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-smart-bell-btn:focus-visible {
-    outline: 2px solid #a1c7bb;
+    outline: 2px solid #58a6ff;
     outline-offset: 3px;
 }
 
@@ -7132,8 +7132,8 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    border: 1.5px solid rgba(157, 174, 188, 0.48);
-    background: rgba(17, 26, 36, 0.62);
+    border: 1.5px solid rgba(148, 163, 184, 0.40);
+    background: rgba(15, 23, 34, 0.65);
     box-sizing: border-box;
     transition: background-color 0.18s ease, border-color 0.18s ease;
 }
@@ -7146,35 +7146,35 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 /* Five calm levels; the matrix position always names the specific signal. */
 .pc-smart-bell--0 {
     --pc-bell-border: rgba(148, 163, 184, 0.20);
-    --pc-bell-surface: #1b232e;
+    --pc-bell-surface: #17202b;
 }
 
 .pc-smart-bell--1 {
-    --pc-bell-accent: #a5bab8;
-    --pc-bell-icon: #c9d4d6;
-    --pc-bell-border: rgba(156, 177, 183, 0.26);
-    --pc-bell-surface: #1d2731;
+    --pc-bell-accent: #79a8d8;
+    --pc-bell-icon: #c5d8ea;
+    --pc-bell-border: rgba(116, 164, 231, 0.28);
+    --pc-bell-surface: #192330;
 }
 
 .pc-smart-bell--2 {
-    --pc-bell-accent: #9ebfb5;
-    --pc-bell-icon: #b8d0c9;
-    --pc-bell-border: rgba(150, 190, 179, 0.34);
-    --pc-bell-surface: #1e2b31;
+    --pc-bell-accent: #58a6ff;
+    --pc-bell-icon: #b8d7f7;
+    --pc-bell-border: rgba(88, 166, 255, 0.38);
+    --pc-bell-surface: #192636;
 }
 
 .pc-smart-bell--3 {
-    --pc-bell-accent: #a4c8bc;
-    --pc-bell-icon: #b9d8cc;
-    --pc-bell-border: rgba(162, 200, 186, 0.43);
-    --pc-bell-surface: #20302f;
+    --pc-bell-accent: #6cb3ff;
+    --pc-bell-icon: #c2e0ff;
+    --pc-bell-border: rgba(88, 166, 255, 0.48);
+    --pc-bell-surface: #1a2a3d;
 }
 
 .pc-smart-bell--4 {
-    --pc-bell-accent: #b3d6c8;
-    --pc-bell-icon: #cce1d6;
-    --pc-bell-border: rgba(174, 213, 195, 0.56);
-    --pc-bell-surface: #23352f;
+    --pc-bell-accent: #79c0ff;
+    --pc-bell-icon: #d8ecff;
+    --pc-bell-border: rgba(121, 192, 255, 0.60);
+    --pc-bell-surface: #1c2e44;
 }
 
 .pc-smart-bell--2 .pc-smart-bell__waves,
@@ -7185,12 +7185,12 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 
 .pc-smart-bell--3 .pc-smart-bell__body {
     fill: currentColor;
-    fill-opacity: 0.10;
+    fill-opacity: 0.12;
 }
 
 .pc-smart-bell--4 .pc-smart-bell__body {
     fill: currentColor;
-    fill-opacity: 0.18;
+    fill-opacity: 0.20;
 }
 
 /* ───────────────── Tester Activity Bottom Sheet ───────────────── */
@@ -7204,9 +7204,9 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .pc-tester-activity-sheet.modal-content {
     max-height: min(90vh, 680px);
     padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
-    border: 1px solid rgba(167, 189, 184, 0.16);
+    border: 1px solid rgba(132, 164, 207, 0.18);
     border-bottom: 0;
-    background: #18212b;
+    background: #141b25;
     box-shadow: 0 -14px 42px rgba(0, 0, 0, 0.34);
     border-radius: 20px 20px 0 0;
 }
@@ -7229,10 +7229,10 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .pc-tester-activity-sheet__signal-count {
     flex: 0 0 auto;
     padding: 5px 8px;
-    border: 1px solid rgba(165, 194, 184, 0.23);
+    border: 1px solid rgba(116, 164, 231, 0.28);
     border-radius: 8px;
-    background: rgba(165, 194, 184, 0.08);
-    color: #b6cfc5;
+    background: rgba(88, 166, 255, 0.09);
+    color: #a4caff;
     font-size: 11px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
@@ -7242,7 +7242,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     margin: 0;
     font-size: 16.5px;
     font-weight: 700;
-    color: #f1f5f5;
+    color: #f1f5f9;
     line-height: 1.25;
     letter-spacing: -0.015em;
     overflow: hidden;
@@ -7253,7 +7253,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .pc-tester-activity-sheet__subtitle {
     margin: 6px 0 0;
     font-size: 12px;
-    color: #a0abb7;
+    color: #8da4be;
     line-height: 1.4;
 }
 
@@ -7266,8 +7266,8 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-card {
-    background: #202b36;
-    border: 1px solid rgba(167, 184, 191, 0.12);
+    background: #1c2532;
+    border: 1px solid rgba(148, 175, 204, 0.14);
     border-radius: 12px;
     padding: 11px;
     display: flex;
@@ -7277,8 +7277,8 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-card.is-risk {
-    background: #23342f;
-    border-color: rgba(169, 207, 188, 0.35);
+    background: #1b2839;
+    border-color: rgba(116, 164, 231, 0.35);
 }
 
 .pc-activity-card__header {
@@ -7295,7 +7295,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     gap: 6px;
     font-size: 11px;
     font-weight: 600;
-    color: #abb7c1;
+    color: #9cb2c9;
     line-height: 1.25;
     white-space: normal;
     overflow: visible;
@@ -7311,13 +7311,13 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     width: 7px;
     height: 7px;
     margin-top: 3px;
-    border: 1px solid #748792;
+    border: 1px solid #62778c;
     border-radius: 50%;
 }
 
 .pc-activity-card.is-risk .pc-activity-card__category::before {
-    background: #aacdbb;
-    border-color: #aacdbb;
+    background: #79c0ff;
+    border-color: #79c0ff;
 }
 
 .pc-activity-badge {
@@ -7333,16 +7333,16 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-badge--ok {
-    background: rgba(170, 184, 193, 0.07);
-    color: #aebbc4;
-    border: 1px solid rgba(170, 184, 193, 0.13);
+    background: rgba(148, 163, 184, 0.08);
+    color: #94a9be;
+    border: 1px solid rgba(148, 163, 184, 0.16);
 }
 
 .pc-activity-badge--warn,
 .pc-activity-badge--risk {
-    background: rgba(163, 201, 181, 0.12);
-    color: #c2d9c8;
-    border: 1px solid rgba(163, 201, 181, 0.25);
+    background: rgba(88, 166, 255, 0.12);
+    color: #bfe0ff;
+    border: 1px solid rgba(116, 164, 231, 0.32);
 }
 
 .pc-activity-card__body {
@@ -7365,25 +7365,25 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-card__icon.is-ok {
-    color: #9aaca9;
+    color: #8da4be;
 }
 
 .pc-activity-card__icon.is-warn {
-    color: #b8d2c0;
+    color: #79c0ff;
 }
 
 .pc-activity-card__icon--clock {
-    color: #a5b7bd;
+    color: #8fa3bf;
 }
 
 .pc-activity-card__icon--profile {
-    color: #a5b7bd;
+    color: #8fa3bf;
 }
 
 .pc-activity-card__text {
     font-size: 11px;
     line-height: 1.35;
-    color: #d6e0e3;
+    color: #dbe4ef;
     word-break: break-word;
 }
 
@@ -7394,18 +7394,18 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     gap: 9px;
     padding: 10px 12px;
     border-radius: 11px;
-    background: #202b34;
-    border: 1px solid rgba(168, 187, 189, 0.16);
+    background: #1b2431;
+    border: 1px solid rgba(132, 164, 207, 0.16);
     margin-bottom: 14px;
 }
 
 .pc-activity-summary-banner.has-signals {
-    border-color: rgba(168, 204, 185, 0.28);
+    border-color: rgba(116, 164, 231, 0.30);
 }
 
 .pc-activity-summary-banner__icon {
     flex: 0 0 auto;
-    color: #a8bdba;
+    color: #79c0ff;
     margin-top: 1px;
 }
 
@@ -7416,7 +7416,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .pc-activity-summary-banner__text {
     font-size: 11.5px;
     line-height: 1.42;
-    color: #c3d0d3;
+    color: #c5d4e4;
 }
 
 /* Footer buttons */
@@ -7432,9 +7432,9 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     border-radius: 12px;
     font-size: 14px;
     font-weight: 650;
-    background: #365d59;
-    color: #eef7f3;
-    border: 1px solid #527973;
+    background: #24578f;
+    color: #ffffff;
+    border: 1px solid #3c7ac2;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -7444,12 +7444,12 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-activity-sheet__send-btn:hover:not(:disabled) {
-    background: #416d66;
+    background: #2c68aa;
 }
 
 .pc-activity-sheet__send-btn:focus-visible,
 .pc-activity-sheet__cancel-btn:focus-visible {
-    outline: 2px solid #a1c7bb;
+    outline: 2px solid #58a6ff;
     outline-offset: 2px;
 }
 
