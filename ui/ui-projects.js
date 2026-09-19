@@ -903,15 +903,13 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
                         </div>
                     </div>
                     <div class="screenshot-boost-field screenshot-boost-field--pool">
-                        <div class="screenshot-boost-field__head">
-                            <label for="screenshot-boost-pool">${window.escapeHTML(window.t('screenshotBoostPoolLabel', {}, lang))}</label>
-                            <button type="button" id="screenshot-boost-return-inline" class="screenshot-boost-return-inline" hidden onclick="returnScreenshotBoostPool()">${window.escapeHTML(window.t('screenshotBoostReturnToBalance', {}, lang))}</button>
-                        </div>
+                        <label for="screenshot-boost-pool">${window.escapeHTML(window.t('screenshotBoostPoolLabel', {}, lang))}</label>
                         <div class="screenshot-boost-stepper">
                             <button type="button" onclick="changeScreenshotBoostAmount('pool', -10)" aria-label="${window.escapeHTML(window.t('screenshotBoostDecrease', {}, lang))}">−</button>
                             <div class="screenshot-boost-input-wrap"><input id="screenshot-boost-pool" type="number" inputmode="numeric" min="0" step="1" value="${Math.round(campaign.pool_remaining)}" oninput="syncScreenshotBoostBudgetPreview()"><b>$BUST</b></div>
                             <button type="button" onclick="changeScreenshotBoostAmount('pool', 10)" aria-label="${window.escapeHTML(window.t('screenshotBoostIncrease', {}, lang))}">+</button>
                         </div>
+                        <button type="button" id="screenshot-boost-return-inline" class="screenshot-boost-return-inline" hidden onclick="returnScreenshotBoostPool()">${window.escapeHTML(window.t('screenshotBoostReturnToBalance', {}, lang))}</button>
                     </div>
                 </div>
                 <p id="screenshot-boost-budget-preview" class="screenshot-boost-budget-preview" aria-live="polite"></p>

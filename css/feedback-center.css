@@ -643,24 +643,41 @@
 
 #feedback-reward-modal {
     z-index: 260;
+    will-change: auto !important;
+    -webkit-backface-visibility: visible !important;
+    backface-visibility: visible !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
 }
 #feedback-reward-modal button,
 #feedback-reward-modal .chip {
     touch-action: manipulation;
 }
+/* No .modal-content / GPU layer: parent transform delayed textarea caret and chip paint. */
 #feedback-reward-modal .feedback-reward-sheet {
+    width: 100%;
+    max-width: 100%;
     background: #0e1118;
     border: 0;
     border-radius: 28px 28px 0 0;
     max-height: min(88vh, 820px);
     padding: 8px 16px calc(18px + env(safe-area-inset-bottom));
+    overflow-x: hidden;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    will-change: auto;
+    -webkit-overflow-scrolling: auto;
+    overscroll-behavior: contain;
+    transform: none !important;
+    -webkit-transform: none !important;
+    will-change: auto !important;
     isolation: auto;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    contain: layout;
+    filter: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+    contain: none;
+    transition: none !important;
 }
 #feedback-reward-modal .sheet-handle {
     margin-bottom: 10px;
@@ -708,7 +725,6 @@
     padding: 14px 16px;
     margin-bottom: 12px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    contain: layout style;
 }
 #feedback-reward-modal .feedback-reward-block {
     margin-bottom: 12px;
@@ -873,6 +889,8 @@
     padding: 0;
     gap: 6px;
     justify-content: space-between;
+    overflow: visible;
+    -webkit-overflow-scrolling: auto;
 }
 #feedback-reward-modal .feedback-reward-bust-chip {
     min-width: 0;
@@ -886,9 +904,9 @@
     touch-action: manipulation;
 }
 #feedback-reward-modal .feedback-reward-bust-chip.is-active {
-    background: rgba(192, 132, 252, 0.16);
-    color: #e9d5ff;
-    border-color: rgba(217, 70, 239, 0.42);
+    background: rgba(150, 142, 160, 0.12);
+    color: #c4bccf;
+    border-color: rgba(150, 142, 160, 0.22);
     box-shadow: none;
 }
 #feedback-reward-modal .feedback-reward-bust-chip.is-disabled {
@@ -938,14 +956,14 @@
     font-size: 24px;
     font-weight: 800;
     line-height: 1;
-    color: #d946ef;
+    color: #b4a9c2;
 }
 #feedback-reward-modal .feedback-reward-stepper-unit {
     margin-top: 2px;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
-    color: #c084fc;
+    color: #8a8196;
 }
 #feedback-reward-modal .feedback-reward-pool-line {
     margin-top: 10px;
@@ -1009,29 +1027,41 @@
 #feedback-reward-modal .feedback-reward-reply {
     width: 100%;
     min-height: 92px;
-    resize: vertical;
+    resize: none;
     background: #0d1119 !important;
     border: 1px solid rgba(255, 255, 255, 0.07) !important;
     border-radius: 12px !important;
     box-shadow: none !important;
     color: #e8edf4;
     padding: 12px;
+    font-size: 16px;
+    line-height: 1.35;
+    transform: none !important;
+    will-change: auto !important;
+    filter: none !important;
+    contain: none !important;
 }
 #feedback-reward-modal .feedback-reward-reply::placeholder {
     color: #6d7786;
 }
 #feedback-reward-modal .feedback-reward-quick-row {
     display: flex;
+    flex-wrap: nowrap;
     gap: 8px;
     overflow-x: auto;
+    overflow-y: hidden;
     margin-top: 10px;
-    padding-bottom: 2px;
+    padding: 0 0 2px;
     scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: auto;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    transform: none;
+    will-change: auto;
 }
 #feedback-reward-modal .feedback-reward-quick-row::-webkit-scrollbar { display: none; }
 #feedback-reward-modal .feedback-reward-quick-chip {
-    flex-shrink: 0;
+    flex: 0 0 auto;
     border: 1px solid rgba(148, 163, 184, 0.16);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
@@ -1041,6 +1071,10 @@
     padding: 7px 11px;
     white-space: nowrap;
     cursor: pointer;
+    touch-action: manipulation;
+    transform: none;
+    will-change: auto;
+    contain: none;
 }
 #feedback-reward-modal .feedback-reward-quick-chip.is-active {
     background: rgba(168, 178, 191, 0.16);

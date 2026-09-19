@@ -64,7 +64,9 @@
         return Number(project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
             + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list');
     }
-    function icon(name) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>'; }
+    function icon(name, className) {
+        return '<svg' + (className ? ' class="' + className + '"' : '') + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+    }
     function pending(project, field) {
         var change = changes.get(projectKey(project) + ':' + field);
         return !!(change && change.pending) || (field === 'accepts_email_testers' && emailPending);
@@ -126,12 +128,8 @@
                     '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' +
                 '</button>' +
             '</div>' +
-            (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email') + '<span>' + emailAccessHtml() + '</span>' + CHEVRON + '</button>' : '') +
+            (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email', 'pc-project-params__access-icon') + '<span>' + esc(text('pcParamsEmailAccess')) + '</span>' + CHEVRON + '</button>' : '') +
         '</div></div></div>';
-    }
-    function emailAccessHtml() {
-        // Highlight only the Email/email word in buffer orange; keep the rest muted.
-        return esc(text('pcParamsEmailAccess')).replace(/(Email|email)/, '<span class="pc-project-params__email-word">$1</span>');
     }
     function isEmailList(project) {
         return String(project && project.test_mode || '').toLowerCase() === 'email_list';

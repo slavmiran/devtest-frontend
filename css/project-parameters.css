@@ -135,13 +135,9 @@
     white-space: nowrap;
 }
 .pc-project-params__access { appearance: none; display: flex; align-items: center; gap: 6px; width: 100%; margin: 7px 0 0; padding: 7px 2px 0; border: 0; background: transparent; color: #7a8ba3; font: inherit; font-size: 10px; text-align: left; cursor: pointer; }
-.pc-project-params__access svg:first-child { width: 12px; height: 12px; }
+.pc-project-params__access-icon { width: 12px; height: 12px; flex: 0 0 12px; color: var(--stage-buffer, #ffb84d); }
 .pc-project-params__access > span { flex: 1; }
 .pc-project-params__access svg:last-child { width: 8px; height: 5px; transform: rotate(-90deg); }
-.pc-project-params__email-word {
-    color: var(--stage-buffer, #ffb84d);
-    font-weight: 650;
-}
 .pc-project-params button:focus-visible { outline: 2px solid #749fde; outline-offset: -2px; }
 .pc-project-param:active { background: rgba(120,157,213,.08); }
 .pc-project-params__toggle:active { background: rgba(120,157,213,.035); }

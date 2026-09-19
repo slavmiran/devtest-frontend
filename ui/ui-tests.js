@@ -2965,14 +2965,9 @@ function renderTests(force) {
                 `;
                 
                 if (isScreenshotDay) {
-                    const claimBoostOffer = getScreenshotBoostOffer(test, testingDay);
-                    const claimBoostStickerHtml = claimBoostOffer
-                        ? `<span class="split-btn-options__boost checkin-confirm-btn__boost" aria-hidden="true">+$${window.escapeHTML(formatScreenshotBoostStickerAmount(claimBoostOffer.reward))}</span>`
-                        : '';
                     secondaryActions += `
-                        <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn ${claimBoostOffer ? 'has-screenshot-boost' : ''}" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
+                        <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
                             ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.t('completeControlDayBtn', {}, lang)}
-                            ${claimBoostStickerHtml}
                         </button>
                     `;
                 } else {
@@ -3102,21 +3097,16 @@ function renderTests(force) {
                 const screenshotWarningText = '';
 
                 if (isScreenshotDay) {
-                    const controlBoostOffer = getScreenshotBoostOffer(test, testingDay);
                     const confirmLabel = isFeedbackCheckinPending
                         ? feedbackPendingBtnInner
                         : window.escapeHTML(isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
-                    const controlBoostStickerHtml = controlBoostOffer
-                        ? `<span class="split-btn-options__boost checkin-confirm-btn__boost" aria-hidden="true">+$${window.escapeHTML(formatScreenshotBoostStickerAmount(controlBoostOffer.reward))}</span>`
-                        : '';
                     actionsHtml = `
                         <div class="checkin-actions checkin-actions--stacked">
                             <button class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
-                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn ${controlBoostOffer ? 'has-screenshot-boost' : ''}" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
+                            <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
                                 ${confirmLabel}
-                                ${controlBoostStickerHtml}
                             </button>
                             ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}

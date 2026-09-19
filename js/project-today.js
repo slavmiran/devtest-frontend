@@ -2401,7 +2401,7 @@
             priorityLevel = 'p1';
             reasonIcon = ATTENTION_GLYPHS.tester_left;
             title = text('pcAttentionLeftTitle', 'Тестер прервал участие');
-            subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен · Вы можете выйти из его теста');
+            subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен\nВы можете выйти из его теста');
             spoilerText = text('pcAttentionLeftDrawer', 'Участник покинул проект или исключён платформой со штрафом к Карме. Вы больше не обязаны тестировать его приложение: перейдите в проект партнёра, чтобы закрыть тест без штрафа и удалить приложение, либо скройте тестера из списка.');
             hasAccordion = true;
             isDone = false;
@@ -2420,7 +2420,7 @@
             priorityLevel = 'p2';
             reasonIcon = ATTENTION_GLYPHS.debt;
             title = text('pcAttentionDebtTitle', 'Партнёр завершил свой проект');
-            subtitle = text('pcAttentionDebtSubtitle', 'Обязан дотестировать ваш · ⚠️ Пропустил чекин');
+            subtitle = text('pcAttentionDebtSubtitle', 'Обязан дотестировать ваш\n⚠️ Пропустил тестирование');
 
             var projectName = String(tester && (tester.reciprocal_app_name || tester.reciprocal_app_title) || '').trim()
                 || workspaceText('Ответный тест', 'Reciprocal test');
@@ -2428,7 +2428,7 @@
             var remainingDays = testerDaysRemaining(tester);
             var finishedDaysStr = (finishedDaysAgo == null || finishedDaysAgo <= 0) ? '0' : String(finishedDaysAgo);
 
-            spoilerText = text('pcAttentionDebtDrawer', '{name} завершён {days} дн. назад. Осталось тестировать вас: {remaining} из 14 дн. У партнёра больше нет прямого стимула — контролируйте чекины.', {
+            spoilerText = text('pcAttentionDebtDrawer', '{name} завершён {days} дн. назад. Осталось тестировать вас: {remaining} из 14 дн. У партнёра больше нет прямого стимула — контролируйте тестирование.', {
                 name: projectName,
                 days: finishedDaysStr,
                 remaining: remainingDays,
@@ -2447,7 +2447,7 @@
             priorityLevel = 'p2';
             reasonIcon = ATTENTION_GLYPHS.direct_invite;
             title = text('pcAttentionDirectTitle', 'Вход по прямой ссылке');
-            subtitle = text('pcAttentionDirectSubtitle', 'Нет взаимного обязательства · Пропустил чекин');
+            subtitle = text('pcAttentionDirectSubtitle', 'Нет взаимного обязательства\nПропустил тестирование');
             spoilerText = text('pcAttentionDirectDrawer', 'Участник тестирует проект без взаимного обмена. Предложите взаимку, чтобы закрепить обязательства.');
             hasAccordion = true;
 
@@ -2474,8 +2474,8 @@
             if (skips <= 2) {
                 priorityLevel = 'p2';
                 reasonIcon = ATTENTION_GLYPHS.skips_2;
-                title = text('pcAttentionSkips2Title', '2 дня без чекина');
-                subtitle = text('pcAttentionSkips2Subtitle', 'Риск отставания по графику 14 дней');
+                title = text('pcAttentionSkips2Title', '2 дня без тестирования');
+                subtitle = text('pcAttentionSkips2Subtitle', 'Риск снижения активности');
                 hasAccordion = false;
                 spoilerText = '';
                 isDone = reminded;
@@ -2490,14 +2490,21 @@
             } else {
                 priorityLevel = 'p1';
                 reasonIcon = ATTENTION_GLYPHS.skips;
-                title = text('pcAttentionSkipsCriticalTitle', '{skips} дн. без чекина подряд', { skips: skips });
-                subtitle = text('pcAttentionSkipsCriticalSubtitle', 'Критический простой · Доступен выход без штрафа');
-                spoilerText = text('pcAttentionSkipsCriticalDrawer', 'Участник не чекинит 3+ дня подряд. Вы можете выйти из тестирования его проекта без штрафа к репутации и карме, либо продолжить тест ради наград и гранта.');
+                title = text('pcAttentionSkipsCriticalTitle', '{skips} дн. без тестирования подряд', { skips: skips });
+                subtitle = text('pcAttentionSkipsCriticalSubtitle', 'Длительная пауза в активности\nСвязаться с тестировщиком');
                 hasAccordion = true;
                 isDone = reminded;
 
-                actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' + safeAppId + ',' + safeTesterId + ', event)">' +
-                    esc(text('pcAttentionExitPartner', 'Выйти из теста партнёра')) + '</button>');
+                var breakLinkActionText = text('pcAttentionBreakLinkWithoutPenalty', 'расторгнуть взаимку без штрафа');
+                var breakLinkButtonHtml = '<button type="button" class="attention-link-action" data-action="unlink" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' + safeAppId + ',' + safeTesterId + ', event)">' + esc(breakLinkActionText) + '</button>';
+
+                bodyHtml = '<p class="pc-attention-tile__desc">' +
+                    text('pcAttentionSkipsCriticalDrawer',
+                        'Участник не запускал тест уже 3+ дня подряд. Обратите внимание на его показатели (Надёжность, Карма): возможно, возникли временные трудности. Напишите ему в ЛС или топик проекта, чтобы уточнить статус. Если участник не выходит на связь, вы вправе {breakLink} к своей репутации.',
+                        { breakLink: breakLinkButtonHtml }
+                    ) +
+                '</p>';
+                spoilerText = 'Участник не запускал тест уже 3+ дня подряд.';
 
                 if (reminded) {
                     actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
@@ -2515,8 +2522,8 @@
                 priorityLevel = 'p3';
                 reasonIcon = ATTENTION_GLYPHS.missed_control_received;
                 title = text('pcAttentionMissedControlReceivedTitle', 'Получен отчёт по дозапросу');
-                subtitle = text('pcAttentionMissedControlReceivedSubtitle', 'День {day} · Скриншот загружен тестером', { day: missedDay });
-                spoilerText = text('pcAttentionMissedControlReceivedDrawer', 'Тестер загрузил подтверждающий скриншот за контрольный день {day}. Проверьте отчёт и примите его.', { day: missedDay });
+                subtitle = text('pcAttentionMissedControlReceivedSubtitle', 'День {day}\nСкриншот ожидает проверки', { day: missedDay });
+                spoilerText = text('pcAttentionMissedControlReceivedDrawer', 'Тестер загрузил подтверждающий скриншот за контрольный день {day}. Проверьте отчёт и подтвердите его.', { day: missedDay });
                 isDone = true;
 
                 if (reason.completedProofId > 0) {
@@ -2531,7 +2538,7 @@
                 priorityLevel = 'p2';
                 reasonIcon = ATTENTION_GLYPHS.missed_control_pending;
                 title = text('pcAttentionMissedControlPendingTitle', 'Ожидание отчёта по дозапросу');
-                subtitle = text('pcAttentionMissedControlPendingSubtitle', 'День {day} · Дозапрос отправлен тестеру', { day: missedDay });
+                subtitle = text('pcAttentionMissedControlPendingSubtitle', 'День {day}\nДозапрос отправлен тестеру', { day: missedDay });
                 spoilerText = text('pcAttentionMissedControlPendingDrawer', 'Дозапрос на скриншот за контрольный день {day} отправлен. Ожидайте загрузки отчёта тестером.', { day: missedDay });
                 isDone = reminded;
 
@@ -2546,12 +2553,12 @@
                 priorityLevel = 'p1';
                 reasonIcon = ATTENTION_GLYPHS.missed_control_unrequested;
                 title = text('pcAttentionMissedControlUnrequestedTitle', 'Пропущен контрольный день');
-                subtitle = text('pcAttentionMissedControlUnrequestedSubtitle', 'День {day} · Требуется отправить дозапрос', { day: missedDay });
-                spoilerText = text('pcAttentionMissedControlUnrequestedDrawer', 'В обязательный контрольный день {day} не был отправлен подтверждающий скриншот. Отправьте дозапрос тестеру, чтобы зафиксировать выполнение.', { day: missedDay });
+                subtitle = text('pcAttentionMissedControlUnrequestedSubtitle', 'День {day}\nМожно запросить подтверждение', { day: missedDay });
+                spoilerText = text('pcAttentionMissedControlUnrequestedDrawer', 'В контрольный день {day} скриншот не был сдан. Вы можете отправить дозапрос тестеру, чтобы подтвердить активность и зафиксировать прогресс.', { day: missedDay });
                 isDone = false;
 
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRequestCatchupProof(' + safeAppId + ',' + safeTesterId + ')">' +
-                    esc(text('pcAttentionSendCatchupRequest', '📩 Отправить дозапрос')) + '</button>');
+                    esc(text('pcAttentionSendCatchupRequest', '📩 Запросить подтверждение')) + '</button>');
             }
         } else {
             title = esc(reason.label || workspaceText('Требуется внимание', 'Attention needed'));
@@ -2644,6 +2651,18 @@
                     '</div>';
                 }
 
+                var subtitleLines = Array.isArray(meta.subtitle)
+                    ? meta.subtitle
+                    : (meta.subtitle ? String(meta.subtitle).split('\n').map(function (s) { return s.trim(); }).filter(Boolean) : []);
+
+                var subtitleHtml = subtitleLines.length
+                    ? '<div class="pc-attention-tile__subtitle">' +
+                        subtitleLines.map(function (line) {
+                            return '<span class="pc-attention-tile__subline">' + esc(line) + '</span>';
+                        }).join('') +
+                      '</div>'
+                    : '';
+
                 var tileHtml = '<div class="pc-attention-tile pc-attention-tile--' + esc(meta.code) +
                     (!meta.hasAccordion ? ' no-accordion' : '') +
                     (isExpanded ? ' is-expanded' : '') + '" data-reason-key="' + esc(meta.key) + '" onclick="event.stopPropagation()">' +
@@ -2652,7 +2671,7 @@
                             '<span class="pc-attention-tile__icon" aria-hidden="true">' + meta.icon + '</span>' +
                             '<div class="pc-attention-tile__text">' +
                                 '<div class="pc-attention-tile__title">' + esc(meta.title) + '</div>' +
-                                (meta.subtitle ? '<div class="pc-attention-tile__subtitle">' + esc(meta.subtitle) + '</div>' : '') +
+                                subtitleHtml +
                             '</div>' +
                         '</div>' +
                         chevronHtml +

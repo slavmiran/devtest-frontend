@@ -2669,8 +2669,11 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
     var timerCountdownText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
     _setConfirmButtonLabel(btn, timerCountdownText);
     // Normal days: show green active 📎 immediately while confirm stays on the countdown.
+    // Control days: the +$BUST sticker appears only after Open starts the timer.
     if (!isScreenshotDay) {
         _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
+    } else if (typeof window.syncScreenshotBoostConfirmButton === 'function') {
+        window.syncScreenshotBoostConfirmButton(btn, id);
     }
     _startActiveTimerInterval(id);
 
@@ -2710,6 +2713,8 @@ function _restoreActiveTimer() {
         _setConfirmButtonLabel(btn, timerText);
         if (!_timerIsScreenshot) {
             _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
+        } else if (typeof window.syncScreenshotBoostConfirmButton === 'function') {
+            window.syncScreenshotBoostConfirmButton(btn, activeTimerAppId);
         }
         _persistActiveTimer();
         _startActiveTimerInterval(activeTimerAppId);
@@ -3704,19 +3709,32 @@ function applyFeedbackRewardQuickReply(kind) {
     var key = keyMap[String(kind || '')];
     var reply = document.getElementById('feedback-reward-reply');
     if (!key || !reply) return;
-    reply.value = window.t(key, {}, lang);
+    var phrase = window.t(key, {}, lang);
+    if (!phrase) return;
+    var current = String(reply.value || '');
+    if (!current.trim()) {
+        reply.value = phrase;
+    } else {
+        reply.value = current.replace(/\s+$/, '') + '\n' + phrase;
+    }
+    try {
+        var len = reply.value.length;
+        reply.focus();
+        reply.setSelectionRange(len, len);
+    } catch (err) {}
     syncFeedbackRewardQuickReplyState();
-    _updateFeedbackRewardSubmitState();
+    _syncFeedbackRewardSubmitEnabled();
     _feedbackRewardLightHaptic();
 }
 
 function syncFeedbackRewardQuickReplyState() {
     var reply = document.getElementById('feedback-reward-reply');
-    var current = reply ? String(reply.value || '').trim() : '';
-    document.querySelectorAll('#feedback-reward-modal .feedback-reward-quick-chip').forEach(function(chip) {
-        var kind = chip.getAttribute('data-quick') || '';
-        chip.classList.toggle('is-active', !!kind && current === String(chip.textContent || '').trim());
-    });
+    var current = reply ? String(reply.value || '') : '';
+    var chips = document.querySelectorAll('#feedback-reward-modal .feedback-reward-quick-chip');
+    for (var i = 0; i < chips.length; i++) {
+        var phrase = String(chips[i].textContent || '').trim();
+        chips[i].classList.toggle('is-active', !!phrase && current.indexOf(phrase) !== -1);
+    }
 }
 
 function updateFeedbackRewardSummary() {
@@ -4259,10 +4277,7 @@ function openFeedbackRewardModal(appId, feedbackId) {
     const reply = document.getElementById('feedback-reward-reply');
     if (reply) {
         reply.value = '';
-        reply.oninput = function() {
-            syncFeedbackRewardQuickReplyState();
-            _updateFeedbackRewardSubmitState();
-        };
+        reply.oninput = _syncFeedbackRewardSubmitEnabled;
     }
     syncFeedbackRewardQuickReplyState();
     _updateFeedbackRewardSubmitState();
@@ -4277,15 +4292,17 @@ function closeFeedbackRewardModal() {
     }
 }
 
-function _updateFeedbackRewardSubmitState() {
+function _syncFeedbackRewardSubmitEnabled() {
     var btn = document.getElementById('feedback-reward-submit-btn');
     if (!btn) return;
     var reply = document.getElementById('feedback-reward-reply');
-    var hasReply = reply && reply.value && reply.value.trim().length > 0;
-    var hasReward = _feedbackRewardBust > 0 || _feedbackRewardKarma > 0;
-    var enabled = hasReward || hasReply;
-    btn.disabled = !enabled;
-    btn.style.opacity = enabled ? '1' : '0.4';
+    var hasReply = !!(reply && reply.value && reply.value.trim());
+    var enabled = hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0;
+    if (btn.disabled !== !enabled) btn.disabled = !enabled;
+}
+
+function _updateFeedbackRewardSubmitState() {
+    _syncFeedbackRewardSubmitEnabled();
     updateFeedbackRewardSummary();
 }
 

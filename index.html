@@ -36,8 +36,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20260919-boost-control-no-info-v1"></script>
-    <script src="./i18n/en.js?v=20260919-boost-control-no-info-v1"></script>
+    <script src="./i18n/ru.js?v=20260919-reward-modal-v3"></script>
+    <script src="./i18n/en.js?v=20260919-reward-modal-v3"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260917-action-processing-v1"></script>
@@ -53,7 +53,7 @@
     <script src="./js/app-api.js?v=20260918-checkin-dev-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260918-reward-modal-v2"></script>
+    <script src="./js/app-actions.js?v=20260919-reward-modal-v3"></script>
     <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
     <script src="./js/testing-control.js?v=20260917-album-open-v2"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
@@ -80,7 +80,7 @@
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260827-dossier-layout-v15">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260918-reward-modal-v2">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20260919-reward-modal-v3">
     <link rel="stylesheet" href="./css/ppc.css?v=20260915-ppc-tight-buffer-v1">
     <link rel="stylesheet" href="./css/tests-timeline.css?v=20260918-karma-limit-v2">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260916-done-proof-topic-v1">
@@ -2172,7 +2172,7 @@
             <p id="t-overtimeModalText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 18px;"></p>
             <div class="action-row" style="margin-top: 0;">
                 <button class="btn btn-secondary" style="flex: 1;" id="t-overtimeContactBtn" onclick="overtimeContactOwner()" data-i18n="overtimeContactBtn">💬 Написать разработчику</button>
-                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" id="t-overtimeLeaveBtn" onclick="confirmOvertimeLeave()" data-i18n="overtimeLeaveConfirmBtn">🚪 Покинуть проект</button>
+                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" id="t-overtimeLeaveBtn" onclick="confirmOvertimeLeave()" data-i18n="overtimeLeaveConfirmBtn">Покинуть проект</button>
             </div>
             <button class="btn btn-secondary" style="width:100%; margin-top: 8px;" onclick="closeOvertimeModal()" id="t-overtimeCancelBtn" data-i18n="btnCancel">Отмена</button>
         </div>
@@ -2674,7 +2674,7 @@
     </div>
 
     <div id="feedback-reward-modal" class="modal-overlay" onclick="closeFeedbackRewardModal(event)">
-        <div class="modal-content feedback-reward-sheet" onclick="event.stopPropagation()">
+        <div class="feedback-reward-sheet" onclick="event.stopPropagation()">
             <div class="sheet-handle"></div>
             <div class="feedback-reward-head">
                 <div class="feedback-reward-head-copy">
@@ -2770,7 +2770,7 @@
             </div>
 
             <div class="feedback-reward-summary" id="feedback-reward-summary">
-                <span class="feedback-reward-summary-label" data-i18n="feedbackRewardSummaryLabel">Итого к отправке:</span>
+                <span class="feedback-reward-summary-label" data-i18n="feedbackRewardSummaryLabel">К отправке</span>
                 <span class="feedback-reward-summary-badges" id="feedback-reward-summary-badges">
                     <span class="feedback-reward-summary-bust" id="feedback-reward-summary-bust" hidden></span>
                     <span class="feedback-reward-summary-karma" id="feedback-reward-summary-karma" hidden>
