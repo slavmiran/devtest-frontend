@@ -7143,54 +7143,67 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     border-color: var(--pc-bell-accent);
 }
 
-/* Five calm levels; the matrix position always names the specific signal. */
+/* Five progressive levels:
+   0 = muted secondary color across entire button (sleepy/inactive look)
+   1 = bell wakes up to ordinary neutral color
+   2 = bell turns primary blue contour (same as dots), waves do NOT appear yet
+   3 = bell adds acoustic sound waves
+   4 = bell becomes fully solid filled with sound waves preserved
+*/
 .pc-smart-bell--0 {
-    --pc-bell-border: rgba(148, 163, 184, 0.20);
-    --pc-bell-surface: #17202b;
+    --pc-bell-accent: #5a6e82;
+    --pc-bell-icon: #5a6e82;
+    --pc-bell-border: rgba(148, 163, 184, 0.12);
+    --pc-bell-surface: #131922;
+    box-shadow: none;
+}
+.pc-smart-bell--0 .pc-smart-bell__dot {
+    border-color: rgba(100, 116, 139, 0.28);
+    background: transparent;
 }
 
 .pc-smart-bell--1 {
-    --pc-bell-accent: #79a8d8;
-    --pc-bell-icon: #c5d8ea;
-    --pc-bell-border: rgba(116, 164, 231, 0.28);
-    --pc-bell-surface: #192330;
+    --pc-bell-accent: #58a6ff;
+    --pc-bell-icon: #e2e8f0;
+    --pc-bell-border: rgba(148, 163, 184, 0.24);
+    --pc-bell-surface: #18222e;
 }
 
 .pc-smart-bell--2 {
     --pc-bell-accent: #58a6ff;
-    --pc-bell-icon: #b8d7f7;
+    --pc-bell-icon: #58a6ff;
     --pc-bell-border: rgba(88, 166, 255, 0.38);
-    --pc-bell-surface: #192636;
+    --pc-bell-surface: #192738;
 }
 
 .pc-smart-bell--3 {
-    --pc-bell-accent: #6cb3ff;
-    --pc-bell-icon: #c2e0ff;
-    --pc-bell-border: rgba(88, 166, 255, 0.48);
-    --pc-bell-surface: #1a2a3d;
+    --pc-bell-accent: #58a6ff;
+    --pc-bell-icon: #58a6ff;
+    --pc-bell-border: rgba(88, 166, 255, 0.50);
+    --pc-bell-surface: #1a2c41;
 }
 
 .pc-smart-bell--4 {
-    --pc-bell-accent: #79c0ff;
-    --pc-bell-icon: #d8ecff;
-    --pc-bell-border: rgba(121, 192, 255, 0.60);
-    --pc-bell-surface: #1c2e44;
+    --pc-bell-accent: #58a6ff;
+    --pc-bell-icon: #58a6ff;
+    --pc-bell-border: rgba(88, 166, 255, 0.65);
+    --pc-bell-surface: #1c324c;
+    box-shadow: 0 0 14px rgba(56, 139, 253, 0.22), inset 0 1px rgba(255, 255, 255, 0.05);
 }
 
-.pc-smart-bell--2 .pc-smart-bell__waves,
+/* Sound waves: appear ONLY in state 3 and 4 */
 .pc-smart-bell--3 .pc-smart-bell__waves,
 .pc-smart-bell--4 .pc-smart-bell__waves {
     opacity: 1;
 }
 
-.pc-smart-bell--3 .pc-smart-bell__body {
-    fill: currentColor;
-    fill-opacity: 0.12;
-}
-
+/* Solid fill: completely painted in state 4 */
 .pc-smart-bell--4 .pc-smart-bell__body {
     fill: currentColor;
-    fill-opacity: 0.20;
+    fill-opacity: 1;
+}
+.pc-smart-bell--4 .pc-smart-bell__icon path:last-child {
+    fill: currentColor;
 }
 
 /* ───────────────── Tester Activity Bottom Sheet ───────────────── */
