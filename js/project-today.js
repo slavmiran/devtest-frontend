@@ -1441,6 +1441,65 @@
         '</span>';
     }
 
+    function controlActivitySignalChipHtml(appId, row) {
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(row && (row.testerId || (row.tester && (row.tester.id || row.tester.tester_id))) || 0);
+        var assessment = row.activityAssessment || calculateTesterControlActivityAssessment(row, projectById(safeAppId));
+        row.activityAssessment = assessment;
+        if (safeAppId > 0 && safeTesterId > 0) {
+            var cacheKey = safeAppId + ':' + safeTesterId;
+            _controlActivityAssessments.set(cacheKey, assessment);
+            _controlRowsByAppAndTester.set(cacheKey, row);
+        }
+
+        var score = Math.max(0, Math.min(4, Number(assessment && assessment.riskScore || 0)));
+        var factors = [];
+        if (assessment) {
+            if (assessment.yesterday && assessment.yesterday.risk) {
+                factors.push(text('pcSignalFactorYesterday', 'вчера'));
+            }
+            if (assessment.skips && assessment.skips.risk) {
+                factors.push(text('pcSignalFactorSkips', 'пропуски'));
+            }
+            if (assessment.rhythm && assessment.rhythm.risk) {
+                factors.push(text('pcSignalFactorRhythm', 'ритм'));
+            }
+            if (assessment.profile && assessment.profile.risk) {
+                factors.push(text('pcSignalFactorProfile', 'профиль'));
+            }
+        }
+
+        var label = '';
+        if (score === 0) {
+            label = text('pcSignalChipZero', 'В графике (всё стабильно)');
+        } else if (score === 1) {
+            var f1 = factors[0] || '';
+            label = text('pcSignalChipOne', '1 сигнал ({factor})', { factor: f1 });
+        } else if (score === 2) {
+            var f1 = factors[0] || '';
+            var f2 = factors[1] || '';
+            label = text('pcSignalChipTwo', '2 сигнала ({f1} + {f2})', { f1: f1, f2: f2 });
+        } else if (score === 3) {
+            var f1 = factors[0] || '';
+            var f2 = factors[1] || '';
+            var f3 = factors[2] || '';
+            label = text('pcSignalChipThree', '3 сигнала ({f1} + {f2} + {f3})', { f1: f1, f2: f2, f3: f3 });
+        } else {
+            label = text('pcSignalChipAll', '4 сигнала (все факторы)');
+        }
+
+        var arrowSvg = '<svg class="pc-contrib-stat-chip__arrow" viewBox="0 0 10 6" width="7" height="5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1L5 5L9 1"/></svg>';
+        var clickAttr = 'event.stopPropagation(); pcOpenTesterControlActivitySheet(' + safeAppId + ',' + safeTesterId + ')';
+        var tooltip = text('pcSignalChipTooltip', 'Оценка активности тестера · Нажмите, чтобы открыть подробности');
+
+        return '<button type="button" class="pc-contrib-stat-chip pc-control-signal-chip pc-control-signal-chip--' + score + '"' +
+            ' onclick="' + clickAttr + '"' +
+            ' title="' + esc(tooltip) + '">' +
+            '<span class="pc-contrib-stat-chip__seg pc-control-signal-chip__label">' + esc(label) + '</span>' +
+            arrowSvg +
+        '</button>';
+    }
+
     function smartBellButtonHtml(appId, row) {
         var safeAppId = Number(appId || 0);
         var safeTesterId = Number(row && (row.testerId || (row.tester && (row.tester.id || row.tester.tester_id))) || 0);
@@ -1455,7 +1514,7 @@
         var ariaLabel = text('pcActivityBellAria', 'Оценка активности: {count} из 4 сигналов', { count: score });
 
         return '<button type="button" class="pc-smart-bell-btn pc-smart-bell--' + score + '"' +
-            ' onclick="event.stopPropagation(); pcOpenTesterControlActivitySheet(' + safeAppId + ',' + safeTesterId + ')"' +
+            ' onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'control\')"' +
             ' aria-label="' + esc(ariaLabel) + '"' +
             ' title="' + esc(ariaLabel) + '">' +
             '<span class="pc-smart-bell__icon-wrap">' +
@@ -1484,10 +1543,9 @@
     }
 
     function controlRowHtml(appId, row, context) {
-        var devText = formatDeviceInfo(row.device);
         var meta = '';
-        if (devText) {
-            meta += '<span class="pc-person__device">' + esc(devText) + '</span>';
+        if (!row.received) {
+            meta += controlActivitySignalChipHtml(appId, row);
         }
         var dayNum = Number(row && row.day || 0);
         var dayHtml = '';
@@ -4449,7 +4507,7 @@
         var titleText = cleanUsername
             ? text('pcActivitySheetTitle', 'Оценка активности: @{username}', { username: cleanUsername })
             : text('pcActivitySheetTitleFallback', 'Оценка активности: {name}', { name: tester.full_name || 'Тестер' });
-        var subtitleText = text('pcActivitySheetSubtitle', 'Сигналы риска');
+        var subtitleText = text('pcActivitySheetSubtitle', 'Сигналы внимания');
 
         // Card 1: Yesterday
         var yData = (assessment && assessment.yesterday) || {};
@@ -4457,10 +4515,6 @@
         var yBadgeText = yData.risk
             ? text('pcActivityBadgeMiss', 'Пропуск')
             : text('pcActivityBadgeNormal', 'Норма');
-        var yIconClass = yData.risk ? 'pc-activity-card__icon is-warn' : 'pc-activity-card__icon is-ok';
-        var yIconSvg = yData.risk
-            ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l6 10.5H2L8 2.5z"/><line x1="8" y1="7" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.75" fill="currentColor"/></svg>'
-            : '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5 6.5-7"/></svg>';
 
         // Card 2: Skips
         var sData = (assessment && assessment.skips) || {};
@@ -4468,22 +4522,16 @@
         var sBadgeText = sData.risk
             ? text('pcActivityBadgeSkipsExceeded', 'Превышение')
             : text('pcActivityBadgeSkipsNormal', 'Норма');
-        var sIconClass = sData.risk ? 'pc-activity-card__icon is-warn' : 'pc-activity-card__icon is-ok';
-        var sIconSvg = sData.risk
-            ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l6 10.5H2L8 2.5z"/><line x1="8" y1="7" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.75" fill="currentColor"/></svg>'
-            : '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5 6.5-7"/></svg>';
 
         // Card 3: Rhythm
         var rData = (assessment && assessment.rhythm) || {};
         var rBadgeClass = rData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
         var rBadgeText = rData.risk ? text('pcActivityBadgeDelay', 'Задержка') : text('pcActivityBadgeOnSchedule', 'В графике');
-        var rIconSvg = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg>';
 
         // Card 4: Profile
         var pData = (assessment && assessment.profile) || {};
         var pBadgeClass = pData.risk ? 'pc-activity-badge--warn' : 'pc-activity-badge--ok';
         var pBadgeText = pData.risk ? text('pcActivityBadgeLowRating', 'Низкий рейтинг') : text('pcActivityBadgeNormal', 'Норма');
-        var pIconSvg = '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5l5 2v4c0 3.5-2.5 5.5-5 6.5-2.5-1-5-3-5-6.5v-4l5-2z"/><circle cx="8" cy="7" r="1.5"/></svg>';
         var rVal = (pData.reliability != null) ? pData.reliability : 100;
         var kVal = (pData.karma != null) ? (pData.karma > 0 ? '+' + pData.karma : pData.karma) : 0;
         var pRelText = text('pcActivityProfileReliability', 'Надёжность {reliability}%', { reliability: rVal });
@@ -4556,7 +4604,6 @@
                             '<span class="pc-activity-badge ' + yBadgeClass + '">' + esc(yBadgeText) + '</span>' +
                         '</div>' +
                         '<div class="pc-activity-card__body">' +
-                            '<span class="' + yIconClass + '" aria-hidden="true">' + yIconSvg + '</span>' +
                             '<span class="pc-activity-card__text">' + esc(yData.text || '') + '</span>' +
                         '</div>' +
                     '</div>' +
@@ -4566,7 +4613,6 @@
                             '<span class="pc-activity-badge ' + sBadgeClass + '">' + esc(sBadgeText) + '</span>' +
                         '</div>' +
                         '<div class="pc-activity-card__body">' +
-                            '<span class="' + sIconClass + '" aria-hidden="true">' + sIconSvg + '</span>' +
                             '<span class="pc-activity-card__text">' + esc(sData.text || '') + '</span>' +
                         '</div>' +
                     '</div>' +
@@ -4576,7 +4622,6 @@
                             '<span class="pc-activity-badge ' + rBadgeClass + '">' + esc(rBadgeText) + '</span>' +
                         '</div>' +
                         '<div class="pc-activity-card__body">' +
-                            '<span class="pc-activity-card__icon pc-activity-card__icon--clock" aria-hidden="true">' + rIconSvg + '</span>' +
                             '<span class="pc-activity-card__text">' + esc(rData.text || '') + '</span>' +
                         '</div>' +
                     '</div>' +
@@ -4586,7 +4631,6 @@
                             '<span class="pc-activity-badge ' + pBadgeClass + '">' + esc(pBadgeText) + '</span>' +
                         '</div>' +
                         '<div class="pc-activity-card__body">' +
-                            '<span class="pc-activity-card__icon pc-activity-card__icon--profile" aria-hidden="true">' + pIconSvg + '</span>' +
                             pTextHtml +
                         '</div>' +
                     '</div>' +
@@ -5039,7 +5083,7 @@
                 '<div class="pc-dossier-hero__info">' +
                     '<div id="pc-dossier-tester-name" class="pc-dossier-hero__name notranslate">' + esc(fullName) + '</div>' +
                     '<div class="pc-dossier-hero__sub">' +
-                        (cleanUsername ? ('<span class="pc-dossier-hero__username notranslate">@' + esc(cleanUsername) + '</span>') : '') +
+                        (cleanUsername ? ('<button type="button" class="pc-dossier-hero__username notranslate" onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(cleanUsername) + '\')">@' + esc(cleanUsername) + '</button>') : '') +
                         '<span class="pc-dossier-karma-badge notranslate">' +
                             karmaIcon +
                             '<span>' + esc(karmaLabel) + '</span>' +
@@ -5168,6 +5212,9 @@
     };
 
     window.smartBellButtonHtml = smartBellButtonHtml;
+    window.controlActivitySignalChipHtml = controlActivitySignalChipHtml;
+    window.controlRowHtml = controlRowHtml;
+    window.renderContributorDossierHtml = renderContributorDossierHtml;
     window.calculateTesterControlActivityAssessment = calculateTesterControlActivityAssessment;
     window.calculateTesterControlRisk = calculateTesterControlActivityAssessment;
 })();

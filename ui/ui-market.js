@@ -9884,7 +9884,64 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
         ((isArchivedLike || isJoinBlocked) ? '</div>' : '</button>');
 }
 
-function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
+function _formatDossierDeviceLine(deviceOrProfile) {
+    if (!deviceOrProfile) return '';
+    const rawDev = (deviceOrProfile.device && typeof deviceOrProfile.device === 'object')
+        ? deviceOrProfile.device
+        : (deviceOrProfile.device_info && typeof deviceOrProfile.device_info === 'object'
+            ? deviceOrProfile.device_info
+            : deviceOrProfile);
+
+    if (typeof rawDev === 'string' && rawDev.trim()) {
+        try {
+            if (rawDev.trim().charAt(0) === '{') {
+                const parsed = JSON.parse(rawDev);
+                return _formatDossierDeviceLine(parsed);
+            }
+        } catch (_) {}
+        const str = rawDev.trim();
+        return str.indexOf('📱') === 0 ? str : ('📱 ' + str);
+    }
+
+    let android = '';
+    let brand = '';
+    let model = '';
+
+    if (rawDev && typeof rawDev === 'object') {
+        android = String(rawDev.android_version || rawDev.androidVersion || rawDev.os_version || '').trim();
+        brand = String(rawDev.brand || rawDev.manufacturer || '').trim();
+        model = String(rawDev.model || rawDev.device_model || rawDev.model_code || '').trim();
+    }
+    if (!android && deviceOrProfile.android_version) android = String(deviceOrProfile.android_version).trim();
+    if (!brand && deviceOrProfile.brand) brand = String(deviceOrProfile.brand).trim();
+    if (!model && deviceOrProfile.model) model = String(deviceOrProfile.model).trim();
+
+    if (brand && model) {
+        const brandLower = brand.toLowerCase();
+        const modelLower = model.toLowerCase();
+        if (modelLower.indexOf(brandLower) === 0) {
+            const stripped = model.slice(brand.length).trim();
+            if (stripped) model = stripped;
+        }
+    }
+
+    if (android) {
+        if (!/^android/i.test(android)) {
+            const match = android.match(/(\d+(?:\.\d+)*)/);
+            android = match ? ('Android ' + match[1]) : ('Android ' + android);
+        }
+    }
+
+    const parts = [];
+    if (android) parts.push(android);
+    if (brand) parts.push(brand);
+    if (model && model.toLowerCase() !== brand.toLowerCase()) parts.push(model);
+
+    if (!parts.length) return '';
+    return '📱 ' + parts.join(' · ');
+}
+
+function renderDossierHeader(fullName, username, avatarUrl, fallbackId, deviceOrProfile) {
     const initials = window.escapeHTML(
         (fullName || username || '?')
             .trim().replace('@', '').substring(0, 2).toUpperCase()
@@ -9895,19 +9952,33 @@ function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
         <span class="dossier-avatar-initials" style="${avatarUrl ? 'display:none;' : ''}">${initials}</span>
     </div>`;
 
-    const cleanUsername = String(username || '').replace('@', '');
-    const dispName = fullName || (username ? '@' + cleanUsername : '');
+    const cleanUsername = String(username || '').replace(/^@+/, '');
+    const dispName = fullName || (cleanUsername ? '@' + cleanUsername : '');
     const mainName = dispName || window.t('idLabel', { id: fallbackId || 0 }, lang);
-    const subName = (fullName && username) ? `@${cleanUsername}` : '';
-    const subNameHtml = subName
-        ? `<div class="dossier-profile-username notranslate">${window.escapeHTML(subName)}</div>`
+
+    const safeUsernameJs = escapeInlineJsString(cleanUsername);
+    const usernameChipHtml = cleanUsername
+        ? `<button type="button" class="dossier-username-chip notranslate" onclick="event.stopPropagation(); if (typeof tg !== 'undefined' && tg && typeof tg.openTelegramLink === 'function') { tg.openTelegramLink('https://t.me/${safeUsernameJs}'); } else { window.open('https://t.me/${safeUsernameJs}', '_blank'); }" title="${window.escapeHTML(window.t('pcDossierOpenDm', {}, lang) || 'Telegram')}">@${window.escapeHTML(cleanUsername)}</button>`
         : '';
+
+    const deviceLine = _formatDossierDeviceLine(deviceOrProfile);
+    const unknownDeviceLabel = window.t('pcDossierDeviceUnknown', {}, lang) || 'Устройство не указано';
+    const deviceHtml = deviceLine
+        ? `<div class="dossier-profile-device notranslate">${window.escapeHTML(deviceLine)}</div>`
+        : (cleanUsername
+            ? `<div class="dossier-profile-device notranslate">📱 ${window.escapeHTML(unknownDeviceLabel)}</div>`
+            : '');
+
+    const hasSeparateUsernameChip = Boolean(fullName && cleanUsername);
 
     return `<div class="dossier-profile-identity">
         ${avatarHtml}
         <div class="dossier-profile-names">
-            <div class="dossier-profile-name notranslate">${window.escapeHTML(mainName)}</div>
-            ${subNameHtml}
+            <div class="dossier-profile-title-row">
+                <div class="dossier-profile-name notranslate">${window.escapeHTML(mainName)}</div>
+                ${hasSeparateUsernameChip ? usernameChipHtml : ''}
+            </div>
+            ${deviceHtml}
         </div>
     </div>`;
 }
@@ -10174,7 +10245,8 @@ async function openDossierModal(username, testerId, appId) {
         (cachedProfile && cachedProfile.full_name) || dossierOwnerProfile.owner_full_name,
         (cachedProfile && cachedProfile.username) || dossierOwnerProfile.owner_username,
         (cachedProfile && cachedProfile.avatar_url) || dossierOwnerProfile.owner_avatar_url,
-        testerId
+        testerId,
+        (cachedProfile && (cachedProfile.device || cachedProfile.device_info || cachedProfile)) || (tester && (tester.device || tester.device_info || tester)) || (marketCandidate && (marketCandidate.device || marketCandidate.device_info || marketCandidate))
     );
     bodyEl.innerHTML = _renderDossierLoadingSkeleton(earlyIdentityHtml);
 
@@ -10310,7 +10382,8 @@ async function openDossierModal(username, testerId, appId) {
         profile.full_name || dossierOwnerProfile.owner_full_name,
         profile.username || dossierOwnerProfile.owner_username,
         profile.avatar_url || dossierOwnerProfile.owner_avatar_url,
-        testerId
+        testerId,
+        profile.device || profile.device_info || (tester && (tester.device || tester.device_info || tester)) || (marketCandidate && (marketCandidate.device || marketCandidate.device_info || marketCandidate)) || profile
     );
 
     const projectsCount = dossierBlocks.otherProjects.length;

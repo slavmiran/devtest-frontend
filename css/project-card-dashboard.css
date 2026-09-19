@@ -7206,6 +7206,72 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     fill: currentColor;
 }
 
+/* ───────────────── Control Tab Signal Chip (Subtitle Line 2) ───────────────── */
+.pc-control-signal-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3.5px;
+    margin: 2px 8px 0 0;
+    padding: 2px 6px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.15px;
+    color: #94a3b8;
+    cursor: pointer;
+    text-decoration: none;
+    user-select: none;
+    max-width: calc(100% - 8px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, color 0.15s ease;
+}
+
+.pc-control-signal-chip:hover {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f1f5f9;
+}
+
+.pc-control-signal-chip:active {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.3);
+    transform: scale(0.98);
+}
+
+.pc-control-signal-chip__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #94a3b8;
+}
+
+.pc-control-signal-chip:hover .pc-control-signal-chip__label {
+    color: #f1f5f9;
+}
+
+.pc-control-signal-chip .pc-contrib-stat-chip__arrow {
+    opacity: 0.6;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 2px;
+    flex-shrink: 0;
+    color: #94a3b8;
+    transition: transform 0.15s ease, opacity 0.15s ease, color 0.15s ease;
+}
+
+.pc-control-signal-chip:hover .pc-contrib-stat-chip__arrow {
+    opacity: 0.95;
+    color: #f1f5f9;
+    transform: translateY(0.5px);
+}
+
 /* ───────────────── Tester Activity Bottom Sheet ───────────────── */
 .pc-tester-activity-modal.modal-overlay {
     z-index: 10040;
@@ -7305,7 +7371,6 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .pc-activity-card__category {
     display: inline-flex;
     align-items: flex-start;
-    gap: 6px;
     font-size: 11px;
     font-weight: 600;
     color: #9cb2c9;
@@ -7316,21 +7381,6 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     overflow-wrap: break-word;
     flex: 1 1 auto;
     min-width: 0;
-}
-
-.pc-activity-card__category::before {
-    content: '';
-    flex: 0 0 auto;
-    width: 7px;
-    height: 7px;
-    margin-top: 3px;
-    border: 1px solid #62778c;
-    border-radius: 50%;
-}
-
-.pc-activity-card.is-risk .pc-activity-card__category::before {
-    background: #79c0ff;
-    border-color: #79c0ff;
 }
 
 .pc-activity-badge {
@@ -7345,52 +7395,24 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
     line-height: 1.15;
 }
 
+/* Muted positive / negative accents — readable, not loud */
 .pc-activity-badge--ok {
-    background: rgba(148, 163, 184, 0.08);
-    color: #94a9be;
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(94, 148, 122, 0.14);
+    color: #9dbfac;
+    border: 1px solid rgba(94, 148, 122, 0.28);
 }
 
 .pc-activity-badge--warn,
 .pc-activity-badge--risk {
-    background: rgba(88, 166, 255, 0.12);
-    color: #bfe0ff;
-    border: 1px solid rgba(116, 164, 231, 0.32);
+    background: rgba(176, 122, 98, 0.14);
+    color: #c9a594;
+    border: 1px solid rgba(176, 122, 98, 0.28);
 }
 
 .pc-activity-card__body {
     display: flex;
     align-items: flex-start;
     gap: 5px;
-}
-
-.pc-activity-card__icon {
-    font-size: 12px;
-    line-height: 1.2;
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    margin-top: 1px;
-}
-
-.pc-activity-card__icon svg {
-    display: block;
-}
-
-.pc-activity-card__icon.is-ok {
-    color: #8da4be;
-}
-
-.pc-activity-card__icon.is-warn {
-    color: #79c0ff;
-}
-
-.pc-activity-card__icon--clock {
-    color: #8fa3bf;
-}
-
-.pc-activity-card__icon--profile {
-    color: #8fa3bf;
 }
 
 .pc-activity-card__text {

@@ -3634,7 +3634,7 @@
             pcActivitySheetTitle: "Activity assessment: @{username}",
             pcActivitySheetTitleFallback: "Activity assessment: {name}",
             pcActivityBellAria: "Activity assessment: {count} of 4 signals",
-            pcActivitySheetSubtitle: "Risk signals",
+            pcActivitySheetSubtitle: "Attention signals",
             pcActivityCardYesterday: "Yesterday",
             pcActivityCardSkips: "Skip history",
             pcActivityCardRhythm: "Activity rhythm",
@@ -3655,6 +3655,18 @@
             pcActivityRemindAlreadySent: "✓ Reminder already sent",
             pcActivityRemindSent: "✓ Reminder sent",
             pcActivityCloseBtn: "Close",
+            pcSignalFactorYesterday: "yesterday",
+            pcSignalFactorSkips: "skips",
+            pcSignalFactorRhythm: "rhythm",
+            pcSignalFactorProfile: "profile",
+            pcSignalChipZero: "On track (all stable)",
+            pcSignalChipOne: "1 signal ({factor})",
+            pcSignalChipTwo: "2 signals ({f1} + {f2})",
+            pcSignalChipThree: "3 signals ({f1} + {f2} + {f3})",
+            pcSignalChipAll: "4 signals (all factors)",
+            pcSignalChipTooltip: "Tester activity assessment · Click to view details",
+            pcDossierOpenDm: "Open Telegram DM",
+            pcDossierDeviceUnknown: "Device not specified",
     };
     window.I18N_EN = window.I18NEN;
 })();

@@ -3640,7 +3640,7 @@
             pcActivitySheetTitle: "Оценка активности: @{username}",
             pcActivitySheetTitleFallback: "Оценка активности: {name}",
             pcActivityBellAria: "Оценка активности: {count} из 4 сигналов",
-            pcActivitySheetSubtitle: "Сигналы риска",
+            pcActivitySheetSubtitle: "Сигналы внимания",
             pcActivityCardYesterday: "Вчерашний день",
             pcActivityCardSkips: "История пропусков",
             pcActivityCardRhythm: "Ритм активности",
@@ -3661,6 +3661,18 @@
             pcActivityRemindAlreadySent: "✓ Напоминание уже отправлено",
             pcActivityRemindSent: "✓ Напоминание отправлено",
             pcActivityCloseBtn: "Закрыть",
+            pcSignalFactorYesterday: "вчера",
+            pcSignalFactorSkips: "пропуски",
+            pcSignalFactorRhythm: "ритм",
+            pcSignalFactorProfile: "профиль",
+            pcSignalChipZero: "В графике (всё стабильно)",
+            pcSignalChipOne: "1 сигнал ({factor})",
+            pcSignalChipTwo: "2 сигнала ({f1} + {f2})",
+            pcSignalChipThree: "3 сигнала ({f1} + {f2} + {f3})",
+            pcSignalChipAll: "4 сигнала (все факторы)",
+            pcSignalChipTooltip: "Оценка активности тестера · Нажмите, чтобы открыть подробности",
+            pcDossierOpenDm: "Написать в Telegram",
+            pcDossierDeviceUnknown: "Устройство не указано",
     };
     window.I18N_RU = window.I18NRU;
 })();
