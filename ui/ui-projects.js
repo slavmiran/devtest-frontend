@@ -939,7 +939,7 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
                     <p>${window.escapeHTML(window.t('screenshotBoostProtectionInfoText', {}, lang))}</p>
                 </div>
                 <label class="screenshot-boost-control-row screenshot-boost-wallet-row">
-                    <input id="screenshot-boost-allow-wallet" type="checkbox" ${campaign.allow_wallet_spending ? 'checked' : ''} onchange="syncScreenshotBoostWalletToggle()">
+                    <input id="screenshot-boost-allow-wallet" type="checkbox" ${campaign.allow_wallet_spending ? 'checked' : ''} onchange="syncScreenshotBoostBudgetPreview()">
                     <span class="screenshot-boost-control-check" aria-hidden="true"></span>
                     <span>
                         <strong>${window.escapeHTML(window.t('screenshotBoostAllowWalletLabel', {}, lang))}</strong>
@@ -1117,7 +1117,6 @@ function syncScreenshotBoostWalletToggle() {
     if (!balanceBlock) return;
     var active = !!(walletNode && walletNode.checked);
     balanceBlock.classList.toggle('is-wallet-active', active);
-    syncScreenshotBoostBudgetPreview();
 }
 
 async function openScreenshotBoostSettings(appId, event) {
