@@ -998,7 +998,7 @@ function syncScreenshotBoostBudgetPreview() {
             var walletCount = Math.floor(walletAvailable / rewardVal);
             if (walletCount > 0) {
                 var prefix = count > 0 ? '+' : '';
-                walletBadgeHtml = ' <span class="screenshot-boost-wallet-badge">' + prefix + '(' + walletCount + ')</span>';
+                walletBadgeHtml = ' <span class="screenshot-boost-wallet-badge">' + prefix + walletCount + '</span>';
             }
         }
         // Use innerHTML to embed the badge (all text parts are plain strings — no user data)

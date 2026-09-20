@@ -3728,6 +3728,7 @@
             smartPingCatchupWillSendTip: "A catch-up screenshot report will be requested for missed control day {day}",
             smartPingCatchupWaitingTip: "The catch-up for day {day} is already waiting for the tester",
             smartPingCatchupReceivedTip: "The catch-up for day {day} arrived. Open the Attention tab to review the report",
+            smartPingCatchupReceivedLine: "Day {day} report · Awaiting confirmation",
             smartPingNotOpenedDaysOne: "{count} day without a first launch",
             smartPingNotOpenedDaysFew: "{count} days without a first launch",
             smartPingNotOpenedDaysMany: "{count} days without a first launch",

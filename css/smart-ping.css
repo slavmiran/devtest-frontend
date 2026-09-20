@@ -170,8 +170,8 @@
     justify-content: center;
     padding: 0 5px;
     border-radius: 999px;
-    background: rgba(56, 139, 253, .16);
-    color: #8fb8f0;
+    background: rgba(148, 163, 184, .10);
+    color: #9eabb9;
     font-size: 10px;
 }
 .smart-ping-row {
@@ -238,8 +238,8 @@
     gap: 5px;
     padding: 2px 7px 2px 6px;
     border-radius: 999px;
-    background: rgba(210, 153, 34, .16);
-    color: #e3b341;
+    background: rgba(161, 151, 116, .12);
+    color: #b7ad8f;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: .01em;
@@ -249,7 +249,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #e3b341;
+    background: #aaa17f;
 }
 .smart-ping-row__reasons {
     margin: 0;
@@ -268,8 +268,8 @@
 }
 .smart-ping-row__reasons li.is-catchup {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    align-items: center;
+    gap: 7px;
     width: 100%;
 }
 .smart-ping-row__reasons li.is-catchup::before {
@@ -280,51 +280,42 @@
     flex: 1 1 auto;
     min-width: 0;
 }
-.smart-ping-row__reasons li.is-catchup::after {
-    content: '';
-    flex: 0 0 auto;
-    align-self: center;
-    width: 6px;
-    height: 6px;
-    margin-left: auto;
-    border-radius: 50%;
-    background: var(--catchup-tone, #58a6ff);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--catchup-tone, #58a6ff) 22%, transparent);
-}
-.smart-ping-row__reasons li.is-catchup-waiting::after {
-    background: #8a9bb3;
-    box-shadow: 0 0 0 3px rgba(148, 163, 184, .22);
-    opacity: 0.72;
-}
-.smart-ping-row__reasons li.is-catchup-will_send::after {
-    background: var(--catchup-tone, #58a6ff);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--catchup-tone, #58a6ff) 22%, transparent);
-    opacity: 1;
-}
-.smart-ping-row__reasons li.is-catchup-received::after {
-    background: var(--catchup-tone, #58a6ff);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--catchup-tone, #58a6ff) 32%, transparent);
-    opacity: 1;
-}
+.smart-ping-row__reasons li.is-catchup .smart-ping-catchup-dot { margin-left: auto; }
 .smart-ping-row__reasons li.is-child {
     padding-left: 12px;
 }
 .smart-ping-row__reasons li.is-child::before {
     content: '· ';
 }
-.smart-ping-row__labels {
-    position: relative;
-    top: auto;
-    right: auto;
-    z-index: 1;
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    margin-left: auto;
-    pointer-events: auto;
+/* Catch-up status is part of its sentence, not a second column. The tone is
+   owned by the workflow status so day 4 and day 10 look identical. */
+.smart-ping-catchup-dot {
+    appearance: none;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 21px;
+    width: 21px;
+    height: 21px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--catchup-tone, #8098b0) 46%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--catchup-tone, #8098b0) 9%, transparent);
+    color: var(--catchup-tone, #8098b0);
+    cursor: pointer;
+    opacity: .84;
+    -webkit-tap-highlight-color: transparent;
 }
+.smart-ping-catchup-dot:hover,
+.smart-ping-catchup-dot:focus-visible {
+    opacity: 1;
+    background: color-mix(in srgb, var(--catchup-tone, #8098b0) 15%, transparent);
+}
+.smart-ping-catchup-dot:focus-visible { outline: 2px solid rgba(166, 192, 188, .55); outline-offset: 2px; }
+.smart-ping-catchup-dot.is-waiting { --catchup-tone: #8996a7 !important; opacity: .68; }
+.smart-ping-catchup-dot.is-received { --catchup-tone: #86b7a5 !important; }
+.smart-ping-catchup-dot.is-will_send { --catchup-tone: #8098b0 !important; }
+.smart-ping-catchup-dot__icon { width: 14px; height: 14px; display: block; }
 .smart-ping-catchup-label {
     appearance: none;
     position: relative;

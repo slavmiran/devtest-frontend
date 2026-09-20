@@ -1230,12 +1230,12 @@
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
-    padding: 0 7px !important;
-    border-radius: 9px !important;
-    width: 62px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+    gap: 12px !important;
+    padding: 0 12px !important;
+    border-radius: 15px !important;
+    width: 102px !important;
+    height: 48px !important;
+    min-height: 48px !important;
     box-sizing: border-box !important;
     flex: 0 0 auto !important;
 }

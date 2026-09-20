@@ -7010,7 +7010,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .screenshot-boost-balance.is-wallet-active { border-color:rgba(246,200,95,.35); background:rgba(246,200,95,.09); }
 .screenshot-boost-balance.is-wallet-active #screenshot-boost-balance-available { color:#f6c85f; font-weight:700; }
 .screenshot-boost-wallet-row { margin-top:10px; }
-.screenshot-boost-wallet-badge { display:inline-flex; align-items:center; justify-content:center; padding:0 5px; min-width:22px; height:18px; border:1px solid rgba(246,200,95,.45); border-radius:20px; background:rgba(246,200,95,.12); color:#f6c85f; font-size:10px; font-weight:700; letter-spacing:.01em; vertical-align:middle; line-height:1; }
+.screenshot-boost-wallet-badge { display:inline-flex; align-items:center; justify-content:center; padding:0 5px; min-width:1.8em; height:1.55em; border:1px solid rgba(246,200,95,.45); border-radius:20px; background:rgba(246,200,95,.12); color:#f6c85f; font:inherit; font-size:inherit; font-weight:650; letter-spacing:0; vertical-align:baseline; line-height:1; transform:translateY(-.02em); }
 .screenshot-boost-settings-error { margin:10px 0 0; padding:9px 11px; border-radius:10px; color:#fca5a5; background:rgba(239,68,68,.1); font-size:12px; }
 .screenshot-boost-sheet__actions { margin-top:14px; display:grid; grid-template-columns:1fr; gap:4px; }
 .screenshot-boost-sheet__actions .btn-primary:disabled { opacity:.45; cursor:default; pointer-events:none; }
@@ -7087,24 +7087,24 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 
 /* ───────────────── Smart-Bell 2x2 Widget Button ───────────────── */
 .pc-smart-bell-btn {
-    --pc-bell-accent: #788e9f;
-    --pc-bell-icon: #859bb0;
+    --pc-bell-accent: #8da3a8;
+    --pc-bell-icon: #8da3a8;
     --pc-bell-border: rgba(148, 163, 184, 0.22);
-    --pc-bell-surface: #1e2b3e;
+    --pc-bell-surface: #1c2530;
     display: inline-flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    width: 62px;
-    height: 32px;
-    min-height: 32px;
-    padding: 0 7px;
+    gap: 12px;
+    width: 102px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0 12px;
     border: 1px solid var(--pc-bell-border);
-    border-radius: 9px;
+    border-radius: 15px;
     background: var(--pc-bell-surface);
     color: var(--pc-bell-icon);
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.035), 0 2px 4px rgba(0, 0, 0, 0.12);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.035), 0 2px 5px rgba(0, 0, 0, 0.13);
     cursor: pointer;
     box-sizing: border-box;
     transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
@@ -7116,23 +7116,23 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-smart-bell-btn:focus-visible {
-    outline: 2px solid #a4caff;
-    outline-offset: 2px;
+    outline: 2px solid #a1c7bb;
+    outline-offset: 3px;
 }
 
 .pc-smart-bell__icon-wrap {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin-left: -1px;
+    width: 32px;
+    height: 32px;
+    margin-left: 0;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__icon {
-    width: 20px;
-    height: 20px;
+    width: 32px;
+    height: 32px;
     display: block;
     color: var(--pc-bell-icon);
 }
@@ -7144,19 +7144,19 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 
 .pc-smart-bell__matrix {
     display: grid;
-    grid-template-columns: repeat(2, 6px);
-    grid-template-rows: repeat(2, 6px);
-    gap: 2.5px;
+    grid-template-columns: repeat(2, 9px);
+    grid-template-rows: repeat(2, 9px);
+    gap: 4px;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__dot {
-    width: 6px;
-    height: 6px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    border: 1.2px solid rgba(148, 163, 184, 0.40);
+    border: 1.5px solid rgba(157, 174, 188, 0.48);
     background: rgba(15, 23, 34, 0.65);
     box-sizing: border-box;
     transition: background-color 0.18s ease, border-color 0.18s ease;
@@ -7175,8 +7175,8 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
    4 = bell becomes fully solid filled with sound waves preserved
 */
 .pc-smart-bell--0 {
-    --pc-bell-accent: #5a6e82;
-    --pc-bell-icon: #5a6e82;
+    --pc-bell-accent: #738391;
+    --pc-bell-icon: #738391;
     --pc-bell-border: rgba(148, 163, 184, 0.16);
     --pc-bell-surface: #1e2b3e;
     box-shadow: none;
@@ -7187,32 +7187,32 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-smart-bell--1 {
-    --pc-bell-accent: #a4caff;
-    --pc-bell-icon: #e2e8f0;
-    --pc-bell-border: rgba(164, 202, 255, 0.28);
-    --pc-bell-surface: #1e2b3e;
+    --pc-bell-accent: #a5bab8;
+    --pc-bell-icon: #c9d4d6;
+    --pc-bell-border: rgba(156, 177, 183, 0.26);
+    --pc-bell-surface: #1d2731;
 }
 
 .pc-smart-bell--2 {
-    --pc-bell-accent: #a4caff;
-    --pc-bell-icon: #a4caff;
-    --pc-bell-border: rgba(164, 202, 255, 0.42);
-    --pc-bell-surface: #1e2b3e;
+    --pc-bell-accent: #9ebfb5;
+    --pc-bell-icon: #b8d0c9;
+    --pc-bell-border: rgba(150, 190, 179, 0.34);
+    --pc-bell-surface: #1e2b31;
 }
 
 .pc-smart-bell--3 {
-    --pc-bell-accent: #a4caff;
-    --pc-bell-icon: #a4caff;
-    --pc-bell-border: rgba(164, 202, 255, 0.55);
-    --pc-bell-surface: #1e2b3e;
+    --pc-bell-accent: #a4c8bc;
+    --pc-bell-icon: #b9d8cc;
+    --pc-bell-border: rgba(162, 200, 186, 0.43);
+    --pc-bell-surface: #20302f;
 }
 
 .pc-smart-bell--4 {
-    --pc-bell-accent: #a4caff;
-    --pc-bell-icon: #a4caff;
-    --pc-bell-border: rgba(164, 202, 255, 0.75);
-    --pc-bell-surface: #1e2b3e;
-    box-shadow: 0 0 10px rgba(164, 202, 255, 0.25), inset 0 1px rgba(255, 255, 255, 0.05);
+    --pc-bell-accent: #b3d6c8;
+    --pc-bell-icon: #cce1d6;
+    --pc-bell-border: rgba(174, 213, 195, 0.56);
+    --pc-bell-surface: #23352f;
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.05), 0 3px 7px rgba(0, 0, 0, 0.16);
 }
 
 /* Sound waves: appear ONLY in state 3 and 4 */

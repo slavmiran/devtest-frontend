@@ -303,12 +303,12 @@
                 var day = Number(reason.missedDay || 0);
                 var status = reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send');
                 var catchupLine = reason.proofReceived
-                    ? (label || text('pcAttentionProofReceived', 'Proof for day {day} received ✓', { day: day }))
+                    ? text('smartPingCatchupReceivedLine', 'Day {day} report · Awaiting confirmation', { day: day })
                     : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: day });
                 pushMarker(list, catchupLine, false, {
                     catchupDay: day,
                     catchupStatus: status,
-                    catchupTone: catchupTone(day),
+                    catchupTone: catchupTone(status),
                 });
                 return;
             }
@@ -316,9 +316,14 @@
         });
         return list;
     }
-    function catchupTone(day) {
-        var tones = { 4: '#58a6ff', 7: '#e3b341', 10: '#c084fc', 14: '#fb7185' };
-        return tones[Number(day)] || '#58a6ff';
+    function catchupTone(status) {
+        // A status owns its tone; the control-day number must never change the colour.
+        var tones = {
+            will_send: '#8098b0',
+            waiting: '#8996a7',
+            received: '#86b7a5',
+        };
+        return tones[String(status || 'will_send')] || tones.will_send;
     }
     function catchupLabelsFor(row) {
         return (row.reasons || []).filter(function (reason) {
@@ -328,7 +333,7 @@
             return {
                 day: day,
                 status: reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send'),
-                tone: catchupTone(day),
+                tone: catchupTone(reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send')),
             };
         }).sort(function (left, right) { return left.day - right.day; });
     }
@@ -343,12 +348,12 @@
     }
     function catchupLabelIcon(status) {
         if (status === 'waiting') {
-            return '<span class="smart-ping-catchup-label__glyph" aria-hidden="true">⏳</span>';
+            return '<svg class="smart-ping-catchup-dot__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.4"></circle><path d="M10 6.5v3.8l2.4 1.5"></path></svg>';
         }
         if (status === 'received') {
-            return '<span class="smart-ping-catchup-label__glyph" aria-hidden="true">✓</span>';
+            return '<svg class="smart-ping-catchup-dot__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5.1 10.2 3.1 3.1 6.8-7"></path></svg>';
         }
-        return '<span class="smart-ping-catchup-label__cam" aria-hidden="true"></span><span class="smart-ping-catchup-label__plus" aria-hidden="true">+</span>';
+        return '<svg class="smart-ping-catchup-dot__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="5.8" width="10.6" height="9" rx="2"></rect><path d="m6.2 5.8 1.1-2h2.7l1.1 2M7.1 10.3h3.2M8.7 8.7v3.2M16.1 4.4v4.2M14 6.5h4.2"></path></svg>';
     }
     function handleCatchupLabel(button) {
         var status = String(button.getAttribute('data-smart-ping-catchup') || '');
@@ -557,15 +562,12 @@
             var toneStyle = item.catchupTone ? ' style="--catchup-tone:' + esc(item.catchupTone) + '"' : '';
             var inner = esc(item.text || '');
             if (item.catchupDay) inner = '<span class="smart-ping-row__reason-text">' + inner + '</span>';
-            return '<li' + classAttr + toneStyle + '>' + inner + '</li>';
+            var catchupButton = item.catchupDay
+                ? '<button type="button" class="smart-ping-catchup-dot is-' + esc(item.catchupStatus || 'will_send') + '" data-smart-ping-catchup="' + esc(item.catchupStatus || 'will_send') + '" data-catchup-day="' + item.catchupDay + '" data-smart-ping-label-tester="' + row.testerId + '" style="--catchup-tone:' + esc(item.catchupTone || catchupTone(item.catchupStatus)) + '" title="' + esc(catchupLabelTip({ status: item.catchupStatus || 'will_send', day: item.catchupDay })) + '" aria-label="' + esc(catchupLabelTip({ status: item.catchupStatus || 'will_send', day: item.catchupDay })) + '">' + catchupLabelIcon(item.catchupStatus || 'will_send') + '</button>'
+                : '';
+            return '<li' + classAttr + toneStyle + '>' + inner + catchupButton + '</li>';
         }).join('');
-        var labels = (row.catchupLabels || []).map(function (label) {
-            return '<button type="button" class="smart-ping-catchup-label is-' + esc(label.status) + '" data-smart-ping-catchup="' + esc(label.status) + '" data-catchup-day="' + label.day + '" data-smart-ping-label-tester="' + row.testerId + '" style="--catchup-tone:' + esc(label.tone) + '" title="' + esc(catchupLabelTip(label)) + '" aria-label="' + esc(catchupLabelTip(label)) + '">' +
-                catchupLabelIcon(label.status) +
-                '<span class="smart-ping-catchup-label__day">' + label.day + '</span>' +
-            '</button>';
-        }).join('');
-        return '<div class="smart-ping-row' + (row.risk ? ' is-risk' : '') + (labels ? ' has-catchup-labels' : '') + '">' +
+        return '<div class="smart-ping-row' + (row.risk ? ' is-risk' : '') + '">' +
             '<label class="smart-ping-row__pick">' +
                 '<input type="checkbox" data-smart-ping-tester="' + row.testerId + '"' + (row.checked ? ' checked' : '') + '>' +
                 avatarHtml(row.tester) +
@@ -574,7 +576,6 @@
                     (reasons ? '<ul class="smart-ping-row__reasons">' + reasons + '</ul>' : '') +
                 '</span>' +
             '</label>' +
-            (labels ? '<span class="smart-ping-row__labels">' + labels + '</span>' : '') +
         '</div>';
     }
     function sectionTitle(section) {
