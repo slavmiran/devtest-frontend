@@ -7087,24 +7087,24 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 
 /* ───────────────── Smart-Bell 2x2 Widget Button ───────────────── */
 .pc-smart-bell-btn {
-    --pc-bell-accent: #8da3a8;
-    --pc-bell-icon: #8da3a8;
+    --pc-bell-accent: #788e9f;
+    --pc-bell-icon: #859bb0;
     --pc-bell-border: rgba(148, 163, 184, 0.22);
-    --pc-bell-surface: #1c2530;
+    --pc-bell-surface: #1e2b3e;
     display: inline-flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    width: 102px;
-    height: 48px;
-    min-height: 48px;
-    padding: 0 12px;
+    gap: 6px;
+    width: 62px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 7px;
     border: 1px solid var(--pc-bell-border);
-    border-radius: 15px;
+    border-radius: 9px;
     background: var(--pc-bell-surface);
     color: var(--pc-bell-icon);
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.035), 0 2px 5px rgba(0, 0, 0, 0.13);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.035), 0 2px 4px rgba(0, 0, 0, 0.12);
     cursor: pointer;
     box-sizing: border-box;
     transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
@@ -7116,23 +7116,23 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-smart-bell-btn:focus-visible {
-    outline: 2px solid #a1c7bb;
-    outline-offset: 3px;
+    outline: 2px solid #a4caff;
+    outline-offset: 2px;
 }
 
 .pc-smart-bell__icon-wrap {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin-left: 0;
+    width: 20px;
+    height: 20px;
+    margin-left: -1px;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__icon {
-    width: 32px;
-    height: 32px;
+    width: 20px;
+    height: 20px;
     display: block;
     color: var(--pc-bell-icon);
 }
@@ -7144,19 +7144,19 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 
 .pc-smart-bell__matrix {
     display: grid;
-    grid-template-columns: repeat(2, 9px);
-    grid-template-rows: repeat(2, 9px);
-    gap: 4px;
+    grid-template-columns: repeat(2, 6px);
+    grid-template-rows: repeat(2, 6px);
+    gap: 2.5px;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
 }
 
 .pc-smart-bell__dot {
-    width: 9px;
-    height: 9px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    border: 1.5px solid rgba(157, 174, 188, 0.48);
+    border: 1.2px solid rgba(148, 163, 184, 0.40);
     background: rgba(15, 23, 34, 0.65);
     box-sizing: border-box;
     transition: background-color 0.18s ease, border-color 0.18s ease;
@@ -7175,8 +7175,8 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
    4 = bell becomes fully solid filled with sound waves preserved
 */
 .pc-smart-bell--0 {
-    --pc-bell-accent: #738391;
-    --pc-bell-icon: #738391;
+    --pc-bell-accent: #5a6e82;
+    --pc-bell-icon: #5a6e82;
     --pc-bell-border: rgba(148, 163, 184, 0.16);
     --pc-bell-surface: #1e2b3e;
     box-shadow: none;
@@ -7187,32 +7187,32 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 }
 
 .pc-smart-bell--1 {
-    --pc-bell-accent: #a5bab8;
-    --pc-bell-icon: #c9d4d6;
-    --pc-bell-border: rgba(156, 177, 183, 0.26);
-    --pc-bell-surface: #1d2731;
+    --pc-bell-accent: #a4caff;
+    --pc-bell-icon: #e2e8f0;
+    --pc-bell-border: rgba(164, 202, 255, 0.28);
+    --pc-bell-surface: #1e2b3e;
 }
 
 .pc-smart-bell--2 {
-    --pc-bell-accent: #9ebfb5;
-    --pc-bell-icon: #b8d0c9;
-    --pc-bell-border: rgba(150, 190, 179, 0.34);
-    --pc-bell-surface: #1e2b31;
+    --pc-bell-accent: #a4caff;
+    --pc-bell-icon: #a4caff;
+    --pc-bell-border: rgba(164, 202, 255, 0.42);
+    --pc-bell-surface: #1e2b3e;
 }
 
 .pc-smart-bell--3 {
-    --pc-bell-accent: #a4c8bc;
-    --pc-bell-icon: #b9d8cc;
-    --pc-bell-border: rgba(162, 200, 186, 0.43);
-    --pc-bell-surface: #20302f;
+    --pc-bell-accent: #a4caff;
+    --pc-bell-icon: #a4caff;
+    --pc-bell-border: rgba(164, 202, 255, 0.55);
+    --pc-bell-surface: #1e2b3e;
 }
 
 .pc-smart-bell--4 {
-    --pc-bell-accent: #b3d6c8;
-    --pc-bell-icon: #cce1d6;
-    --pc-bell-border: rgba(174, 213, 195, 0.56);
-    --pc-bell-surface: #23352f;
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.05), 0 3px 7px rgba(0, 0, 0, 0.16);
+    --pc-bell-accent: #a4caff;
+    --pc-bell-icon: #a4caff;
+    --pc-bell-border: rgba(164, 202, 255, 0.75);
+    --pc-bell-surface: #1e2b3e;
+    box-shadow: 0 0 10px rgba(164, 202, 255, 0.25), inset 0 1px rgba(255, 255, 255, 0.05);
 }
 
 /* Sound waves: appear ONLY in state 3 and 4 */

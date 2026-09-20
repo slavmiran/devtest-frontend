@@ -1657,8 +1657,15 @@
         var dayNum = Number(row && row.day || 0);
         var dayHtml = '';
         if (dayNum > 0) {
-            var dayClass = 'pc-person__day pc-person__day--control is-control-accent';
+            // A camera is reserved for official control days; a regular daily
+            // report stays neutral, matching the day chips in "My tests".
+            var isControlReportDay = isControlDay(dayNum);
+            var dayClass = 'pc-person__day ' +
+                (isControlReportDay
+                    ? 'pc-person__day--control is-control-accent'
+                    : 'pc-person__day--regular is-regular');
             dayHtml = '<span class="' + dayClass + '">' +
+                (isControlReportDay ? '<svg class="pc-person__day-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' : '') +
                 esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
             '</span>';
         }
@@ -3374,10 +3381,11 @@
         }).join('') + '</ul>';
     }
 
-    function compactControlSheetHtml(appId, rows, context) {
-        if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
+    function compactControlSheetHtml(appId, rows, context, regularReceivedRows) {
+        var allRows = (rows || []).concat(regularReceivedRows || []);
+        if (!allRows.length) return emptySheetHtml(text('pcControlEmpty', 'No reports today'));
         return '<ul class="pc-act-list">' +
-            rows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+            allRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
         '</ul>';
     }
 
@@ -3394,8 +3402,9 @@
         return '';
     }
 
-    function controlNowHtml(appId, rows, context) {
-        if (!rows.length) return emptySheetHtml(text('pcControlEmpty', 'No control day today'));
+    function controlNowHtml(appId, rows, context, regularReceivedRows) {
+        var regularRows = regularReceivedRows || [];
+        if (!rows.length && !regularRows.length) return emptySheetHtml(text('pcControlEmpty', 'No reports today'));
         var project = projectById(appId);
         var pendingRows = rows.filter(function (row) { return !row.received; });
         pendingRows.forEach(function (row) {
@@ -3409,7 +3418,12 @@
                 }
             }
         });
-        var receivedRows = rows.filter(function (row) { return row.received; });
+        // Regular-day proofs are received reports too, but never become
+        // expected control reports. Keep that distinction in the two sections.
+        var receivedRows = rows.filter(function (row) { return row.received; }).concat(regularRows);
+        receivedRows.sort(function (left, right) {
+            return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
+        });
         var receivedCount = receivedRows.length;
 
         var pendingSectionHtml = '';
@@ -3456,7 +3470,7 @@
     function nowHtmlForFilter(project, filter, data, context) {
         if (filter === 'contribution') return contributionSheetHtml(project.id, data.contribution, context);
         if (filter === 'attention') return attentionSheetHtml(project.id, data.attention, context);
-        if (filter === 'control') return controlNowHtml(project.id, data.controlRows, context);
+        if (filter === 'control') return controlNowHtml(project.id, data.controlRows, context, data.regularReportRows);
         return testersNowHtml(project);
     }
 
@@ -3473,6 +3487,11 @@
         // activity filters must not briefly disappear while a card is refreshed.
         var hydrated = !!(entry && !entry.error && entry.loadedAt > 0);
         var controlRows = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
+        var regularReportRows = hydrated
+            ? filterControlRows(project, entry.others || []).filter(function (row) {
+                return row && row.received && !isControlDay(Number(row.day || 0));
+            })
+            : [];
         return {
             entry: entry,
             hydrated: hydrated,
@@ -3482,6 +3501,7 @@
                 return tester && !tester.is_left_soft && !tester.is_guest_tester && !tester.is_external;
             }).length,
             controlRows: controlRows,
+            regularReportRows: regularReportRows,
             controlDone: controlRows.filter(function (row) { return row.received; }).length,
             contribution: collectContribution(
                 hydrated ? (entry.control || []) : [],
@@ -3542,7 +3562,8 @@
         var list = ['testers'];
         if (data.contribution && data.contribution.length) list.push('contribution');
         if (data.attention && data.attention.length) list.push('attention');
-        if (data.controlRows && data.controlRows.length) list.push('control');
+        if ((data.controlRows && data.controlRows.length)
+            || (data.regularReportRows && data.regularReportRows.length)) list.push('control');
         return list;
     }
 
@@ -3556,7 +3577,9 @@
         if (filter === 'testers') return { testerIds: null, progressIds: null };
         var rows = filter === 'contribution'
             ? (data.contribution || [])
-            : (filter === 'attention' ? (data.attention || []) : (data.controlRows || []));
+            : (filter === 'attention'
+                ? (data.attention || [])
+                : (data.controlRows || []).concat(data.regularReportRows || []));
         var testerIds = [];
         var progressIds = [];
         rows.forEach(function (item) {
@@ -3583,7 +3606,7 @@
             return text('pcHintAttention', 'Риски срыва и пропуски активности');
         }
         if (filter === 'control') {
-            return text('pcHintControl', 'Обязательные контрольные отчёты сегодня');
+            return text('pcHintControl', 'Control reports due today and regular reports received today');
         }
         return text('pcHintAll', 'Everyone in the current test.');
     }
@@ -3596,7 +3619,7 @@
             return text('pcHintCriteriaAttention', 'Внимание: участники, требующие реакции. Пропуски чекинов (от 1 дня для должников и инвайтов, от 2 дней для взаимки), выходы из проекта, сорванные контрольные отчёты и нарушенные связи. При 3+ пропусках партнёра доступен выход из его теста без штрафа.');
         }
         if (filter === 'control') {
-            return text('pcHintCriteriaControl', 'Отчёт: обязательные контрольные отчёты сегодня (1, 4, 7, 10, 14 дни).');
+            return text('pcHintCriteriaControl', 'Reports: control reports due today (days 1, 4, 7, 10, 14) and regular reports received today.');
         }
         return text('pcHintCriteriaAll', 'All: the full current roster of this test.');
     }
@@ -3624,7 +3647,9 @@
     function filterCount(key, data) {
         if (key === 'contribution') return (data && data.contribution || []).length;
         if (key === 'attention') return (data && data.attention || []).length;
-        if (key === 'control') return (data && data.controlRows || []).length;
+        if (key === 'control') {
+            return (data && data.controlRows || []).length + (data && data.regularReportRows || []).length;
+        }
         return Math.max(0, Number(data && data.rosterCount || 0));
     }
 
@@ -3659,8 +3684,11 @@
             }).join(';');
         }
         if (key === 'control') {
-            var control = data.control || [];
-            var received = control.filter(function (r) { return r.received; });
+            var control = data.controlRows || data.control || [];
+            var regular = data.regularReportRows || data.others || [];
+            var received = control.filter(function (r) { return r.received; }).concat(regular.filter(function (r) {
+                return r && r.received && !isControlDay(Number(r.day || 0));
+            }));
             return control.length + ':' + received.length + ':' + received.map(function (r) {
                 return (r.testerId || 0) + '-' + (r.proofId || 0);
             }).join(',');
@@ -3676,7 +3704,7 @@
     function filterLabel(key) {
         if (key === 'contribution') return text('pcFilterContribution', 'Contribution');
         if (key === 'attention') return text('pcFilterAttention', 'Attention');
-        if (key === 'control') return text('pcFilterControl', 'Report');
+        if (key === 'control') return text('pcFilterControl', 'Reports');
         return text('pcFilterAll', 'All');
     }
 
@@ -3904,7 +3932,7 @@
         if (!project) return;
         var data = activityCounts(project);
         var next = document.createElement('div');
-        next.innerHTML = controlNowHtml(project.id, data.controlRows, contextFor(project));
+        next.innerHTML = controlNowHtml(project.id, data.controlRows, contextFor(project), data.regularReportRows);
         var currentPanel = nowEl.querySelector('.pc-control-reminder-panel');
         var nextPanel = next.querySelector('.pc-control-reminder-panel');
         if (currentPanel && nextPanel) currentPanel.replaceWith(nextPanel);
@@ -3989,7 +4017,7 @@
         var titles = {
             contribution: text('pcContributionTitle', 'Valuable contribution'),
             attention: text('pcAttentionTitle', 'Needs attention'),
-            control: text('pcControlTodayTitle', 'Report today'),
+            control: text('pcFilterControl', 'Reports'),
             testers: text('pcAllTestersEntry', 'All testers'),
         };
         if (titleEl) titleEl.textContent = titles[sheetState.mode] || '';
@@ -3999,7 +4027,7 @@
         } else if (sheetState.mode === 'attention') {
             bodyEl.innerHTML = attentionSheetHtml(project.id, data.attention);
         } else if (sheetState.mode === 'control') {
-            bodyEl.innerHTML = compactControlSheetHtml(project.id, data.controlRows, context);
+            bodyEl.innerHTML = compactControlSheetHtml(project.id, data.controlRows, context, data.regularReportRows);
         } else if (sheetState.mode === 'testers') {
             bodyEl.innerHTML = testersSheetHtml(project);
             applyAllTestersTab(sheetState.testersTab || 'state');
@@ -4277,17 +4305,28 @@
             var root = document.getElementById('pc-today-' + safeAppId);
             var row = root && root.querySelector('.pc-person--attention[data-tester-id="' + safeTesterId + '"]');
             if (!row) return;
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            row.classList.add('is-catchup-focus');
-            window.setTimeout(function () {
-                row.classList.remove('is-catchup-focus');
-            }, 2600);
-            if (safeDay <= 0) return;
+            if (safeDay <= 0) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
             var tile = row.querySelector('[data-reason-key="' + safeTesterId + '_missed_control_' + safeDay + '"]');
-            if (tile && !tile.classList.contains('is-expanded') && typeof window.pcToggleAttentionReason === 'function') {
+            if (!tile) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            // Focus the exact catch-up tile, not the whole tester row with all reasons.
+            tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            tile.classList.add('is-catchup-focus');
+            var step = tile.closest('.pc-activity-timeline-step--attention');
+            if (step) step.classList.add('is-catchup-focus');
+            if (!tile.classList.contains('is-expanded') && typeof window.pcToggleAttentionReason === 'function') {
                 var header = tile.querySelector('.pc-attention-tile__header');
                 if (header) window.pcToggleAttentionReason(header);
             }
+            window.setTimeout(function () {
+                tile.classList.remove('is-catchup-focus');
+                if (step) step.classList.remove('is-catchup-focus');
+            }, 2600);
         }, 80);
     }
 
