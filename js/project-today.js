@@ -3169,35 +3169,7 @@
             }
         });
         var receivedRows = rows.filter(function (row) { return row.received; });
-        var pendingCount = pendingRows.length;
         var receivedCount = receivedRows.length;
-
-        var bulkRemindHtml = '';
-        var reminderState = controlReminderStates.get(Number(appId));
-        var sending = controlReminderSending.has(Number(appId));
-        var readyCount = reminderState && reminderState.ready_count != null ? Number(reminderState.ready_count) : pendingCount;
-        var showBulkRemind = rows.length > 1 && pendingCount > 0;
-        if (showBulkRemind) {
-            if (readyCount > 0 || sending) {
-                var remindLabel = sending
-                    ? text('pcRemindersSending', 'Sending DMs…')
-                    : text('pcControlRemindAll', 'Remind everyone');
-                var remindCountHtml = (!sending && readyCount > 0)
-                    ? '<span class="pc-control-remind-all-count' + (String(readyCount).length <= 1 ? ' is-circle' : '') + '" aria-hidden="true">' + readyCount + '</span>'
-                    : '';
-                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn' + (sending ? ' is-sending' : '') + '"' + (sending ? ' disabled aria-busy="true"' : '') + ' aria-label="' + esc(remindLabel) + (sending || readyCount < 1 ? '' : ' ' + readyCount) + '" onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
-                    ICONS.remind + '<span class="pc-control-remind-all-label">' + esc(remindLabel) + '</span>' + remindCountHtml + '</button>';
-            } else {
-                bulkRemindHtml = '<button type="button" class="pc-control-remind-all-btn is-done" disabled>' +
-                    esc(text('pcRemindersAttempted', 'Reminders processed')) +
-                '</button>';
-            }
-        }
-
-        var summaryHtml = showBulkRemind ? '<section class="pc-control-reminder-panel" aria-label="' + esc(text('pcControlRemindAll', 'Remind everyone')) + '">' +
-            bulkRemindHtml +
-            '<div class="pc-control-reminder-feedback" role="status" aria-live="polite">' + controlReminderFeedbackHtml(reminderState) + '</div>' +
-            '<p class="pc-control-reminder-hint">' + esc(text('pcRemindersHint', 'One bot reminder per milestone. Personal reminders remain separate.')) + '</p></section>' : '';
 
         var pendingSectionHtml = '';
         if (pendingRows.length > 0) {
@@ -3237,7 +3209,7 @@
             '</div>';
         }
 
-        return pendingSectionHtml + summaryHtml + receivedSectionHtml;
+        return pendingSectionHtml + receivedSectionHtml;
     }
 
     function nowHtmlForFilter(project, filter, data, context) {
@@ -3722,6 +3694,9 @@
         var data = activityCounts(project);
         var prefs = readPrefs(safeAppId);
         var filter = resolvedFilter(prefs, data);
+        if (window.SmartPing && (filter === 'attention' || filter === 'control')) {
+            window.SmartPing.arm(safeAppId);
+        }
         var mode = prefs.modes[filter] || 'now';
         var context = contextFor(project);
 
@@ -3990,6 +3965,8 @@
         getCacheEntry: getCacheEntry,
         recordFeedbackReward: recordFeedbackReward,
         getAttentionReasonMeta: getAttentionReasonMeta,
+        collectAttention: collectAttention,
+        activityCounts: activityCounts,
         calculateTesterControlActivityAssessment: calculateTesterControlActivityAssessment,
         calculateTesterControlRisk: calculateTesterControlActivityAssessment,
         invalidate: function (appId) {
@@ -4055,6 +4032,9 @@
             });
         }
         refreshActivityWorkspace(appId);
+        if (prefs.filter === 'attention' || prefs.filter === 'control') {
+            if (window.SmartPing) window.SmartPing.arm(appId);
+        }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 

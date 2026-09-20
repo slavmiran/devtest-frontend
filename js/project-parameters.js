@@ -141,6 +141,9 @@
                 '<span class="pc-project-params__boost-cue-slot pc-project-params__boost-cue-slot--head">' + (!open ? cue : '') + '</span>' +
                 '<span class="pc-project-params__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
             '</button>' +
+            (window.SmartPing && typeof window.SmartPing.buttonHtml === 'function'
+                ? window.SmartPing.buttonHtml(id)
+                : '<button type="button" class="pc-smart-ping-btn' + (function () { try { return sessionStorage.getItem('pc_smart_ping_armed_' + id) === '1'; } catch (e) { return false; } }() ? ' is-armed' : '') + '" data-smart-ping="' + id + '" onclick="event.stopPropagation(); if(window.SmartPing) SmartPing.open(' + id + ')" aria-label="' + esc(text('smartPingAria')) + '"><span class="pc-smart-ping-btn__bolt" aria-hidden="true">⚡</span><span class="pc-smart-ping-btn__full">' + esc(text('smartPingLabelFull')) + '</span><span class="pc-smart-ping-btn__short">' + esc(text('smartPingLabelShort')) + '</span></button>') +
             '<span class="pc-ping-slot" data-pc-ping-slot="' + id + '">' +
                 '<button type="button" class="telegram-community-chip pc-ping-mini" data-pc-ping-mini="' + id + '" onclick="event.stopPropagation(); if(typeof pcProofPingOpenCommunity===\'function\'){pcProofPingOpenCommunity(event);}else if(typeof openCommunityChat===\'function\'){openCommunityChat(event);}" aria-label="' + esc(text('pulseChat')) + '" title="' + esc(text('pulseChat')) + '">' +
                     '<svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.313 4.674c.459 0 .661-.21.918-.46l2.204-2.143 4.585 3.387c.845.466 1.455.226 1.666-.784l3.007-14.167c.309-1.238-.473-1.8-1.471-1.317z"/></svg>' +
