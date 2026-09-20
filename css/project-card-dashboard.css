@@ -7010,6 +7010,7 @@ button.pc-subtitle-chip--screenshot-boost { cursor: pointer; }
 .screenshot-boost-balance.is-wallet-active { border-color:rgba(246,200,95,.35); background:rgba(246,200,95,.09); }
 .screenshot-boost-balance.is-wallet-active #screenshot-boost-balance-available { color:#f6c85f; font-weight:700; }
 .screenshot-boost-wallet-row { margin-top:10px; }
+.screenshot-boost-wallet-badge { display:inline-flex; align-items:center; justify-content:center; padding:0 5px; min-width:22px; height:18px; border:1px solid rgba(246,200,95,.45); border-radius:20px; background:rgba(246,200,95,.12); color:#f6c85f; font-size:10px; font-weight:700; letter-spacing:.01em; vertical-align:middle; line-height:1; }
 .screenshot-boost-settings-error { margin:10px 0 0; padding:9px 11px; border-radius:10px; color:#fca5a5; background:rgba(239,68,68,.1); font-size:12px; }
 .screenshot-boost-sheet__actions { margin-top:14px; display:grid; grid-template-columns:1fr; gap:4px; }
 .screenshot-boost-sheet__actions .btn-primary:disabled { opacity:.45; cursor:default; pointer-events:none; }

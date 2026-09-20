@@ -987,8 +987,36 @@ function syncScreenshotBoostBudgetPreview() {
     var draftPool = getScreenshotBoostDraftPool();
     var savedPool = getScreenshotBoostSavedPool();
     if (reward && preview) {
-        var count = Number(reward.value) > 0 ? Math.floor(draftPool / Number(reward.value)) : 0;
-        preview.textContent = window.t('screenshotBoostBudgetPreview', { count: count }, lang);
+        var rewardVal = Number(reward.value) > 0 ? Number(reward.value) : 0;
+        var count = rewardVal > 0 ? Math.floor(draftPool / rewardVal) : 0;
+        var walletNode = document.getElementById('screenshot-boost-allow-wallet');
+        var walletActive = !!(walletNode && walletNode.checked);
+        var walletBadgeHtml = '';
+        if (walletActive && rewardVal > 0) {
+            // available wallet balance = general balance minus what the draft pool already reserved
+            var walletAvailable = Math.max(0, _screenshotBoostModalBalance + savedPool - draftPool);
+            var walletCount = Math.floor(walletAvailable / rewardVal);
+            if (walletCount > 0) {
+                var prefix = count > 0 ? '+' : '';
+                walletBadgeHtml = ' <span class="screenshot-boost-wallet-badge">' + prefix + '(' + walletCount + ')</span>';
+            }
+        }
+        // Use innerHTML to embed the badge (all text parts are plain strings — no user data)
+        var previewText = window.t('screenshotBoostBudgetPreview', { count: count }, lang);
+        // Insert badge between count and the rest of the string
+        // Format is "...{count}..." — we inject the badge right after the count number
+        var safeText = previewText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if (walletBadgeHtml) {
+            // find the count digits in the translated string and inject badge after them
+            var countStr = String(count);
+            var idx = safeText.indexOf(countStr);
+            if (idx !== -1) {
+                safeText = safeText.slice(0, idx + countStr.length) + walletBadgeHtml + safeText.slice(idx + countStr.length);
+            } else {
+                safeText = safeText + walletBadgeHtml;
+            }
+        }
+        preview.innerHTML = safeText;
     }
     var availableNode = document.getElementById('screenshot-boost-balance-available');
     var reservedNode = document.getElementById('screenshot-boost-balance-reserved');
@@ -1089,6 +1117,7 @@ function syncScreenshotBoostWalletToggle() {
     if (!balanceBlock) return;
     var active = !!(walletNode && walletNode.checked);
     balanceBlock.classList.toggle('is-wallet-active', active);
+    syncScreenshotBoostBudgetPreview();
 }
 
 async function openScreenshotBoostSettings(appId, event) {

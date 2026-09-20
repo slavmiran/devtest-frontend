@@ -283,10 +283,12 @@
         }
 
         var skips = skipsCount(row.tester);
-        if (skips >= 1) pushMarker(list, skipsLabel(skips), false);
         if (row.controlDay > 0) {
             pushMarker(list, text('smartPingMarkerControlToday', 'Сегодня Контрольный день {day}', { day: row.controlDay }), false);
-            pushMarker(list, signalDetail(row.assessment), true);
+            if (row.signals > 0) {
+                pushMarker(list, signalsCountLabel(row.signals), false);
+                pushSignalChildren(list, row.assessment, row.tester);
+            }
         } else if (row.signals > 0) {
             pushMarker(list, signalsCountLabel(row.signals), false);
             pushSignalChildren(list, row.assessment, row.tester);
@@ -553,7 +555,9 @@
             }
             var classAttr = classes.length ? ' class="' + classes.join(' ') + '"' : '';
             var toneStyle = item.catchupTone ? ' style="--catchup-tone:' + esc(item.catchupTone) + '"' : '';
-            return '<li' + classAttr + toneStyle + '>' + esc(item.text || '') + '</li>';
+            var inner = esc(item.text || '');
+            if (item.catchupDay) inner = '<span class="smart-ping-row__reason-text">' + inner + '</span>';
+            return '<li' + classAttr + toneStyle + '>' + inner + '</li>';
         }).join('');
         var labels = (row.catchupLabels || []).map(function (label) {
             return '<button type="button" class="smart-ping-catchup-label is-' + esc(label.status) + '" data-smart-ping-catchup="' + esc(label.status) + '" data-catchup-day="' + label.day + '" data-smart-ping-label-tester="' + row.testerId + '" style="--catchup-tone:' + esc(label.tone) + '" title="' + esc(catchupLabelTip(label)) + '" aria-label="' + esc(catchupLabelTip(label)) + '">' +
@@ -574,9 +578,9 @@
         '</div>';
     }
     function sectionTitle(section) {
-        if (section === 'both') return text('smartPingSectionBoth', '⚡ Внимание + Контроль');
+        if (section === 'both') return text('smartPingSectionBoth', '⚡ Внимание + Отчёт');
         if (section === 'attention') return text('smartPingSectionAttention', '⚠️ Зона внимания (Вкладка «Внимание»)');
-        if (section === 'control') return text('smartPingSectionControl', '📸 Контрольные отчёты (Вкладка «Контроль»)');
+        if (section === 'control') return text('smartPingSectionControl', '📸 Контрольные отчёты (Вкладка «Отчёт»)');
         return text('smartPingSectionRhythm', '📉 Сбился ритм (Обычные дни)');
     }
     function sectionHtml(section, rows) {

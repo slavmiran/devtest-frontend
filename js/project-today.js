@@ -3596,7 +3596,7 @@
             return text('pcHintCriteriaAttention', 'Внимание: участники, требующие реакции. Пропуски чекинов (от 1 дня для должников и инвайтов, от 2 дней для взаимки), выходы из проекта, сорванные контрольные отчёты и нарушенные связи. При 3+ пропусках партнёра доступен выход из его теста без штрафа.');
         }
         if (filter === 'control') {
-            return text('pcHintCriteriaControl', 'Контроль: обязательные контрольные отчёты сегодня (1, 4, 7, 10, 14 дни).');
+            return text('pcHintCriteriaControl', 'Отчёт: обязательные контрольные отчёты сегодня (1, 4, 7, 10, 14 дни).');
         }
         return text('pcHintCriteriaAll', 'All: the full current roster of this test.');
     }
@@ -3676,7 +3676,7 @@
     function filterLabel(key) {
         if (key === 'contribution') return text('pcFilterContribution', 'Contribution');
         if (key === 'attention') return text('pcFilterAttention', 'Attention');
-        if (key === 'control') return text('pcFilterControl', 'Control');
+        if (key === 'control') return text('pcFilterControl', 'Report');
         return text('pcFilterAll', 'All');
     }
 
@@ -3989,7 +3989,7 @@
         var titles = {
             contribution: text('pcContributionTitle', 'Valuable contribution'),
             attention: text('pcAttentionTitle', 'Needs attention'),
-            control: text('pcControlTodayTitle', 'Control today'),
+            control: text('pcControlTodayTitle', 'Report today'),
             testers: text('pcAllTestersEntry', 'All testers'),
         };
         if (titleEl) titleEl.textContent = titles[sheetState.mode] || '';
