@@ -228,12 +228,18 @@
         if (count < 3) return '';
         return text('smartPingChildSkipsAccumulated', 'накоплено {count} пропусков', { count: count });
     }
-    function pushMarker(list, value, isChild) {
+    function pushMarker(list, value, isChild, extra) {
         var label = String(value || '').trim();
         if (!label) return;
         var child = !!isChild;
         if (list.some(function (item) { return item.text === label && !!item.child === child; })) return;
-        list.push({ text: label, child: child });
+        var marker = { text: label, child: child };
+        if (extra) {
+            Object.keys(extra).forEach(function (key) {
+                marker[key] = extra[key];
+            });
+        }
+        list.push(marker);
     }
     function pushSignalChildren(list, assessment, tester) {
         if (assessment && assessment.yesterday && assessment.yesterday.risk) {
@@ -291,12 +297,74 @@
             if (code === 'skips' || code === 'debt' || code === 'tester_left') return;
             var label = extraReasonLabel(reason);
             if (!label) return;
-            pushMarker(list, label, false);
-            if (code === 'missed_control' && !reason.proofRequested && !reason.proofReceived) {
-                pushMarker(list, text('smartPingCatchupWillSend', 'Будет отправлен дозапрос на скрин-отчет'), true);
+            if (code === 'missed_control') {
+                var day = Number(reason.missedDay || 0);
+                var status = reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send');
+                var catchupLine = reason.proofReceived
+                    ? (label || text('pcAttentionProofReceived', 'Proof for day {day} received ✓', { day: day }))
+                    : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: day });
+                pushMarker(list, catchupLine, false, {
+                    catchupDay: day,
+                    catchupStatus: status,
+                    catchupTone: catchupTone(day),
+                });
+                return;
             }
+            pushMarker(list, label, false);
         });
         return list;
+    }
+    function catchupTone(day) {
+        var tones = { 4: '#58a6ff', 7: '#e3b341', 10: '#c084fc', 14: '#fb7185' };
+        return tones[Number(day)] || '#58a6ff';
+    }
+    function catchupLabelsFor(row) {
+        return (row.reasons || []).filter(function (reason) {
+            return String(reason && reason.code || '') === 'missed_control' && Number(reason.missedDay || 0) > 0;
+        }).map(function (reason) {
+            var day = Number(reason.missedDay || 0);
+            return {
+                day: day,
+                status: reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send'),
+                tone: catchupTone(day),
+            };
+        }).sort(function (left, right) { return left.day - right.day; });
+    }
+    function catchupLabelTip(label) {
+        if (label.status === 'waiting') {
+            return text('smartPingCatchupWaitingTip', 'Дозапрос за день {day} уже ожидает ответа тестера', { day: label.day });
+        }
+        if (label.status === 'received') {
+            return text('smartPingCatchupReceivedTip', 'Дозапрос за день {day} поступил. Откройте вкладку «Внимание», чтобы проверить отчёт', { day: label.day });
+        }
+        return text('smartPingCatchupWillSendTip', 'Будет отправлен дозапрос на скрин-отчёт за пропущенный контрольный день {day}', { day: label.day });
+    }
+    function catchupLabelIcon(status) {
+        if (status === 'waiting') {
+            return '<span class="smart-ping-catchup-label__glyph" aria-hidden="true">⏳</span>';
+        }
+        if (status === 'received') {
+            return '<span class="smart-ping-catchup-label__glyph" aria-hidden="true">✓</span>';
+        }
+        return '<span class="smart-ping-catchup-label__cam" aria-hidden="true"></span><span class="smart-ping-catchup-label__plus" aria-hidden="true">+</span>';
+    }
+    function handleCatchupLabel(button) {
+        var status = String(button.getAttribute('data-smart-ping-catchup') || '');
+        var day = Number(button.getAttribute('data-catchup-day') || 0);
+        var testerId = Number(button.getAttribute('data-smart-ping-label-tester') || 0);
+        var tip = catchupLabelTip({ status: status, day: day });
+        if (status === 'received') {
+            var appId = state.appId;
+            close();
+            if (typeof showToast === 'function') showToast(tip);
+            if (window.ProjectToday && typeof window.ProjectToday.focusAttentionCatchup === 'function') {
+                window.ProjectToday.focusAttentionCatchup(appId, testerId, day);
+            } else if (typeof window.pcFocusAttentionCatchup === 'function') {
+                window.pcFocusAttentionCatchup(appId, testerId, day);
+            }
+            return;
+        }
+        if (typeof showToast === 'function') showToast(tip);
     }
     function isRisk(row) {
         if (row.section === 'both' || row.section === 'attention') return true;
@@ -336,6 +404,7 @@
                 checked: false,
             };
             row.markers = markersFor(row);
+            row.catchupLabels = catchupLabelsFor(row);
             row.risk = isRisk(row);
             row.checked = row.risk;
             rows.push(row);
@@ -476,16 +545,33 @@
             : '';
         var reasons = (row.markers || []).map(function (marker) {
             var item = marker && typeof marker === 'object' ? marker : { text: marker, child: false };
-            return '<li' + (item.child ? ' class="is-child"' : '') + '>' + esc(item.text || '') + '</li>';
+            var classes = [];
+            if (item.child) classes.push('is-child');
+            if (item.catchupDay) {
+                classes.push('is-catchup');
+                classes.push('is-catchup-' + (item.catchupStatus || 'will_send'));
+            }
+            var classAttr = classes.length ? ' class="' + classes.join(' ') + '"' : '';
+            var toneStyle = item.catchupTone ? ' style="--catchup-tone:' + esc(item.catchupTone) + '"' : '';
+            return '<li' + classAttr + toneStyle + '>' + esc(item.text || '') + '</li>';
         }).join('');
-        return '<label class="smart-ping-row' + (row.risk ? ' is-risk' : '') + '">' +
-            '<input type="checkbox" data-smart-ping-tester="' + row.testerId + '"' + (row.checked ? ' checked' : '') + '>' +
-            avatarHtml(row.tester) +
-            '<span class="smart-ping-row__meta">' +
-                '<span class="smart-ping-row__name"><strong>' + esc(handleOf(row.tester)) + '</strong>' + badge + '</span>' +
-                (reasons ? '<ul class="smart-ping-row__reasons">' + reasons + '</ul>' : '') +
-            '</span>' +
-        '</label>';
+        var labels = (row.catchupLabels || []).map(function (label) {
+            return '<button type="button" class="smart-ping-catchup-label is-' + esc(label.status) + '" data-smart-ping-catchup="' + esc(label.status) + '" data-catchup-day="' + label.day + '" data-smart-ping-label-tester="' + row.testerId + '" style="--catchup-tone:' + esc(label.tone) + '" title="' + esc(catchupLabelTip(label)) + '" aria-label="' + esc(catchupLabelTip(label)) + '">' +
+                catchupLabelIcon(label.status) +
+                '<span class="smart-ping-catchup-label__day">' + label.day + '</span>' +
+            '</button>';
+        }).join('');
+        return '<div class="smart-ping-row' + (row.risk ? ' is-risk' : '') + (labels ? ' has-catchup-labels' : '') + '">' +
+            '<label class="smart-ping-row__pick">' +
+                '<input type="checkbox" data-smart-ping-tester="' + row.testerId + '"' + (row.checked ? ' checked' : '') + '>' +
+                avatarHtml(row.tester) +
+                '<span class="smart-ping-row__meta">' +
+                    '<span class="smart-ping-row__name"><strong>' + esc(handleOf(row.tester)) + '</strong>' + badge + '</span>' +
+                    (reasons ? '<ul class="smart-ping-row__reasons">' + reasons + '</ul>' : '') +
+                '</span>' +
+            '</label>' +
+            (labels ? '<span class="smart-ping-row__labels">' + labels + '</span>' : '') +
+        '</div>';
     }
     function sectionTitle(section) {
         if (section === 'both') return text('smartPingSectionBoth', '⚡ Внимание + Контроль');
@@ -565,6 +651,13 @@
     }
     function bind(node) {
         node.addEventListener('click', function (event) {
+            var catchupBtn = event.target && event.target.closest && event.target.closest('[data-smart-ping-catchup]');
+            if (catchupBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                handleCatchupLabel(catchupBtn);
+                return;
+            }
             if (event.target === node) close();
         });
         node.addEventListener('touchmove', function (event) {
@@ -631,6 +724,10 @@
                 visibilityStats.balance_bust = Number(payload.balance_bust);
             }
             project.smart_ping_sent_at = payload.sent_at || new Date().toISOString();
+            if (window.ProjectToday) {
+                if (typeof window.ProjectToday.invalidate === 'function') window.ProjectToday.invalidate(state.appId);
+                if (typeof window.ProjectToday.refresh === 'function') window.ProjectToday.refresh(state.appId);
+            }
             if (typeof showToast === 'function') {
                 showToast(text('smartPingSent', 'Напоминания поставлены в очередь: {count}', {
                     count: Number(payload.charged_count || picked.length),

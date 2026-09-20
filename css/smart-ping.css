@@ -175,6 +175,7 @@
     font-size: 10px;
 }
 .smart-ping-row {
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: 10px;
@@ -184,6 +185,16 @@
     border: 1px solid rgba(174, 195, 226, .08);
     border-radius: 10px;
     background: rgba(174, 195, 226, .04);
+}
+.smart-ping-row.has-catchup-labels {
+    padding-right: 10px;
+}
+.smart-ping-row__pick {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
 }
 .smart-ping-row input {
     width: 18px;
@@ -254,11 +265,107 @@
 .smart-ping-row__reasons li::before {
     content: '• ';
 }
+.smart-ping-row__reasons li.is-catchup::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 6px 1px 0;
+    border-radius: 50%;
+    background: var(--catchup-tone, #58a6ff);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--catchup-tone, #58a6ff) 22%, transparent);
+    vertical-align: middle;
+}
 .smart-ping-row__reasons li.is-child {
     padding-left: 12px;
 }
 .smart-ping-row__reasons li.is-child::before {
     content: '· ';
+}
+.smart-ping-row__labels {
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: 1;
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    margin-left: auto;
+    pointer-events: auto;
+}
+.smart-ping-catchup-label {
+    appearance: none;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 1px solid color-mix(in srgb, var(--catchup-tone, #58a6ff) 55%, rgba(174, 195, 226, .18));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--catchup-tone, #58a6ff) 18%, rgba(15, 23, 36, .72));
+    color: var(--catchup-tone, #58a6ff);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.smart-ping-catchup-label.is-waiting {
+    opacity: 0.62;
+    filter: saturate(0.55);
+    background: rgba(148, 163, 184, .08);
+    border-color: rgba(148, 163, 184, .18);
+    color: #93a4bb;
+}
+.smart-ping-catchup-label.is-received {
+    background: color-mix(in srgb, var(--catchup-tone, #58a6ff) 26%, rgba(15, 23, 36, .55));
+}
+.smart-ping-catchup-label__cam {
+    display: block;
+    width: 14px;
+    height: 14px;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z'/%3E%3Ccircle cx='12' cy='13' r='4'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z'/%3E%3Ccircle cx='12' cy='13' r='4'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+}
+.smart-ping-catchup-label__plus {
+    position: absolute;
+    top: 1px;
+    right: 2px;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    color: currentColor;
+    text-shadow: 0 0 4px rgba(6, 10, 16, .9);
+}
+.smart-ping-catchup-label__glyph {
+    font-size: 12px;
+    line-height: 1;
+}
+.smart-ping-catchup-label__day {
+    position: absolute;
+    right: -3px;
+    bottom: -4px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--catchup-tone, #58a6ff);
+    color: #0b1220;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 12px;
+    text-align: center;
+    box-shadow: 0 0 0 1px #15202c;
+    font-variant-numeric: tabular-nums;
+}
+.smart-ping-catchup-label.is-waiting .smart-ping-catchup-label__day {
+    background: #8a9bb3;
+    color: #15202c;
 }
 .smart-ping-empty {
     padding: 28px 8px;

@@ -827,6 +827,7 @@ function normalizeScreenshotBoostCampaign(campaign, appId, runIteration) {
         returned_total: Math.max(0, Number(campaign.returned_total || 0)),
         reward_control_days: campaign.reward_control_days === true,
         reward_protection_days: campaign.reward_protection_days === true,
+        allow_wallet_spending: campaign.allow_wallet_spending === true,
         enabled: campaign.enabled === true,
     };
 }
@@ -937,7 +938,15 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
                     <strong>${window.escapeHTML(window.t('screenshotBoostProtectionInfoTitle', {}, lang))}</strong>
                     <p>${window.escapeHTML(window.t('screenshotBoostProtectionInfoText', {}, lang))}</p>
                 </div>
-                <div class="screenshot-boost-balance">
+                <label class="screenshot-boost-control-row screenshot-boost-wallet-row">
+                    <input id="screenshot-boost-allow-wallet" type="checkbox" ${campaign.allow_wallet_spending ? 'checked' : ''} onchange="syncScreenshotBoostWalletToggle()">
+                    <span class="screenshot-boost-control-check" aria-hidden="true"></span>
+                    <span>
+                        <strong>${window.escapeHTML(window.t('screenshotBoostAllowWalletLabel', {}, lang))}</strong>
+                        <small>${window.escapeHTML(window.t('screenshotBoostAllowWalletHint', {}, lang))}</small>
+                    </span>
+                </label>
+                <div class="screenshot-boost-balance" id="screenshot-boost-balance">
                     <span id="screenshot-boost-balance-available">${window.escapeHTML(window.t('screenshotBoostBalanceAvailable', { amount: formatScreenshotBoostAmount(balanceBust) }, lang))}</span>
                     <span id="screenshot-boost-balance-reserved">${window.escapeHTML(window.t('screenshotBoostPoolReserved', { amount: formatScreenshotBoostAmount(campaign.pool_remaining) }, lang))}</span>
                 </div>
@@ -1070,6 +1079,16 @@ function syncScreenshotBoostSettingsToggle() {
             saveButton.textContent = window.t('screenshotBoostSaveChanges', {}, lang);
         }
     }
+    // sync wallet highlight whenever main toggle runs
+    syncScreenshotBoostWalletToggle();
+}
+
+function syncScreenshotBoostWalletToggle() {
+    var walletNode = document.getElementById('screenshot-boost-allow-wallet');
+    var balanceBlock = document.getElementById('screenshot-boost-balance');
+    if (!balanceBlock) return;
+    var active = !!(walletNode && walletNode.checked);
+    balanceBlock.classList.toggle('is-wallet-active', active);
 }
 
 async function openScreenshotBoostSettings(appId, event) {
@@ -1192,6 +1211,7 @@ async function saveScreenshotBoostSettings(options) {
                 pool_bust: pool,
                 reward_control_days: !!controlNode.checked,
                 reward_protection_days: !protectionNode.disabled && !!protectionNode.checked,
+                allow_wallet_spending: !!(document.getElementById('screenshot-boost-allow-wallet') || {}).checked,
                 init_data: initData,
             }),
         });
@@ -1241,6 +1261,7 @@ window.saveScreenshotBoostSettings = saveScreenshotBoostSettings;
 window.changeScreenshotBoostAmount = changeScreenshotBoostAmount;
 window.syncScreenshotBoostBudgetPreview = syncScreenshotBoostBudgetPreview;
 window.returnScreenshotBoostPool = returnScreenshotBoostPool;
+window.syncScreenshotBoostWalletToggle = syncScreenshotBoostWalletToggle;
 
 function captureProjectViewportAnchor(container) {
     if (!container || !isTabVisible('projects') || window.scrollY <= 0) return null;

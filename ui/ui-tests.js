@@ -2311,7 +2311,12 @@ function getScreenshotBoostPaperclipContent(appId) {
             window.escapeHTML(formatScreenshotBoostStickerAmount(offer.reward)) + '</span>';
     }
     if (hasOpenControlProofCatchup(test)) {
-        html += '<span class="split-btn-options__catchup-cam" aria-hidden="true"></span>';
+        var catchupCount = getOpenControlProofCatchups(test).length;
+        html += '<span class="split-btn-options__catchup-cam" aria-hidden="true">' +
+            (catchupCount > 0
+                ? '<span class="split-btn-options__catchup-count">' + catchupCount + '</span>'
+                : '') +
+            '</span>';
     }
     return html;
 }

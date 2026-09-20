@@ -2071,6 +2071,25 @@ button.ts-section-head {
     pointer-events: none;
     animation: catchup-cam-pulse 1.7s ease-in-out infinite;
 }
+.split-btn-options__catchup-count {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    z-index: 2;
+    min-width: 11px;
+    height: 11px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: #2f6fdb;
+    color: #f4f8ff;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 11px;
+    text-align: center;
+    box-shadow: 0 0 0 1px #101822;
+    font-variant-numeric: tabular-nums;
+}
 .split-btn-options__catchup-cam::before {
     content: '';
     position: absolute;

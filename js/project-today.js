@@ -176,10 +176,97 @@
         return false;
     }
 
+    function normalizeCatchupState(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        var requestedDays = Array.isArray(raw.requestedDays)
+            ? raw.requestedDays.map(Number)
+            : (Array.isArray(raw.requested_days)
+                ? raw.requested_days.map(Number)
+                : (Array.isArray(raw.pending_days) ? raw.pending_days.map(Number) : []));
+        return {
+            requestableMissedDay: Number(raw.requestableMissedDay != null ? raw.requestableMissedDay : raw.requestable_missed_day || 0),
+            requestedDays: requestedDays,
+            requests: Array.isArray(raw.requests) ? raw.requests : [],
+            states: raw.states && typeof raw.states === 'object' ? raw.states : {},
+        };
+    }
+
     function catchupStateFor(project, tester) {
         var entry = getCacheEntry(Number(project && project.id || 0));
-        if (!entry || !entry.catchupByProgress) return null;
-        return entry.catchupByProgress[Number(tester && tester.progress_id || 0)] || null;
+        var progressId = Number(tester && tester.progress_id || 0);
+        if (entry && entry.catchupByProgress && progressId > 0) {
+            var cached = entry.catchupByProgress[progressId];
+            if (cached) return normalizeCatchupState(cached);
+        }
+        if (tester && tester.catchup_proof) return normalizeCatchupState(tester.catchup_proof);
+        return null;
+    }
+
+    function collectCatchupAttentionReasons(project, tester) {
+        var catchup = catchupStateFor(project, tester);
+        var yesterday = shiftDateString(todayString(), -1);
+        var yesterdayDay = testerDayNumber(tester) - 1;
+        var requestable = Number(catchup && catchup.requestableMissedDay || 0);
+        var requestedDays = (catchup && catchup.requestedDays || []).map(Number);
+        var states = (catchup && catchup.states) || {};
+        var seen = {};
+        var days = [];
+
+        function consider(day) {
+            var target = Number(day || 0);
+            if (!isCatchupControlDay(target) || seen[target]) return;
+            var state = String(states[String(target)] || '').toLowerCase();
+            var request = catchupRequestForDay(catchup, target);
+            if (request) {
+                var requestState = String(request.state || '').toLowerCase();
+                if (requestState) state = requestState;
+            }
+            if (state === 'owner_closed' || state === 'closed') {
+                seen[target] = true;
+                return;
+            }
+            var proofReceived = state === 'proof_received' || state === 'completed';
+            var proofRequested = proofReceived
+                || state === 'requested'
+                || state === 'pending'
+                || requestedDays.indexOf(target) !== -1
+                || !!request;
+            seen[target] = true;
+            days.push({
+                day: target,
+                proofRequested: proofRequested,
+                proofReceived: proofReceived,
+                request: request || {},
+            });
+        }
+
+        (catchup && catchup.requests || []).forEach(function (request) {
+            consider(request && request.missed_testing_day);
+        });
+        requestedDays.forEach(consider);
+        Object.keys(states).forEach(consider);
+        if (requestable > 0) consider(requestable);
+        if (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday) {
+            consider(yesterdayDay);
+        }
+        days.sort(function (left, right) { return left.day - right.day; });
+        return days.map(function (row) {
+            var request = row.request || {};
+            return {
+                code: 'missed_control',
+                label: row.proofReceived
+                    ? text('pcAttentionProofReceived', 'Proof for day {day} received ✓', { day: row.day })
+                    : (row.proofRequested
+                        ? requestedProofLabel(row.day, request.requested_at)
+                        : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: row.day })),
+                missedDay: row.day,
+                proofRequested: row.proofRequested,
+                proofReceived: row.proofReceived,
+                proofRequestId: Number(request.id || 0),
+                completedProofId: Number(request.completed_proof_id || 0),
+                requestedAt: request.requested_at,
+            };
+        });
     }
 
     function catchupRequestForDay(catchup, day) {
@@ -2302,28 +2389,12 @@
 
     function collectAttention(project) {
         var isBuffer = project && (project.status === 'pending_completion' || project.app_status === 'pending_completion');
-        var yesterday = shiftDateString(todayString(), -1);
         var items = [];
         var hasRealIssue = false;
 
         (project && project.testers || []).forEach(function (tester) {
             if (!tester || tester.is_left_soft || tester.is_guest_tester || tester.is_external) return;
             var reasons = [];
-            var catchup = catchupStateFor(project, tester);
-            var requestableMissedDay = Number(catchup && catchup.requestableMissedDay || 0);
-            var requestedDays = (catchup && catchup.requestedDays || []).map(Number);
-            var yesterdayDay = testerDayNumber(tester) - 1;
-            var requestedCatchupDay = requestedDays.filter(isCatchupControlDay).sort(function (left, right) {
-                return right - left;
-            })[0] || 0;
-            var candidateMissedDay = requestableMissedDay || requestedCatchupDay || yesterdayDay;
-            var candidateState = String(catchup && catchup.states && catchup.states[String(candidateMissedDay)] || '').toLowerCase();
-            var candidateRequest = catchupRequestForDay(catchup, candidateMissedDay);
-            var proofRequested = candidateState === 'requested'
-                || candidateState === 'pending'
-                || requestedDays.indexOf(candidateMissedDay) !== -1;
-            var proofReceived = candidateState === 'proof_received' || candidateState === 'completed';
-            var catchupResolved = candidateState === 'owner_closed' || candidateState === 'closed';
             var neverOpened = isNeverOpenedTester(tester);
 
             // Exclusive primary: never launched. Do not masquerade as skips/debt/invite/missed_control.
@@ -2339,24 +2410,10 @@
                 });
                 hasRealIssue = true;
             } else {
-                // Real issue: missed_control
-                if (!catchupResolved && (requestableMissedDay > 0 || requestedCatchupDay > 0 || (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday))) {
-                    reasons.push({
-                        code: 'missed_control',
-                        label: proofReceived
-                            ? text('pcAttentionProofReceived', 'Proof for day {day} received ✓', { day: candidateMissedDay })
-                            : (proofRequested
-                                ? requestedProofLabel(candidateMissedDay, candidateRequest && candidateRequest.requested_at)
-                                : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: candidateMissedDay })),
-                        missedDay: candidateMissedDay,
-                        proofRequested: proofRequested,
-                        proofReceived: proofReceived,
-                        proofRequestId: Number(candidateRequest && candidateRequest.id || 0),
-                        completedProofId: Number(candidateRequest && candidateRequest.completed_proof_id || 0),
-                        requestedAt: candidateRequest && candidateRequest.requested_at,
-                    });
+                collectCatchupAttentionReasons(project, tester).forEach(function (reason) {
+                    reasons.push(reason);
                     hasRealIssue = true;
-                }
+                });
 
                 var skips = (typeof calculateConsecutiveSkips === 'function')
                     ? Number(calculateConsecutiveSkips(tester) || 0)
@@ -3158,7 +3215,11 @@
                 reasonIcon = ATTENTION_GLYPHS.missed_control_unrequested;
                 title = text('pcAttentionMissedControlUnrequestedTitle', 'Пропущен контрольный день');
                 subtitle = text('pcAttentionMissedControlUnrequestedSubtitle', 'День {day}\nМожно запросить подтверждение', { day: missedDay });
-                spoilerText = text('pcAttentionMissedControlUnrequestedDrawer', 'В контрольный день {day} скриншот не был сдан. Вы можете отправить дозапрос тестеру, чтобы подтвердить активность и зафиксировать прогресс.', { day: missedDay });
+                spoilerText = text(
+                    'pcAttentionMissedControlUnrequestedDrawer',
+                    'В контрольный день {day} скриншот не был сдан. Вы можете отправить дозапрос тестеру. Если он не закроет каждый открытый дозапрос до завершения теста, с него будет списано −1 кармы за каждый незакрытый запрос.',
+                    { day: missedDay }
+                );
                 isDone = false;
 
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRequestCatchupProof(' + safeAppId + ',' + safeTesterId + ')">' +
@@ -4154,6 +4215,8 @@
         recordFeedbackReward: recordFeedbackReward,
         getAttentionReasonMeta: getAttentionReasonMeta,
         collectAttention: collectAttention,
+        collectCatchupAttentionReasons: collectCatchupAttentionReasons,
+        focusAttentionCatchup: focusAttentionCatchup,
         activityCounts: activityCounts,
         calculateTesterControlActivityAssessment: calculateTesterControlActivityAssessment,
         calculateTesterControlRisk: calculateTesterControlActivityAssessment,
@@ -4202,6 +4265,33 @@
         }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
+
+    function focusAttentionCatchup(appId, testerId, missedDay) {
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        var safeDay = Number(missedDay || 0);
+        if (typeof window.pcSetActivityFilter === 'function') {
+            window.pcSetActivityFilter(safeAppId, 'attention');
+        }
+        window.setTimeout(function () {
+            var root = document.getElementById('pc-today-' + safeAppId);
+            var row = root && root.querySelector('.pc-person--attention[data-tester-id="' + safeTesterId + '"]');
+            if (!row) return;
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('is-catchup-focus');
+            window.setTimeout(function () {
+                row.classList.remove('is-catchup-focus');
+            }, 2600);
+            if (safeDay <= 0) return;
+            var tile = row.querySelector('[data-reason-key="' + safeTesterId + '_missed_control_' + safeDay + '"]');
+            if (tile && !tile.classList.contains('is-expanded') && typeof window.pcToggleAttentionReason === 'function') {
+                var header = tile.querySelector('.pc-attention-tile__header');
+                if (header) window.pcToggleAttentionReason(header);
+            }
+        }, 80);
+    }
+
+    window.pcFocusAttentionCatchup = focusAttentionCatchup;
 
     window.pcSetActivityFilter = function (appId, filter) {
         var prefs = readPrefs(appId);
@@ -4558,7 +4648,7 @@
                 '<ul class="pc-catchup-request-sheet__facts">' +
                     '<li>' + esc(text('pcCatchupRequestFactRegular', 'One screenshot, Bug, or Idea with a screenshot on the next regular day will close the request.')) + '</li>' +
                     '<li>' + esc(text('pcCatchupRequestFactBothWays', 'A catch-up report also completes today\'s test. Conversely, today\'s test with a screenshot closes one catch-up request.')) + '</li>' +
-                    '<li>' + esc(text('pcCatchupRequestFactPenalty', 'Karma changes only if the test ends while this request is still open.')) + '</li>' +
+                    '<li>' + esc(text('pcCatchupRequestFactPenalty', 'If the tester does not close catch-up requests before the test ends, they receive −1 karma for each unclosed request.')) + '</li>' +
                 '</ul>' +
                 '<div class="pc-catchup-request-sheet__actions">' +
                     '<button type="button" class="btn btn-secondary" onclick="pcCloseCatchupProofRequestDialog()">' +
