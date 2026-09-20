@@ -315,7 +315,7 @@
 }
 
 .pc-control-signal-chip__label {
-    display: inline;
+    display: inline-block;
     white-space: normal;
     overflow: visible;
     text-overflow: unset;
@@ -324,12 +324,13 @@
 }
 
 .pc-control-signal-chip__main {
+    display: block;
     white-space: nowrap;
 }
 
 .pc-control-signal-chip__detail {
-    display: inline-block;
-    white-space: normal;
+    display: block;
+    white-space: nowrap;
 }
 
 .pc-control-signal-chip:hover .pc-control-signal-chip__label {

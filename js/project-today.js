@@ -193,6 +193,25 @@
         return null;
     }
 
+    function formatCatchupRequestedWhen(requestedAt) {
+        if (!requestedAt) return '';
+        var parsed = new Date(requestedAt);
+        if (!Number.isFinite(parsed.getTime())) return '';
+        var month = String(parsed.getMonth() + 1);
+        if (month.length < 2) month = '0' + month;
+        var day = String(parsed.getDate());
+        if (day.length < 2) day = '0' + day;
+        var requestedDay = parsed.getFullYear() + '-' + month + '-' + day;
+        var today = todayString();
+        var start = new Date(requestedDay + 'T00:00:00');
+        var end = new Date(today + 'T00:00:00');
+        if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return '';
+        var days = Math.round((end.getTime() - start.getTime()) / 86400000);
+        if (days <= 0) return text('pcRelativeToday', 'сегодня');
+        if (days === 1) return text('pcRelativeYesterday', 'вчера');
+        return text('pcRelativeDaysAgo', '{days} дн. назад', { days: days });
+    }
+
     function requestedProofLabel(day, requestedAt) {
         var requestTime = Date.parse(String(requestedAt || ''));
         var elapsedDays = Number.isFinite(requestTime)
@@ -1878,6 +1897,8 @@
                 status: profileRisk ? 'risk' : 'normal',
                 karma: karma,
                 reliability: reliability,
+                karmaNegative: karmaNegative,
+                lowReliability: lowReliability,
                 text: profileText,
             },
         };
@@ -3118,7 +3139,10 @@
                 priorityLevel = 'p2';
                 reasonIcon = ATTENTION_GLYPHS.missed_control_pending;
                 title = text('pcAttentionMissedControlPendingTitle', 'Ожидание отчёта по дозапросу');
-                subtitle = text('pcAttentionMissedControlPendingSubtitle', 'День {day}\nДозапрос отправлен тестеру', { day: missedDay });
+                var requestedWhen = formatCatchupRequestedWhen(reason.requestedAt);
+                subtitle = requestedWhen
+                    ? text('pcAttentionMissedControlPendingSubtitleWhen', 'День {day}\nДозапрос отправлен {when}', { day: missedDay, when: requestedWhen })
+                    : text('pcAttentionMissedControlPendingSubtitle', 'День {day}\nДозапрос отправлен тестеру', { day: missedDay });
                 spoilerText = text('pcAttentionMissedControlPendingDrawer', 'Дозапрос на скриншот за контрольный день {day} отправлен. Ожидайте загрузки отчёта тестером.', { day: missedDay });
                 isDone = reminded;
 
@@ -4677,9 +4701,15 @@
         var kVal = (pData.karma != null) ? (pData.karma > 0 ? '+' + pData.karma : pData.karma) : 0;
         var pRelText = text('pcActivityProfileReliability', 'Надёжность {reliability}%', { reliability: rVal });
         var pKarmaText = text('pcActivityProfileKarma', 'Карма {karma}', { karma: kVal });
+        var showReliability = !pData.risk || pData.lowReliability === true || (pData.lowReliability == null && rVal < 60);
+        var showKarma = !pData.risk || pData.karmaNegative === true || (pData.karmaNegative == null && Number(pData.karma) < 0);
+        if (pData.risk && !showReliability && !showKarma) {
+            showReliability = true;
+            showKarma = true;
+        }
         var pTextHtml = '<span class="pc-activity-card__text pc-activity-card__text--profile">' +
-            '<span class="pc-activity-card__metric">' + esc(pRelText) + '</span>' +
-            '<span class="pc-activity-card__metric">' + esc(pKarmaText) + '</span>' +
+            (showReliability ? '<span class="pc-activity-card__metric">' + esc(pRelText) + '</span>' : '') +
+            (showKarma ? '<span class="pc-activity-card__metric">' + esc(pKarmaText) + '</span>' : '') +
         '</span>';
 
         // Summary Banner — meaningful verdict by signal count

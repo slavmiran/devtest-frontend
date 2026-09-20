@@ -152,6 +152,97 @@
         if (score === 3) return text('smartPingSignalsThree', '3 сигнала: {f1} + {f2} + {f3}', { f1: factors[0] || '', f2: factors[1] || '', f3: factors[2] || '' });
         return text('smartPingSignalsAll', '4 сигнала: все факторы');
     }
+    function signalsCountLabel(score) {
+        var n = Number(score || 0);
+        if (n <= 0) return '';
+        if (n === 1) return text('smartPingSignalsCountOne', '1 сигнал');
+        if (n === 2) return text('smartPingSignalsCountTwo', '2 сигнала');
+        if (n === 3) return text('smartPingSignalsCountThree', '3 сигнала');
+        return text('smartPingSignalsCountAll', '4 сигнала');
+    }
+    function isNeverOpened(tester, reasons) {
+        if ((reasons || []).some(function (reason) {
+            return String(reason && reason.code || '') === 'not_opened';
+        })) return true;
+        if (!tester) return false;
+        if (String(tester.last_check_date || '').trim()) return false;
+        var checkins = Number(tester.checkins_count);
+        if (Number.isFinite(checkins) && checkins > 0) return false;
+        return true;
+    }
+    function notOpenedDaysLabel(days) {
+        var n = Math.max(1, Number(days || 1));
+        var mod10 = n % 10;
+        var mod100 = n % 100;
+        var key = 'smartPingNotOpenedDaysMany';
+        if (mod100 >= 11 && mod100 <= 19) key = 'smartPingNotOpenedDaysMany';
+        else if (mod10 === 1) key = 'smartPingNotOpenedDaysOne';
+        else if (mod10 >= 2 && mod10 <= 4) key = 'smartPingNotOpenedDaysFew';
+        return text(key, '{count} дней без первого запуска', { count: n });
+    }
+    function formatKarmaAmount(value) {
+        var amount = Number(value);
+        if (!Number.isFinite(amount)) return '';
+        if (amount > 0) return '+' + amount;
+        return String(amount);
+    }
+    function profileChildLabel(assessment, tester) {
+        var profile = (assessment && assessment.profile) || {};
+        if (!profile.risk) return '';
+        var reliability = profile.reliability;
+        if (reliability == null && tester && tester.reliability_index != null) {
+            reliability = Math.round(Number(tester.reliability_index));
+        }
+        var karma = profile.karma;
+        if (karma == null && tester && tester.karma != null) karma = Number(tester.karma);
+        var lowRel = profile.lowReliability === true
+            || (profile.lowReliability == null && reliability != null && Number(reliability) < 60);
+        var karmaNeg = profile.karmaNegative === true
+            || (profile.karmaNegative == null && karma != null && Number(karma) < 0);
+        var details = [];
+        if (lowRel && reliability != null && Number.isFinite(Number(reliability))) {
+            details.push(text('smartPingChildReliability', 'Надёжность {reliability}', {
+                reliability: Math.round(Number(reliability)),
+            }));
+        }
+        if (karmaNeg && karma != null && Number.isFinite(Number(karma))) {
+            details.push(text('smartPingChildKarma', 'Карма {karma}', { karma: formatKarmaAmount(karma) }));
+        }
+        if (!details.length) return text('smartPingChildLowRepPlain', 'Низкая репутация');
+        return text('smartPingChildLowRep', 'Низкая репутация ({details})', { details: details.join(') (') });
+    }
+    function rhythmChildLabel(assessment) {
+        var rhythm = (assessment && assessment.rhythm) || {};
+        if (!rhythm.risk) return '';
+        var time = String(rhythm.habitualTime || rhythm.deadlineTime || '').trim();
+        if (time) return text('smartPingChildRhythmOffTime', 'Ритм активности сбит {time}', { time: time });
+        return text('smartPingChildRhythmOff', 'Ритм активности сбит');
+    }
+    function skipsAccumulatedLabel(assessment, tester) {
+        var skips = (assessment && assessment.skips) || {};
+        if (!skips.risk) return '';
+        var count = Number(skips.count);
+        if (!Number.isFinite(count) || count <= 0) {
+            count = Number(tester && (tester.skips_count != null ? tester.skips_count : tester.consecutive_skips) || 0);
+        }
+        if (count < 3) return '';
+        return text('smartPingChildSkipsAccumulated', 'накоплено {count} пропусков', { count: count });
+    }
+    function pushMarker(list, value, isChild) {
+        var label = String(value || '').trim();
+        if (!label) return;
+        var child = !!isChild;
+        if (list.some(function (item) { return item.text === label && !!item.child === child; })) return;
+        list.push({ text: label, child: child });
+    }
+    function pushSignalChildren(list, assessment, tester) {
+        if (assessment && assessment.yesterday && assessment.yesterday.risk) {
+            pushMarker(list, text('smartPingChildMissedYesterday', 'пропуск вчера'), true);
+        }
+        pushMarker(list, skipsAccumulatedLabel(assessment, tester), true);
+        pushMarker(list, rhythmChildLabel(assessment), true);
+        pushMarker(list, profileChildLabel(assessment, tester), true);
+    }
     function debtMarker(skips) {
         var n = Math.max(1, Number(skips || 1));
         if (n <= 1) return text('smartPingMarkerDebtOne', 'Долг с пропуском');
@@ -171,25 +262,41 @@
     }
     function markersFor(row) {
         var list = [];
-        var skips = skipsCount(row.tester);
-        if (skips >= 1) list.push(skipsLabel(skips));
-        if (row.controlDay > 0) {
-            var detail = signalDetail(row.assessment);
-            list.push(detail
-                ? text('smartPingMarkerControlSignals', 'Контрольный день {day} ({detail})', { day: row.controlDay, detail: detail })
-                : text('smartPingMarkerControl', 'Контрольный день {day}', { day: row.controlDay }));
-        } else if (row.signals > 0) {
-            var onlySignals = signalDetail(row.assessment);
-            if (onlySignals) list.push(onlySignals);
+        var neverOpenedReason = (row.reasons || []).find(function (reason) {
+            return String(reason && reason.code || '') === 'not_opened';
+        });
+        if (neverOpenedReason || isNeverOpened(row.tester, row.reasons)) {
+            pushMarker(list, extraReasonLabel(neverOpenedReason || { code: 'not_opened' }), false);
+            pushMarker(list, notOpenedDaysLabel((neverOpenedReason && neverOpenedReason.days) || testerDay(row.tester, row)), true);
+            (row.reasons || []).forEach(function (reason) {
+                var code = String(reason && reason.code || '');
+                if (code === 'not_opened' || code === 'skips' || code === 'debt' || code === 'tester_left' || code === 'missed_control') return;
+                pushMarker(list, extraReasonLabel(reason), false);
+            });
+            return list;
         }
-        if (row.hasDebt) list.push(debtMarker(skips));
+
+        var skips = skipsCount(row.tester);
+        if (skips >= 1) pushMarker(list, skipsLabel(skips), false);
+        if (row.controlDay > 0) {
+            pushMarker(list, text('smartPingMarkerControlToday', 'Сегодня Контрольный день {day}', { day: row.controlDay }), false);
+            pushMarker(list, signalDetail(row.assessment), true);
+        } else if (row.signals > 0) {
+            pushMarker(list, signalsCountLabel(row.signals), false);
+            pushSignalChildren(list, row.assessment, row.tester);
+        }
+        if (row.hasDebt) pushMarker(list, debtMarker(skips), false);
         (row.reasons || []).forEach(function (reason) {
             var code = String(reason && reason.code || '');
             if (code === 'skips' || code === 'debt' || code === 'tester_left') return;
             var label = extraReasonLabel(reason);
-            if (label && list.indexOf(label) === -1) list.push(label);
+            if (!label) return;
+            pushMarker(list, label, false);
+            if (code === 'missed_control' && !reason.proofRequested && !reason.proofReceived) {
+                pushMarker(list, text('smartPingCatchupWillSend', 'Будет отправлен дозапрос на скрин-отчет'), true);
+            }
         });
-        return list.filter(Boolean);
+        return list;
     }
     function isRisk(row) {
         if (row.section === 'both' || row.section === 'attention') return true;
@@ -239,18 +346,19 @@
             var testerId = testerIdOf(item, tester.tester_id || tester.id);
             if (testerId <= 0 || hasLeft(item, tester)) return;
             var pending = pendingById[testerId];
-            var assessment = assessmentOf(pending, tester, project);
+            var neverOpened = isNeverOpened(tester, item.reasons);
+            var assessment = neverOpened ? { riskScore: 0 } : assessmentOf(pending, tester, project);
             var codes = reasonCodes(item);
             pushRow({
                 testerId: testerId,
                 tester: tester,
                 item: item,
-                section: pending ? 'both' : 'attention',
+                section: (pending && !neverOpened) ? 'both' : 'attention',
                 reasons: item.reasons || [],
                 assessment: assessment,
-                signals: signalScore(assessment),
-                controlDay: pending ? testerDay(tester, pending) : 0,
-                hasDebt: codes.indexOf('debt') !== -1,
+                signals: neverOpened ? 0 : signalScore(assessment),
+                controlDay: (pending && !neverOpened) ? testerDay(tester, pending) : 0,
+                hasDebt: !neverOpened && codes.indexOf('debt') !== -1,
             });
         });
 
@@ -258,6 +366,7 @@
             var pending = pendingById[id];
             var tester = pending.tester || {};
             var testerId = Number(id);
+            if (isNeverOpened(tester, [])) return;
             var assessment = assessmentOf(pending, tester, project);
             pushRow({
                 testerId: testerId,
@@ -275,6 +384,7 @@
         (project && project.testers || []).forEach(function (tester) {
             var testerId = testerIdOf(tester);
             if (testerId <= 0 || used[testerId] || hasLeft(null, tester)) return;
+            if (isNeverOpened(tester, [])) return;
             if (isControlDay(testerDay(tester))) return;
             var assessment = assessmentOf(null, tester, project);
             var signals = signalScore(assessment);
@@ -365,7 +475,8 @@
             ? '<span class="smart-ping-risk-badge"><i class="smart-ping-risk-dot" aria-hidden="true"></i>' + esc(text('smartPingRiskBadge', 'Риск')) + '</span>'
             : '';
         var reasons = (row.markers || []).map(function (marker) {
-            return '<li>' + esc(marker) + '</li>';
+            var item = marker && typeof marker === 'object' ? marker : { text: marker, child: false };
+            return '<li' + (item.child ? ' class="is-child"' : '') + '>' + esc(item.text || '') + '</li>';
         }).join('');
         return '<label class="smart-ping-row' + (row.risk ? ' is-risk' : '') + '">' +
             '<input type="checkbox" data-smart-ping-tester="' + row.testerId + '"' + (row.checked ? ' checked' : '') + '>' +

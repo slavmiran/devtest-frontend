@@ -254,6 +254,12 @@
 .smart-ping-row__reasons li::before {
     content: '• ';
 }
+.smart-ping-row__reasons li.is-child {
+    padding-left: 12px;
+}
+.smart-ping-row__reasons li.is-child::before {
+    content: '· ';
+}
 .smart-ping-empty {
     padding: 28px 8px;
     color: #8a9bb3;
