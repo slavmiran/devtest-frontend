@@ -328,6 +328,7 @@
     }
     function close() {
         var node = overlay();
+        if (document.body) document.body.style.overflow = '';
         if (!node) return;
         node.classList.remove('active');
         if (node.parentNode) node.parentNode.removeChild(node);
@@ -418,14 +419,19 @@
     }
     function bindSwipe(node) {
         var sheet = node.querySelector('.smart-ping-sheet');
-        var body = node.querySelector('.smart-ping-sheet__body');
         if (!sheet || sheet._hasSwipeListener) return;
         sheet._hasSwipeListener = true;
         var startY = 0;
         var currentY = 0;
         var dragging = false;
+
+        function isSwipeHandle(target) {
+            if (!target) return false;
+            return !!(target.closest('.sheet-handle') || (target.closest('.smart-ping-sheet__head') && !target.closest('button, input, a')));
+        }
+
         sheet.addEventListener('touchstart', function (event) {
-            if (body && body.scrollTop > 5) return;
+            if (!isSwipeHandle(event.target)) return;
             startY = event.touches[0].clientY;
             currentY = startY;
             dragging = true;
@@ -434,7 +440,7 @@
             if (!dragging) return;
             currentY = event.touches[0].clientY;
             var delta = currentY - startY;
-            if (delta > 0 && (!body || body.scrollTop <= 0)) {
+            if (delta > 0) {
                 sheet.style.transform = 'translateY(' + delta + 'px)';
             }
         }, { passive: true });
@@ -450,6 +456,11 @@
         node.addEventListener('click', function (event) {
             if (event.target === node) close();
         });
+        node.addEventListener('touchmove', function (event) {
+            if (event.target === node) {
+                event.preventDefault();
+            }
+        }, { passive: false });
         node.querySelectorAll('[data-smart-ping-filter]').forEach(function (btn) {
             btn.addEventListener('click', function (event) {
                 event.preventDefault();
@@ -549,6 +560,7 @@
             '</section>' +
         '</div>';
         document.body.insertAdjacentHTML('beforeend', html);
+        if (document.body) document.body.style.overflow = 'hidden';
         var node = overlay();
         bind(node);
         render();

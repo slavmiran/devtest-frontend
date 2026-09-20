@@ -73,8 +73,13 @@
 }
 
 .smart-ping-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
     align-items: flex-end;
     background: rgba(6, 10, 16, .62);
+    overscroll-behavior: contain;
+    touch-action: none;
 }
 .smart-ping-overlay.active { display: flex; }
 .smart-ping-sheet {
@@ -88,6 +93,8 @@
     background: #15202c;
     color: #e7eef8;
     box-shadow: 0 -18px 40px rgba(0, 0, 0, .35);
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 .smart-ping-sheet__head {
     display: flex;
@@ -136,7 +143,10 @@
     color: #58a6ff;
 }
 .smart-ping-sheet__body {
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     min-height: 120px;
     margin: 0 -4px 10px;
     padding: 0 4px 4px;

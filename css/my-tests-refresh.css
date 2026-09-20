@@ -2133,13 +2133,16 @@ button.ts-section-head {
     white-space: nowrap;
     text-align: center;
 }
+#report-modal .modal-content .btn.screenshot-boost-eligible,
+#report-modal .btn.screenshot-boost-eligible,
 #report-modal .screenshot-boost-eligible {
     display: inline-flex !important;
-    align-items: center;
-    justify-content: flex-start !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
     gap: 8px;
 }
-.screenshot-boost-action__label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.screenshot-boost-action__label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
 .screenshot-boost-action__icon { display:grid; place-items:center; flex:0 0 23px; width:23px; height:23px; border:1px solid rgba(201,157,255,.6); border-radius:7px; background:rgba(196,149,255,.07); font-size:13px; line-height:1; }
 .checkin-catchup-note {
     display: flex;
