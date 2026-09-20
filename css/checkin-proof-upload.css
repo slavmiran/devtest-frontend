@@ -317,6 +317,17 @@
 .checkin-proof-upload-actions .btn {
     width: 100%;
     min-width: 0;
+    justify-content: center !important;
+    text-align: center;
+}
+
+#checkin-proof-submit {
+    justify-content: center !important;
+    text-align: center;
+}
+
+#checkin-proof-submit.screenshot-boost-eligible {
+    justify-content: center !important;
 }
 
 #checkin-proof-submit:disabled {

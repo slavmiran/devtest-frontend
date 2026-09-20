@@ -36,14 +36,14 @@
     background: rgba(255, 255, 255, .08);
 }
 .pc-smart-ping-btn.is-armed {
-    border-color: rgba(88, 166, 255, .40);
-    background: rgba(56, 139, 253, .14);
-    color: #58a6ff;
+    border-color: rgba(148, 163, 184, 0.20);
+    background: rgba(88, 166, 255, 0.07);
+    color: #8da4c4;
 }
 .pc-smart-ping-btn.is-armed:hover {
-    border-color: rgba(88, 166, 255, .52);
-    background: rgba(56, 139, 253, .20);
-    color: #79b8ff;
+    border-color: rgba(148, 163, 184, 0.32);
+    background: rgba(88, 166, 255, 0.12);
+    color: #a8bdce;
 }
 .pc-smart-ping-btn__bolt {
     display: none;

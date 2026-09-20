@@ -1601,7 +1601,7 @@ function renderProjects(force) {
                 );
                 let testerPrefixHtml = '';
                 if (isMutualDebt) {
-                    testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">🫵</span>';
+                    testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">⚖️</span>';
                 } else if (isBrokenReciprocal) {
                     testerPrefixHtml = '<span class="tester-broken-prefix" style="margin-right:2px;" title="' + window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка') + '">💔</span>';
                 } else if (isContractTester) {

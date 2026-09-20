@@ -3296,16 +3296,31 @@ function setScreenshotBoostActionButton(button, label, offer) {
     button.dataset.screenshotBoostBaseLabel = safeLabel;
     var eligible = !!offer;
     button.classList.toggle('screenshot-boost-eligible', eligible);
+    var labelId = button.id === 'checkin-proof-submit' ? ' id="t-checkinProofSubmit"' : '';
     if (!eligible) {
-        button.textContent = safeLabel;
+        if (button.id === 'checkin-proof-submit') {
+            button.innerHTML = '<span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">' + window.escapeHTML(safeLabel) + '</span>';
+        } else {
+            button.textContent = safeLabel;
+        }
         return;
     }
-    var labelId = button.id === 'checkin-proof-submit' ? ' id="t-checkinProofSubmit"' : '';
-    var parts = /^(\S+)\s+([\s\S]+)$/.exec(safeLabel);
-    button.innerHTML = parts
-        ? '<span class="screenshot-boost-action__icon" aria-hidden="true">' + window.escapeHTML(parts[1]) + '</span>' +
-            '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(parts[2]) + '</span>'
-        : '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(safeLabel) + '</span>';
+    var emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji}|[\u2000-\u32ff\ud83c-\ud83e\udd00-\udfff])\s*([\s\S]+)$/u;
+    var match = null;
+    try {
+        match = emojiRegex.exec(safeLabel);
+    } catch (e) {
+        var fallbackParts = /^(\S+)\s+([\s\S]+)$/.exec(safeLabel);
+        if (fallbackParts && /^[^a-zA-Z0-9\u0400-\u04FF]+$/.test(fallbackParts[1])) {
+            match = fallbackParts;
+        }
+    }
+    if (match && match[1] && match[2]) {
+        button.innerHTML = '<span class="screenshot-boost-action__icon" aria-hidden="true">' + window.escapeHTML(match[1]) + '</span>' +
+            '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(match[2]) + '</span>';
+    } else {
+        button.innerHTML = '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(safeLabel) + '</span>';
+    }
 }
 
 function openCheckinOptionsModal(appId, ownerUsername) {
@@ -9559,7 +9574,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const badgeHtml = isBroken
         ? `<span class="linked-badge is-broken" style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);">${window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка')}</span>`
         : (isMutualDebt
-            ? `<span class="linked-badge is-debt">${window.escapeHTML(window.t('linkedBadgeDebt', {}, lang) || '🫵 Долг')}</span>`
+            ? `<span class="linked-badge is-debt">${window.escapeHTML(window.t('linkedBadgeDebt', {}, lang) || '⚖️ Долг')}</span>`
             : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`);
 
     let swapArrow = '<svg class="linked-swap-svg is-mutual" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="8" x2="5" y2="8"></line><polyline points="9 4 5 8 9 12"></polyline><line x1="5" y1="16" x2="19" y2="16"></line><polyline points="15 12 19 16 15 20"></polyline></svg>';

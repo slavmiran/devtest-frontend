@@ -1471,21 +1471,21 @@
 
         var label = '';
         if (score === 0) {
-            label = text('pcSignalChipZero', 'В графике (всё стабильно)');
+            label = '<span class="pc-control-signal-chip__main">' + esc(text('pcSignalChipZero', 'В графике (всё стабильно)')) + '</span>';
         } else if (score === 1) {
             var f1 = factors[0] || '';
-            label = text('pcSignalChipOne', '1 сигнал ({factor})', { factor: f1 });
+            label = '<span class="pc-control-signal-chip__main">' + esc(text('pcSignalChipOneMain', '1 сигнал')) + '</span> <span class="pc-control-signal-chip__detail">(' + esc(f1) + ')</span>';
         } else if (score === 2) {
             var f1 = factors[0] || '';
             var f2 = factors[1] || '';
-            label = text('pcSignalChipTwo', '2 сигнала ({f1} + {f2})', { f1: f1, f2: f2 });
+            label = '<span class="pc-control-signal-chip__main">' + esc(text('pcSignalChipTwoMain', '2 сигнала')) + '</span> <span class="pc-control-signal-chip__detail">(' + esc(f1 + ' + ' + f2) + ')</span>';
         } else if (score === 3) {
             var f1 = factors[0] || '';
             var f2 = factors[1] || '';
             var f3 = factors[2] || '';
-            label = text('pcSignalChipThree', '3 сигнала ({f1} + {f2} + {f3})', { f1: f1, f2: f2, f3: f3 });
+            label = '<span class="pc-control-signal-chip__main">' + esc(text('pcSignalChipThreeMain', '3 сигнала')) + '</span> <span class="pc-control-signal-chip__detail">(' + esc(f1 + ' + ' + f2 + ' + ' + f3) + ')</span>';
         } else {
-            label = text('pcSignalChipAll', '4 сигнала (все факторы)');
+            label = '<span class="pc-control-signal-chip__main">' + esc(text('pcSignalChipAllMain', '4 сигнала')) + '</span> <span class="pc-control-signal-chip__detail">(' + esc(text('pcSignalFactorAll', 'все факторы')) + ')</span>';
         }
 
         var arrowSvg = '<svg class="pc-contrib-stat-chip__arrow" viewBox="0 0 10 6" width="7" height="5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1L5 5L9 1"/></svg>';
@@ -1495,7 +1495,7 @@
         return '<button type="button" class="pc-contrib-stat-chip pc-control-signal-chip pc-control-signal-chip--' + score + '"' +
             ' onclick="' + clickAttr + '"' +
             ' title="' + esc(tooltip) + '">' +
-            '<span class="pc-contrib-stat-chip__seg pc-control-signal-chip__label">' + esc(label) + '</span>' +
+            '<span class="pc-contrib-stat-chip__seg pc-control-signal-chip__label">' + label + '</span>' +
             arrowSvg +
         '</button>';
     }
@@ -3387,9 +3387,9 @@
     function filterIcon(key) {
         var paths = {
             testers: '<circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="8" r="2.5"/><path d="M2.8 19c.4-3.4 2.2-5.2 5.2-5.2s4.8 1.8 5.2 5.2M13 14.2c1-.9 2.2-1.3 3.6-1.3 2.6 0 4.1 1.7 4.5 4.6"/>',
-            contribution: '<path d="M13.2 2.8 5.9 13h5.5l-.7 8.2L18.2 10h-5.6z"/>',
+            contribution: '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M7.828 13.07A3 3 0 0 1 12 8.764a3 3 0 0 1 5.004 2.224 3 3 0 0 1-.832 2.083l-3.447 3.62a1 1 0 0 1-1.45-.001z"/>',
             attention: '<path d="M12 3.2 21 19H3z"/><path d="M12 8.3v5.3M12 16.9h.01"/>',
-            control: '<rect x="5" y="4.5" width="14" height="16" rx="2.3"/><path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h4.5"/><path d="m14.5 17 1.3 1.3 2.7-3"/>',
+            control: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
         };
         return '<svg class="pc-activity__filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[key] + '</svg>';
     }
@@ -3566,12 +3566,12 @@
         };
         var hintText = historyOn ? workspaceText('Выбранная категория за всё время', 'Selected category over time') : hints[filter];
         var hintHtml = hintText ? (
-            '<div class="pc-activity__hint-wrap">' +
-                '<div class="pc-activity__hint-scroll" tabindex="0">' +
+            '<div class="pc-activity__hint-wrap" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')" role="button" tabindex="0" title="' + esc(text('pcHintInfoAria', 'Критерии фильтра · Нажмите для подробностей')) + '">' +
+                '<div class="pc-activity__hint-scroll">' +
                     '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
                     '<button type="button" class="pc-activity__info" aria-label="' +
                         esc(text('pcHintInfoAria', 'Filter criteria')) +
-                        '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')"><svg viewBox="0 0 16 16" width="11" height="11"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.4"/><path fill="currentColor" d="M7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM8.5 11.5h-1V7h1v4.5Z"/></svg></button>' +
+                        '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')"><svg viewBox="0 0 16 16" width="10" height="10"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/><path fill="currentColor" d="M7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM8.5 11.5h-1V7h1v4.5Z"/></svg></button>' +
                 '</div>' +
             '</div>'
         ) : '<div class="pc-activity__hint-wrap"></div>';
