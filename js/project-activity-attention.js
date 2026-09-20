@@ -36,7 +36,8 @@
                 else if (reason.proofRequested) value = 5; // P2 Waiting: request sent, waiting for tester
                 else value = 2; // P1 Critical: report unrequested
             } else if (code === 'not_opened') {
-                value = 4;
+                var openedDays = Number(reason.days || (item.tester && item.tester.testing_days) || 0);
+                value = (String(reason.phase || '') === 'critical' || openedDays >= 4) ? 0 : 4;
             } else if (code === 'debt' || code === 'direct_invite') {
                 value = 6; // P2 Waiting: early 1-skip warning
             }

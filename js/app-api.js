@@ -2320,6 +2320,7 @@ function _mapProjectsFromApi(data) {
                     : (typeof calculateConsecutiveSkips === 'function'
                         ? calculateConsecutiveSkips(tester)
                         : 0)),
+                created_at: tester.created_at || tester.progress_created_at || null,
                 is_external: !!tester.is_external,
                 is_guest_tester: !!tester.is_guest_tester,
                 external_source: tester.external_source || '',

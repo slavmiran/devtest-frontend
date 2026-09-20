@@ -3913,6 +3913,11 @@ button.pc-act-reason {
     color: #9cb0c9;
     font-weight: 550;
 }
+.pc-attention-timer {
+    color: #9bbdf2;
+    font-variant-numeric: tabular-nums;
+    font-weight: 550;
+}
 .attention-link-action {
     display: inline;
     padding: 0;

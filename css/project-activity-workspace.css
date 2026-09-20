@@ -595,6 +595,11 @@
     color: #9cb0c9;
     font-weight: 550;
 }
+.pc-activity--workspace .pc-attention-timer {
+    color: #9bbdf2;
+    font-variant-numeric: tabular-nums;
+    font-weight: 550;
+}
 .pc-activity--workspace .pc-attention-debt {
     display: flex;
     flex-direction: column;
