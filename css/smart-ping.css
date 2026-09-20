@@ -16,10 +16,10 @@
     min-width: 28px;
     margin: 0;
     padding: 0 8px;
-    border: 1px solid rgba(56, 139, 253, .28);
+    border: 1px solid rgba(255, 255, 255, .08);
     border-radius: 8px;
-    background: rgba(56, 139, 253, .10);
-    color: #8fb8f0;
+    background: rgba(255, 255, 255, .05);
+    color: #94a3b8;
     font: inherit;
     font-size: 11px;
     font-weight: 650;
@@ -27,13 +27,23 @@
     letter-spacing: .01em;
     white-space: nowrap;
     cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
     -webkit-tap-highlight-color: transparent;
 }
+.pc-smart-ping-btn:hover {
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, .08);
+}
 .pc-smart-ping-btn.is-armed {
-    border-color: rgba(88, 166, 255, .58);
-    background: linear-gradient(180deg, rgba(56, 139, 253, .28), rgba(56, 139, 253, .16));
+    border-color: rgba(88, 166, 255, .40);
+    background: rgba(56, 139, 253, .14);
     color: #58a6ff;
-    box-shadow: 0 0 0 1px rgba(56, 139, 253, .12);
+}
+.pc-smart-ping-btn.is-armed:hover {
+    border-color: rgba(88, 166, 255, .52);
+    background: rgba(56, 139, 253, .20);
+    color: #79b8ff;
 }
 .pc-smart-ping-btn__bolt {
     display: none;
@@ -57,7 +67,9 @@
 }
 @container params-head (max-width: 268px) {
     .pc-smart-ping-btn:not(.is-armed) .pc-smart-ping-btn__full { display: none; }
-    .pc-smart-ping-btn:not(.is-armed) .pc-smart-ping-btn__short { display: inline; }
+    .pc-smart-ping-btn:not(.is-armed) .pc-smart-ping-btn__short { display: none; }
+    .pc-smart-ping-btn:not(.is-armed) .pc-smart-ping-btn__bolt { display: inline; }
+    .pc-smart-ping-btn:not(.is-armed) { padding: 0 7px; }
 }
 
 .smart-ping-overlay {
@@ -79,35 +91,25 @@
 }
 .smart-ping-sheet__head {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
     margin: 4px 0 10px;
 }
 .smart-ping-sheet__head h3 {
     margin: 0;
+    min-width: 0;
     font-size: 17px;
     font-weight: 750;
     letter-spacing: .01em;
 }
 .smart-ping-sheet__balance {
-    margin: 4px 0 0;
-    color: #8fb8f0;
-    font-size: 12px;
-    font-weight: 600;
-}
-.smart-ping-sheet__close {
-    appearance: none;
-    width: 32px;
-    height: 32px;
-    margin: -4px -6px 0 0;
-    border: 0;
-    border-radius: 8px;
-    background: rgba(174, 195, 226, .08);
-    color: #9aabc2;
-    font-size: 20px;
-    line-height: 1;
-    cursor: pointer;
+    margin: 0;
+    flex: 0 0 auto;
+    color: #8a9bb3;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
 }
 .smart-ping-sheet__filters {
     display: flex;
@@ -164,7 +166,7 @@
 }
 .smart-ping-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     min-height: 52px;
     margin: 0 0 6px;
@@ -177,19 +179,28 @@
     width: 18px;
     height: 18px;
     flex: 0 0 18px;
+    margin-top: 7px;
     accent-color: #388bfd;
 }
 .smart-ping-row .pc-avatar {
     width: 32px;
     height: 32px;
     flex: 0 0 32px;
+    margin-top: 2px;
     border-radius: 50%;
     object-fit: cover;
 }
 .smart-ping-row__meta {
     display: grid;
     min-width: 0;
-    gap: 2px;
+    gap: 3px;
+}
+.smart-ping-row__name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
 }
 .smart-ping-row__meta strong {
     overflow: hidden;
@@ -199,13 +210,39 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.smart-ping-row__meta small {
-    overflow: hidden;
+.smart-ping-risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px 2px 6px;
+    border-radius: 999px;
+    background: rgba(210, 153, 34, .16);
+    color: #e3b341;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    line-height: 1.2;
+}
+.smart-ping-risk-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #e3b341;
+}
+.smart-ping-row__reasons {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.smart-ping-row__reasons li {
     color: #8a9bb3;
     font-size: 11px;
     font-weight: 500;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.4;
+    white-space: normal;
+}
+.smart-ping-row__reasons li::before {
+    content: '• ';
 }
 .smart-ping-empty {
     padding: 28px 8px;

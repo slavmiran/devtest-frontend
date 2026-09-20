@@ -3628,6 +3628,9 @@
         var data = activityCounts(project);
         var prefs = readPrefs(appId);
         var filter = resolvedFilter(prefs, data);
+        if (window.SmartPing && typeof window.SmartPing.sync === 'function') {
+            window.SmartPing.sync(appId, filter);
+        }
         var mode = prefs.modes[filter] || 'now';
         if (mode === 'history') {
             loadFilterHistory(appId, filter, data);
@@ -3694,8 +3697,8 @@
         var data = activityCounts(project);
         var prefs = readPrefs(safeAppId);
         var filter = resolvedFilter(prefs, data);
-        if (window.SmartPing && (filter === 'attention' || filter === 'control')) {
-            window.SmartPing.arm(safeAppId);
+        if (window.SmartPing && typeof window.SmartPing.sync === 'function') {
+            window.SmartPing.sync(safeAppId, filter);
         }
         var mode = prefs.modes[filter] || 'now';
         var context = contextFor(project);
@@ -4032,9 +4035,6 @@
             });
         }
         refreshActivityWorkspace(appId);
-        if (prefs.filter === 'attention' || prefs.filter === 'control') {
-            if (window.SmartPing) window.SmartPing.arm(appId);
-        }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
