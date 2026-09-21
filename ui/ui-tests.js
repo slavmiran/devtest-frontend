@@ -1648,8 +1648,11 @@ function contactIncomingAccessReporter(username, accessMode, currentLang) {
         // Telegram renders this as a native prompt. Calling it after the navigation
         // keeps the copy confirmation and the checklist available over the direct chat.
         const helperGuide = window.t('incomingAccessIssueHelperGuide', {}, langCode);
-        if (window.tg && typeof tg.showAlert === 'function') {
-            tg.showAlert(helperGuide);
+        const telegram = window.tg || (window.Telegram && window.Telegram.WebApp) || (typeof tg !== 'undefined' ? tg : null);
+        if (telegram && typeof telegram.showAlert === 'function') {
+            telegram.showAlert(helperGuide);
+        } else if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert(helperGuide);
         } else if (typeof showToast === 'function') {
             showToast(copiedGoogleGroup ? copiedToast : helperGuide);
         }
@@ -1666,8 +1669,8 @@ function renderIncomingAccessIssue(item, currentLang) {
         custom_google_group: 'incomingAccessIssueModeCustomGroup',
         google_group: 'incomingAccessIssueModeGoogleGroup',
     }[String(item.access_issue_mode || '').toLowerCase()] || 'incomingAccessIssueModeGoogleGroup';
-    const reporterUsername = String(item.access_issue_reporter_username || '').trim().replace(/^@+/, '');
-    const safeUsername = escapeInlineJsString(reporterUsername);
+    const issueTesterUsername = String(item.access_issue_tester_username || item.access_issue_reporter_username || '').trim().replace(/^@+/, '');
+    const safeUsername = escapeInlineJsString(issueTesterUsername);
     const title = window.escapeHTML(window.t('incomingAccessIssueTitle', {}, langCode));
     const mode = window.escapeHTML(window.t(modeKey, {}, langCode));
     const description = window.escapeHTML(window.t('incomingAccessIssueDescription', {}, langCode));
@@ -1675,12 +1678,12 @@ function renderIncomingAccessIssue(item, currentLang) {
     const karmaIcon = typeof window.karmaIconHtml === 'function'
         ? window.karmaIconHtml('incoming-access-issue__karma')
         : '<span class="incoming-access-issue__karma" aria-hidden="true">☯</span>';
-    const contactHtml = reporterUsername
+    const contactHtml = issueTesterUsername
         ? '<button type="button" class="incoming-access-issue__contact notranslate" ' +
-            'aria-label="' + window.escapeHTML(window.t('incomingAccessIssueContactAria', { username: '@' + reporterUsername }, langCode)) + '" ' +
+            'aria-label="' + window.escapeHTML(window.t('incomingAccessIssueContactAria', { username: '@' + issueTesterUsername }, langCode)) + '" ' +
             'onclick="event.stopPropagation(); contactIncomingAccessReporter(\'' + safeUsername + '\', \'' + escapeInlineJsString(String(item.access_issue_mode || '')) + '\', \'' + escapeInlineJsString(langCode) + '\');">' +
                 '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.7 4.2 3.9 10.7c-1.15.46-1.14 1.1-.21 1.39l4.31 1.35 1.67 5.1c.2.56.1.78.7.78.46 0 .66-.2.92-.44l2.09-2.03 4.35 3.22c.8.44 1.38.21 1.58-.75l2.86-13.48c.29-1.18-.45-1.72-1.54-1.22ZM8.67 13.2l9.72-6.14c.49-.3.94-.14.57.19l-8.33 7.52-.33 3.5-1.63-5.07Z" fill="currentColor"/></svg>' +
-                '<span>@' + window.escapeHTML(reporterUsername) + '</span>' +
+                '<span>@' + window.escapeHTML(issueTesterUsername) + '</span>' +
             '</button>'
         : '';
 
