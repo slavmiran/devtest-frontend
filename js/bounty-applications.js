@@ -314,12 +314,15 @@ function renderBountyApplications(force) {
                 '</div>' +
                 '<div class="action-row bounty-app-actions">' +
                     '<button type="button" class="btn bounty-app-accept-btn" onclick="decideBountyApplication(' + app.application_id + ', \'accept\', event)">' +
+                        '<span class="bounty-app-action-icon">' + (typeof incomingApplicationActionIcon === 'function' ? incomingApplicationActionIcon('accept') : '✓') + '</span>' +
                         window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
                     '</button>' +
                     '<button type="button" class="btn bounty-app-reject-btn" onclick="decideBountyApplication(' + app.application_id + ', \'reject\', event)">' +
+                        '<span class="bounty-app-action-icon">' + (typeof incomingApplicationActionIcon === 'function' ? incomingApplicationActionIcon('reject') : '×') + '</span>' +
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
                     '</button>' +
                 '</div>' +
+                (typeof renderIncomingAccessIssue === 'function' ? renderIncomingAccessIssue(app, lang) : '') +
             '</div>';
     }).join('');
 

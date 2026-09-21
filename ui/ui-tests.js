@@ -1609,6 +1609,47 @@ function openTelegramProfile(username, event) {
     return true;
 }
 
+function incomingApplicationActionIcon(action) {
+    if (action === 'accept') {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m4.8 12.7 4.3 4.2L19.4 6.9M9.1 12.7l4.3 4.2" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m7 7 10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+}
+
+function renderIncomingAccessIssue(item, currentLang) {
+    if (!item || !item.access_issue) return '';
+
+    const langCode = currentLang || (typeof getLang === 'function' ? getLang() : 'ru');
+    const modeKey = {
+        email_list: 'incomingAccessIssueModeEmailList',
+        custom_google_group: 'incomingAccessIssueModeCustomGroup',
+        google_group: 'incomingAccessIssueModeGoogleGroup',
+    }[String(item.access_issue_mode || '').toLowerCase()] || 'incomingAccessIssueModeGoogleGroup';
+    const reporterUsername = String(item.access_issue_reporter_username || '').trim().replace(/^@+/, '');
+    const safeUsername = escapeInlineJsString(reporterUsername);
+    const title = window.escapeHTML(window.t('incomingAccessIssueTitle', {}, langCode));
+    const mode = window.escapeHTML(window.t(modeKey, {}, langCode));
+    const description = window.escapeHTML(window.t('incomingAccessIssueDescription', {}, langCode));
+    const helpLabel = window.escapeHTML(window.t('incomingAccessIssueHelpLabel', {}, langCode));
+    const contactHtml = reporterUsername
+        ? '<button type="button" class="incoming-access-issue__contact notranslate" ' +
+            'aria-label="' + window.escapeHTML(window.t('incomingAccessIssueContactAria', { username: '@' + reporterUsername }, langCode)) + '" ' +
+            'onclick="event.stopPropagation(); contactAccessTester(\'' + safeUsername + '\');">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.7 4.2 3.9 10.7c-1.15.46-1.14 1.1-.21 1.39l4.31 1.35 1.67 5.1c.2.56.1.78.7.78.46 0 .66-.2.92-.44l2.09-2.03 4.35 3.22c.8.44 1.38.21 1.58-.75l2.86-13.48c.29-1.18-.45-1.72-1.54-1.22ZM8.67 13.2l9.72-6.14c.49-.3.94-.14.57.19l-8.33 7.52-.33 3.5-1.63-5.07Z" fill="currentColor"/></svg>' +
+                '<span>@' + window.escapeHTML(reporterUsername) + '</span>' +
+            '</button>'
+        : '';
+
+    return '<aside class="incoming-access-issue" role="status">' +
+        '<div class="incoming-access-issue__head">' +
+            '<span class="incoming-access-issue__title"><i aria-hidden="true"></i>' + title + '</span>' +
+            '<span class="incoming-access-issue__mode notranslate">' + mode + '</span>' +
+        '</div>' +
+        '<p>' + description + '</p>' +
+        (contactHtml ? '<div class="incoming-access-issue__foot"><span>' + helpLabel + '</span>' + contactHtml + '</div>' : '') +
+    '</aside>';
+}
+
 function renderIncomingOffers() {
     if (!arguments[0] && !isTabVisible('tests')) {
         if (_offersTimerId) {
@@ -1758,12 +1799,15 @@ function renderIncomingOffers() {
                 '</div>' +
                 '<div class="action-row bounty-app-actions">' +
                     '<button type="button" class="btn bounty-app-accept-btn" onclick="decideOffer(' + offer.offer_id + ', \'accept\', event)">' +
+                        '<span class="bounty-app-action-icon">' + incomingApplicationActionIcon('accept') + '</span>' +
                         window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
                     '</button>' +
                     '<button type="button" class="btn bounty-app-reject-btn" onclick="decideOffer(' + offer.offer_id + ', \'reject\', event)">' +
+                        '<span class="bounty-app-action-icon">' + incomingApplicationActionIcon('reject') + '</span>' +
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
                     '</button>' +
                 '</div>' +
+                renderIncomingAccessIssue(offer, lang) +
             '</div>';
     }).join('');
 

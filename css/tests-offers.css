@@ -566,6 +566,28 @@
     border-radius: 12px;
 }
 
+.bounty-app-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+}
+
+.bounty-app-action-icon {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.bounty-app-action-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
 .bounty-app-accept-btn {
     background: var(--reward) !important;
     color: #fff !important;
@@ -579,6 +601,134 @@
     background: transparent !important;
     color: var(--hint-color) !important;
     border: 1px solid rgba(142, 142, 147, 0.35) !important;
+}
+
+/* An application stays actionable even while the owner's project has an open
+   access incident. This compact context block tells the owner exactly what is
+   blocked and offers the one useful next step: write to the reporter. */
+.incoming-access-issue {
+    margin-top: 10px;
+    padding: 12px 14px 13px;
+    border: 1px solid rgba(235, 117, 117, 0.12);
+    border-radius: 13px;
+    background: rgba(5, 8, 14, 0.22);
+    color: var(--hint-color);
+}
+
+.incoming-access-issue__head,
+.incoming-access-issue__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.incoming-access-issue__title {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 7px;
+    color: #e99a9a;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.incoming-access-issue__title i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    background: #e99a9a;
+    box-shadow: 0 0 0 0 rgba(233, 154, 154, 0.28);
+    animation: incoming-access-issue-pulse 1.8s ease-in-out infinite;
+}
+
+.incoming-access-issue__mode,
+.incoming-access-issue__foot > span {
+    flex: 0 0 auto;
+    color: rgba(174, 191, 214, 0.82);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.incoming-access-issue p {
+    margin: 10px 0 12px;
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.38;
+}
+
+.incoming-access-issue__foot {
+    justify-content: flex-start;
+}
+
+.incoming-access-issue__contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    margin-left: 2px;
+    padding: 7px 10px;
+    border: 1px solid rgba(98, 149, 232, 0.24);
+    border-radius: 999px;
+    background: rgba(64, 113, 195, 0.20);
+    color: #9abcf4;
+    font: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.incoming-access-issue__contact:active {
+    transform: scale(0.97);
+    border-color: rgba(125, 174, 255, 0.38);
+    background: rgba(64, 113, 195, 0.30);
+}
+
+.incoming-access-issue__contact svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+
+@keyframes incoming-access-issue-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(233, 154, 154, 0.26); opacity: 0.86; }
+    50% { box-shadow: 0 0 0 4px rgba(233, 154, 154, 0); opacity: 1; }
+}
+
+@media (max-width: 360px) {
+    .incoming-access-issue {
+        padding: 11px 12px 12px;
+    }
+
+    .incoming-access-issue__title {
+        font-size: 10px;
+    }
+
+    .incoming-access-issue__mode,
+    .incoming-access-issue__foot > span {
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .incoming-access-issue__title i {
+        animation: none;
+    }
 }
 
 .dossier-bounty-app-block {
