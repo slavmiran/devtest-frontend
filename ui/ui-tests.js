@@ -1613,12 +1613,14 @@ function contactIncomingAccessReporter(username, accessMode, currentLang) {
     const clean = String(username || '').trim().replace(/^@+/, '');
     if (!clean) return false;
 
+    const langCode = currentLang || (typeof getLang === 'function' ? getLang() : 'ru');
     const isDefaultGoogleGroup = String(accessMode || '').trim().toLowerCase() === 'google_group';
+    let copiedGoogleGroup = false;
     if (isDefaultGoogleGroup) {
         const groupMessage = '✅**Email Group for Console Add:**\ngoogle-play-dev-test@googlegroups.com';
-        const copiedToast = window.t('incomingAccessIssueGroupCopied', {}, currentLang || (typeof getLang === 'function' ? getLang() : 'ru'));
+        const copiedToast = window.t('incomingAccessIssueGroupCopied', {}, langCode);
         const copied = function() {
-            if (typeof showToast === 'function') showToast(copiedToast);
+            copiedGoogleGroup = true;
         };
 
         // Request clipboard access before opening Telegram: it preserves the user gesture
@@ -1642,6 +1644,16 @@ function contactIncomingAccessReporter(username, accessMode, currentLang) {
     }
 
     if (typeof contactAccessTester === 'function') contactAccessTester(clean);
+    if (isDefaultGoogleGroup) {
+        // Telegram renders this as a native prompt. Calling it after the navigation
+        // keeps the copy confirmation and the checklist available over the direct chat.
+        const helperGuide = window.t('incomingAccessIssueHelperGuide', {}, langCode);
+        if (window.tg && typeof tg.showAlert === 'function') {
+            tg.showAlert(helperGuide);
+        } else if (typeof showToast === 'function') {
+            showToast(copiedGoogleGroup ? copiedToast : helperGuide);
+        }
+    }
     return false;
 }
 

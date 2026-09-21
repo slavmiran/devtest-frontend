@@ -2666,6 +2666,7 @@
             incomingAccessIssueHelpLabel: "Помочь настроить:",
             incomingAccessIssueContactAria: "Написать {username}",
             incomingAccessIssueGroupCopied: "Группа для Play Console скопирована",
+            incomingAccessIssueHelperGuide: "Группа для Play Console скопирована в буфер.\n\nОтправьте её участнику: группу нужно добавить в закрытое тестирование в Play Console. Если приложение всё ещё недоступно, предложите проверить:\n• Google Group добавлена в закрытое тестирование\n• Выбраны нужные страны и регионы\n• Изменения отправлены на проверку (Send for review)\n• В собственной Google Group включено автоподтверждение вступления\n\nИнструкция:\nhttps://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04",
             dossierBountyApplicationHint: "Заявка на контракт «{app}» · {bust} $BUST",
             bountyAppAcceptedToast: "✅ Тестер принят на контракт.",
             bountyAppRejectedToast: "❌ Заявка на контракт отклонена.",
