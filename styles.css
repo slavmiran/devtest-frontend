@@ -1713,6 +1713,12 @@ input::placeholder,
 .meta-chip.accent-orange { background: rgba(255,149,0,0.15); color: #ff9500; }
 .meta-chip.accent-purple { background: var(--reward-surface); color: var(--reward); border: 1px solid var(--reward-border); }
 .meta-chip.accent-red { background: rgba(255,59,48,0.15); color: var(--danger); }
+.market-access-issue-chip {
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
 .meta-chip.accent-protection { background: var(--stage-protection-surface); color: var(--stage-protection); border: 1px solid var(--stage-protection-border); }
 .meta-chip.accent-buffer { background: var(--stage-buffer-surface); color: var(--stage-buffer); border: 1px solid var(--stage-buffer-border); }
 .meta-chip.meta-chip--sla {

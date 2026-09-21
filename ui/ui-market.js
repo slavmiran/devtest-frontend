@@ -805,6 +805,41 @@ function getBountyAlreadyTestingBtnLabel(appId) {
 
 const ANDROID_CHIP_LOGO_SVG = '<svg class="meta-chip-android-svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="display:inline-block; vertical-align:-1.5px; margin-right:3px;"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1568-.2716.064-.6185-.2076-.7753-.2712-.1564-.618-.064-.7752.2076l-2.0236 3.505C15.3902 8.163 13.7388 7.8 12 7.8s-3.3902.363-4.8711 1.0015L5.1053 5.2965c-.1572-.2716-.504-.364-.7752-.2076-.2716.1568-.3644.5037-.2076.7753l1.996 3.4572C2.6813 11.233.3644 14.869.0004 19.2h23.9992c-.364-4.331-2.6809-7.967-6.1181-9.8786"/></svg>';
 
+function openMarketAccessIssue(appId, isOwnProject, testerUsername, accessMode, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const normalizedAppId = Number(appId || 0);
+    if (normalizedAppId <= 0) return false;
+
+    if (isOwnProject) {
+        if (typeof openOwnerAccessIssueProject === 'function') {
+            openOwnerAccessIssueProject(normalizedAppId);
+        }
+        return false;
+    }
+
+    const issueContext = {
+        access_issue: true,
+        access_issue_tester_username: String(testerUsername || '').replace(/^@+/, ''),
+        access_issue_mode: String(accessMode || 'google_group'),
+    };
+    const issueHtml = typeof renderIncomingAccessIssue === 'function'
+        ? renderIncomingAccessIssue(issueContext, lang)
+        : '';
+    if (issueHtml && typeof window.showCustomAlert === 'function') {
+        window.showCustomAlert(issueHtml, { html: true });
+        return false;
+    }
+
+    const message = window.t('accessIssueBadgeHint', {}, lang);
+    const telegram = window.tg || (window.Telegram && window.Telegram.WebApp) || (typeof tg !== 'undefined' ? tg : null);
+    if (telegram && typeof telegram.showAlert === 'function') telegram.showAlert(message);
+    else if (typeof showToast === 'function') showToast(message);
+    return false;
+}
+
 function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
@@ -849,8 +884,16 @@ function renderFeedCard(item, kind) {
     let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
     const isOwnProject = !!item.is_own_project;
     const hasAccessIssue = !!item.has_access_issue;
+    const issueTesterUsername = String(item.access_issue_tester_username || '').trim().replace(/^@+/, '');
+    const accessIssueMode = String(item.access_issue_mode || (
+        String(item.test_mode || '').toLowerCase() === 'email_list'
+            ? 'email_list'
+            : (String(item.google_group_url || '').trim().replace(/\/$/, '') && String(item.google_group_url || '').trim().replace(/\/$/, '') !== 'https://groups.google.com/g/google-play-dev-test'
+                ? 'custom_google_group'
+                : 'google_group')
+    ));
     const accessIssueChip = hasAccessIssue
-        ? `<span class="meta-chip accent-red" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</span>`
+        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueTesterUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
         : '';
 
     if (kind === 'mutual-seeking' && !isOwnProject && !hasAccessIssue) {
