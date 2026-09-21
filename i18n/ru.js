@@ -3151,7 +3151,7 @@
             testingControlGalleryLoadError: "Не удалось загрузить скриншоты.",
             testingControlGalleryImageLoading: "Загрузка превью…",
             testingControlAlbumCount: "{count} фото",
-            testingControlAlbumImage: "Фото {current} из {total}",
+            testingControlAlbumImage: "Скриншоты {current} из {total}",
             testingControlAlbumSwipeHint: "Свайпните, чтобы посмотреть остальные",
             testingControlOpenOriginal: "Открыть оригинал в Telegram",
             testingControlOriginalUnavailable: "Оригинал доступен только в topic Testing Proofs.",

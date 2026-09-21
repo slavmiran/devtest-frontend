@@ -837,16 +837,40 @@
         }
     }
 
+    function albumDeviceHint(proofId) {
+        var galleryItem = findGalleryProof(proofId);
+        if (galleryItem) {
+            var galleryDevice = deviceLine(galleryItem.device);
+            if (galleryDevice) return galleryDevice;
+        }
+        var found = findProof(proofId);
+        if (found) {
+            var itemDevice = deviceLine(found.item && found.item.device);
+            if (itemDevice) return itemDevice;
+        }
+        var fallback = state.previewFallback;
+        if (fallback && Number(fallback.proofId) === Number(proofId)) {
+            var subtitle = String(fallback.subtitle || '');
+            // Subtitle shape: "Day N • brand • model" — keep only the device tail when present.
+            var parts = subtitle.split('•').map(function (part) { return String(part || '').trim(); }).filter(Boolean);
+            if (parts.length > 1) return parts.slice(1).join(' • ');
+        }
+        return '';
+    }
+
     function albumNavigation(proofId, mediaIndex, imageCount) {
         if (imageCount <= 1) return '';
         var indicators = [];
+        var deviceHint = albumDeviceHint(proofId);
         for (var index = 0; index < imageCount; index += 1) {
-            indicators.push('<button type="button" class="checkin-proof-preview-indicator' + (index === mediaIndex ? ' is-active' : '') + '" aria-label="' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: index + 1, total: imageCount })) + '" onclick="openCheckinProofPreview(' + proofId + ',' + index + ')"></button>');
+            indicators.push('<button type="button" class="checkin-proof-preview-indicator' + (index === mediaIndex ? ' is-active' : '') + '" aria-label="' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: index + 1, total: imageCount })) + '" onclick="openCheckinProofPreview(' + proofId + ',' + index + ')"></button>');
         }
         return '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="stepCheckinProofPreview(-1)"' + (mediaIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
             '<div class="checkin-proof-preview-album-meta">' +
-                '<span class="checkin-proof-preview-counter">' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: mediaIndex + 1, total: imageCount })) + '</span>' +
-                '<span class="checkin-proof-preview-swipe-hint">' + escape(text('testingControlAlbumSwipeHint', 'Swipe to view the rest')) + '</span>' +
+                '<span class="checkin-proof-preview-counter">' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: mediaIndex + 1, total: imageCount })) + '</span>' +
+                (deviceHint
+                    ? '<span class="checkin-proof-preview-swipe-hint">' + escape(deviceHint) + '</span>'
+                    : '') +
                 '<span class="checkin-proof-preview-indicators" role="tablist">' + indicators.join('') + '</span>' +
             '</div>' +
             '<button type="button" class="checkin-proof-preview-nav is-next" onclick="stepCheckinProofPreview(1)"' + (mediaIndex >= imageCount - 1 ? ' disabled' : '') + '>›</button>';
@@ -866,9 +890,6 @@
                 ' onerror="this.closest(\'.checkin-proof-preview-slide\').classList.add(\'is-error\')"' +
                 (source ? ' src="' + escape(source) + '"' : '') + '>' +
             '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>' +
-            '<button type="button" class="checkin-proof-preview-quality" onclick="openCheckinProofOriginal(' + proofId + ',' + mediaIndex + ',event)">' +
-                escape(text('testingControlOpenOriginal', 'Open original in Telegram')) +
-            '</button>' +
         '</section>';
     }
 
@@ -878,6 +899,9 @@
         body.innerHTML = '<div class="checkin-proof-preview-album" data-proof-id="' + proofId + '" data-image-count="' + imageCount + '" data-media-index="' + mediaIndex + '">' +
             '<div class="checkin-proof-preview-track" style="transform:translate3d(-' + (mediaIndex * 100) + '%,0,0)">' + slides.join('') + '</div>' +
             albumNavigation(proofId, mediaIndex, imageCount) +
+            '<button type="button" class="checkin-proof-preview-quality" onclick="openCheckinProofOriginal(' + proofId + ',0,event)">' +
+                escape(text('testingControlOpenOriginal', 'Open original in Telegram')) +
+            '</button>' +
         '</div>';
     }
 
@@ -959,7 +983,7 @@
         album.dataset.mediaIndex = String(safeIndex);
         state.previewMediaIndex = safeIndex;
         var counter = album.querySelector('.checkin-proof-preview-counter');
-        if (counter) counter.textContent = text('testingControlAlbumImage', 'Image {current} of {total}', { current: safeIndex + 1, total: imageCount });
+        if (counter) counter.textContent = text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: safeIndex + 1, total: imageCount });
         album.querySelectorAll('.checkin-proof-preview-indicator').forEach(function (indicator, index) {
             indicator.classList.toggle('is-active', index === safeIndex);
         });
@@ -1264,7 +1288,7 @@
         try {
             var details = await requestProofDetails(proofId);
             var urls = details && details.original_message_urls;
-            var targetUrl = Array.isArray(urls) ? String(urls[Number(mediaIndex || 0)] || '') : '';
+            var targetUrl = Array.isArray(urls) ? String(urls[0] || urls[Number(mediaIndex || 0)] || '') : '';
             if (!/^https:\/\/t\.me\//i.test(targetUrl)) throw new Error('original_message_unavailable');
             if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
                 window.Telegram.WebApp.openTelegramLink(targetUrl);
@@ -1288,7 +1312,7 @@
         for (var index = 0; index < count; index++) {
             var source = previewThumbnailCacheGet(proofId, index);
             tiles.push('<button type="button" class="checkin-proof-overview-tile' + (source ? ' is-loading' : '') + '" data-media-index="' + index + '" onclick="openCheckinProofPreview(' + proofId + ',' + index + ')">' +
-                '<span class="checkin-proof-overview-placeholder" aria-hidden="true">▧</span><img alt="' + escape(text('testingControlAlbumImage', 'Image {current} of {total}', { current: index + 1, total: count })) + '"' + (source ? ' src="' + escape(source) + '"' : '') + '>' +
+                '<span class="checkin-proof-overview-placeholder" aria-hidden="true">▧</span><img alt="' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: index + 1, total: count })) + '"' + (source ? ' src="' + escape(source) + '"' : '') + '>' +
                 '<span class="checkin-proof-overview-number">' + (index + 1) + '</span></button>');
         }
         body.innerHTML = '<div class="checkin-proof-overview"><div class="checkin-proof-overview-intro"><div><strong>' + escape(text('pcProofOverviewTitle', 'All screenshots')) + '</strong><p>' + escape(text('pcProofOverviewHint', 'Tap any image to inspect it in detail.')) + '</p></div>' +

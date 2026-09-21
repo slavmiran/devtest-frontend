@@ -20,12 +20,12 @@
     var controlReminderSending = new Set();
     var observer = null;
     var expandedOthers = new Set();
-    var expandedReceived = new Set();
+    var collapsedReceived = new Set();
     var lastSeenReceivedCounts = new Map();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
-    var ACTIVITY_FILTERS = ['testers', 'contribution', 'attention', 'control'];
+    var ACTIVITY_FILTERS = ['testers', 'attention', 'contribution', 'control'];
     var optimisticFeedbackBustByTester = {};
     if (typeof window !== 'undefined') {
         window._optimisticFeedbackBustByTester = optimisticFeedbackBustByTester;
@@ -3441,7 +3441,7 @@
 
         var receivedSectionHtml = '';
         if (receivedRows.length > 0) {
-            var isReceivedExpanded = expandedReceived.has(Number(appId));
+            var isReceivedExpanded = !collapsedReceived.has(Number(appId));
             if (isReceivedExpanded) {
                 lastSeenReceivedCounts.set(Number(appId), receivedCount);
             }
@@ -3560,8 +3560,8 @@
 
     function visibleFilters(data) {
         var list = ['testers'];
-        if (data.contribution && data.contribution.length) list.push('contribution');
         if (data.attention && data.attention.length) list.push('attention');
+        if (data.contribution && data.contribution.length) list.push('contribution');
         if ((data.controlRows && data.controlRows.length)
             || (data.regularReportRows && data.regularReportRows.length)) list.push('control');
         return list;
@@ -4600,13 +4600,13 @@
 
     window.pcToggleReceivedSection = function (appId) {
         var safeAppId = Number(appId || 0);
-        if (expandedReceived.has(safeAppId)) {
-            expandedReceived.delete(safeAppId);
-        } else {
-            expandedReceived.add(safeAppId);
+        if (collapsedReceived.has(safeAppId)) {
+            collapsedReceived.delete(safeAppId);
             var data = cache.get(safeAppId);
             var count = (data && data.controlRows || []).filter(function (r) { return r.received; }).length;
             lastSeenReceivedCounts.set(safeAppId, count);
+        } else {
+            collapsedReceived.add(safeAppId);
         }
         refreshActivityWorkspace(safeAppId);
         if (window.tg && window.tg.HapticFeedback) {
