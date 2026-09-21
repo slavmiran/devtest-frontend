@@ -1643,11 +1643,25 @@ function contactIncomingAccessReporter(username, accessMode, currentLang) {
     };
     if (isDefaultGoogleGroup) {
         if (typeof window.closeCustomAlert === 'function') window.closeCustomAlert();
-        const helperGuide = window.t('incomingAccessIssueHelperGuide', {}, langCode);
+        const helperTitle = String(window.t('incomingAccessIssueHelperTitle', {}, langCode) || '').slice(0, 64);
+        const helperGuide = String(window.t('incomingAccessIssueHelperGuide', {}, langCode) || '').slice(0, 256);
+        const helperButton = String(window.t('incomingAccessIssueHelperOpenChat', {}, langCode) || '').slice(0, 64);
         const telegram = window.tg || (window.Telegram && window.Telegram.WebApp) || (typeof tg !== 'undefined' ? tg : null);
-        if (telegram && typeof telegram.showAlert === 'function') {
-            // Same native primitive as the reliable day-14 grant notice.  Open
-            // the DM only after the user has read and dismissed the checklist.
+        if (telegram && typeof telegram.showPopup === 'function') {
+            try {
+                telegram.showPopup({
+                    title: helperTitle,
+                    message: helperGuide,
+                    buttons: [{ id: 'open_chat', type: 'default', text: helperButton }],
+                }, function(buttonId) {
+                    if (buttonId === 'open_chat') openChat();
+                });
+            } catch (error) {
+                console.warn('Could not show access helper popup:', error);
+                if (typeof telegram.showAlert === 'function') telegram.showAlert(helperGuide, openChat);
+                else openChat();
+            }
+        } else if (telegram && typeof telegram.showAlert === 'function') {
             telegram.showAlert(helperGuide, openChat);
         } else {
             window.alert(helperGuide);
