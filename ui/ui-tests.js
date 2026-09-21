@@ -1609,13 +1609,6 @@ function openTelegramProfile(username, event) {
     return true;
 }
 
-function incomingApplicationActionIcon(action) {
-    if (action === 'accept') {
-        return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m4.8 12.7 4.3 4.2L19.4 6.9M9.1 12.7l4.3 4.2" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    }
-    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m7 7 10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-}
-
 function renderIncomingAccessIssue(item, currentLang) {
     if (!item || !item.access_issue) return '';
 
@@ -1799,11 +1792,9 @@ function renderIncomingOffers() {
                 '</div>' +
                 '<div class="action-row bounty-app-actions">' +
                     '<button type="button" class="btn bounty-app-accept-btn" onclick="decideOffer(' + offer.offer_id + ', \'accept\', event)">' +
-                        '<span class="bounty-app-action-icon">' + incomingApplicationActionIcon('accept') + '</span>' +
                         window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
                     '</button>' +
                     '<button type="button" class="btn bounty-app-reject-btn" onclick="decideOffer(' + offer.offer_id + ', \'reject\', event)">' +
-                        '<span class="bounty-app-action-icon">' + incomingApplicationActionIcon('reject') + '</span>' +
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
                     '</button>' +
                 '</div>' +

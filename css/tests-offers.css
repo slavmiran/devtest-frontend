@@ -566,28 +566,6 @@
     border-radius: 12px;
 }
 
-.bounty-app-actions .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-}
-
-.bounty-app-action-icon {
-    width: 18px;
-    height: 18px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-}
-
-.bounty-app-action-icon svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
 .bounty-app-accept-btn {
     background: var(--reward) !important;
     color: #fff !important;
