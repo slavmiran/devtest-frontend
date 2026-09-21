@@ -3657,7 +3657,7 @@ async function submitPlayReview() {
                         var sourceType = String(checkin.source_type || '').toLowerCase();
                         var rewardBust = Number(checkin.reward_bust ?? checkin.earned_bust ?? checkin.bust_earned ?? 0);
                         if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-                            var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                            var karmaVal = formatAmountValue(earnedKarma || 0.1, 1);
                             var bustVal = formatAmountValue(rewardBust, 1);
                             if (lang === 'ru') {
                                 showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
@@ -6399,7 +6399,7 @@ function renderKarmaHowList() {
         {
             title: label('karmaHowPlatformTitle', '🟢 От Платформы'),
             rows: [
-                { label: label('karmaHowOvertimeCheckin', 'Чекин в овертайме'), value: '+0.5' },
+                { label: label('karmaHowOvertimeCheckin', 'Чекин в овертайме'), value: '+0.1' },
                 { label: label('karmaHowScreenshots', '3+ скриншота за день'), value: '+0.3' },
                 { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.3' },
                 { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.3' },

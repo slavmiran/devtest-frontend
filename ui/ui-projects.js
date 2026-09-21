@@ -7214,7 +7214,7 @@ function openProjectDetailsModal(appId) {
                     '<div class="ppc-reward-split-card karma-boost">' +
                         '<span class="ppc-reward-split-emoji">' + (typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️') + '</span>' +
                         '<div class="ppc-reward-split-info">' +
-                            '<span class="ppc-reward-split-value notranslate">+0.5</span>' +
+                            '<span class="ppc-reward-split-value notranslate">+0.1</span>' +
                             '<span class="ppc-reward-split-label">' + window.escapeHTML(window.t('ppcRewardSplitKarmaLabel', {}, lang)) + '</span>' +
                         '</div>' +
                     '</div>' +
@@ -7230,7 +7230,7 @@ function openProjectDetailsModal(appId) {
             summaryHint = window.t('lifecycleSummaryNoCheckins', {}, lang);
         } else if (currentStage === 'protection') {
             summaryHint = poolAmount > 0
-                ? '💎 ' + poolAmount + ' $BUST · ☯️ +0.5'
+                ? '💎 ' + poolAmount + ' $BUST · ☯️ +0.1'
                 : window.t('lifecycleSummaryOneTap', {}, lang);
         } else {
             summaryHint = hasProtection

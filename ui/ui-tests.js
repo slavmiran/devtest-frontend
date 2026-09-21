@@ -714,8 +714,8 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
 
     const noteText = extraPaid > 0
         ? (lang === 'ru' 
-            ? 'Награда за чекин: +0.5 ☯️ Кармы и доля из фонда💎$BUST' 
-            : 'Reward for check-in: +0.5 ☯️ Karma and a share of the 💎$BUST pool')
+            ? 'Награда за чекин: +0.1 ☯️ Кармы и доля из фонда💎$BUST' 
+            : 'Reward for check-in: +0.1 ☯️ Karma and a share of the 💎$BUST pool')
         : window.t('timelineOvertimeRewardNote', {}, lang);
 
     var html = '<div class="timeline-compact">' +
@@ -1609,6 +1609,42 @@ function openTelegramProfile(username, event) {
     return true;
 }
 
+function contactIncomingAccessReporter(username, accessMode, currentLang) {
+    const clean = String(username || '').trim().replace(/^@+/, '');
+    if (!clean) return false;
+
+    const isDefaultGoogleGroup = String(accessMode || '').trim().toLowerCase() === 'google_group';
+    if (isDefaultGoogleGroup) {
+        const groupMessage = '✅**Email Group for Console Add:**\ngoogle-play-dev-test@googlegroups.com';
+        const copiedToast = window.t('incomingAccessIssueGroupCopied', {}, currentLang || (typeof getLang === 'function' ? getLang() : 'ru'));
+        const copied = function() {
+            if (typeof showToast === 'function') showToast(copiedToast);
+        };
+
+        // Request clipboard access before opening Telegram: it preserves the user gesture
+        // on mobile WebView while the chat opens immediately afterwards.
+        try {
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                navigator.clipboard.writeText(groupMessage).then(copied).catch(function() {});
+            } else {
+                const field = document.createElement('textarea');
+                field.value = groupMessage;
+                field.setAttribute('readonly', '');
+                field.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+                document.body.appendChild(field);
+                field.select();
+                if (document.execCommand('copy')) copied();
+                field.remove();
+            }
+        } catch (error) {
+            console.warn('Could not copy the Google Group address:', error);
+        }
+    }
+
+    if (typeof contactAccessTester === 'function') contactAccessTester(clean);
+    return false;
+}
+
 function renderIncomingAccessIssue(item, currentLang) {
     if (!item || !item.access_issue) return '';
 
@@ -1624,10 +1660,13 @@ function renderIncomingAccessIssue(item, currentLang) {
     const mode = window.escapeHTML(window.t(modeKey, {}, langCode));
     const description = window.escapeHTML(window.t('incomingAccessIssueDescription', {}, langCode));
     const helpLabel = window.escapeHTML(window.t('incomingAccessIssueHelpLabel', {}, langCode));
+    const karmaIcon = typeof window.karmaIconHtml === 'function'
+        ? window.karmaIconHtml('incoming-access-issue__karma')
+        : '<span class="incoming-access-issue__karma" aria-hidden="true">☯</span>';
     const contactHtml = reporterUsername
         ? '<button type="button" class="incoming-access-issue__contact notranslate" ' +
             'aria-label="' + window.escapeHTML(window.t('incomingAccessIssueContactAria', { username: '@' + reporterUsername }, langCode)) + '" ' +
-            'onclick="event.stopPropagation(); contactAccessTester(\'' + safeUsername + '\');">' +
+            'onclick="event.stopPropagation(); contactIncomingAccessReporter(\'' + safeUsername + '\', \'' + escapeInlineJsString(String(item.access_issue_mode || '')) + '\', \'' + escapeInlineJsString(langCode) + '\');">' +
                 '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.7 4.2 3.9 10.7c-1.15.46-1.14 1.1-.21 1.39l4.31 1.35 1.67 5.1c.2.56.1.78.7.78.46 0 .66-.2.92-.44l2.09-2.03 4.35 3.22c.8.44 1.38.21 1.58-.75l2.86-13.48c.29-1.18-.45-1.72-1.54-1.22ZM8.67 13.2l9.72-6.14c.49-.3.94-.14.57.19l-8.33 7.52-.33 3.5-1.63-5.07Z" fill="currentColor"/></svg>' +
                 '<span>@' + window.escapeHTML(reporterUsername) + '</span>' +
             '</button>'
@@ -1635,7 +1674,7 @@ function renderIncomingAccessIssue(item, currentLang) {
 
     return '<aside class="incoming-access-issue" role="status">' +
         '<div class="incoming-access-issue__head">' +
-            '<span class="incoming-access-issue__title"><i aria-hidden="true"></i>' + title + '</span>' +
+            '<span class="incoming-access-issue__title">' + karmaIcon + title + '</span>' +
             '<span class="incoming-access-issue__mode notranslate">' + mode + '</span>' +
         '</div>' +
         '<p>' + description + '</p>' +
@@ -3643,7 +3682,7 @@ Object.assign(window, {
 function renderCheckinRewardHint(test, testingDay, lang) {
     const isBounty = test.join_type === 'bounty';
     const isOvertime = testingDay >= 15;
-    const karmaVal = isOvertime ? '0.5' : '0';
+    const karmaVal = isOvertime ? '0.1' : '0';
     const holdAmount = isBounty && Number(test.bounty_per_tester || 0) > 0
         ? Math.round(Number(test.bounty_per_tester) * 0.35)
         : 0;
@@ -3884,7 +3923,7 @@ function openPhaseInfoModal(testId, event) {
         // Karma bonus label
         const karmaBonusLabelEl = document.querySelector('#ppc-phase-info-modal .karma-boost .ppc-reward-split-label');
         if (karmaBonusLabelEl) {
-            karmaBonusLabelEl.innerText = window.t('ppcModalKarmaBonus', {}, lang) || (lang === 'ru' ? 'Повышенная карма + 0,5' : 'Increased karma +0.5');
+            karmaBonusLabelEl.innerText = window.t('ppcModalKarmaBonus', {}, lang) || (lang === 'ru' ? 'Повышенная карма + 0,1' : 'Increased karma +0.1');
         }
     } else {
         // Active phase (days 1-14)

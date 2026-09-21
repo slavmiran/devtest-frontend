@@ -616,14 +616,15 @@
     white-space: nowrap;
 }
 
-.incoming-access-issue__title i {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+.incoming-access-issue__karma {
+    width: 10px;
+    height: 10px;
     flex: 0 0 auto;
-    background: #e99a9a;
-    box-shadow: 0 0 0 0 rgba(233, 154, 154, 0.28);
-    animation: incoming-access-issue-pulse 1.8s ease-in-out infinite;
+    opacity: 0.9;
+}
+
+.incoming-access-issue__karma circle[fill="#000000"] {
+    fill: #ce8585;
 }
 
 .incoming-access-issue__mode,
@@ -639,14 +640,15 @@
 
 .incoming-access-issue p {
     margin: 10px 0 12px;
-    color: var(--text-color);
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.38;
+    color: rgba(181, 195, 214, 0.72);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.42;
 }
 
 .incoming-access-issue__foot {
-    justify-content: flex-start;
+    justify-content: flex-end;
+    gap: 7px;
 }
 
 .incoming-access-issue__contact {
@@ -654,12 +656,12 @@
     align-items: center;
     gap: 6px;
     min-width: 0;
-    margin-left: 2px;
+    margin-left: 0;
     padding: 7px 10px;
-    border: 1px solid rgba(98, 149, 232, 0.24);
+    border: 1px solid rgba(142, 164, 197, 0.18);
     border-radius: 999px;
-    background: rgba(64, 113, 195, 0.20);
-    color: #9abcf4;
+    background: rgba(99, 119, 151, 0.12);
+    color: rgba(182, 201, 227, 0.84);
     font: inherit;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 11px;
@@ -673,19 +675,14 @@
 
 .incoming-access-issue__contact:active {
     transform: scale(0.97);
-    border-color: rgba(125, 174, 255, 0.38);
-    background: rgba(64, 113, 195, 0.30);
+    border-color: rgba(164, 185, 220, 0.30);
+    background: rgba(112, 136, 172, 0.20);
 }
 
 .incoming-access-issue__contact svg {
     width: 14px;
     height: 14px;
     flex: 0 0 auto;
-}
-
-@keyframes incoming-access-issue-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(233, 154, 154, 0.26); opacity: 0.86; }
-    50% { box-shadow: 0 0 0 4px rgba(233, 154, 154, 0); opacity: 1; }
 }
 
 @media (max-width: 360px) {
@@ -700,12 +697,6 @@
     .incoming-access-issue__mode,
     .incoming-access-issue__foot > span {
         font-size: 9px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .incoming-access-issue__title i {
-        animation: none;
     }
 }
 

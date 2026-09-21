@@ -3399,7 +3399,7 @@ function clearCompletedPendingFeedbackCheckins() {
         if (test) {
             var testingDay = Number(test.testing_days || 0);
             var isOvertime = testingDay >= 15;
-            var earnedKarma = isOvertime ? 0.5 : 0;
+            var earnedKarma = isOvertime ? 0.1 : 0;
             var earnedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.join_type === 'bounty' ? test.bounty_per_tester * 0.65 / 14 : 0);
             
             if (earnedBust > 0 && earnedKarma > 0) {
@@ -4738,7 +4738,7 @@ function showCheckinRewardToasts(result) {
     var holdBonusForfeited = !!result.hold_bonus_forfeited;
     var dailyOnlyBust = Math.max(0, baseEarnedBust - (holdBonusEarned > 0 ? holdBonusEarned : 0));
 
-    var karmaValFormatted = formatAmountValue(earnedKarma || 0.5, 1);
+    var karmaValFormatted = formatAmountValue(earnedKarma || 0.1, 1);
     var karmaStr = (lang === 'ru') ? karmaValFormatted.replace('.', ',') : karmaValFormatted;
 
     if (sourceType === 'overtime_checkin' && rewardBust > 0) {
@@ -5002,7 +5002,7 @@ async function confirmStart(id, options) {
                 if (typeof showCheckinRewardToasts === 'function') {
                     showCheckinRewardToasts(result);
                 } else if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-                    const karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                    const karmaVal = formatAmountValue(earnedKarma || 0.1, 1);
                     const bustVal = formatAmountValue(rewardBust, 1);
                     if (lang === 'ru') {
                         showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
