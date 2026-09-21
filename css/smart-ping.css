@@ -186,9 +186,7 @@
     border-radius: 10px;
     background: rgba(174, 195, 226, .04);
 }
-.smart-ping-row.has-catchup-labels {
-    padding-right: 10px;
-}
+.smart-ping-row { flex-wrap: wrap; }
 .smart-ping-row__pick {
     display: flex;
     flex: 1 1 auto;
@@ -203,6 +201,7 @@
     margin-top: 7px;
     accent-color: #388bfd;
 }
+.smart-ping-row input:disabled { opacity: .38; cursor: default; }
 .smart-ping-row .pc-avatar {
     width: 32px;
     height: 32px;
@@ -266,127 +265,75 @@
 .smart-ping-row__reasons li::before {
     content: '• ';
 }
-.smart-ping-row__reasons li.is-catchup {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    width: 100%;
-}
-.smart-ping-row__reasons li.is-catchup::before {
-    content: '• ';
-    flex: 0 0 auto;
-}
-.smart-ping-row__reasons li.is-catchup .smart-ping-row__reason-text {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-.smart-ping-row__reasons li.is-catchup .smart-ping-catchup-dot { margin-left: auto; }
 .smart-ping-row__reasons li.is-child {
     padding-left: 12px;
 }
 .smart-ping-row__reasons li.is-child::before {
     content: '· ';
 }
-/* Catch-up status is part of its sentence, not a second column. The tone is
-   owned by the workflow status so day 4 and day 10 look identical. */
-.smart-ping-catchup-dot {
-    appearance: none;
-    display: inline-grid;
-    place-items: center;
-    flex: 0 0 21px;
-    width: 21px;
-    height: 21px;
-    margin: 0;
-    padding: 0;
-    border: 1px solid color-mix(in srgb, var(--catchup-tone, #8098b0) 46%, transparent);
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--catchup-tone, #8098b0) 9%, transparent);
-    color: var(--catchup-tone, #8098b0);
-    cursor: pointer;
-    opacity: .84;
-    -webkit-tap-highlight-color: transparent;
+.smart-ping-row__catchups {
+    display: grid;
+    flex: 1 0 100%;
+    gap: 6px;
+    margin: 1px 0 0 60px;
 }
-.smart-ping-catchup-dot:hover,
-.smart-ping-catchup-dot:focus-visible {
-    opacity: 1;
-    background: color-mix(in srgb, var(--catchup-tone, #8098b0) 15%, transparent);
-}
-.smart-ping-catchup-dot:focus-visible { outline: 2px solid rgba(166, 192, 188, .55); outline-offset: 2px; }
-.smart-ping-catchup-dot.is-waiting { --catchup-tone: #8996a7 !important; opacity: .68; }
-.smart-ping-catchup-dot.is-received { --catchup-tone: #86b7a5 !important; }
-.smart-ping-catchup-dot.is-will_send { --catchup-tone: #8098b0 !important; }
-.smart-ping-catchup-dot__icon { width: 14px; height: 14px; display: block; }
-.smart-ping-catchup-label {
-    appearance: none;
-    position: relative;
+/* A planned catch-up is an explicit Smart Ping outcome, not another signal. */
+.smart-ping-catchup-plan {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    margin: 0;
-    padding: 0;
-    overflow: visible;
-    border: 1px solid color-mix(in srgb, var(--catchup-tone, #58a6ff) 55%, rgba(174, 195, 226, .18));
+    gap: 7px;
+    width: fit-content;
+    max-width: 100%;
+    min-height: 28px;
+    padding: 5px 8px;
+    border: 1px solid rgba(154, 177, 207, .24);
     border-radius: 8px;
-    background: color-mix(in srgb, var(--catchup-tone, #58a6ff) 18%, rgba(15, 23, 36, .72));
-    color: var(--catchup-tone, #58a6ff);
+    background: rgba(99, 119, 145, .10);
+    color: #a8b9cd;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+.smart-ping-catchup-plan__icon { width: 14px; height: 14px; flex: 0 0 14px; color: #b8c8dc; }
+/* A submitted proof belongs to the owner review flow and must not look urgent. */
+.smart-ping-catchup-received {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px 7px;
+    max-width: 100%;
+    min-height: 27px;
+    padding: 4px 7px;
+    border: 1px solid rgba(139, 184, 166, .18);
+    border-radius: 8px;
+    background: rgba(108, 153, 135, .07);
+    color: #9eafa8;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+.smart-ping-catchup-received__text { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.smart-ping-catchup-received__text > span:first-child { color: #8db4a4; font-weight: 700; }
+.smart-ping-catchup-received__separator { color: rgba(158, 175, 168, .58); }
+.smart-ping-catchup-review {
+    appearance: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #9ec8b5;
+    font: inherit;
+    font-weight: 700;
+    line-height: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
-.smart-ping-catchup-label.is-waiting {
-    opacity: 0.62;
-    filter: saturate(0.55);
-    background: rgba(148, 163, 184, .08);
-    border-color: rgba(148, 163, 184, .18);
-    color: #93a4bb;
-}
-.smart-ping-catchup-label.is-received {
-    background: color-mix(in srgb, var(--catchup-tone, #58a6ff) 26%, rgba(15, 23, 36, .55));
-}
-.smart-ping-catchup-label__cam {
-    display: block;
-    width: 14px;
-    height: 14px;
-    background: currentColor;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z'/%3E%3Ccircle cx='12' cy='13' r='4'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
-            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z'/%3E%3Ccircle cx='12' cy='13' r='4'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
-}
-.smart-ping-catchup-label__plus {
-    position: absolute;
-    top: 1px;
-    right: 2px;
-    font-size: 9px;
-    font-weight: 800;
-    line-height: 1;
-    color: currentColor;
-    text-shadow: 0 0 4px rgba(6, 10, 16, .9);
-}
-.smart-ping-catchup-label__glyph {
-    font-size: 12px;
-    line-height: 1;
-}
-.smart-ping-catchup-label__day {
-    position: absolute;
-    right: -3px;
-    bottom: -4px;
-    min-width: 12px;
-    height: 12px;
-    padding: 0 3px;
-    border-radius: 999px;
-    background: var(--catchup-tone, #58a6ff);
-    color: #0b1220;
-    font-size: 8px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 12px;
-    text-align: center;
-    box-shadow: 0 0 0 1px #15202c;
-    font-variant-numeric: tabular-nums;
-}
-.smart-ping-catchup-label.is-waiting .smart-ping-catchup-label__day {
-    background: #8a9bb3;
-    color: #15202c;
+.smart-ping-catchup-review:hover { color: #c3e2d3; }
+.smart-ping-catchup-review:focus-visible { outline: 2px solid rgba(150, 202, 180, .5); outline-offset: 2px; border-radius: 3px; }
+.smart-ping-row.is-service-only { background: rgba(174, 195, 226, .025); }
+@media (max-width: 360px) {
+    .smart-ping-row__catchups { margin-left: 28px; }
 }
 .smart-ping-empty {
     padding: 28px 8px;

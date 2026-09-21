@@ -259,9 +259,7 @@
         if (code === 'direct_invite') {
             return text('smartPingReasonInvite', 'Прямой инвайт · {count}', { count: Math.max(1, Number(reason.skips || 1)) });
         }
-        if (code === 'missed_control') {
-            return reason.label || text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: reason.missedDay || '' });
-        }
+        if (code === 'missed_control') return '';
         if (code === 'broken_link') return text('smartPingReasonBroken', 'Связь разорвана');
         if (code === 'not_opened') return reason.label || text('smartPingReasonNotOpened', 'Ещё не открыл приложение');
         return String((reason && reason.label) || '').trim();
@@ -279,6 +277,7 @@
                 if (code === 'not_opened' || code === 'skips' || code === 'debt' || code === 'tester_left' || code === 'missed_control') return;
                 pushMarker(list, extraReasonLabel(reason), false);
             });
+            appendCatchupWaitingMarkers(list, row.reasons);
             return list;
         }
 
@@ -300,31 +299,32 @@
             var label = extraReasonLabel(reason);
             if (!label) return;
             if (code === 'missed_control') {
-                var day = Number(reason.missedDay || 0);
-                var status = reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send');
-                var catchupLine = reason.proofReceived
-                    ? text('smartPingCatchupReceivedLine', 'Day {day} report · Awaiting confirmation', { day: day })
-                    : text('pcAttentionMissedControlDay', 'Control proof for day {day} was not received', { day: day });
-                pushMarker(list, catchupLine, false, {
-                    catchupDay: day,
-                    catchupStatus: status,
-                    catchupTone: catchupTone(status),
-                });
                 return;
             }
             pushMarker(list, label, false);
         });
+        appendCatchupWaitingMarkers(list, row.reasons);
         return list;
     }
-    function catchupTone(status) {
-        // A status owns its tone; the control-day number must never change the colour.
-        var tones = {
-            will_send: '#8098b0',
-            waiting: '#8996a7',
-            received: '#86b7a5',
-        };
-        return tones[String(status || 'will_send')] || tones.will_send;
+
+    function catchupStatus(reason) {
+        if (reason && reason.proofReceived) return 'received';
+        return reason && reason.proofRequested ? 'waiting' : 'will_send';
     }
+
+    // Catch-ups that are already waiting stay in the diagnostic list as plain
+    // text. Planned requests and received proofs have their own, clearer level
+    // below the list and never compete with the tester's risk signals.
+    function appendCatchupWaitingMarkers(list, reasons) {
+        (reasons || []).forEach(function (reason) {
+            if (String(reason && reason.code || '') !== 'missed_control') return;
+            if (catchupStatus(reason) !== 'waiting') return;
+            var day = Number(reason && reason.missedDay || 0);
+            if (day <= 0) return;
+            pushMarker(list, text('smartPingCatchupWaitingLine', 'Control report for day {day} is awaiting a response', { day: day }), false);
+        });
+    }
+
     function catchupLabelsFor(row) {
         return (row.reasons || []).filter(function (reason) {
             return String(reason && reason.code || '') === 'missed_control' && Number(reason.missedDay || 0) > 0;
@@ -332,51 +332,42 @@
             var day = Number(reason.missedDay || 0);
             return {
                 day: day,
-                status: reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send'),
-                tone: catchupTone(reason.proofReceived ? 'received' : (reason.proofRequested ? 'waiting' : 'will_send')),
+                status: catchupStatus(reason),
             };
         }).sort(function (left, right) { return left.day - right.day; });
     }
-    function catchupLabelTip(label) {
-        if (label.status === 'waiting') {
-            return text('smartPingCatchupWaitingTip', 'Дозапрос за день {day} уже ожидает ответа тестера', { day: label.day });
-        }
-        if (label.status === 'received') {
-            return text('smartPingCatchupReceivedTip', 'Дозапрос за день {day} поступил. Откройте вкладку «Внимание», чтобы проверить отчёт', { day: label.day });
-        }
-        return text('smartPingCatchupWillSendTip', 'Будет отправлен дозапрос на скрин-отчёт за пропущенный контрольный день {day}', { day: label.day });
-    }
-    function catchupLabelIcon(status) {
-        if (status === 'waiting') {
-            return '<svg class="smart-ping-catchup-dot__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.4"></circle><path d="M10 6.5v3.8l2.4 1.5"></path></svg>';
-        }
-        if (status === 'received') {
-            return '<svg class="smart-ping-catchup-dot__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5.1 10.2 3.1 3.1 6.8-7"></path></svg>';
-        }
-        return '<svg class="smart-ping-catchup-dot__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="5.8" width="10.6" height="9" rx="2"></rect><path d="m6.2 5.8 1.1-2h2.7l1.1 2M7.1 10.3h3.2M8.7 8.7v3.2M16.1 4.4v4.2M14 6.5h4.2"></path></svg>';
-    }
-    function handleCatchupLabel(button) {
-        var status = String(button.getAttribute('data-smart-ping-catchup') || '');
+
+    function handleCatchupReview(button) {
         var day = Number(button.getAttribute('data-catchup-day') || 0);
         var testerId = Number(button.getAttribute('data-smart-ping-label-tester') || 0);
-        var tip = catchupLabelTip({ status: status, day: day });
-        if (status === 'received') {
-            var appId = state.appId;
-            close();
-            if (typeof showToast === 'function') showToast(tip);
-            if (window.ProjectToday && typeof window.ProjectToday.focusAttentionCatchup === 'function') {
-                window.ProjectToday.focusAttentionCatchup(appId, testerId, day);
-            } else if (typeof window.pcFocusAttentionCatchup === 'function') {
-                window.pcFocusAttentionCatchup(appId, testerId, day);
-            }
-            return;
+        var appId = state.appId;
+        close();
+        if (window.ProjectToday && typeof window.ProjectToday.focusAttentionCatchup === 'function') {
+            window.ProjectToday.focusAttentionCatchup(appId, testerId, day);
+        } else if (typeof window.pcFocusAttentionCatchup === 'function') {
+            window.pcFocusAttentionCatchup(appId, testerId, day);
         }
-        if (typeof showToast === 'function') showToast(tip);
     }
     function isRisk(row) {
         if (row.section === 'both' || row.section === 'attention') return true;
         return (row.section === 'control' || row.section === 'rhythm') && row.signals >= 3;
     }
+
+    function hasPingReason(row) {
+        if ((row.markers || []).length > 0) return true;
+        // Some Attention reasons, such as accumulated skips, intentionally do
+        // not repeat their title in the compact diagnostic list. They remain
+        // valid ping reasons. A received catch-up is the only missed-control
+        // state that is deliberately excluded from sending.
+        var hasNonCatchupReason = (row.reasons || []).some(function (reason) {
+            return String(reason && reason.code || '') !== 'missed_control';
+        });
+        if (hasNonCatchupReason) return true;
+        return (row.catchupLabels || []).some(function (label) {
+            return label.status !== 'received';
+        });
+    }
+
     function collectRecipients(project) {
         var attention = (window.ProjectToday && typeof window.ProjectToday.collectAttention === 'function')
             ? (window.ProjectToday.collectAttention(project) || [])
@@ -412,7 +403,10 @@
             };
             row.markers = markersFor(row);
             row.catchupLabels = catchupLabelsFor(row);
-            row.risk = isRisk(row);
+            row.hasPingReason = hasPingReason(row);
+            // A proof already submitted by the tester is a review task, not a
+            // reason to charge them for a new ping.
+            row.risk = row.hasPingReason && isRisk(row);
             row.checked = row.risk;
             rows.push(row);
         }
@@ -483,13 +477,14 @@
     function applyFilter(filter) {
         state.filter = filter;
         state.recipients.forEach(function (row) {
-            if (filter === 'all') row.checked = true;
+            if (!row.hasPingReason) row.checked = false;
+            else if (filter === 'all') row.checked = true;
             else if (filter === 'none') row.checked = false;
             else row.checked = !!row.risk;
         });
     }
     function selected() {
-        return state.recipients.filter(function (row) { return row.checked; });
+        return state.recipients.filter(function (row) { return row.hasPingReason && row.checked; });
     }
     function parseSentAt(value) {
         var raw = String(value || '').trim();
@@ -546,36 +541,52 @@
             label: text('smartPingSend', '⚡ Отправить напоминания • {cost} $BUST', { cost: formatBust(cost) }),
         };
     }
+    function catchupCameraIcon() {
+        return '<svg class="smart-ping-catchup-plan__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+    }
+
+    function catchupPlanHtml(label) {
+        return '<div class="smart-ping-catchup-plan" data-smart-ping-catchup-planned data-catchup-day="' + label.day + '">' +
+            catchupCameraIcon() +
+            '<span>' + esc(text('smartPingCatchupWillSendLine', 'A catch-up report will be created for day {day}', { day: label.day })) + '</span>' +
+        '</div>';
+    }
+
+    function catchupReceivedHtml(label, testerId) {
+        var description = text('smartPingCatchupReceivedLine', 'Report for day {day} was submitted by the tester', { day: label.day });
+        var review = text('smartPingCatchupReview', 'Review');
+        return '<div class="smart-ping-catchup-received" data-smart-ping-catchup-received data-catchup-day="' + label.day + '">' +
+            '<span class="smart-ping-catchup-received__text"><span aria-hidden="true">ℹ</span><span>' + esc(description) + '</span></span>' +
+            '<span class="smart-ping-catchup-received__separator" aria-hidden="true">·</span>' +
+            '<button type="button" class="smart-ping-catchup-review" data-smart-ping-catchup-review data-catchup-day="' + label.day + '" data-smart-ping-label-tester="' + testerId + '">' + esc(review) + '</button>' +
+        '</div>';
+    }
+
     function rowHtml(row) {
         var badge = row.risk
             ? '<span class="smart-ping-risk-badge"><i class="smart-ping-risk-dot" aria-hidden="true"></i>' + esc(text('smartPingRiskBadge', 'Риск')) + '</span>'
             : '';
         var reasons = (row.markers || []).map(function (marker) {
             var item = marker && typeof marker === 'object' ? marker : { text: marker, child: false };
-            var classes = [];
-            if (item.child) classes.push('is-child');
-            if (item.catchupDay) {
-                classes.push('is-catchup');
-                classes.push('is-catchup-' + (item.catchupStatus || 'will_send'));
-            }
-            var classAttr = classes.length ? ' class="' + classes.join(' ') + '"' : '';
-            var toneStyle = item.catchupTone ? ' style="--catchup-tone:' + esc(item.catchupTone) + '"' : '';
-            var inner = esc(item.text || '');
-            if (item.catchupDay) inner = '<span class="smart-ping-row__reason-text">' + inner + '</span>';
-            var catchupButton = item.catchupDay
-                ? '<button type="button" class="smart-ping-catchup-dot is-' + esc(item.catchupStatus || 'will_send') + '" data-smart-ping-catchup="' + esc(item.catchupStatus || 'will_send') + '" data-catchup-day="' + item.catchupDay + '" data-smart-ping-label-tester="' + row.testerId + '" style="--catchup-tone:' + esc(item.catchupTone || catchupTone(item.catchupStatus)) + '" title="' + esc(catchupLabelTip({ status: item.catchupStatus || 'will_send', day: item.catchupDay })) + '" aria-label="' + esc(catchupLabelTip({ status: item.catchupStatus || 'will_send', day: item.catchupDay })) + '">' + catchupLabelIcon(item.catchupStatus || 'will_send') + '</button>'
-                : '';
-            return '<li' + classAttr + toneStyle + '>' + inner + catchupButton + '</li>';
+            return '<li' + (item.child ? ' class="is-child"' : '') + '>' + esc(item.text || '') + '</li>';
         }).join('');
-        return '<div class="smart-ping-row' + (row.risk ? ' is-risk' : '') + '">' +
+        var planned = (row.catchupLabels || []).filter(function (label) { return label.status === 'will_send'; })
+            .map(catchupPlanHtml).join('');
+        var received = (row.catchupLabels || []).filter(function (label) { return label.status === 'received'; })
+            .map(function (label) { return catchupReceivedHtml(label, row.testerId); }).join('');
+        var serviceRows = planned || received
+            ? '<div class="smart-ping-row__catchups">' + planned + received + '</div>'
+            : '';
+        return '<div class="smart-ping-row' + (row.risk ? ' is-risk' : '') + (!row.hasPingReason ? ' is-service-only' : '') + '">' +
             '<label class="smart-ping-row__pick">' +
-                '<input type="checkbox" data-smart-ping-tester="' + row.testerId + '"' + (row.checked ? ' checked' : '') + '>' +
+                '<input type="checkbox" data-smart-ping-tester="' + row.testerId + '"' + (row.checked ? ' checked' : '') + (!row.hasPingReason ? ' disabled' : '') + '>' +
                 avatarHtml(row.tester) +
                 '<span class="smart-ping-row__meta">' +
                     '<span class="smart-ping-row__name"><strong>' + esc(handleOf(row.tester)) + '</strong>' + badge + '</span>' +
                     (reasons ? '<ul class="smart-ping-row__reasons">' + reasons + '</ul>' : '') +
                 '</span>' +
             '</label>' +
+            serviceRows +
         '</div>';
     }
     function sectionTitle(section) {
@@ -656,11 +667,11 @@
     }
     function bind(node) {
         node.addEventListener('click', function (event) {
-            var catchupBtn = event.target && event.target.closest && event.target.closest('[data-smart-ping-catchup]');
-            if (catchupBtn) {
+            var catchupReview = event.target && event.target.closest && event.target.closest('[data-smart-ping-catchup-review]');
+            if (catchupReview) {
                 event.preventDefault();
                 event.stopPropagation();
-                handleCatchupLabel(catchupBtn);
+                handleCatchupReview(catchupReview);
                 return;
             }
             if (event.target === node) close();
@@ -680,6 +691,7 @@
         node.addEventListener('change', function (event) {
             var input = event.target;
             if (!input || !input.matches || !input.matches('[data-smart-ping-tester]')) return;
+            if (input.disabled) return;
             var testerId = Number(input.getAttribute('data-smart-ping-tester') || 0);
             state.recipients.forEach(function (row) {
                 if (row.testerId === testerId) row.checked = !!input.checked;
