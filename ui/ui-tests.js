@@ -1643,29 +1643,17 @@ function contactIncomingAccessReporter(username, accessMode, currentLang) {
     };
     if (isDefaultGoogleGroup) {
         if (typeof window.closeCustomAlert === 'function') window.closeCustomAlert();
-        const helperTitle = String(window.t('incomingAccessIssueHelperTitle', {}, langCode) || '').slice(0, 64);
         const helperGuide = String(window.t('incomingAccessIssueHelperGuide', {}, langCode) || '').slice(0, 256);
-        const helperButton = String(window.t('incomingAccessIssueHelperOpenChat', {}, langCode) || '').slice(0, 64);
         const telegram = window.tg || (window.Telegram && window.Telegram.WebApp) || (typeof tg !== 'undefined' ? tg : null);
-        if (telegram && typeof telegram.showPopup === 'function') {
+        // Telegram keeps its native alert above the chat after openTelegramLink.
+        // This only works when the message stays within the strict 256-char limit.
+        openChat();
+        if (telegram && typeof telegram.showAlert === 'function') {
             try {
-                telegram.showPopup({
-                    title: helperTitle,
-                    message: helperGuide,
-                    buttons: [{ id: 'open_chat', type: 'default', text: helperButton }],
-                }, function(buttonId) {
-                    if (buttonId === 'open_chat') openChat();
-                });
+                telegram.showAlert(helperGuide);
             } catch (error) {
-                console.warn('Could not show access helper popup:', error);
-                if (typeof telegram.showAlert === 'function') telegram.showAlert(helperGuide, openChat);
-                else openChat();
+                console.warn('Could not show access helper alert:', error);
             }
-        } else if (telegram && typeof telegram.showAlert === 'function') {
-            telegram.showAlert(helperGuide, openChat);
-        } else {
-            window.alert(helperGuide);
-            openChat();
         }
     } else {
         openChat();
