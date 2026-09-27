@@ -3736,7 +3736,7 @@
             smartPingChildLowRepPlain: "Low reputation",
             smartPingCatchupWillSend: "A catch-up report will be created",
             smartPingCatchupWillSendLine: "A catch-up report will be created for day {day}",
-            smartPingCatchupWaitingLine: "Control report for day {day} is awaiting a response",
+            smartPingCatchupWaitingLine: "Control report for day {day} — awaiting a response",
             smartPingCatchupReceivedLine: "Report for day {day} was submitted by the tester",
             smartPingCatchupReview: "Review",
             smartPingNotOpenedDaysOne: "{count} day without a first launch",

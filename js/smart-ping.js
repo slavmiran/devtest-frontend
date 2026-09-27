@@ -101,13 +101,7 @@
     }
     function skipsLabel(count) {
         var n = Number(count || 0);
-        var mod10 = n % 10;
-        var mod100 = n % 100;
-        var key = 'pcAttentionSkipsMany';
-        if (mod100 >= 11 && mod100 <= 19) key = 'pcAttentionSkipsMany';
-        else if (mod10 === 1) key = 'pcAttentionSkipsOne';
-        else if (mod10 >= 2 && mod10 <= 4) key = 'pcAttentionSkipsFew';
-        return text(key, '{count} consecutive skips', { count: n });
+        return text('pcAttentionSkips', '{count} дн. без тестирования подряд', { count: n });
     }
     function hasLeft(item, tester) {
         if (!tester) return true;
@@ -281,26 +275,31 @@
             return list;
         }
 
-        var skips = skipsCount(row.tester);
+        var skipsReason = (row.reasons || []).find(function (r) {
+            return String(r && r.code || '') === 'skips';
+        });
+        var consecutiveSkips = Math.max(
+            skipsReason ? Number(skipsReason.skips || 0) : 0,
+            skipsCount(row.tester)
+        );
+
         if (row.controlDay > 0) {
             pushMarker(list, text('smartPingMarkerControlToday', 'Сегодня Контрольный день {day}', { day: row.controlDay }), false);
-            if (row.signals > 0) {
-                pushMarker(list, signalsCountLabel(row.signals), false);
-                pushSignalChildren(list, row.assessment, row.tester);
-            }
-        } else if (row.signals > 0) {
+        }
+        if (!row.hasDebt && (consecutiveSkips >= 2 || skipsReason)) {
+            pushMarker(list, skipsLabel(Math.max(2, consecutiveSkips)), false);
+        }
+        if (row.signals > 0) {
             pushMarker(list, signalsCountLabel(row.signals), false);
             pushSignalChildren(list, row.assessment, row.tester);
         }
+        var skips = skipsCount(row.tester);
         if (row.hasDebt) pushMarker(list, debtMarker(skips), false);
         (row.reasons || []).forEach(function (reason) {
             var code = String(reason && reason.code || '');
-            if (code === 'skips' || code === 'debt' || code === 'tester_left') return;
+            if (code === 'skips' || code === 'debt' || code === 'tester_left' || code === 'not_opened' || code === 'missed_control') return;
             var label = extraReasonLabel(reason);
             if (!label) return;
-            if (code === 'missed_control') {
-                return;
-            }
             pushMarker(list, label, false);
         });
         appendCatchupWaitingMarkers(list, row.reasons);
@@ -321,7 +320,7 @@
             if (catchupStatus(reason) !== 'waiting') return;
             var day = Number(reason && reason.missedDay || 0);
             if (day <= 0) return;
-            pushMarker(list, text('smartPingCatchupWaitingLine', 'Control report for day {day} is awaiting a response', { day: day }), false);
+            pushMarker(list, text('smartPingCatchupWaitingLine', 'Control report for day {day} — awaiting a response', { day: day }), false);
         });
     }
 

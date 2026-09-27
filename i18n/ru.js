@@ -3742,7 +3742,7 @@
             smartPingChildLowRepPlain: "Низкая репутация",
             smartPingCatchupWillSend: "Будет создан дозапрос отчёта",
             smartPingCatchupWillSendLine: "Будет создан дозапрос отчёта за день {day}",
-            smartPingCatchupWaitingLine: "Контрольный отчёт за день {day} ожидает ответа",
+            smartPingCatchupWaitingLine: "Контрольный отчёт за день {day} — ожидает ответа",
             smartPingCatchupReceivedLine: "Отчёт за день {day} сдан тестером",
             smartPingCatchupReview: "Проверить",
             smartPingNotOpenedDaysOne: "{count} день без первого запуска",
