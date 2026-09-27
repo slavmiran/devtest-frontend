@@ -45,6 +45,28 @@
     background: rgba(88, 166, 255, 0.12);
     color: #a8bdce;
 }
+.pc-smart-ping-btn.is-cooldown {
+    border-color: rgba(148, 163, 184, 0.12);
+    background: rgba(148, 163, 184, 0.04);
+    color: #64748b;
+}
+.pc-smart-ping-btn.is-cooldown:hover {
+    border-color: rgba(148, 163, 184, 0.20);
+    background: rgba(148, 163, 184, 0.07);
+    color: #94a3b8;
+}
+.pc-smart-ping-btn.is-cooldown .pc-smart-ping-btn__bolt {
+    display: inline;
+    opacity: 0.5;
+}
+.pc-smart-ping-btn__cooldown-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #64748b;
+    margin-left: 1px;
+}
 .pc-smart-ping-btn__bolt {
     display: none;
     font-size: 12px;
@@ -364,3 +386,111 @@
     color: #8a9bb3;
     cursor: not-allowed;
 }
+
+.smart-ping-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, .3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: smart-ping-spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+@keyframes smart-ping-spin {
+    to { transform: rotate(360deg); }
+}
+
+.smart-ping-sheet__send.is-loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(56, 139, 253, .7);
+    cursor: wait;
+    pointer-events: none;
+}
+
+.smart-ping-sheet__send.is-success {
+    background: linear-gradient(180deg, #238636, #1f7a31);
+    color: #fff;
+    pointer-events: none;
+    transition: background .2s ease;
+}
+
+.smart-ping-sheet__last-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(88, 166, 255, 0.08);
+    border: 1px solid rgba(88, 166, 255, 0.18);
+    color: #a5d6ff;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.smart-ping-row__notified-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: rgba(46, 160, 67, 0.15);
+    border: 1px solid rgba(46, 160, 67, 0.35);
+    color: #3fb950;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    flex-shrink: 0;
+    margin-top: 6px;
+}
+
+.smart-ping-row.is-notified {
+    opacity: 0.85;
+    background: rgba(174, 195, 226, .02);
+}
+
+.pc-reminder-receipt.is-smart-ping {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #79c0ff;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.pc-attention-ping-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(56, 139, 253, 0.12);
+    border: 1px solid rgba(56, 139, 253, 0.25);
+    color: #79c0ff;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+.pc-attention-tile__subline.pc-attention-ping-info {
+    color: #79c0ff;
+    font-weight: 500;
+}
+
+.pc-attention-btn.is-remind-again {
+    background: rgba(88, 166, 255, 0.08);
+    border-color: rgba(88, 166, 255, 0.22);
+    color: #a5d6ff;
+}
+
+.pc-attention-btn.is-remind-again:hover {
+    background: rgba(88, 166, 255, 0.14);
+    color: #c8e1ff;
+}
+

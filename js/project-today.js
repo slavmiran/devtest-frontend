@@ -1686,6 +1686,12 @@
                 esc(text('pcReminderPersonalOpenedAt', 'Personal DM opened in Telegram at {time}', { time: reminderTime(receipt.personal_dm_opened_at) })) +
             '</span>';
         }
+        if (!row.received && window.SmartPing && typeof window.SmartPing.isTesterPinged === 'function' && window.SmartPing.isTesterPinged(appId, row.testerId)) {
+            var pingTime = window.SmartPing.getTesterPingTime(appId, row.testerId);
+            meta += '<span class="pc-reminder-receipt is-smart-ping">⚡ ' +
+                esc(text('pcSmartPingSentBadge', 'Пинг отправлен {time}', { time: pingTime })) +
+            '</span>';
+        }
         var extraHtml = '';
         if (row.received && row.proofId > 0) {
             extraHtml = activityTimelineHtml(appId, [row]);
@@ -3003,6 +3009,13 @@
         var isDone = false;
         var subtitleExtraHtml = '';
         var reminded = isTesterRemindedToday(safeAppId, safeTesterId);
+        var isPinged = window.SmartPing && typeof window.SmartPing.isTesterPinged === 'function' && window.SmartPing.isTesterPinged(safeAppId, safeTesterId);
+        if (isPinged) {
+            var pingTime = window.SmartPing.getTesterPingTime(safeAppId, safeTesterId);
+            subtitleExtraHtml += '<span class="pc-attention-tile__subline pc-attention-ping-info">⚡ ' +
+                esc(text('pcSmartPingSentBadge', 'Пинг отправлен {time}', { time: pingTime })) +
+            '</span>';
+        }
 
         var isLeftAction = reason.action === 'left_status' || code === 'tester_left';
         var isBrokenLink = reason.action === 'link_status' || code === 'broken_link';
@@ -3034,7 +3047,7 @@
             reasonIcon = ATTENTION_GLYPHS.not_opened;
             title = text('pcAttentionNotOpenedTitle', 'Ещё не открывал приложение');
             hasAccordion = true;
-            isDone = reminded;
+            isDone = reminded || isPinged;
             priorityLevel = phase === 'critical' ? 'p1' : 'p2';
 
             if (safeOpen) {
@@ -3073,9 +3086,9 @@
                 );
             }
 
-            if (reminded) {
-                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
-                    esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+            if (reminded || isPinged) {
+                actions.push('<button type="button" class="pc-attention-btn is-remind-again" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'not_opened\')">' +
+                    esc(text('pcAttentionRemindAgain', '🔔 Напомнить повторно')) + '</button>');
             } else {
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'not_opened\')">' +
                     esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
@@ -3098,11 +3111,11 @@
                 remaining: remainingDays,
             });
             hasAccordion = true;
-            isDone = reminded;
+            isDone = reminded || isPinged;
 
-            if (reminded) {
-                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
-                    esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+            if (reminded || isPinged) {
+                actions.push('<button type="button" class="pc-attention-btn is-remind-again" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'debt\')">' +
+                    esc(text('pcAttentionRemindAgain', '🔔 Напомнить повторно')) + '</button>');
             } else {
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'debt\')">' +
                     esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
@@ -3116,7 +3129,7 @@
             hasAccordion = true;
 
             var isPendingOffer = isMutualOfferPending(safeTesterId);
-            isDone = isPendingOffer || reminded;
+            isDone = isPendingOffer || reminded || isPinged;
 
             if (isPendingOffer) {
                 actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
@@ -3126,9 +3139,9 @@
                     esc(text('pcAttentionOfferMutual', '🤝 Предложить взаимку')) + '</button>');
             }
 
-            if (reminded) {
-                actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
-                    esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+            if (reminded || isPinged) {
+                actions.push('<button type="button" class="pc-attention-btn is-remind-again" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'direct_invite\')">' +
+                    esc(text('pcAttentionRemindAgain', '🔔 Напомнить повторно')) + '</button>');
             } else {
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'direct_invite\')">' +
                     esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
@@ -3142,11 +3155,11 @@
                 subtitle = text('pcAttentionSkips2Subtitle', 'Риск снижения активности');
                 hasAccordion = false;
                 spoilerText = '';
-                isDone = reminded;
+                isDone = reminded || isPinged;
 
-                if (reminded) {
-                    actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
-                        esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+                if (reminded || isPinged) {
+                    actions.push('<button type="button" class="pc-attention-btn is-remind-again" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: 2 })">' +
+                        esc(text('pcAttentionRemindAgain', '🔔 Напомнить повторно')) + '</button>');
                 } else {
                     actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: 2 })">' +
                         esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
@@ -3157,7 +3170,7 @@
                 title = text('pcAttentionSkipsCriticalTitle', '{skips} дн. без тестирования подряд', { skips: skips });
                 subtitle = text('pcAttentionSkipsCriticalSubtitle', 'Длительная пауза в активности\nСвязаться с тестировщиком');
                 hasAccordion = true;
-                isDone = reminded;
+                isDone = reminded || isPinged;
 
                 var breakLinkActionText = text('pcAttentionBreakLinkWithoutPenalty', 'расторгнуть взаимку без штрафа');
                 var breakLinkButtonHtml = '<button type="button" class="attention-link-action" data-action="unlink" onclick="event.stopPropagation(); openTesterLinkStatusFromRow(' + safeAppId + ',' + safeTesterId + ', event)">' + esc(breakLinkActionText) + '</button>';
@@ -3170,9 +3183,9 @@
                 '</p>';
                 spoilerText = 'Участник не запускал тест уже 3+ дня подряд.';
 
-                if (reminded) {
-                    actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
-                        esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+                if (reminded || isPinged) {
+                    actions.push('<button type="button" class="pc-attention-btn is-remind-again" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: ' + skips + ' })">' +
+                        esc(text('pcAttentionRemindAgain', '🔔 Напомнить повторно')) + '</button>');
                 } else {
                     actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: ' + skips + ' })">' +
                         esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
@@ -3208,11 +3221,11 @@
                     ? text('pcAttentionMissedControlPendingSubtitleWhen', 'День {day}\nДозапрос отправлен {when}', { day: missedDay, when: requestedWhen })
                     : text('pcAttentionMissedControlPendingSubtitle', 'День {day}\nДозапрос отправлен тестеру', { day: missedDay });
                 spoilerText = text('pcAttentionMissedControlPendingDrawer', 'Дозапрос на скриншот за контрольный день {day} отправлен. Ожидайте загрузки отчёта тестером.', { day: missedDay });
-                isDone = reminded;
+                isDone = reminded || isPinged;
 
-                if (reminded) {
-                    actions.push('<button type="button" class="pc-attention-btn is-done" disabled>' +
-                        esc(text('pcAttentionRemindedToday', '✓ Отправлено')) + '</button>');
+                if (reminded || isPinged) {
+                    actions.push('<button type="button" class="pc-attention-btn is-remind-again" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'missed_control\', { day: ' + missedDay + ' })">' +
+                        esc(text('pcAttentionRemindAgain', '🔔 Напомнить повторно')) + '</button>');
                 } else {
                     actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'missed_control\', { day: ' + missedDay + ' })">' +
                         esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
@@ -3294,6 +3307,12 @@
             var metaHtml = '<span class="pc-person__reliability">' + esc(testerReliabilityLabel(tester)) + '</span>' +
                 testerKarmaMetaHtml(tester) +
                 '<span class="pc-person__day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>';
+            if (window.SmartPing && typeof window.SmartPing.isTesterPinged === 'function' && window.SmartPing.isTesterPinged(safeAppId, safeTesterId)) {
+                var pingTime = window.SmartPing.getTesterPingTime(safeAppId, safeTesterId);
+                metaHtml += '<span class="pc-reminder-receipt is-smart-ping">⚡ ' +
+                    esc(text('pcSmartPingSentBadge', 'Пинг отправлен {time}', { time: pingTime })) +
+                '</span>';
+            }
 
             var stepsHtml = (item.reasons || []).map(function (reason) {
                 var meta = getAttentionReasonMeta(reason, tester, safeAppId, safeTesterId);
