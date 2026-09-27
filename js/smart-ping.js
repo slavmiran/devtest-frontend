@@ -12,6 +12,7 @@
         filter: 'risk',
         recipients: [],
         sending: false,
+        generation: 0,
     };
 
     function text(key, fallback, params) {
@@ -608,8 +609,8 @@
     function overlay() {
         return document.getElementById('smart-ping-modal');
     }
-    function close() {
-        if (state.sending) return;
+    function close(force) {
+        if (state.sending && !force) return;
         stopCountdownTimer();
         var node = overlay();
         if (document.body) document.body.style.overflow = '';
@@ -860,6 +861,8 @@
         var picked = selected();
         var next = footerState(project);
         if (!project || next.disabled || state.sending || !picked.length) return;
+        var submissionGeneration = state.generation;
+        var submittedAppId = state.appId;
         state.sending = true;
         render();
         var node = overlay();
@@ -885,7 +888,7 @@
                 }
                 if (code === 'smart_ping_cooldown' && payload.details && payload.details.sent_at) {
                     project.smart_ping_sent_at = payload.details.sent_at;
-                    setLastPing(state.appId, {
+                    setLastPing(submittedAppId, {
                         sentAt: payload.details.sent_at,
                         count: 0,
                         testerIds: [],
@@ -903,7 +906,7 @@
                 : picked.map(function (row) { return row.testerId; });
 
             project.smart_ping_sent_at = sentAt;
-            setLastPing(state.appId, {
+            setLastPing(submittedAppId, {
                 sentAt: sentAt,
                 count: chargedCount,
                 testerIds: pingedTesterIds,
@@ -922,10 +925,11 @@
             }
 
             setTimeout(function () {
+                if (state.generation !== submissionGeneration) return;
                 state.sending = false;
                 if (window.ProjectToday) {
-                    if (typeof window.ProjectToday.invalidate === 'function') window.ProjectToday.invalidate(state.appId);
-                    if (typeof window.ProjectToday.refresh === 'function') window.ProjectToday.refresh(state.appId);
+                    if (typeof window.ProjectToday.invalidate === 'function') window.ProjectToday.invalidate(submittedAppId);
+                    if (typeof window.ProjectToday.refresh === 'function') window.ProjectToday.refresh(submittedAppId);
                 }
                 if (typeof showToast === 'function') {
                     showToast(text('smartPingDeliveredCount', 'Smart Ping доставлен {count} участникам', {
@@ -933,9 +937,10 @@
                     }));
                 }
                 close();
-                sync(state.appId);
+                sync(submittedAppId);
             }, 700);
         } catch (_) {
+            if (state.generation !== submissionGeneration) return;
             state.sending = false;
             render();
             if (typeof showToast === 'function') showToast(text('smartPingFailed', 'Не удалось отправить Smart Ping'));
@@ -944,7 +949,11 @@
     function open(appId) {
         var project = projectById(appId);
         if (!project) return;
-        close();
+        // Programmatic or very fast repeated opens can arrive while the
+        // success state of the previous sheet is still visible. Replace that
+        // sheet atomically and invalidate its delayed close callback.
+        close(true);
+        state.generation += 1;
         state.appId = Number(project.id || project.app_id);
         state.filter = 'risk';
         state.sending = false;

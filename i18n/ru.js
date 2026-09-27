@@ -3763,7 +3763,7 @@
             smartPingCooldownTitle: "Smart Ping: кулдаун (повторно через {time})",
             smartPingFailed: "Не удалось отправить Smart Ping",
             pcAttentionRemindAgain: "🔔 Напомнить повторно",
-            pcSmartPingSentBadge: "⚡ Пинг отправлен {time}",
+            pcSmartPingSentBadge: "Пинг отправлен {time}",
             screenshotBoostAllowWalletLabel: 'Использовать общий баланс',
             screenshotBoostAllowWalletHint: 'Когда выделенный пул исчерпан — продолжать выплаты из общего кошелька',
     };

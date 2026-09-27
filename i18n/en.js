@@ -3757,7 +3757,7 @@
             smartPingCooldownTitle: "Smart Ping: cooldown (ready in {time})",
             smartPingFailed: "Could not send Smart Ping",
             pcAttentionRemindAgain: "🔔 Remind again",
-            pcSmartPingSentBadge: "⚡ Ping sent {time}",
+            pcSmartPingSentBadge: "Ping sent {time}",
             screenshotBoostAllowWalletLabel: 'Use general balance',
             screenshotBoostAllowWalletHint: 'When the dedicated pool runs out — continue payouts from the main wallet',
     };

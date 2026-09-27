@@ -183,8 +183,16 @@
             : (Array.isArray(raw.requested_days)
                 ? raw.requested_days.map(Number)
                 : (Array.isArray(raw.pending_days) ? raw.pending_days.map(Number) : []));
+        var requestableMissedDays = Array.isArray(raw.requestableMissedDays)
+            ? raw.requestableMissedDays.map(Number)
+            : (Array.isArray(raw.requestable_missed_days)
+                ? raw.requestable_missed_days.map(Number)
+                : []);
+        var legacyRequestable = Number(raw.requestableMissedDay != null ? raw.requestableMissedDay : raw.requestable_missed_day || 0);
+        if (!requestableMissedDays.length && legacyRequestable > 0) requestableMissedDays = [legacyRequestable];
         return {
-            requestableMissedDay: Number(raw.requestableMissedDay != null ? raw.requestableMissedDay : raw.requestable_missed_day || 0),
+            requestableMissedDay: legacyRequestable,
+            requestableMissedDays: requestableMissedDays,
             requestedDays: requestedDays,
             requests: Array.isArray(raw.requests) ? raw.requests : [],
             states: raw.states && typeof raw.states === 'object' ? raw.states : {},
@@ -206,7 +214,7 @@
         var catchup = catchupStateFor(project, tester);
         var yesterday = shiftDateString(todayString(), -1);
         var yesterdayDay = testerDayNumber(tester) - 1;
-        var requestable = Number(catchup && catchup.requestableMissedDay || 0);
+        var requestableDays = (catchup && catchup.requestableMissedDays || []).map(Number);
         var requestedDays = (catchup && catchup.requestedDays || []).map(Number);
         var states = (catchup && catchup.states) || {};
         var seen = {};
@@ -245,7 +253,7 @@
         });
         requestedDays.forEach(consider);
         Object.keys(states).forEach(consider);
-        if (requestable > 0) consider(requestable);
+        requestableDays.forEach(consider);
         if (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday) {
             consider(yesterdayDay);
         }
@@ -1107,6 +1115,9 @@
                 (results[0].items || []).forEach(function (item) {
                     catchupByProgress[Number(item.progress_id || 0)] = {
                         requestableMissedDay: Number(item.catchup_proof && item.catchup_proof.requestable_missed_day || 0),
+                        requestableMissedDays: Array.isArray(item.catchup_proof && item.catchup_proof.requestable_missed_days)
+                            ? item.catchup_proof.requestable_missed_days.map(Number)
+                            : [],
                         requestedDays: Array.isArray(item.catchup_proof && item.catchup_proof.requested_days)
                             ? item.catchup_proof.requested_days.map(Number)
                             : (Array.isArray(item.catchup_proof && item.catchup_proof.pending_days)
@@ -2410,7 +2421,8 @@
             var reasons = [];
             var neverOpened = isNeverOpenedTester(tester);
 
-            // Exclusive primary: never launched. Do not masquerade as skips/debt/invite/missed_control.
+            // Exclusive primary: until the first successful open/check-in,
+            // no missed-control or catch-up status is allowed to coexist.
             if (neverOpened && !isBuffer) {
                 var openedDay = Math.max(1, testerDayNumber(tester));
                 var safeUntil = safeBreakUntilMs(tester);
@@ -3242,7 +3254,7 @@
                 );
                 isDone = false;
 
-                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRequestCatchupProof(' + safeAppId + ',' + safeTesterId + ')">' +
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRequestCatchupProof(' + safeAppId + ',' + safeTesterId + ',' + missedDay + ')">' +
                     esc(text('pcAttentionSendCatchupRequest', '📩 Запросить подтверждение')) + '</button>');
             }
         } else {
@@ -4676,7 +4688,7 @@
         if (dialog && dialog.parentNode) dialog.parentNode.removeChild(dialog);
     }
 
-    function openCatchupProofRequestDialog(appId, testerId) {
+    function openCatchupProofRequestDialog(appId, testerId, missedDay) {
         removeCatchupProofRequestDialog();
         var project = projectById(appId);
         var tester = project && (project.testers || []).find(function (item) {
@@ -4684,7 +4696,11 @@
         });
         if (!project || !tester) return;
         var catchup = catchupStateFor(project, tester);
-        var day = Number(catchup && catchup.requestableMissedDay || 0);
+        var day = Number(missedDay || 0);
+        var requestableDays = (catchup && catchup.requestableMissedDays || []).map(Number);
+        if (!isCatchupControlDay(day) || (requestableDays.length && requestableDays.indexOf(day) === -1)) {
+            day = Number(requestableDays[0] || (catchup && catchup.requestableMissedDay) || 0);
+        }
         if (!isCatchupControlDay(day)) {
             var yesterdayDay = testerDayNumber(tester) - 1;
             day = isCatchupControlDay(yesterdayDay) ? yesterdayDay : 0;
@@ -4711,7 +4727,7 @@
                 '<div class="pc-catchup-request-sheet__actions">' +
                     '<button type="button" class="btn btn-secondary" onclick="pcCloseCatchupProofRequestDialog()">' +
                         esc(text('pcCancel', 'Cancel')) + '</button>' +
-                    '<button id="pc-catchup-request-submit" type="button" class="btn btn-primary" onclick="pcSubmitCatchupProofRequest(' + Number(appId) + ',' + Number(testerId) + ')">' +
+                    '<button id="pc-catchup-request-submit" type="button" class="btn btn-primary" onclick="pcSubmitCatchupProofRequest(' + Number(appId) + ',' + Number(testerId) + ',' + day + ')">' +
                         esc(text('pcRequestProof', 'Request proof')) + '</button>' +
                 '</div>' +
             '</section>' +
@@ -4730,11 +4746,11 @@
         window.setTimeout(removeCatchupProofRequestDialog, 220);
     };
 
-    window.pcRequestCatchupProof = function (appId, testerId) {
-        openCatchupProofRequestDialog(Number(appId), Number(testerId));
+    window.pcRequestCatchupProof = function (appId, testerId, missedDay) {
+        openCatchupProofRequestDialog(Number(appId), Number(testerId), Number(missedDay || 0));
     };
 
-    window.pcSubmitCatchupProofRequest = async function (appId, testerId) {
+    window.pcSubmitCatchupProofRequest = async function (appId, testerId, missedDay) {
         var submit = document.getElementById('pc-catchup-request-submit');
         if (submit && submit.disabled) return;
         if (submit) {
@@ -4747,7 +4763,11 @@
             var response = await fetch(API_BASE + '/projects/' + Number(appId) + '/testing-control/catchup-proof-requests', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ init_data: initData(), tester_id: Number(testerId) }),
+                body: JSON.stringify({
+                    init_data: initData(),
+                    tester_id: Number(testerId),
+                    missed_testing_day: Number(missedDay || 0),
+                }),
             });
             var payload = await response.json();
             if (!response.ok || payload.status !== 'success') throw new Error(payload.error || payload.detail || 'catchup_request_failed');
