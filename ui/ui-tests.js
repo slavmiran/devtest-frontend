@@ -3291,6 +3291,9 @@ function renderTests(force) {
                 <span class="screenshot-proof-upload-pending__spinner" aria-hidden="true"></span>
                 <span>${window.escapeHTML(window.t('checkinProofCardUploading', {}, lang))}</span>
             </div>
+            <div class="screenshot-proof-upload-pending__hint">
+                ${window.escapeHTML(window.t('checkinProofCanTestNextApp', {}, lang))}
+            </div>
         `;
         let cardContent = isScreenshotProofUploadPending ? screenshotProofUploadPendingHtml : `
             ${doneBadgeHtml}

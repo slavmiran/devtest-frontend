@@ -160,6 +160,14 @@ html.tests-scrolling #tab-tests .test-card-highlight-pulse {
     line-height: 1.2;
 }
 
+.screenshot-proof-upload-pending__hint {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--hint-color, #8e8e93);
+}
+
 .screenshot-proof-upload-pending__spinner {
     width: 13px;
     height: 13px;
