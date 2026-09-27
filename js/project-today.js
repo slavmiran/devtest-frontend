@@ -3036,18 +3036,20 @@
             priorityLevel = 'p1';
             reasonIcon = ATTENTION_GLYPHS.tester_left;
             title = text('pcAttentionLeftTitle', 'Тестер прервал участие');
-            subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен\nВы можете выйти из его теста');
-            spoilerText = text('pcAttentionLeftDrawer', 'Участник покинул проект или исключён платформой со штрафом к Карме. Вы больше не обязаны тестировать его приложение: перейдите в проект партнёра, чтобы закрыть тест без штрафа и удалить приложение, либо скройте тестера из списка.');
             hasAccordion = true;
             isDone = false;
 
             var hasReciprocalApp = Number(tester && tester.reciprocal_app_id || 0) > 0;
             if (hasReciprocalApp) {
+                subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен\nВы можете выйти из его теста');
+                spoilerText = text('pcAttentionLeftDrawer', 'Участник покинул проект или исключён платформой со штрафом к Карме. Вы больше не обязаны тестировать его приложение: перейдите в проект партнёра, чтобы закрыть тест без штрафа и удалить приложение, либо скройте тестера из списка.');
                 actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openLeftTesterLinkStatus(' + safeAppId + ',' + safeTesterId + ', event)">' +
                     esc(text('pcAttentionExitPartnerShort', 'Проект партнёра (Выйти)')) + '</button>');
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(' + safeAppId + ',' + safeTesterId + ')">' +
                     esc(text('pcAttentionHide', '👁️ Скрыть')) + '</button>');
             } else {
+                subtitle = text('pcAttentionDirectLeftSubtitle', 'Взаимного обязательства не было\nМожно скрыть из списка');
+                spoilerText = text('pcAttentionDirectLeftDrawer', 'Участник покинул проект или был исключён. Взаимного обмена с ним не было, поэтому встречных обязательств у вас не возникало. Эту запись можно скрыть из списка.');
                 actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); dismissLeftTesterRow(' + safeAppId + ',' + safeTesterId + ')">' +
                     esc(text('pcAttentionHideFromList', '👁️ Скрыть из списка')) + '</button>');
             }

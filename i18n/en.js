@@ -3607,6 +3607,8 @@
             pcAttentionLeftTitle: "Tester stopped participating",
             pcAttentionLeftSubtitle: "Penalty applied to offender\nYou can exit their test",
             pcAttentionLeftDrawer: "Participant left the project or was excluded by platform with karma penalty. You are no longer required to test their app: go to partner's project to close test without penalty and remove app, or hide tester from the list.",
+            pcAttentionDirectLeftSubtitle: "There was no mutual obligation\nYou can hide this entry",
+            pcAttentionDirectLeftDrawer: "The participant left the project or was removed. There was no mutual exchange, so you have no reciprocal obligation. You can hide this entry from the list.",
             pcAttentionMissedControlTitle: "Missed control day",
             pcAttentionMissedControlSubtitle: "Day {day}\nYou can request a required make-up report",
             pcAttentionMissedControlDrawer: "Once requested, the tester will need to submit a separate proof with a screenshot of the app. The task stays active until completed. If they do not close each open catch-up before the test ends, they receive −1 karma for each unclosed request.",

@@ -1067,11 +1067,10 @@ button.pc-stage-badge {
 }
 
 #tab-projects .card .pc-dashboard-body {
-    max-height: 2500px;
+    max-height: none;
     opacity: 1;
     transform: none;
-    transition: max-height 0.28s ease,
-                opacity 0.18s ease,
+    transition: opacity 0.18s ease,
                 padding-bottom 0.28s ease,
                 margin 0.28s ease;
 }
