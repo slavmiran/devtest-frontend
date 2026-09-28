@@ -686,8 +686,108 @@
         return text(key, '{count} consecutive skips', { count: n });
     }
 
+    function manualReminderStorageKey(appId) {
+        return 'pc_manual_reminders_' + Number(appId);
+    }
+
+    function getTesterManualReminder(appId, testerId) {
+        try {
+            var key = manualReminderStorageKey(appId);
+            var raw = localStorage.getItem(key);
+            if (!raw) return null;
+            var map = JSON.parse(raw);
+            var entry = map && map[String(testerId)];
+            if (entry && entry.sentAt) return entry;
+            return null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function recordTesterManualReminder(appId, testerId, sentAt) {
+        try {
+            var key = manualReminderStorageKey(appId);
+            var raw = localStorage.getItem(key);
+            var map = raw ? JSON.parse(raw) : {};
+            if (!map || typeof map !== 'object' || Array.isArray(map)) map = {};
+            map[String(testerId)] = {
+                sentAt: sentAt || new Date().toISOString()
+            };
+            localStorage.setItem(key, JSON.stringify(map));
+        } catch (_) {}
+    }
+
+    function getCalendarDayDiff(date1, date2) {
+        var d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+        var d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+        var diffMs = d2.getTime() - d1.getTime();
+        return Math.floor(diffMs / (24 * 60 * 60 * 1000));
+    }
+
+    function formatDaysAgoText(days) {
+        var isRu = typeof lang === 'undefined' || lang === 'ru';
+        if (!isRu) {
+            return days + (days === 1 ? ' day ago' : ' days ago');
+        }
+        var mod100 = days % 100;
+        var mod10 = days % 10;
+        if (mod100 >= 11 && mod100 <= 19) {
+            return days + ' дней назад';
+        }
+        if (mod10 === 1) {
+            return days + ' день назад';
+        }
+        if (mod10 >= 2 && mod10 <= 4) {
+            return days + ' дня назад';
+        }
+        return days + ' дней назад';
+    }
+
+    function formatManualReminderWhen(appId, testerId) {
+        var entry = getTesterManualReminder(appId, testerId);
+        var sentAt = entry && entry.sentAt;
+        if (!sentAt) {
+            var receipts = controlReminderStates.get(Number(appId));
+            if (receipts && Array.isArray(receipts.items)) {
+                var item = receipts.items.find(function(it) {
+                    return Number(it.tester_id) === Number(testerId) && it.personal_dm_opened_at;
+                });
+                if (item && item.personal_dm_opened_at) {
+                    sentAt = item.personal_dm_opened_at;
+                }
+            }
+        }
+        if (!sentAt) return '';
+
+        var sentDate = new Date(sentAt);
+        if (isNaN(sentDate.getTime())) return '';
+
+        var now = new Date();
+        var diffDays = getCalendarDayDiff(sentDate, now);
+        var timeStr = reminderTime(sentDate);
+
+        if (diffDays <= 0) {
+            return text('pcManualReminderSentToday', 'Напоминание отправлено {time}', { time: timeStr });
+        }
+        if (diffDays === 1) {
+            return text('pcManualReminderSentYesterday', 'Напоминание отправлено вчера в {time}', { time: timeStr });
+        }
+        var daysAgoStr = formatDaysAgoText(diffDays);
+        return text('pcManualReminderSentDaysAgo', 'Напоминание отправлено {daysAgo} в {time}', { daysAgo: daysAgoStr, time: timeStr });
+    }
+
     function isTesterRemindedToday(appId, testerId) {
         try {
+            var entry = getTesterManualReminder(appId, testerId);
+            if (entry && entry.sentAt) {
+                var sentDate = new Date(entry.sentAt);
+                var now = new Date();
+                if (sentDate.getFullYear() === now.getFullYear() &&
+                    sentDate.getMonth() === now.getMonth() &&
+                    sentDate.getDate() === now.getDate()) {
+                    return true;
+                }
+            }
             var key = 'pc_control_reminded_' + Number(appId) + '_' + todayString();
             var val = localStorage.getItem(key);
             var list = val ? JSON.parse(val) : [];
@@ -697,7 +797,8 @@
         }
     }
 
-    function markTesterRemindedToday(appId, testerId) {
+    function markTesterRemindedToday(appId, testerId, sentAt) {
+        recordTesterManualReminder(appId, testerId, sentAt);
         try {
             var key = 'pc_control_reminded_' + Number(appId) + '_' + todayString();
             var val = localStorage.getItem(key);
@@ -1692,7 +1793,12 @@
             meta += '<span class="pc-reminder-receipt is-unavailable">' +
                 esc(text(receipt.status === 'reserved' || receipt.status === 'uncertain' ? 'pcReminderUnconfirmed' : 'pcReminderUnavailable', 'Delivery unavailable')) + '</span>';
         }
-        if (!row.received && receipt && receipt.personal_dm_opened_at) {
+        var manualReceiptText = formatManualReminderWhen(appId, row.testerId);
+        if (!row.received && manualReceiptText) {
+            meta += '<span class="pc-reminder-receipt is-manual-remind">🔔 ' +
+                esc(manualReceiptText) +
+            '</span>';
+        } else if (!row.received && receipt && receipt.personal_dm_opened_at) {
             meta += '<span class="pc-reminder-receipt is-personal">' +
                 esc(text('pcReminderPersonalOpenedAt', 'Personal DM opened in Telegram at {time}', { time: reminderTime(receipt.personal_dm_opened_at) })) +
             '</span>';
@@ -3315,6 +3421,12 @@
             var metaHtml = '<span class="pc-person__reliability">' + esc(testerReliabilityLabel(tester)) + '</span>' +
                 testerKarmaMetaHtml(tester) +
                 '<span class="pc-person__day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>';
+            var manualRemindText = formatManualReminderWhen(safeAppId, safeTesterId);
+            if (manualRemindText) {
+                metaHtml += '<span class="pc-reminder-receipt is-manual-remind">🔔 ' +
+                    esc(manualRemindText) +
+                '</span>';
+            }
             if (window.SmartPing && typeof window.SmartPing.isTesterPinged === 'function' && window.SmartPing.isTesterPinged(safeAppId, safeTesterId)) {
                 var pingTime = window.SmartPing.getTesterPingTime(safeAppId, safeTesterId);
                 metaHtml += '<span class="pc-reminder-receipt is-smart-ping">⚡ ' +
@@ -4275,6 +4387,11 @@
         activityCounts: activityCounts,
         calculateTesterControlActivityAssessment: calculateTesterControlActivityAssessment,
         calculateTesterControlRisk: calculateTesterControlActivityAssessment,
+        getTesterManualReminder: getTesterManualReminder,
+        recordTesterManualReminder: recordTesterManualReminder,
+        formatManualReminderWhen: formatManualReminderWhen,
+        isTesterRemindedToday: isTesterRemindedToday,
+        markTesterRemindedToday: markTesterRemindedToday,
         invalidate: function (appId) {
             var safeAppId = Number(appId || 0);
             var current = cache.get(safeAppId);

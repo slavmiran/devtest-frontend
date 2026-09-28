@@ -3767,6 +3767,9 @@
             smartPingFailed: "Не удалось отправить Smart Ping",
             pcAttentionRemindAgain: "🔔 Напомнить повторно",
             pcSmartPingSentBadge: "Пинг отправлен {time}",
+            pcManualReminderSentToday: "Напоминание отправлено {time}",
+            pcManualReminderSentYesterday: "Напоминание отправлено вчера в {time}",
+            pcManualReminderSentDaysAgo: "Напоминание отправлено {daysAgo} в {time}",
             screenshotBoostAllowWalletLabel: 'Использовать общий баланс',
             screenshotBoostAllowWalletHint: 'Когда выделенный пул исчерпан — продолжать выплаты из общего кошелька',
     };

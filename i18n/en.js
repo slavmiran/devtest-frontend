@@ -3761,6 +3761,9 @@
             smartPingFailed: "Could not send Smart Ping",
             pcAttentionRemindAgain: "🔔 Remind again",
             pcSmartPingSentBadge: "Ping sent {time}",
+            pcManualReminderSentToday: "Reminder sent {time}",
+            pcManualReminderSentYesterday: "Reminder sent yesterday at {time}",
+            pcManualReminderSentDaysAgo: "Reminder sent {daysAgo} at {time}",
             screenshotBoostAllowWalletLabel: 'Use general balance',
             screenshotBoostAllowWalletHint: 'When the dedicated pool runs out — continue payouts from the main wallet',
     };

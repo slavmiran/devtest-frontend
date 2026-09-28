@@ -234,7 +234,8 @@ async function loadRuntimeConfig() {
     }
 }
 
-const GUEST_PROJECTS_PAGE_SIZE = 5;
+var GUEST_PROJECTS_PAGE_SIZE = 5;
+window.GUEST_PROJECTS_PAGE_SIZE = GUEST_PROJECTS_PAGE_SIZE;
 const NATIVE_APP_LANGS = ['ru', 'en'];
 const RTL_APP_LANGS = ['ar', 'fa', 'he', 'ur'];
 const APP_BASE_LANGUAGE_STORAGE_KEY = 'app_language';
@@ -782,6 +783,7 @@ var _guestProjectsInFlight = null;
 var _guestProjectsLoadedOnce = false;
 var _guestProjectsExpanded = true;
 var _guestProjectsLoadError = false;
+var _guestProjectsTotalCount = 0;
 var _externalCountsInFlight = null;
 var _externalCountsLoadedOnce = false;
 var _externalCounts = { leads_count: 0, guest_projects_count: 0, updated_at: 0 };
@@ -961,6 +963,7 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_guestProjectsLoadedOnce', function () { return _guestProjectsLoadedOnce; }, function (value) { _guestProjectsLoadedOnce = value; });
     window.App.bindStateProperty('_guestProjectsExpanded', function () { return _guestProjectsExpanded; }, function (value) { _guestProjectsExpanded = value; });
     window.App.bindStateProperty('_guestProjectsLoadError', function () { return _guestProjectsLoadError; }, function (value) { _guestProjectsLoadError = value; });
+    window.App.bindStateProperty('_guestProjectsTotalCount', function () { return _guestProjectsTotalCount; }, function (value) { _guestProjectsTotalCount = value; });
     window.App.bindStateProperty('_externalCountsInFlight', function () { return _externalCountsInFlight; }, function (value) { _externalCountsInFlight = value; });
     window.App.bindStateProperty('_externalCountsLoadedOnce', function () { return _externalCountsLoadedOnce; }, function (value) { _externalCountsLoadedOnce = value; });
     window.App.bindStateProperty('_externalCounts', function () { return _externalCounts; }, function (value) { _externalCounts = value; });

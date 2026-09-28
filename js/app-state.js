@@ -160,6 +160,7 @@
         _guestProjectsLoadedOnce: false,
         _guestProjectsExpanded: true,
         _guestProjectsLoadError: false,
+        _guestProjectsTotalCount: 0,
         _externalCountsInFlight: null,
         _externalCountsLoadedOnce: false,
         _externalCounts: { leads_count: 0, guest_projects_count: 0, updated_at: 0 },

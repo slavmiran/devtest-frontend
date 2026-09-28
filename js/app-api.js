@@ -261,9 +261,11 @@ function _guestProjectFiltersMatch(cachedFilters, liveFilters) {
 
 function _applyGuestProjectsPayload(payload) {
     guestProjects = Array.isArray(payload && payload.items) ? payload.items : [];
+    _guestProjectsTotalCount = Number((payload && (payload.total != null ? payload.total : payload.count)) || guestProjects.length);
     setGuestProjectAvailableLangs(payload && payload.available_langs);
 
-    const selectedLang = normalizeGuestProjectsFilterLang(_guestProjectsFilters.lang);
+    var currentFilters = (typeof _guestProjectsFilters !== 'undefined' && _guestProjectsFilters) ? _guestProjectsFilters : { lang: 'ALL', category: 'ALL' };
+    const selectedLang = normalizeGuestProjectsFilterLang(currentFilters.lang);
     return selectedLang === 'ALL' || _guestProjectsAvailableLangs.includes(selectedLang);
 }
 
@@ -412,6 +414,7 @@ function _syncGuestProjectsCache() {
     setGuestProjectsCache({
         filters: Object.assign({}, _guestProjectsFilters),
         items: Array.isArray(guestProjects) ? guestProjects : [],
+        total: Number(_guestProjectsTotalCount || (Array.isArray(guestProjects) ? guestProjects.length : 0)),
         available_langs: getGuestProjectAvailableLangs(),
         ts: Date.now(),
     });
@@ -428,6 +431,7 @@ async function loadGuestApps(options) {
 
     if (!options.force && filtersMatch && Array.isArray(cached.items)) {
         guestProjects = cached.items;
+        _guestProjectsTotalCount = Number(cached.total != null ? cached.total : guestProjects.length);
         setGuestProjectAvailableLangs(cached.available_langs);
         resetGuestProjectsPagination();
         _guestProjectsLoadedOnce = true;
@@ -460,6 +464,7 @@ async function loadGuestApps(options) {
             if (!_guestProjectsLoadedOnce) {
                 const hasCachedItems = !!(filtersMatch && Array.isArray((cached || {}).items));
                 guestProjects = hasCachedItems ? cached.items : [];
+                _guestProjectsTotalCount = hasCachedItems ? Number(cached.total != null ? cached.total : guestProjects.length) : 0;
                 setGuestProjectAvailableLangs(hasCachedItems ? cached.available_langs : []);
                 _guestProjectsLoadedOnce = hasCachedItems;
             }

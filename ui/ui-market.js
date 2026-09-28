@@ -1193,7 +1193,11 @@ function renderGuestProjectsSection(force) {
         : rawGuestProjects;
 
     if (countBadge) {
-        countBadge.textContent = String(availableItems.length);
+        var countVal = availableItems.length;
+        if (!_guestProjectsLoadedOnce && !rawGuestProjects.length && typeof _externalCounts !== 'undefined' && Number(_externalCounts.guest_projects_count || 0) > 0) {
+            countVal = Number(_externalCounts.guest_projects_count);
+        }
+        countBadge.textContent = String(countVal);
     }
 
     if (langLabel) langLabel.textContent = window.t('guestFilterLangLabel', {}, lang);

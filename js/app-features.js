@@ -563,7 +563,8 @@ function scheduleDeferredBootstrap() {
 }
 
 function resetGuestProjectsPagination() {
-    _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
+    var pageSize = typeof GUEST_PROJECTS_PAGE_SIZE !== 'undefined' ? GUEST_PROJECTS_PAGE_SIZE : 5;
+    _guestProjectsVisibleCount = pageSize;
 }
 
 function isGuestProjectAlreadyTracked(guest) {
@@ -602,7 +603,8 @@ function getVisibleGuestProjects() {
     if (!filteredGuestProjects.length) {
         return [];
     }
-    return filteredGuestProjects.slice(0, Math.max(GUEST_PROJECTS_PAGE_SIZE, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE)));
+    var pageSize = typeof GUEST_PROJECTS_PAGE_SIZE !== 'undefined' ? GUEST_PROJECTS_PAGE_SIZE : 5;
+    return filteredGuestProjects.slice(0, Math.max(pageSize, Number(_guestProjectsVisibleCount || pageSize)));
 }
 
 function canShowMoreGuestProjects() {
@@ -611,10 +613,11 @@ function canShowMoreGuestProjects() {
 
 function showMoreGuestProjects() {
     var filteredGuestProjects = getFilteredGuestProjects();
+    var pageSize = typeof GUEST_PROJECTS_PAGE_SIZE !== 'undefined' ? GUEST_PROJECTS_PAGE_SIZE : 5;
     if (!filteredGuestProjects.length || filteredGuestProjects.length <= _guestProjectsVisibleCount) {
         return;
     }
-    _guestProjectsVisibleCount = Math.min(filteredGuestProjects.length, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE) + GUEST_PROJECTS_PAGE_SIZE);
+    _guestProjectsVisibleCount = Math.min(filteredGuestProjects.length, Number(_guestProjectsVisibleCount || pageSize) + pageSize);
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     if (window.renderGuestProjectsSection) {
         window.renderGuestProjectsSection(true);
