@@ -549,6 +549,7 @@ button.pc-subtitle-chip--reviews:active {
 .guest-claim-status-modal .modal-content::before,
 #project-lifecycle-modal .modal-content::before,
 #project-coverage-modal .modal-content::before,
+#coverage-screenshot-modal .modal-content::before,
 #project-feedback-modal .modal-content::before,
 #testing-control-modal .modal-content::before,
 #reliability-alpha-modal .modal-content::before,

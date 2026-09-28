@@ -919,17 +919,266 @@
         return '<div class="coverage-countries-list">' + cards + '</div>';
     }
 
-    // ── Open Screenshot Proof Previewer ──
+    // ── Fullscreen Coverage Screenshot Viewer ──
+
+    var _coverageViewerState = {
+        isOpen: false,
+        proofId: 0,
+        images: [],
+        currentIndex: 0,
+        day: 0,
+        modelName: '',
+        testerName: '',
+        hasBug: false
+    };
+
+    function _ensureCoverageScreenshotModal() {
+        if (document.getElementById('coverage-screenshot-modal')) return;
+        var modalHtml = (
+            '<div id="coverage-screenshot-modal" class="modal-overlay coverage-screenshot-modal" onclick="closeCoverageScreenshotModal(event)">' +
+                '<div class="modal-content coverage-screenshot-shell" onclick="event.stopPropagation()">' +
+                    '<div class="coverage-screenshot-header">' +
+                        '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Back">←</button>' +
+                        '<div class="coverage-screenshot-meta">' +
+                            '<div id="coverage-screenshot-title" class="coverage-screenshot-title"></div>' +
+                            '<div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>' +
+                        '</div>' +
+                        '<div class="coverage-screenshot-actions">' +
+                            '<span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>' +
+                            '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Close">✕</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="coverage-screenshot-stage" id="coverage-screenshot-stage">' +
+                        '<button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>' +
+                        '<div class="coverage-screenshot-img-wrap" onclick="toggleCoverageScreenshotZoom()">' +
+                            '<img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager">' +
+                            '<div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>' +
+                        '</div>' +
+                        '<button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>' +
+                        '<div id="coverage-screenshot-dots" class="coverage-screenshot-dots" style="display:none;"></div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>'
+        );
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        _initCoverageViewerTouch();
+    }
+
+    function _initCoverageViewerTouch() {
+        var stage = document.getElementById('coverage-screenshot-stage');
+        if (!stage || stage._touchBound) return;
+        stage._touchBound = true;
+        var startX = 0;
+        var startY = 0;
+        stage.addEventListener('touchstart', function (e) {
+            if (e.touches && e.touches.length === 1) {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+        stage.addEventListener('touchend', function (e) {
+            if (e.changedTouches && e.changedTouches.length === 1) {
+                var diffX = e.changedTouches[0].clientX - startX;
+                var diffY = e.changedTouches[0].clientY - startY;
+                if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+                    if (diffX < 0) {
+                        stepCoverageScreenshot(1);
+                    } else {
+                        stepCoverageScreenshot(-1);
+                    }
+                }
+            }
+        }, { passive: true });
+    }
+
+    function _renderCoverageViewerCurrentSlide() {
+        var s = _coverageViewerState;
+        if (!s.images || s.images.length === 0) return;
+        var cur = s.images[s.currentIndex] || {};
+
+        var titleEl = document.getElementById('coverage-screenshot-title');
+        var subtitleEl = document.getElementById('coverage-screenshot-subtitle');
+        var counterEl = document.getElementById('coverage-screenshot-counter');
+        var imgEl = document.getElementById('coverage-screenshot-img');
+        var spinnerEl = document.getElementById('coverage-screenshot-spinner');
+        var prevBtn = document.getElementById('coverage-screenshot-prev');
+        var nextBtn = document.getElementById('coverage-screenshot-next');
+        var dotsEl = document.getElementById('coverage-screenshot-dots');
+
+        if (titleEl) {
+            titleEl.textContent = (s.day ? 'D' + s.day : 'Скриншот') + (s.modelName ? ' · ' + s.modelName : '');
+        }
+        if (subtitleEl) {
+            var subParts = [];
+            if (s.testerName) subParts.push(window.escapeHTML(s.testerName));
+            if (s.hasBug) subParts.push('<span style="color:#f87171;font-weight:700;">🐞 Баг</span>');
+            subtitleEl.innerHTML = subParts.join(' · ');
+        }
+
+        if (counterEl) {
+            if (s.images.length > 1) {
+                counterEl.style.display = 'inline-block';
+                counterEl.textContent = (s.currentIndex + 1) + ' / ' + s.images.length;
+            } else {
+                counterEl.style.display = 'none';
+            }
+        }
+
+        if (prevBtn) {
+            prevBtn.style.display = s.images.length > 1 ? 'flex' : 'none';
+            prevBtn.style.opacity = s.currentIndex > 0 ? '1' : '0.25';
+            prevBtn.style.pointerEvents = s.currentIndex > 0 ? 'auto' : 'none';
+        }
+        if (nextBtn) {
+            nextBtn.style.display = s.images.length > 1 ? 'flex' : 'none';
+            nextBtn.style.opacity = s.currentIndex < s.images.length - 1 ? '1' : '0.25';
+            nextBtn.style.pointerEvents = s.currentIndex < s.images.length - 1 ? 'auto' : 'none';
+        }
+
+        if (dotsEl) {
+            if (s.images.length > 1) {
+                dotsEl.style.display = 'flex';
+                var dotsHtml = '';
+                for (var d = 0; d < s.images.length; d++) {
+                    dotsHtml += '<div class="coverage-screenshot-dot ' + (d === s.currentIndex ? 'is-active' : '') + '"></div>';
+                }
+                dotsEl.innerHTML = dotsHtml;
+            } else {
+                dotsEl.style.display = 'none';
+            }
+        }
+
+        if (imgEl) {
+            imgEl.classList.remove('is-zoomed');
+            var targetSrc = cur.fullUrl || cur.thumbUrl || '';
+            if (spinnerEl) spinnerEl.style.display = 'block';
+            imgEl.style.opacity = '0.35';
+
+            imgEl.onload = function () {
+                if (spinnerEl) spinnerEl.style.display = 'none';
+                imgEl.style.opacity = '1';
+            };
+            imgEl.onerror = function () {
+                if (cur.thumbUrl && imgEl.src !== cur.thumbUrl) {
+                    imgEl.src = cur.thumbUrl;
+                } else {
+                    if (spinnerEl) spinnerEl.style.display = 'none';
+                    imgEl.style.opacity = '1';
+                }
+            };
+            imgEl.src = targetSrc;
+        }
+    }
+
+    function stepCoverageScreenshot(delta) {
+        var s = _coverageViewerState;
+        if (!s.isOpen || !s.images || s.images.length <= 1) return;
+        var nextIdx = s.currentIndex + delta;
+        if (nextIdx < 0 || nextIdx >= s.images.length) return;
+        s.currentIndex = nextIdx;
+        _renderCoverageViewerCurrentSlide();
+    }
+
+    function toggleCoverageScreenshotZoom() {
+        var imgEl = document.getElementById('coverage-screenshot-img');
+        if (imgEl) {
+            imgEl.classList.toggle('is-zoomed');
+        }
+    }
+
+    function closeCoverageScreenshotModal(event) {
+        if (event && event.target && event.target !== document.getElementById('coverage-screenshot-modal')) return;
+        var modal = document.getElementById('coverage-screenshot-modal');
+        if (modal) modal.classList.remove('active');
+        _coverageViewerState.isOpen = false;
+        var imgEl = document.getElementById('coverage-screenshot-img');
+        if (imgEl) {
+            imgEl.classList.remove('is-zoomed');
+            imgEl.src = '';
+        }
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    }
 
     function openCoverageScreenshotPreview(proofId, imageCount, event) {
         if (event) {
             event.stopPropagation();
             event.preventDefault();
         }
-        if (typeof window.openCheckinProofOverview === 'function') {
-            window.openCheckinProofOverview(Number(proofId), { imageCount: Number(imageCount || 1) });
-        } else if (typeof window.openCheckinProofPreview === 'function') {
-            window.openCheckinProofPreview(Number(proofId), 0);
+        var targetProofId = Number(proofId || 0);
+        if (targetProofId <= 0) return;
+
+        // Find proof in _activeCoverageData
+        var foundScreenshot = null;
+        var foundModel = null;
+        if (_activeCoverageData && Array.isArray(_activeCoverageData.models)) {
+            for (var mIdx = 0; mIdx < _activeCoverageData.models.length; mIdx++) {
+                var m = _activeCoverageData.models[mIdx];
+                if (Array.isArray(m.screenshots)) {
+                    for (var sIdx = 0; sIdx < m.screenshots.length; sIdx++) {
+                        if (Number(m.screenshots[sIdx].id) === targetProofId) {
+                            foundScreenshot = m.screenshots[sIdx];
+                            foundModel = m;
+                            break;
+                        }
+                    }
+                }
+                if (foundScreenshot) break;
+            }
+        }
+
+        var images = [];
+        var day = 0;
+        var testerName = '';
+        var hasBug = false;
+        var modelName = foundModel ? foundModel.model_name : '';
+
+        if (foundScreenshot) {
+            day = foundScreenshot.day || 0;
+            testerName = foundScreenshot.tester_name || '';
+            hasBug = !!foundScreenshot.has_bug;
+            var mediaList = foundScreenshot.media_items || [];
+            if (mediaList.length > 0) {
+                images = mediaList.map(function (item) {
+                    var fullFileId = item.file_id || item.thumb_file_id || '';
+                    var thumbFileId = item.thumb_file_id || item.file_id || '';
+                    return {
+                        fullUrl: _getCoverageMediaUrl(fullFileId),
+                        thumbUrl: _getCoverageMediaUrl(thumbFileId),
+                        width: item.width,
+                        height: item.height
+                    };
+                });
+            }
+        }
+
+        // If no images found in coverage payload, fallback to legacy viewer if available
+        if (images.length === 0) {
+            if (typeof window.openCheckinProofOverview === 'function') {
+                window.openCheckinProofOverview(targetProofId, { imageCount: Number(imageCount || 1) });
+                return;
+            } else if (typeof window.openCheckinProofPreview === 'function') {
+                window.openCheckinProofPreview(targetProofId, 0);
+                return;
+            }
+            return;
+        }
+
+        _coverageViewerState.isOpen = true;
+        _coverageViewerState.proofId = targetProofId;
+        _coverageViewerState.images = images;
+        _coverageViewerState.currentIndex = 0;
+        _coverageViewerState.day = day;
+        _coverageViewerState.modelName = modelName;
+        _coverageViewerState.testerName = testerName;
+        _coverageViewerState.hasBug = hasBug;
+
+        _ensureCoverageScreenshotModal();
+        _renderCoverageViewerCurrentSlide();
+
+        var modal = document.getElementById('coverage-screenshot-modal');
+        if (modal) {
+            modal.classList.add('active');
+            if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
         }
     }
 
@@ -952,5 +1201,8 @@
     window.switchCoverageTab = switchCoverageTab;
     window.toggleCoverageModelExpand = toggleCoverageModelExpand;
     window.openCoverageScreenshotPreview = openCoverageScreenshotPreview;
+    window.closeCoverageScreenshotModal = closeCoverageScreenshotModal;
+    window.stepCoverageScreenshot = stepCoverageScreenshot;
+    window.toggleCoverageScreenshotZoom = toggleCoverageScreenshotZoom;
 
 })();

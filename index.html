@@ -2832,6 +2832,30 @@
             <div id="project-coverage-body"></div>
         </div>
     </div>
+    <div id="coverage-screenshot-modal" class="modal-overlay coverage-screenshot-modal" onclick="closeCoverageScreenshotModal(event)">
+        <div class="modal-content coverage-screenshot-shell" onclick="event.stopPropagation()">
+            <div class="coverage-screenshot-header">
+                <button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Back">←</button>
+                <div class="coverage-screenshot-meta">
+                    <div id="coverage-screenshot-title" class="coverage-screenshot-title"></div>
+                    <div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>
+                </div>
+                <div class="coverage-screenshot-actions">
+                    <span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>
+                    <button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Close">✕</button>
+                </div>
+            </div>
+            <div class="coverage-screenshot-stage" id="coverage-screenshot-stage">
+                <button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>
+                <div class="coverage-screenshot-img-wrap">
+                    <img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager">
+                    <div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>
+                </div>
+                <button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>
+                <div id="coverage-screenshot-dots" class="coverage-screenshot-dots" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>
     <div id="timeline-stats-modal" class="modal-overlay" onclick="closeTimelineStatsSheet(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
