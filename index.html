@@ -68,6 +68,7 @@
 <script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20260917-back-navigation-v1"></script>
+    <script src="./js/project-results.js"></script>
     <script src="./app.js?v=20260918-reward-modal-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
@@ -108,6 +109,7 @@
 <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20260921-reports-tab-v2">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
+    <link rel="stylesheet" href="./css/project-results.css">
 </head>
 <body>
 
@@ -2823,6 +2825,11 @@
             </div>
             <button class="btn btn-warning" id="feedback-reject-submit-btn" style="width: 100%; margin-top: 14px;" onclick="confirmFeedbackReject()" data-i18n="feedbackRejectConfirmBtn" disabled>Подтвердить отклонение</button>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRejectModal()" data-i18n="feedbackRejectCancelBtn">Отмена</button>
+        </div>
+    </div>
+    <div id="project-coverage-modal" class="modal-overlay project-coverage-overlay" onclick="closeProjectCoverageModal(event)">
+        <div class="modal-content project-coverage-modal-content" onclick="event.stopPropagation()">
+            <div id="project-coverage-body"></div>
         </div>
     </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>

@@ -2399,12 +2399,14 @@ function renderProjects(force) {
             ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
             ${updateTipHtml}
             ${stateBlockHtml}
+            <div class="pc-results-collapsed-slot">${typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>
             </section>
 
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->
             <div class="pc-dashboard-body">
                 ${proofPingHtml}
                 ${todaySectionHtml}
+                <div class="pc-results-block-slot">${typeof window.buildProjectResultsBlock === 'function' ? window.buildProjectResultsBlock(project) : ''}</div>
 
                 <div id="pc-roster-source-${project.id}" class="pc-roster-source" hidden>
                     <div class="testers-section">
