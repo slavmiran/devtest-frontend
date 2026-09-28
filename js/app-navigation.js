@@ -135,6 +135,7 @@
         if (id === 'guest-claim-welcome-overlay') return callGlobal('closeGuestClaimWelcomeScreen');
         if (id === 'checkin-proof-upload-modal') return callGlobal('closeCheckinProofUploadModal');
         if (id === 'guaranteed-test-offer-overlay') return callGlobal('hideGuaranteedTestOfferModal');
+        if (id === 'project-coverage-modal') return callGlobal('closeProjectCoverageModal');
         if (id.indexOf('guaranteed-test-wizard-') === 0 || id.indexOf('gtw-') === 0) {
             var wizardBack = window.handleGuaranteedTestWizardBack;
             return typeof wizardBack === 'function' && wizardBack() === true;

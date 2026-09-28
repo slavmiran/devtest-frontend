@@ -359,6 +359,32 @@
     var _activeCoverageTab = 'models';
     var _activeCoverageData = null;
     var _expandedModelKeys = {};
+    var _coverageMemoryCache = {}; // key: appId + ':' + scope -> { data: ..., timestamp: ... }
+
+    function _getCoverageMediaUrl(fileIdOrPath) {
+        if (!fileIdOrPath || typeof fileIdOrPath !== 'string') return '';
+        var trimmed = fileIdOrPath.trim();
+        if (!trimmed) return '';
+        if (trimmed.indexOf('blob:') === 0 || /^https?:\/\//i.test(trimmed)) return trimmed;
+
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || (typeof API_BASE !== 'undefined' ? API_BASE : '');
+        var cleanBase = String(apiBase || '').trim().replace(/\/+$/, '');
+        if (!cleanBase) cleanBase = '/api';
+
+        var fileId = trimmed;
+        var marker = 'telegram-media/';
+        var idx = fileId.indexOf(marker);
+        if (idx >= 0) {
+            fileId = fileId.slice(idx + marker.length).replace(/^\/+/, '');
+        } else {
+            fileId = fileId.replace(/^\/+/, '');
+        }
+
+        if (/\/api$/i.test(cleanBase)) {
+            return cleanBase + '/telegram-media/' + encodeURIComponent(fileId);
+        }
+        return cleanBase + '/api/telegram-media/' + encodeURIComponent(fileId);
+    }
 
     async function fetchProjectCoverage(appId, scope) {
         var queryScope = (scope === 'all') ? 'all' : 'current';
@@ -409,7 +435,7 @@
         return data.coverage;
     }
 
-    async function openProjectCoverage(appId, initialTab) {
+    async function openProjectCoverage(appId, initialTab, options) {
         var targetAppId = Number(appId || 0);
         if (targetAppId <= 0) return;
         if (targetAppId !== _activeCoverageAppId) {
@@ -428,6 +454,7 @@
         if (!modal || !body) return;
 
         modal.classList.add('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
         // Mark seen in local storage right upon opening
         var project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function (p) {
@@ -437,10 +464,39 @@
             markProjectCoverageSeen(_activeCoverageAppId, project.results_summary);
         }
 
+        var cacheKey = String(_activeCoverageAppId) + ':' + String(_activeCoverageScope);
+        var cached = _coverageMemoryCache[cacheKey];
+        var forceReload = !!(options && options.forceReload);
+
+        if (cached && cached.data) {
+            _activeCoverageData = cached.data;
+            markProjectCoverageSeen(_activeCoverageAppId, cached.data);
+            renderCoverageScreen(body, cached.data);
+
+            var ageMs = Date.now() - (cached.timestamp || 0);
+            if (ageMs < 60000 && !forceReload) {
+                return;
+            }
+
+            // Stale-While-Revalidate: background refresh without flicker
+            fetchProjectCoverage(_activeCoverageAppId, _activeCoverageScope).then(function (fresh) {
+                _coverageMemoryCache[cacheKey] = { data: fresh, timestamp: Date.now() };
+                if (_activeCoverageAppId === targetAppId) {
+                    _activeCoverageData = fresh;
+                    markProjectCoverageSeen(_activeCoverageAppId, fresh);
+                    renderCoverageScreen(body, fresh);
+                }
+            }).catch(function (e) {
+                console.warn('Background coverage revalidation failed:', e);
+            });
+            return;
+        }
+
         renderCoverageLoading(body);
 
         try {
             var coverage = await fetchProjectCoverage(_activeCoverageAppId, _activeCoverageScope);
+            _coverageMemoryCache[cacheKey] = { data: coverage, timestamp: Date.now() };
             _activeCoverageData = coverage;
             markProjectCoverageSeen(_activeCoverageAppId, coverage);
             renderCoverageScreen(body, coverage);
@@ -451,9 +507,10 @@
     }
 
     function closeProjectCoverageModal(event) {
-        if (event && event.target !== document.getElementById('project-coverage-modal')) return;
+        if (event && event.target && event.target !== document.getElementById('project-coverage-modal')) return;
         var modal = document.getElementById('project-coverage-modal');
         if (modal) modal.classList.remove('active');
+        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
 
     function renderCoverageLoading(container) {
@@ -462,6 +519,7 @@
             '<div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
+                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="Back">←</button>' +
                         '<div class="coverage-header__title-wrap">' +
                             '<div class="coverage-header__title">' + window.escapeHTML(window.t('coverageTitle', {}, lang) || 'Покрытие проекта') + '</div>' +
                             '<div class="coverage-header__subtitle">' + window.escapeHTML(window.t('coverageLoading', {}, lang) || 'Загрузка…') + '</div>' +
@@ -487,6 +545,7 @@
             '<div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
+                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="Back">←</button>' +
                         '<div class="coverage-header__title-wrap">' +
                             '<div class="coverage-header__title">' + window.escapeHTML(window.t('coverageTitle', {}, lang) || 'Покрытие проекта') + '</div>' +
                         '</div>' +
@@ -500,7 +559,7 @@
                     window.escapeHTML(window.t('coverageLoadError', {}, lang) || 'Не удалось загрузить данные покрытия') +
                 '</div>' +
                 (errMsg ? '<div style="font-size: 12px; color: #94a3b8; margin-bottom: 16px; word-break: break-all;">' + window.escapeHTML(errMsg) + '</div>' : '') +
-                '<button type="button" class="btn btn-secondary" onclick="openProjectCoverage(' + _activeCoverageAppId + ')">' +
+                '<button type="button" class="btn btn-secondary" onclick="openProjectCoverage(' + _activeCoverageAppId + ', null, {forceReload: true})">' +
                     window.escapeHTML(window.t('coverageRetry', {}, lang) || 'Повторить') +
                 '</button>' +
             '</div>'
@@ -538,21 +597,23 @@
 
         var statBarHtml = statParts.join(' <span class="coverage-stat-bar__sep">·</span> ');
 
-        // Tab Content
-        var tabContentHtml = '';
-        if (_activeCoverageTab === 'models') {
-            tabContentHtml = renderModelsTab(models, lang);
-        } else if (_activeCoverageTab === 'android') {
-            tabContentHtml = renderAndroidTab(androidVersions, lang);
-        } else if (_activeCoverageTab === 'countries') {
-            tabContentHtml = renderCountriesTab(countries, lang);
-        }
+        var iconUrl = data.icon_url ? (typeof resolveIconUrl === 'function' ? resolveIconUrl(data.icon_url) : _getCoverageMediaUrl(data.icon_url)) : '';
+        var firstLetter = window.escapeHTML(String(data.name || 'P').charAt(0).toUpperCase());
+        var iconHtml = (
+            '<div style="position:relative; width:34px; height:34px; flex-shrink:0;">' +
+                (iconUrl
+                    ? '<img class="coverage-header__icon" src="' + window.escapeHTML(iconUrl) + '" alt="" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">'
+                    : '') +
+                '<div class="coverage-header__icon coverage-header__icon--fallback" style="display:' + (iconUrl ? 'none' : 'flex') + ';">' + firstLetter + '</div>' +
+            '</div>'
+        );
 
         container.innerHTML = (
             '<div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
-                        (data.icon_url ? '<img class="coverage-header__icon" src="' + window.escapeHTML(data.icon_url) + '" alt="">' : '') +
+                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="Back">←</button>' +
+                        iconHtml +
                         '<div class="coverage-header__title-wrap">' +
                             '<div class="coverage-header__title notranslate">' + window.escapeHTML(data.name || 'Project') + '</div>' +
                             '<div class="coverage-header__subtitle">' + window.escapeHTML(window.t('coverageTitle', {}, lang) || 'Покрытие проекта') + '</div>' +
@@ -571,19 +632,29 @@
                 '<div class="coverage-stat-bar">' + statBarHtml + '</div>' +
             '</div>' +
             '<div class="coverage-tabs">' +
-                '<button type="button" class="coverage-tab-btn ' + (_activeCoverageTab === 'models' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'models\')">' +
+                '<button type="button" id="cov-tab-btn-models" class="coverage-tab-btn ' + (_activeCoverageTab === 'models' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'models\')">' +
                     window.escapeHTML(window.t('coverageTabModels', {}, lang) || 'Модели') +
                     ' <span class="coverage-tab-badge">' + models.length + '</span>' +
                 '</button>' +
-                '<button type="button" class="coverage-tab-btn ' + (_activeCoverageTab === 'android' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'android\')">' +
+                '<button type="button" id="cov-tab-btn-android" class="coverage-tab-btn ' + (_activeCoverageTab === 'android' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'android\')">' +
                     'Android <span class="coverage-tab-badge">' + androidVersions.length + '</span>' +
                 '</button>' +
-                '<button type="button" class="coverage-tab-btn ' + (_activeCoverageTab === 'countries' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'countries\')">' +
+                '<button type="button" id="cov-tab-btn-countries" class="coverage-tab-btn ' + (_activeCoverageTab === 'countries' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'countries\')">' +
                     window.escapeHTML(window.t('coverageTabCountries', {}, lang) || 'Страны') +
                     ' <span class="coverage-tab-badge">' + countries.length + '</span>' +
                 '</button>' +
             '</div>' +
-            '<div class="coverage-body">' + tabContentHtml + '</div>'
+            '<div class="coverage-body">' +
+                '<div id="coverage-tab-panel-models" class="coverage-tab-panel" style="display:' + (_activeCoverageTab === 'models' ? 'block' : 'none') + ';">' +
+                    renderModelsTab(models, lang) +
+                '</div>' +
+                '<div id="coverage-tab-panel-android" class="coverage-tab-panel" style="display:' + (_activeCoverageTab === 'android' ? 'block' : 'none') + ';">' +
+                    renderAndroidTab(androidVersions, lang) +
+                '</div>' +
+                '<div id="coverage-tab-panel-countries" class="coverage-tab-panel" style="display:' + (_activeCoverageTab === 'countries' ? 'block' : 'none') + ';">' +
+                    renderCountriesTab(countries, lang) +
+                '</div>' +
+            '</div>'
         );
     }
 
@@ -594,17 +665,28 @@
 
     function switchCoverageTab(tab) {
         _activeCoverageTab = tab;
-        var body = document.getElementById('project-coverage-body');
-        if (body && _activeCoverageData) {
-            renderCoverageScreen(body, _activeCoverageData);
-        }
+        var tabs = ['models', 'android', 'countries'];
+        tabs.forEach(function (t) {
+            var panel = document.getElementById('coverage-tab-panel-' + t);
+            if (panel && panel.style) panel.style.display = (t === tab ? 'block' : 'none');
+            var btn = document.getElementById('cov-tab-btn-' + t);
+            if (btn) {
+                if (t === tab) btn.classList.add('is-active');
+                else btn.classList.remove('is-active');
+            }
+        });
     }
 
     function toggleCoverageModelExpand(modelKey) {
         _expandedModelKeys[modelKey] = !_expandedModelKeys[modelKey];
-        var body = document.getElementById('project-coverage-body');
-        if (body && _activeCoverageData) {
-            renderCoverageScreen(body, _activeCoverageData);
+        var card = document.getElementById('cov-model-' + modelKey);
+        if (card) {
+            card.classList.toggle('is-expanded');
+        } else {
+            var body = document.getElementById('project-coverage-body');
+            if (body && _activeCoverageData) {
+                renderCoverageScreen(body, _activeCoverageData);
+            }
         }
     }
 
@@ -665,20 +747,26 @@
 
             // Screenshots Gallery HTML
             var galleryHtml = '';
-            if (m.screenshots && m.screenshots.length > 0) {
+            var screenshotsCount = (m.screenshots && m.screenshots.length) || 0;
+            if (screenshotsCount > 0) {
                 var thumbs = m.screenshots.map(function (s) {
                     var proofId = Number(s.id);
                     var imgCount = Number(s.image_count || 1);
-                    var thumbUrl = '';
+                    var thumbFileId = '';
                     if (s.media_items && s.media_items[0] && s.media_items[0].thumb_file_id) {
-                        thumbUrl = '/telegram-media/' + encodeURIComponent(s.media_items[0].thumb_file_id);
+                        thumbFileId = s.media_items[0].thumb_file_id;
                     } else if (s.media_items && s.media_items[0] && s.media_items[0].file_id) {
-                        thumbUrl = '/telegram-media/' + encodeURIComponent(s.media_items[0].file_id);
+                        thumbFileId = s.media_items[0].file_id;
                     }
+                    var thumbUrl = thumbFileId ? _getCoverageMediaUrl(thumbFileId) : '';
+                    var thumbImgHtml = thumbUrl
+                        ? '<img class="coverage-gallery-thumb__img" src="' + window.escapeHTML(thumbUrl) + '" loading="lazy" alt="" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
+                          '<div class="coverage-gallery-thumb__fallback" style="display:none;"><span style="font-size:22px;">📱</span><span style="font-size:10px; font-weight:700; margin-top:2px;">D' + s.day + '</span></div>'
+                        : '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span><span style="font-size:10px; font-weight:700; margin-top:2px;">D' + s.day + '</span></div>';
 
                     return (
                         '<div class="coverage-gallery-thumb" onclick="event.stopPropagation(); openCoverageScreenshotPreview(' + proofId + ', ' + imgCount + ', event);">' +
-                            (thumbUrl ? '<img class="coverage-gallery-thumb__img" src="' + thumbUrl + '" loading="lazy" alt="">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;">🖼️</div>') +
+                            thumbImgHtml +
                             '<span class="coverage-gallery-thumb__day">D' + s.day + '</span>' +
                             (s.has_bug ? '<span class="coverage-gallery-thumb__bug">🐞</span>' : '') +
                             (imgCount > 1 ? '<span class="coverage-gallery-thumb__count">+' + imgCount + '</span>' : '') +
@@ -687,8 +775,15 @@
                 }).join('');
 
                 galleryHtml = (
-                    '<div class="coverage-section-title">📷 ' + window.escapeHTML(window.t('coverageScreenshotsGallery', {}, lang) || 'Подтверждения тестирования') + ' (' + m.screenshots.length + ')</div>' +
+                    '<div class="coverage-section-title">📱 ' + window.escapeHTML(window.t('coverageScreenshotsGallery', {}, lang) || 'Скриншоты интерфейса') + ' (' + screenshotsCount + ')</div>' +
+                    '<div class="coverage-section-subtitle">' + window.escapeHTML(window.t('coverageScreenshotsSubtitle', {}, lang) || 'Как приложение выглядит на этой модели') + '</div>' +
                     '<div class="coverage-gallery-grid">' + thumbs + '</div>'
+                );
+            } else {
+                galleryHtml = (
+                    '<div class="coverage-section-title">📱 ' + window.escapeHTML(window.t('coverageScreenshotsGallery', {}, lang) || 'Скриншоты интерфейса') + ' (0)</div>' +
+                    '<div class="coverage-section-subtitle">' + window.escapeHTML(window.t('coverageScreenshotsSubtitle', {}, lang) || 'Как приложение выглядит на этой модели') + '</div>' +
+                    '<div style="font-size:11.5px; color:var(--text-secondary,#9ca3af); font-style:italic; padding:4px 0 8px 0;">' + window.escapeHTML(window.t('coverageScreenshotsEmpty', {}, lang) || 'Скриншоты интерфейса ещё не загружены') + '</div>'
                 );
             }
 
@@ -726,7 +821,7 @@
             }
 
             return (
-                '<div class="coverage-model-card ' + (isExpanded ? 'is-expanded' : '') + '">' +
+                '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-model-card ' + (isExpanded ? 'is-expanded' : '') + '">' +
                     '<div class="coverage-model-card__head" onclick="toggleCoverageModelExpand(\'' + window.escapeHTML(m.model_key) + '\')">' +
                         '<div class="coverage-model-card__head-left">' +
                             '<div class="coverage-model-card__name-row">' +
