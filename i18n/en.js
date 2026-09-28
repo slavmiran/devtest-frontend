@@ -3810,6 +3810,8 @@
             coverageLoading: "Loading coverage…",
             coverageEmptyTitle: "Coverage is being gathered",
             coverageEmptyDesc: "Device models, OS versions, and countries will appear automatically as testers check in and upload screenshot proofs.",
+            coverageLoadError: "Failed to load project coverage data",
+            coverageRetry: "Retry",
     };
     window.I18N_EN = window.I18NEN;
 })();

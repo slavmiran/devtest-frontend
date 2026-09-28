@@ -362,27 +362,60 @@
 
     async function fetchProjectCoverage(appId, scope) {
         var queryScope = (scope === 'all') ? 'all' : 'current';
-        var url = '/api/projects/' + appId + '/coverage?scope=' + queryScope;
+        var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || (typeof API_BASE !== 'undefined' ? API_BASE : '');
+        var cleanBase = String(apiBase || '').trim().replace(/\/+$/, '');
+        if (!cleanBase) {
+            cleanBase = '/api';
+        }
+        var url = cleanBase + '/projects/' + Number(appId) + '/coverage?scope=' + encodeURIComponent(queryScope);
 
-        var headers = {};
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-            headers['X-Telegram-Init-Data'] = window.Telegram.WebApp.initData;
+        var initData = typeof window.getTelegramInitDataRaw === 'function'
+            ? window.getTelegramInitDataRaw()
+            : ((typeof getTelegramInitDataRaw === 'function')
+                ? getTelegramInitDataRaw()
+                : ((window.tg && window.tg.initData) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || ''));
+
+        if (initData) {
+            url += (url.indexOf('?') >= 0 ? '&' : '?') + 'init_data=' + encodeURIComponent(initData);
         }
 
-        var response = await fetch(url, { headers: headers });
+        var headers = {
+            'Accept': 'application/json'
+        };
+        if (initData) {
+            headers['X-Telegram-Init-Data'] = initData;
+        }
+
+        var response;
+        if (typeof fetchWithRetry === 'function') {
+            response = await fetchWithRetry(url, { headers: headers, timeoutMs: 15000 }, 1);
+        } else {
+            response = await fetch(url, { headers: headers });
+        }
+
         if (!response.ok) {
-            throw new Error('Coverage fetch failed: ' + response.status);
+            var errorDetail = '';
+            try {
+                var errJson = await response.json();
+                errorDetail = (errJson && (errJson.detail || errJson.message || errJson.code)) || '';
+            } catch (_) {}
+            throw new Error((errorDetail ? errorDetail + ' ' : '') + '(HTTP ' + response.status + ')');
         }
+
         var data = await response.json();
         if (data.status !== 'ok' || !data.coverage) {
-            throw new Error(data.message || 'Invalid coverage response');
+            throw new Error(data.message || data.detail || 'Invalid coverage response');
         }
         return data.coverage;
     }
 
     async function openProjectCoverage(appId, initialTab) {
-        _activeCoverageAppId = Number(appId || 0);
-        if (_activeCoverageAppId <= 0) return;
+        var targetAppId = Number(appId || 0);
+        if (targetAppId <= 0) return;
+        if (targetAppId !== _activeCoverageAppId) {
+            _activeCoverageScope = 'current';
+        }
+        _activeCoverageAppId = targetAppId;
 
         if (initialTab && (initialTab === 'countries' || initialTab === 'android' || initialTab === 'models')) {
             _activeCoverageTab = initialTab;
@@ -448,17 +481,28 @@
     }
 
     function renderCoverageError(container, error) {
+        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var errMsg = error && (error.message || error.statusText || String(error));
         container.innerHTML = (
             '<div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
-                    '<div class="coverage-header__title">Покрытие проекта</div>' +
+                    '<div class="coverage-header__brand">' +
+                        '<div class="coverage-header__title-wrap">' +
+                            '<div class="coverage-header__title">' + window.escapeHTML(window.t('coverageTitle', {}, lang) || 'Покрытие проекта') + '</div>' +
+                        '</div>' +
+                    '</div>' +
                     '<button type="button" class="coverage-header__close" onclick="closeProjectCoverageModal()" aria-label="Close">✕</button>' +
                 '</div>' +
             '</div>' +
             '<div class="coverage-body" style="text-align: center; padding: 40px 16px;">' +
                 '<div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>' +
-                '<div style="font-size: 14px; font-weight: 600; color: #f87171; margin-bottom: 8px;">Не удалось загрузить данные покрытия</div>' +
-                '<button type="button" class="btn btn-secondary" onclick="openProjectCoverage(' + _activeCoverageAppId + ')">Повторить</button>' +
+                '<div style="font-size: 15px; font-weight: 600; color: #f87171; margin-bottom: 8px;">' +
+                    window.escapeHTML(window.t('coverageLoadError', {}, lang) || 'Не удалось загрузить данные покрытия') +
+                '</div>' +
+                (errMsg ? '<div style="font-size: 12px; color: #94a3b8; margin-bottom: 16px; word-break: break-all;">' + window.escapeHTML(errMsg) + '</div>' : '') +
+                '<button type="button" class="btn btn-secondary" onclick="openProjectCoverage(' + _activeCoverageAppId + ')">' +
+                    window.escapeHTML(window.t('coverageRetry', {}, lang) || 'Повторить') +
+                '</button>' +
             '</div>'
         );
     }
