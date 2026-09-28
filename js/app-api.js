@@ -1264,6 +1264,7 @@ function handleApiError(code, details = {}) {
         invalid_feedback_karma_amount: 'invalid_feedback_karma_amount',
         invalid_feedback_bust_amount: 'invalid_feedback_bust_amount',
         app_archived: 'err_app_archived',
+        archive_failed: 'err_archive_failed',
         app_not_found: 'app_not_found',
         already_published: 'already_published',
         not_owner: 'not_owner',
@@ -3083,6 +3084,10 @@ async function confirmDeleteProject() {
 
     window._projectDeleteInFlight[id] = true;
 
+    // Save snapshot before optimistic update for safe rollback on failure
+    const previousMyProjects = myProjects ? myProjects.slice() : [];
+    const previousArchivedProjects = archivedProjects ? archivedProjects.slice() : [];
+
     // Instant UX: close modal and fade the card out before the server responds
     closeDeleteModal();
     if (card) {
@@ -3120,11 +3125,17 @@ async function confirmDeleteProject() {
     }
 
     const refreshListsAfterError = function() {
+        myProjects = previousMyProjects;
+        archivedProjects = previousArchivedProjects;
+        if (typeof persistProjectsCacheSnapshot === 'function') {
+            persistProjectsCacheSnapshot();
+        }
+        applyOptimisticRender();
         if (typeof loadProjects === 'function') {
-            loadProjects(true).catch(function() {});
+            loadProjects(false, true).catch(function() {});
         }
         if (typeof loadArchivedProjects === 'function') {
-            loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+            loadArchivedProjects({ background: true, silent: true, force: true }).catch(function() {});
         }
     };
 
@@ -3138,15 +3149,20 @@ async function confirmDeleteProject() {
                 init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
             })
         });
-        const result = await response.json();
-        if (result.status === 'success') {
+        let result = null;
+        try {
+            result = await response.json();
+        } catch (parseErr) {
+            result = null;
+        }
+        if (response.ok && result && result.status === 'success') {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            // Quiet background refresh for accurate archive metadata
+            // Quiet background refresh for accurate archive metadata (force bypasses throttle)
             if (typeof loadProjects === 'function') {
-                loadProjects(true).catch(function() {});
+                loadProjects(true, true).catch(function() {});
             }
             if (typeof loadArchivedProjects === 'function') {
-                loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+                loadArchivedProjects({ background: true, silent: true, force: true }).catch(function() {});
             }
         } else {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});

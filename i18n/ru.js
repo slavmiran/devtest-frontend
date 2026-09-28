@@ -2532,6 +2532,7 @@
             deleteRewardTypeBug: "❤️‍🔥 Особый вклад",
             deleteRewardTypeGeneric: "☯️ Карма-бонус",
             err_overtime_reward_unavailable: "Бонус за овертайм уже выдан для этого проекта, либо выбранный тестер больше недоступен для награды.",
+            err_archive_failed: "Не удалось перенести проект в архив. Пожалуйста, попробуйте еще раз.",
             goldenTesterToastActive: "Ваш текущий бонус +50 $BUST за отсутсвие пропусков по проекту",
             goldenTesterToastLost: "Статус утрачен из-за пропуска.",
             goldenTesterBadgeActive: "👑 Золотой Тестер (+50 $BUST)",

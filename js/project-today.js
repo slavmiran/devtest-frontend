@@ -3022,12 +3022,6 @@
         var subtitleExtraHtml = '';
         var reminded = isTesterRemindedToday(safeAppId, safeTesterId);
         var isPinged = window.SmartPing && typeof window.SmartPing.isTesterPinged === 'function' && window.SmartPing.isTesterPinged(safeAppId, safeTesterId);
-        if (isPinged) {
-            var pingTime = window.SmartPing.getTesterPingTime(safeAppId, safeTesterId);
-            subtitleExtraHtml += '<span class="pc-attention-tile__subline pc-attention-ping-info">⚡ ' +
-                esc(text('pcSmartPingSentBadge', 'Пинг отправлен {time}', { time: pingTime })) +
-            '</span>';
-        }
 
         var isLeftAction = reason.action === 'left_status' || code === 'tester_left';
         var isBrokenLink = reason.action === 'link_status' || code === 'broken_link';

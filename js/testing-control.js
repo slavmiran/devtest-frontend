@@ -896,7 +896,8 @@
     function renderPreviewAlbum(body, proofId, mediaIndex, imageCount) {
         var slides = [];
         for (var index = 0; index < imageCount; index += 1) slides.push(albumSlide(proofId, index));
-        body.innerHTML = '<div class="checkin-proof-preview-album" data-proof-id="' + proofId + '" data-image-count="' + imageCount + '" data-media-index="' + mediaIndex + '">' +
+        var singleClass = imageCount <= 1 ? ' is-single' : '';
+        body.innerHTML = '<div class="checkin-proof-preview-album' + singleClass + '" data-proof-id="' + proofId + '" data-image-count="' + imageCount + '" data-media-index="' + mediaIndex + '">' +
             '<div class="checkin-proof-preview-track" style="transform:translate3d(-' + (mediaIndex * 100) + '%,0,0)">' + slides.join('') + '</div>' +
             albumNavigation(proofId, mediaIndex, imageCount) +
             '<button type="button" class="checkin-proof-preview-quality" onclick="openCheckinProofOriginal(' + proofId + ',0,event)">' +

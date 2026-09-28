@@ -2526,6 +2526,7 @@
             deleteRewardTypeBug: "❤️‍🔥 Special contribution",
             deleteRewardTypeGeneric: "☯️ Karma bonus",
             err_overtime_reward_unavailable: "This overtime bonus was already issued for the project, or the selected tester is no longer eligible.",
+            err_archive_failed: "Failed to archive the project. Please try again.",
             goldenTesterToastActive: "Your current bonus is +50 $BUST for no skips on this project",
             goldenTesterToastLost: "Status lost due to a missed day.",
             goldenTesterBadgeActive: "👑 Golden Tester (+50 $BUST)",
