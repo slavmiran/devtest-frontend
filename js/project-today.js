@@ -2307,8 +2307,8 @@
 
     function attentionSafeBreakTimerLabel(untilMs) {
         var left = Number(untilMs || 0) - Date.now();
-        if (left <= 0) return text('pcAttentionSafeBreakEnded', 'Окно без штрафа истекло');
-        return text('pcAttentionSafeBreakTimer', '⏳ Без штрафа ещё {time}', {
+        if (left <= 0) return text('pcAttentionSafeBreakEnded', 'Окно разрыва без штрафа истекло');
+        return text('pcAttentionSafeBreakTimer', '⏳ Разрыв связи без штрафа: ещё {time}', {
             time: formatSafeBreakCountdown(left),
         });
     }
@@ -3171,12 +3171,13 @@
                 bodyHtml = '<p class="pc-attention-tile__desc">' +
                     text(
                         'pcAttentionNotOpenedDrawerSafe',
-                        'Участник присоединился, но ещё ни разу не открывал приложение. Если вы уверены, что данный тестировщик вам не нужен или не подходит — вы можете {breakLink}, без штрафа к репутации.',
+                        'Участник присоединился, но ещё ни разу не открывал приложение. Если вы уверены, что данный тестировщик вам не нужен или не подходит — пока идёт таймер, вы можете {breakLink} (льготный выход из взаимного тестирования без штрафа к репутации).<br><br>После окончания таймера выйти без штрафа можно будет только при 3 пропусках подряд со стороны контрагента.',
                         { breakLink: breakNowHtml }
                     ) +
                 '</p>';
-                spoilerText = text('pcAttentionNotOpenedDrawerSafePlain', 'Участник присоединился, но ещё ни разу не открывал приложение.');
-                subtitleExtraHtml = '<span class="pc-attention-tile__subline pc-attention-timer" data-safe-break-until="' + esc(String(safeUntil)) + '">' +
+                spoilerText = text('pcAttentionNotOpenedDrawerSafePlain', 'Участник присоединился, но ещё ни разу не открывал приложение. Пока идёт таймер, доступен разрыв связи без штрафа к репутации. После окончания таймера выйти без штрафа можно будет только при 3 пропусках подряд со стороны контрагента.');
+                var timerHint = text('pcAttentionSafeBreakTimerHint', 'Льготный период: разрыв взаимной связи и выход из тестирования без штрафа в первые 24 часа');
+                subtitleExtraHtml = '<span class="pc-attention-tile__subline pc-attention-timer" title="' + esc(timerHint) + '" data-safe-break-until="' + esc(String(safeUntil)) + '">' +
                     esc(attentionSafeBreakTimerLabel(safeUntil)) +
                 '</span>';
             } else if (phase === 'critical') {
@@ -3195,7 +3196,7 @@
                 subtitle = text('pcAttentionNotOpenedSubtitleWait', 'День {day} без первого запуска\nНапомните о первом запуске', { day: openedDay });
                 spoilerText = text(
                     'pcAttentionNotOpenedDrawerWait',
-                    'Участник вступил, но ни разу не подтвердил участие запуском и отметкой. Пока нет первого чекина, это не пауза в тесте, а незавершённый старт. Напомните о первом запуске. Сейчас разрыв связи без штрафа недоступен — окно первого дня уже закрыто.',
+                    'Участник вступил, но ни разу не подтвердил участие запуском и отметкой. Пока нет первого чекина, это не пауза в тесте, а незавершённый старт. Напомните о первом запуске. Сейчас разрыв связи без штрафа недоступен — окно первого дня уже закрыто. Выйти без штрафа можно будет при 3 пропусках подряд со стороны контрагента (на 4-й день без активности).',
                     { day: openedDay }
                 );
             }
