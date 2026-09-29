@@ -2405,8 +2405,8 @@ function renderProjects(force) {
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->
             <div class="pc-dashboard-body">
                 ${proofPingHtml}
-                ${todaySectionHtml}
                 <div class="pc-results-block-slot">${typeof window.buildProjectResultsBlock === 'function' ? window.buildProjectResultsBlock(project) : ''}</div>
+                ${todaySectionHtml}
 
                 <div id="pc-roster-source-${project.id}" class="pc-roster-source" hidden>
                     <div class="testers-section">

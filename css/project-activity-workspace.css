@@ -2250,3 +2250,249 @@
     color: #e2e8f0;
     font-weight: 450;
 }
+
+/* ==========================================================================
+   Collapsible Participants Section (Results & Activity Workspace)
+   ========================================================================== */
+
+.pc-participants-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 8px 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s ease;
+}
+.pc-participants-header:active {
+    opacity: 0.75;
+}
+
+.pc-participants-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: var(--text-color, #ffffff);
+}
+
+.pc-participants-chevron-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-color, #2f88ff);
+    flex-shrink: 0;
+}
+
+.pc-participants-chevron {
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: rotate(0deg);
+}
+
+.pc-participants-chevron.is-expanded {
+    transform: rotate(180deg);
+}
+
+/* Collapsed card container */
+.pc-activity--workspace .participants-inset-card.is-collapsed {
+    background: rgba(255, 255, 255, 0.035) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 14px !important;
+    padding: 10px 10px 12px 10px !important;
+    margin: 0 8px 10px 8px !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+}
+
+.pc-participants-collapsed-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 2px 0 2px;
+}
+
+.pc-collapsed-special-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.pc-collapsed-special-chip {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    user-select: none;
+    transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.pc-collapsed-special-chip:hover {
+    opacity: 0.85;
+}
+.pc-collapsed-special-chip:active {
+    transform: scale(0.96);
+}
+
+.pc-collapsed-special-top {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pc-collapsed-special-top .pc-activity__filter-icon {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+}
+
+.pc-collapsed-special-chip.pc-special--attention .pc-activity__filter-icon {
+    color: #fbbf24;
+}
+.pc-collapsed-special-chip.pc-special--attention.is-warn .pc-activity__filter-icon {
+    color: #f87171;
+}
+.pc-collapsed-special-chip.pc-special--contribution .pc-activity__filter-icon {
+    color: #fbbf24;
+}
+.pc-collapsed-special-chip.pc-special--control .pc-activity__filter-icon {
+    color: #60a5fa;
+}
+
+.pc-collapsed-special-count {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    color: #ffffff;
+}
+.pc-collapsed-special-count.is-warn {
+    color: #fca5a5;
+}
+
+.pc-collapsed-special-label {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--text-secondary, #9ca3af);
+    margin-top: 3px;
+}
+
+/* Team summary (when all special tabs are 0) */
+.pc-team-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 9px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background 0.15s ease, transform 0.1s ease;
+    user-select: none;
+}
+.pc-team-summary:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+.pc-team-summary:active {
+    transform: scale(0.97);
+}
+
+.pc-team-avatars {
+    display: flex;
+    align-items: center;
+}
+
+.pc-team-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--bg-card, #1c2431);
+    margin-left: -6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.pc-team-avatar:first-child {
+    margin-left: 0;
+}
+.pc-team-avatar--initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+}
+.pc-team-avatar--placeholder {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+}
+
+.pc-team-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-color, #e5e7eb);
+}
+
+/* Collapsed actions (Karma button) */
+.pc-participants-collapsed-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.pc-participants-collapsed-actions .pc-activity__karma {
+    order: 1;
+    flex: 0 0 auto;
+    min-width: 55px;
+    min-height: 28px;
+    margin: 0;
+    padding: 4px 8px !important;
+    border: 1px solid rgba(150, 169, 197, .1) !important;
+    border-radius: 10px !important;
+    background: rgba(127, 146, 174, .05) !important;
+    color: var(--text-secondary, #afbac9) !important;
+    box-shadow: none !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.pc-participants-collapsed-actions .pc-activity__karma:hover {
+    border-color: rgba(132, 173, 230, .2) !important;
+    background: rgba(107, 151, 211, .08) !important;
+}
+.pc-participants-collapsed-actions .rewards-icon {
+    color: #9eb9dc;
+}
+.pc-participants-collapsed-actions .rewards-text b {
+    color: var(--text-primary, #eff4fb);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+}
+.pc-participants-collapsed-actions .rewards-arrow {
+    color: var(--text-tertiary, #8493a7);
+    font-size: 10px;
+}
+
+@media (max-width: 375px) {
+    .pc-activity--workspace .participants-inset-card.is-collapsed {
+        margin: 0 6px 10px 6px !important;
+        padding: 8px 8px 10px 8px !important;
+    }
+    .pc-collapsed-special-row {
+        gap: 10px;
+    }
+}
+

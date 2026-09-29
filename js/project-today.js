@@ -3698,6 +3698,61 @@
         } catch (_) {}
     }
 
+    var PARTICIPANTS_COLLAPSED_PREFIX = 'pc_participants_collapsed_';
+
+    function isParticipantsCollapsed(appId) {
+        var safeAppId = Number(appId || 0);
+        try {
+            var val = localStorage.getItem(PARTICIPANTS_COLLAPSED_PREFIX + safeAppId);
+            if (val === '0' || val === 'false') return false;
+            if (val === '1' || val === 'true') return true;
+        } catch (_) {}
+        // Default state: collapsed to emphasize results and coverage
+        return true;
+    }
+
+    function setParticipantsCollapsed(appId, collapsed) {
+        var safeAppId = Number(appId || 0);
+        try {
+            localStorage.setItem(PARTICIPANTS_COLLAPSED_PREFIX + safeAppId, collapsed ? '1' : '0');
+        } catch (_) {}
+    }
+
+    function pcToggleParticipantsCollapse(appId, explicitState) {
+        var safeAppId = Number(appId || 0);
+        var nextState = (typeof explicitState === 'boolean') ? explicitState : !isParticipantsCollapsed(safeAppId);
+        setParticipantsCollapsed(safeAppId, nextState);
+        var root = document.getElementById('pc-today-' + safeAppId);
+        var project = projectById(safeAppId);
+        if (root && project) {
+            root.innerHTML = innerHtml(project);
+            afterPaint(safeAppId);
+        }
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+    }
+    window.pcToggleParticipantsCollapse = pcToggleParticipantsCollapse;
+
+    function pcSelectSpecialTabAndExpand(appId, tabKey) {
+        var safeAppId = Number(appId || 0);
+        setParticipantsCollapsed(safeAppId, false);
+        var prefs = readPrefs(safeAppId);
+        prefs.filter = tabKey;
+        prefs.touched = true;
+        writePrefs(safeAppId, prefs);
+        var root = document.getElementById('pc-today-' + safeAppId);
+        var project = projectById(safeAppId);
+        if (root && project) {
+            root.innerHTML = innerHtml(project);
+            afterPaint(safeAppId);
+        }
+        if (window.tg && window.tg.HapticFeedback) {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+    }
+    window.pcSelectSpecialTabAndExpand = pcSelectSpecialTabAndExpand;
+
     function visibleFilters(data) {
         var list = ['testers'];
         if (data.attention && data.attention.length) list.push('attention');
@@ -4103,7 +4158,9 @@
         if (!root || !project) return;
         var shell = root.querySelector('.pc-activity');
         var insetCard = shell && shell.querySelector('.participants-inset-card');
-        if (!shell || !insetCard) {
+        var isCurrentlyCollapsed = isParticipantsCollapsed(safeAppId);
+        var isDomCollapsed = shell && shell.classList.contains('is-participants-collapsed');
+        if (!shell || !insetCard || isCurrentlyCollapsed || isDomCollapsed !== isCurrentlyCollapsed) {
             root.innerHTML = innerHtml(project);
             afterPaint(safeAppId);
             return;
@@ -4273,24 +4330,106 @@
     }
 
     function innerHtml(project) {
+        var appId = Number(project.id || 0);
         var data = activityCounts(project);
-        var prefs = readPrefs(project.id);
+        var prefs = readPrefs(appId);
         var filter = resolvedFilter(prefs, data);
         var mode = prefs.modes[filter] || 'now';
         var context = contextFor(project);
+        var collapsed = isParticipantsCollapsed(appId);
+
         var errorHtml = data.error
             ? '<div class="pc-today__error">' + esc(text('pcTodayLoadError', "Could not load today's reports")) +
-                '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + Number(project.id) + ')">' +
+                '<button type="button" onclick="event.stopPropagation(); pcRetryToday(' + appId + ')">' +
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
-        return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + '">' +
-            '<div class="participants-inset-card">' +
-                filterbarHtml(project.id, visibleFilters(data), filter, data, project) +
+
+        var participantsTitle = text('pcParticipantsTitle', 'Участники');
+
+        var headerHtml = '<div class="pc-participants-header" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
+            '<span class="pc-participants-title">' + esc(participantsTitle) + '</span>' +
+            '<span class="pc-participants-chevron-wrap">' +
+                '<svg class="pc-participants-chevron' + (collapsed ? '' : ' is-expanded') + '" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+            '</span>' +
+        '</div>';
+
+        var contentHtml = '';
+        if (collapsed) {
+            var specialTabs = [
+                {
+                    key: 'attention',
+                    label: filterLabel('attention'),
+                    icon: filterIcon('attention'),
+                    count: filterCount('attention', data),
+                    isWarn: hasCriticalAttentionIssue(data && data.attention)
+                },
+                {
+                    key: 'contribution',
+                    label: filterLabel('contribution'),
+                    icon: filterIcon('contribution'),
+                    count: filterCount('contribution', data),
+                    isWarn: false
+                },
+                {
+                    key: 'control',
+                    label: filterLabel('control'),
+                    icon: filterIcon('control'),
+                    count: filterCount('control', data),
+                    isWarn: false
+                }
+            ];
+            var activeSpecialTabs = specialTabs.filter(function (t) { return t.count > 0; });
+            var totalTesters = Array.isArray(project.testers) ? project.testers.length : 0;
+
+            var bodyCollapsedHtml = '';
+            if (activeSpecialTabs.length > 0) {
+                var chipsHtml = activeSpecialTabs.map(function (tab) {
+                    return '<button type="button" class="pc-collapsed-special-chip' + (tab.isWarn ? ' is-warn' : '') + ' pc-special--' + tab.key + '" ' +
+                        'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ', \'' + tab.key + '\');" ' +
+                        'title="' + esc(tab.label + ' ' + tab.count) + '" aria-label="' + esc(tab.label + ' ' + tab.count) + '">' +
+                        '<span class="pc-collapsed-special-top">' +
+                            tab.icon +
+                            '<span class="pc-collapsed-special-count' + (tab.isWarn ? ' is-warn' : '') + '">' + tab.count + '</span>' +
+                        '</span>' +
+                        '<span class="pc-collapsed-special-label">' + esc(tab.label) + '</span>' +
+                    '</button>';
+                }).join('');
+                bodyCollapsedHtml = '<div class="pc-collapsed-special-row">' + chipsHtml + '</div>';
+            } else {
+                var teamTesters = (project.testers || []).slice(0, 4);
+                var avatarsHtml = teamTesters.map(function (tester, idx) {
+                    var avatarUrl = tester.avatar_url;
+                    var name = tester.username || tester.full_name || ('ID ' + (tester.tester_id || ''));
+                    if (avatarUrl) {
+                        return '<img class="pc-team-avatar" src="' + esc(avatarUrl) + '" alt="' + esc(name) + '" style="z-index:' + (10 - idx) + ';">';
+                    }
+                    var initial = (name.replace(/^@/, '')[0] || 'T').toUpperCase();
+                    return '<span class="pc-team-avatar pc-team-avatar--initial" style="z-index:' + (10 - idx) + ';">' + esc(initial) + '</span>';
+                }).join('');
+
+                bodyCollapsedHtml = '<div class="pc-team-summary" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" role="button" tabindex="0">' +
+                    '<div class="pc-team-avatars">' + (avatarsHtml || '<span class="pc-team-avatar pc-team-avatar--placeholder">👥</span>') + '</div>' +
+                    '<span class="pc-team-label">' + esc(text('pcTeamLabel', 'Команда')) + ' · ' + totalTesters + '</span>' +
+                '</div>';
+            }
+
+            contentHtml = '<div class="pc-participants-collapsed-row">' +
+                bodyCollapsedHtml +
+                '<div class="pc-participants-collapsed-actions">' + karmaButtonHtml(project) + '</div>' +
+            '</div>';
+        } else {
+            contentHtml = filterbarHtml(appId, visibleFilters(data), filter, data, project) +
                 '<div class="pc-activity__folder-body" data-active-filter="' + filter + '">' +
-                    captionHtml(project.id, filter, mode, project) +
+                    captionHtml(appId, filter, mode, project) +
                     workspaceListHtml(project, filter, mode, data, context) +
                     errorHtml +
-                '</div>' +
+                '</div>';
+        }
+
+        return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + (collapsed ? ' is-participants-collapsed' : ' is-participants-expanded') + '">' +
+            '<div class="participants-inset-card' + (collapsed ? ' is-collapsed' : '') + '">' +
+                headerHtml +
+                contentHtml +
             '</div>' +
         '</section>';
     }
@@ -4386,6 +4525,10 @@
         collectCatchupAttentionReasons: collectCatchupAttentionReasons,
         focusAttentionCatchup: focusAttentionCatchup,
         activityCounts: activityCounts,
+        isParticipantsCollapsed: isParticipantsCollapsed,
+        setParticipantsCollapsed: setParticipantsCollapsed,
+        toggleParticipantsCollapse: pcToggleParticipantsCollapse,
+        selectSpecialTabAndExpand: pcSelectSpecialTabAndExpand,
         calculateTesterControlActivityAssessment: calculateTesterControlActivityAssessment,
         calculateTesterControlRisk: calculateTesterControlActivityAssessment,
         getTesterManualReminder: getTesterManualReminder,
@@ -4478,6 +4621,7 @@
     window.pcFocusAttentionCatchup = focusAttentionCatchup;
 
     window.pcSetActivityFilter = function (appId, filter) {
+        setParticipantsCollapsed(appId, false);
         var prefs = readPrefs(appId);
         prefs.filter = ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers';
         if (prefs.filter === 'contribution') {
