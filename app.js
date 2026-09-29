@@ -33,42 +33,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
         syncUserTimezone(false).catch(() => {});
 
+        function _restoreTestsScrollWhenSettled(promise) {
+            var restore = function() {
+                if (typeof window.restoreTestsScrollAfterResume === 'function') {
+                    window.restoreTestsScrollAfterResume();
+                }
+            };
+            if (promise && typeof promise.then === 'function') {
+                promise.then(restore, restore);
+            } else {
+                restore();
+            }
+        }
+
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
+            if (document.hidden) {
+                if (typeof window.rememberTestsScrollForResume === 'function') {
+                    window.rememberTestsScrollForResume();
+                }
+                return;
+            }
+            if (_pendingScreenshotReminderUsername !== null) {
                 const username = _pendingScreenshotReminderUsername;
                 _pendingScreenshotReminderUsername = null;
                 setTimeout(() => showScreenshotCompleteModal(username), 300);
             }
-            if (!document.hidden) {
-                _syncActiveTimerState();
-                var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
-                if (hasPendingFeedback && typeof revealAllFeedbackPendingHints === 'function') {
-                    revealAllFeedbackPendingHints();
+            _syncActiveTimerState();
+            var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
+            if (hasPendingFeedback && typeof revealAllFeedbackPendingHints === 'function') {
+                revealAllFeedbackPendingHints();
+            }
+            // Drop stale Confirm-ready state when local calendar day rolls over.
+            if (typeof _loadTimerReadyState === 'function') {
+                _loadTimerReadyState();
+            }
+            if (typeof _applyPersistedReadyTimerButtons === 'function') {
+                _applyPersistedReadyTimerButtons();
+            }
+            if (hasPendingFeedback) {
+                _lastFetchTimes.tests = 0;
+                if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+                    syncPendingFeedbackCheckinsFromServer().catch(function() {});
                 }
-                // Drop stale Confirm-ready state when local calendar day rolls over.
-                if (typeof _loadTimerReadyState === 'function') {
-                    _loadTimerReadyState();
-                }
-                if (typeof _applyPersistedReadyTimerButtons === 'function') {
-                    _applyPersistedReadyTimerButtons();
-                }
-                if (hasPendingFeedback) {
-                    _lastFetchTimes.tests = 0;
-                    if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
-                        syncPendingFeedbackCheckinsFromServer().catch(function() {});
-                    }
-                }
-                if (typeof refreshHomeScreenStatus === 'function') {
-                    refreshHomeScreenStatus({ force: true });
-                }
-                if (typeof window.refreshVisibleTests === 'function') {
-                    window.refreshVisibleTests().catch(function() {});
-                } else if (hasPendingFeedback) {
-                    loadTasks(true).catch(function() {});
-                }
-                if (typeof window.refreshVisibleProjects === 'function') {
-                    window.refreshVisibleProjects(true).catch(function() {});
-                }
+            }
+            if (typeof refreshHomeScreenStatus === 'function') {
+                refreshHomeScreenStatus({ force: true });
+            }
+            if (typeof window.refreshVisibleTests === 'function') {
+                _restoreTestsScrollWhenSettled(window.refreshVisibleTests());
+            } else if (hasPendingFeedback) {
+                _restoreTestsScrollWhenSettled(loadTasks(true).catch(function() {}));
+            } else {
+                _restoreTestsScrollWhenSettled();
+            }
+            if (typeof window.refreshVisibleProjects === 'function') {
+                window.refreshVisibleProjects(true).catch(function() {});
             }
         });
 
@@ -85,9 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             if (typeof window.refreshVisibleTests === 'function') {
-                window.refreshVisibleTests().catch(function() {});
+                _restoreTestsScrollWhenSettled(window.refreshVisibleTests());
             } else if (hasPendingFeedback) {
-                loadTasks(true).catch(function() {});
+                _restoreTestsScrollWhenSettled(loadTasks(true).catch(function() {}));
+            } else {
+                _restoreTestsScrollWhenSettled();
             }
             if (typeof window.refreshVisibleProjects === 'function') {
                 window.refreshVisibleProjects(false).catch(function() {});
@@ -102,7 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 revealAllFeedbackPendingHints();
             }
             if (typeof window.refreshVisibleTests === 'function') {
-                window.refreshVisibleTests().catch(function() {});
+                _restoreTestsScrollWhenSettled(window.refreshVisibleTests());
+            } else {
+                _restoreTestsScrollWhenSettled();
             }
             if (typeof window.refreshVisibleProjects === 'function') {
                 window.refreshVisibleProjects(false).catch(function() {});

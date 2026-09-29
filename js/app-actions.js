@@ -1977,6 +1977,9 @@ function _setIssueUiState(id, blocked) {
 }
 
 function _onStoreLinkClickedForIssueFlow(id) {
+    if (typeof window.rememberTestsScrollForResume === 'function') {
+        window.rememberTestsScrollForResume();
+    }
     var test = myTests.find(function(item) { return Number(item.id) === Number(id); });
     if (!test) return;
     test.has_clicked_store = true;

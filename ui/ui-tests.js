@@ -761,9 +761,15 @@ function getUserTestingDay(startDate, explicitTestingDays) {
         return resolvedTestingDays;
     }
     if (!startDate) return null;
-    const startedAt = new Date(startDate);
-    if (Number.isNaN(startedAt.getTime())) return null;
-    const today = new Date(getLocalDate());
+    var startedAt = (typeof parseLocalDateOnly === 'function')
+        ? parseLocalDateOnly(startDate)
+        : new Date(startDate);
+    if (!startedAt || Number.isNaN(startedAt.getTime())) return null;
+    var todayRaw = (typeof getLocalDate === 'function') ? getLocalDate() : null;
+    var today = (typeof parseLocalDateOnly === 'function' && todayRaw)
+        ? parseLocalDateOnly(todayRaw)
+        : (todayRaw ? new Date(todayRaw) : null);
+    if (!today || Number.isNaN(today.getTime())) return null;
     return Math.floor((today - startedAt) / (1000 * 60 * 60 * 24)) + 1;
 }
 
@@ -2285,25 +2291,93 @@ function renderExternalGuestTestsSection() {
     return externalTests.length;
 }
 
+function getPageScrollY() {
+    var se = document.scrollingElement || document.documentElement;
+    var y = 0;
+    if (typeof window.scrollY === 'number') y = window.scrollY;
+    else if (typeof window.pageYOffset === 'number') y = window.pageYOffset;
+    if (!y && se) y = Number(se.scrollTop || 0);
+    if (!y && document.body) y = Number(document.body.scrollTop || 0);
+    return y;
+}
+
+function setPageScrollY(y) {
+    var next = Math.max(0, Number(y || 0));
+    if (typeof window.scrollTo === 'function') {
+        try { window.scrollTo(0, next); } catch (e) {}
+    }
+    var se = document.scrollingElement || document.documentElement;
+    if (se) se.scrollTop = next;
+    if (document.body) document.body.scrollTop = next;
+}
+
+var _resumeTestsScrollClearTimer = null;
+
+function rememberTestsScrollForResume() {
+    window._resumeTestsScrollY = getPageScrollY();
+    if (_resumeTestsScrollClearTimer) {
+        clearTimeout(_resumeTestsScrollClearTimer);
+        _resumeTestsScrollClearTimer = null;
+    }
+}
+
+function restoreTestsScrollAfterResume() {
+    if (typeof window._resumeTestsScrollY !== 'number') return;
+    var y = window._resumeTestsScrollY;
+    setPageScrollY(y);
+    requestAnimationFrame(function() {
+        setPageScrollY(y);
+    });
+    if (_resumeTestsScrollClearTimer) clearTimeout(_resumeTestsScrollClearTimer);
+    _resumeTestsScrollClearTimer = setTimeout(function() {
+        window._resumeTestsScrollY = undefined;
+        _resumeTestsScrollClearTimer = null;
+    }, 1200);
+}
+
 function captureTestsViewportAnchor() {
-    if (!isTabVisible('tests') || window.scrollY <= 0) return null;
+    if (!isTabVisible('tests')) return null;
+    if (typeof window._resumeTestsScrollY === 'number') {
+        return { scrollY: window._resumeTestsScrollY, id: null, top: 0, inDone: false, resume: true };
+    }
+    const scrollY = getPageScrollY();
     const tab = document.getElementById('tab-tests');
-    if (!tab) return null;
+    if (!tab) return { scrollY: scrollY, id: null, top: 0, inDone: false };
+    const done = document.getElementById('done-list');
     const cards = Array.from(tab.querySelectorAll('.card[id^="test-card-"]'));
     const anchor = cards.find(function(card) {
         const rect = card.getBoundingClientRect();
-        return rect.bottom > 0 && rect.top < window.innerHeight;
+        return rect.bottom > 80 && rect.top < ((window.innerHeight || 0) - 80);
     });
-    return anchor ? { id: anchor.id, top: anchor.getBoundingClientRect().top } : null;
+    if (!anchor) return { scrollY: scrollY, id: null, top: 0, inDone: false };
+    return {
+        scrollY: scrollY,
+        id: anchor.id,
+        top: anchor.getBoundingClientRect().top,
+        inDone: !!(done && done.contains(anchor)),
+    };
 }
 
 function restoreTestsViewportAnchor(anchor) {
     if (!anchor || !isTabVisible('tests')) return;
-    const node = document.getElementById(anchor.id);
-    if (!node) return;
-    const delta = node.getBoundingClientRect().top - anchor.top;
-    if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+    if (anchor.resume && typeof anchor.scrollY === 'number') {
+        setPageScrollY(anchor.scrollY);
+        return;
+    }
+    const node = anchor.id ? document.getElementById(anchor.id) : null;
+    const done = document.getElementById('done-list');
+    const movedToDone = !anchor.inDone && node && done && done.contains(node);
+    if (node && !movedToDone && typeof anchor.top === 'number') {
+        const delta = node.getBoundingClientRect().top - anchor.top;
+        if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+        return;
+    }
+    if (typeof anchor.scrollY === 'number') setPageScrollY(anchor.scrollY);
 }
+window.getPageScrollY = getPageScrollY;
+window.setPageScrollY = setPageScrollY;
+window.rememberTestsScrollForResume = rememberTestsScrollForResume;
+window.restoreTestsScrollAfterResume = restoreTestsScrollAfterResume;
 
 function getOpenControlProofCatchups(test) {
     return (Array.isArray(test && test.control_proof_catchups) ? test.control_proof_catchups : [])
