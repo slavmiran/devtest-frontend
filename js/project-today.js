@@ -5416,33 +5416,52 @@
         // Project Feedback Counts
         var projectBugsTotal = Number(profile.project_bugs_total != null ? profile.project_bugs_total : 0);
         var projectBugsAccepted = Number(profile.project_bugs_accepted != null ? profile.project_bugs_accepted : 0);
+        var projectBugsPending = Number(profile.project_bugs_pending != null ? profile.project_bugs_pending : 0);
         var projectIdeasTotal = Number(profile.project_ideas_total != null ? profile.project_ideas_total : 0);
         var projectIdeasAccepted = Number(profile.project_ideas_accepted != null ? profile.project_ideas_accepted : 0);
+        var projectIdeasPending = Number(profile.project_ideas_pending != null ? profile.project_ideas_pending : 0);
         var projectReviewsTotal = Number(profile.project_reviews_total != null ? profile.project_reviews_total : 0);
         var projectReviewsAccepted = Number(profile.project_reviews_accepted != null ? profile.project_reviews_accepted : 0);
+        var projectReviewsPending = Number(profile.project_reviews_pending != null ? profile.project_reviews_pending : 0);
 
-        if (typeof window !== 'undefined' && Array.isArray(window._activeProjectFeedbackItems) && (!projectBugsTotal && !projectIdeasTotal)) {
-            var pBugs = 0, pBugsAcc = 0, pIdeas = 0, pIdeasAcc = 0, pRevs = 0, pRevsAcc = 0;
+        if (typeof window !== 'undefined' && Array.isArray(window._activeProjectFeedbackItems) && (!projectBugsTotal && !projectIdeasTotal && !projectReviewsTotal)) {
+            var pBugs = 0, pBugsAcc = 0, pBugsPend = 0;
+            var pIdeas = 0, pIdeasAcc = 0, pIdeasPend = 0;
+            var pRevs = 0, pRevsAcc = 0, pRevsPend = 0;
             window._activeProjectFeedbackItems.forEach(function (f) {
                 if (!f || Number(f.tester_id || f.user_id || 0) !== safeTesterId) return;
                 var t = String(f.type || '').toLowerCase();
                 var st = String(f.status || '').toLowerCase();
                 var isAcc = st === 'accepted' || st === 'approved' || st === 'processed' || st === 'tipped';
+                var isPend = st === 'pending' || st === 'submitted' || st === 'new';
                 if (t === 'bug') {
                     pBugs++;
                     if (isAcc) pBugsAcc++;
+                    else if (isPend) pBugsPend++;
                 } else if (t === 'idea') {
                     pIdeas++;
                     if (isAcc) pIdeasAcc++;
+                    else if (isPend) pIdeasPend++;
                 } else if (t.indexOf('review') >= 0) {
                     pRevs++;
                     if (isAcc) pRevsAcc++;
+                    else if (isPend) pRevsPend++;
                 }
             });
-            if (pBugs > 0) { projectBugsTotal = pBugs; projectBugsAccepted = pBugsAcc; }
-            if (pIdeas > 0) { projectIdeasTotal = pIdeas; projectIdeasAccepted = pIdeasAcc; }
-            if (pRevs > 0) { projectReviewsTotal = pRevs; projectReviewsAccepted = pRevsAcc; }
+            if (pBugs > 0) { projectBugsTotal = pBugs; projectBugsAccepted = pBugsAcc; projectBugsPending = pBugsPend; }
+            if (pIdeas > 0) { projectIdeasTotal = pIdeas; projectIdeasAccepted = pIdeasAcc; projectIdeasPending = pIdeasPend; }
+            if (pRevs > 0) { projectReviewsTotal = pRevs; projectReviewsAccepted = pRevsAcc; projectReviewsPending = pRevsPend; }
         }
+
+        var projectFeedbackPendingTotal = Number(profile.project_feedback_pending_total != null
+            ? profile.project_feedback_pending_total
+            : (projectBugsPending + projectIdeasPending + projectReviewsPending));
+        var hasProjectPendingFeedback = Boolean(
+            projectFeedbackPendingTotal > 0 ||
+            playStatusRaw === 'pending' ||
+            playStatusRaw === 'submitted' ||
+            Boolean(tester && (tester.hasPendingFeedbackInProject || tester.hasProjectPendingFeedback))
+        );
 
         var projectContributionsHtml = '';
 
@@ -5476,8 +5495,11 @@
             var bAccHtml = projectBugsAccepted > 0
                 ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectBugsAccepted })) + '</span>'
                 : '';
+            var bPendHtml = projectBugsPending > 0
+                ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: projectBugsPending })) + '</span>'
+                : '';
             var bugsProjHtml = '🐞 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelProjectBugs', 'Баги:')) + '</strong> ' +
-                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectBugsTotal })) + bAccHtml;
+                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectBugsTotal })) + bAccHtml + bPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + bugsProjHtml + '</span>' +
             '</div>';
@@ -5488,8 +5510,11 @@
             var iAccHtml = projectIdeasAccepted > 0
                 ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectIdeasAccepted })) + '</span>'
                 : '';
+            var iPendHtml = projectIdeasPending > 0
+                ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: projectIdeasPending })) + '</span>'
+                : '';
             var ideasProjHtml = '💡 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelProjectIdeas', 'Рекомендации:')) + '</strong> ' +
-                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectIdeasTotal })) + iAccHtml;
+                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectIdeasTotal })) + iAccHtml + iPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + ideasProjHtml + '</span>' +
             '</div>';
@@ -5500,8 +5525,11 @@
             var rAccHtml = projectReviewsAccepted > 0
                 ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierProjectAcceptedPart', ' ({count} подтверждено)', { count: projectReviewsAccepted })) + '</span>'
                 : '';
+            var rPendHtml = projectReviewsPending > 0
+                ? '<span class="pc-dossier-subtext">' + esc(text('pcDossierPendingPart', ' • {count} на рассмотрении', { count: projectReviewsPending })) + '</span>'
+                : '';
             var revsProjHtml = '📝 <strong class="pc-dossier-row-label">' + esc(text('pcDossierLabelProjectReviews', 'Отзывы:')) + '</strong> ' +
-                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectReviewsTotal })) + rAccHtml;
+                esc(text('pcDossierSentCount', '{count} отправлено', { count: projectReviewsTotal })) + rAccHtml + rPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + revsProjHtml + '</span>' +
             '</div>';
@@ -5515,18 +5543,18 @@
         if (acceptanceRate != null && acceptanceRate < 40 && resolvedTotal >= 3) {
             summaryClass = '--mixed';
             summaryText = text('pcDossierSummaryMixed', 'Некоторые прошлые отчёты отклонялись. Рекомендуется внимательно проверить присланные замечания.');
+        } else if (hasProjectPendingFeedback) {
+            summaryClass = '--pending';
+            summaryText = text('pcDossierSummaryPending', 'Отправил свежий отчёт в ваш проект. Ознакомьтесь с ним в списке фидбеков для начисления баллов.');
         } else if (isExemplary) {
             summaryClass = '--exemplary';
             summaryText = text('pcDossierSummaryExemplary', 'Надёжный тестер: стабильные чекины, оставляет содержательные фидбеки и отзыв в Google Play.');
-        } else if (bugsPending > 0 || ideasPending > 0 || (tester && tester.hasPendingFeedback)) {
-            summaryClass = '--pending';
-            summaryText = text('pcDossierSummaryPending', 'Отправил свежий отчёт в ваш проект. Ознакомьтесь с ним в списке фидбеков для начисления баллов.');
         } else if (projectSeries > 0 || totalSeries >= 10 || Boolean(tester.is_screenshot_regular)) {
             summaryClass = '--explorer';
             summaryText = text('pcDossierSummaryExplorer', 'Провёл глубокий прогон приложения с серией скриншотов ключевых экранов.');
         } else if (isNewbie || resolvedTotal < 3) {
             summaryClass = '--newbie';
-            summaryText = text('pcDossierSummaryNewbie', 'Новый участник сообщества. Проходит первые тесты, статистика точности формируется.');
+            summaryText = text('pcDossierSummaryNewbie', 'Новый участник сообщества — проходит свои первые тесты, репутация ещё формируется.');
         }
 
         return '' +
