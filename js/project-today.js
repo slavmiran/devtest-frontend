@@ -64,6 +64,13 @@
         return typeof getLocalDate === 'function' ? getLocalDate() : new Date().toISOString().slice(0, 10);
     }
 
+    function actorTodayString(tester, row) {
+        var value = (row && (row.actorLocalDate || row.actor_local_date))
+            || (tester && (tester.actor_local_date || tester.actorLocalDate))
+            || '';
+        return String(value || todayString()).slice(0, 10);
+    }
+
     function thumbKey(proofId, mediaIndex) {
         return Number(proofId || 0) + ':' + Number(mediaIndex || 0);
     }
@@ -212,7 +219,7 @@
 
     function collectCatchupAttentionReasons(project, tester) {
         var catchup = catchupStateFor(project, tester);
-        var yesterday = shiftDateString(todayString(), -1);
+        var yesterday = shiftDateString(actorTodayString(tester), -1);
         var yesterdayDay = testerDayNumber(tester) - 1;
         var requestableDays = (catchup && catchup.requestableMissedDays || []).map(Number);
         var requestedDays = (catchup && catchup.requestedDays || []).map(Number);
@@ -1062,6 +1069,8 @@
             testerId: Number(item.tester && item.tester.id || 0),
             tester: item.tester || {},
             day: Number(item.current_day || 0),
+            actorLocalDate: item.actor_local_date || null,
+            actorTimezone: item.actor_timezone || null,
             received: true,
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
@@ -1101,8 +1110,12 @@
             tester: Object.assign({}, item.tester || {}, {
                 last_check_date: item.last_check_date || (item.tester && item.tester.last_check_date) || null,
                 last_checkin_at: item.last_checkin_at || (item.tester && item.tester.last_checkin_at) || null,
+                actor_local_date: item.actor_local_date || null,
+                actor_timezone: item.actor_timezone || null,
             }),
             day: Number(item.current_day || 0),
+            actorLocalDate: item.actor_local_date || null,
+            actorTimezone: item.actor_timezone || null,
             device: item.device || null,
             received: !!checked,
             lastCheckDate: item.last_check_date || null,
@@ -1903,12 +1916,15 @@
             || 0
         );
 
-        var today = String(opts.today || todayString() || '').slice(0, 10);
+        var today = String(opts.today || actorTodayString(tester, row) || '').slice(0, 10);
         var yesterday = shiftDateString(today, -1);
         var now = opts.now ? new Date(opts.now) : new Date();
         var systemTz = (typeof getUserSystemTimezone === 'function' ? getUserSystemTimezone() : undefined)
             || (typeof Intl !== 'undefined' && Intl.DateTimeFormat ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined);
-        var authorTimezone = opts.timeZone
+        var activityTimezone = opts.timeZone
+            || (row && (row.actorTimezone || row.actor_timezone))
+            || tester.actor_timezone
+            || tester.timezone
             || systemTz
             || (proj && (proj.time_zone || proj.timezone || proj.author_timezone));
 
@@ -1975,11 +1991,11 @@
 
         // 3. Ритм чекинов:
         // Привычное время активности тестера (часы и минуты последнего чекина),
-        // переведённое в часовой пояс автора проекта.
-        // Проецируем этот час на сегодняшний день автора:
-        // - Если у автора сейчас МЕНЬШЕ привычного времени: тестер ещё в графике дня -> Норма (risk: false).
+        // переведённое в часовой пояс самого тестера.
+        // Проецируем этот час на сегодняшний локальный день тестера:
+        // - Если у тестера сейчас МЕНЬШЕ привычного времени: он ещё в графике дня -> Норма (risk: false).
         //   Даже если вчера был пропуск, с утра этот пункт не горит красным (нет двойного штрафа).
-        // - Если у автора сейчас БОЛЬШЕ привычного времени: привычный час активности прошёл -> Риск (risk: true).
+        // - Если у тестера сейчас БОЛЬШЕ привычного времени: привычный час активности прошёл -> Риск (risk: true).
         var lastCheckinRaw = (row && row.lastCheckinAt)
             || tester.last_checkin_at
             || tester.last_checked_at
@@ -2014,12 +2030,12 @@
         var habitualTimeStr = '19:00';
         var habitualTotalMinutes = 19 * 60;
         var rhythmExceeded = false;
-        var nowParts = getTimePartsInTimezone(now, authorTimezone);
+        var nowParts = getTimePartsInTimezone(now, activityTimezone);
 
         if (lastCheckinRaw) {
             var lastDate = parseIsoTimestamp(lastCheckinRaw);
             if (lastDate && Number.isFinite(lastDate.getTime())) {
-                var lastParts = getTimePartsInTimezone(lastDate, authorTimezone);
+                var lastParts = getTimePartsInTimezone(lastDate, activityTimezone);
                 if (lastParts) {
                     habitualTimeStr = lastParts.timeStr;
                     habitualTotalMinutes = lastParts.totalMinutes;
@@ -2125,11 +2141,11 @@
         if (!project || project.status === 'pending_completion' || project.app_status === 'pending_completion') {
             return [];
         }
-        var today = todayString();
         return (project.testers || []).filter(function (tester) {
             if (tester.is_left_soft || tester.is_guest_tester || tester.is_external) return false;
             return isControlDay(Number(tester.testing_days || 0));
         }).map(function (tester) {
+            var today = actorTodayString(tester);
             var row = {
                 progressId: Number(tester.progress_id || 0),
                 testerId: Number(tester.tester_id || 0),

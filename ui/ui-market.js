@@ -3075,10 +3075,10 @@ function renderPlayReviewModal() {
     if (isApproved) {
         // Render a beautiful, premium confirmation screen!
         var rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
-        // Platform confirm for Play review is +0.3 (see PLAY_REVIEW_PLATFORM_KARMA / KARMA_PLATFORM_CONFIRM).
+        // Platform confirm for Play review is +0.5 (see PLAY_REVIEW_PLATFORM_KARMA / KARMA_PLATFORM_CONFIRM).
         // Do not fall back to legacy +1.0 when summary is empty.
         var reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
-        if (!(reviewPlatformKarma > 0)) reviewPlatformKarma = 0.3;
+        if (!(reviewPlatformKarma > 0)) reviewPlatformKarma = 0.5;
         var reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
         var reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
         var developerReply = rewardsSummary.review_developer_reply || '';
@@ -6448,9 +6448,9 @@ function renderKarmaHowList() {
             rows: [
                 { label: label('karmaHowOvertimeCheckin', 'Чекин в овертайме'), value: '+0.1' },
                 { label: label('karmaHowScreenshots', '3+ скриншота за день'), value: '+0.3' },
-                { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.3' },
-                { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.3' },
-                { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.3' },
+                { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.5' },
+                { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.5' },
+                { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.5' },
                 { label: label('karmaHowOwnerFinish', 'Завершение проекта владельцем'), value: '+1.0' },
                 { label: label('karmaHowPlatformFeedback', 'Фидбэк саппорту / Платформе'), value: label('karmaHowValueUpTo30', 'до +3.0') },
                 { label: label('karmaHowAdmin', 'Награда от администратора'), value: label('karmaHowValueCustom', 'индивидуально') },
