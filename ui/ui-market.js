@@ -6469,6 +6469,11 @@ function renderKarmaHowList() {
             title: label('karmaHowLoseTitle', '🔴 Как потерять'),
             rows: [
                 { label: label('karmaHowAbandon', 'Покинуть проект досрочно (abandoned)'), value: '−3.0' },
+                {
+                    label: label('karmaHowCatchupMiss', 'Незакрытый дозапрос контрольного дня'),
+                    note: label('karmaHowCatchupMissNote', 'за каждый, если проект завершён без отчёта'),
+                    value: '−1.0',
+                },
             ],
         },
     ];

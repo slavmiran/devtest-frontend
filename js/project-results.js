@@ -220,7 +220,9 @@
         var newReviews = Number(unseen.newReviews || 0);
 
         var totalWord = window.t('pcResultsTotalShort', {}, lang) || (lang === 'ru' ? 'всего' : 'total');
-        var resultsTitle = window.t('pcResultsTitle', {}, lang) || (lang === 'ru' ? 'Результаты' : 'Results');
+        var resultsTitle = lang === 'ru' ? 'Результаты тестирования' : 'Testing results';
+        var resultsSubtitle = lang === 'ru' ? 'Покрытие и полезные находки' : 'Coverage and useful findings';
+        var overviewLabel = lang === 'ru' ? 'Сводка' : 'Overview';
 
         var indicators = [
             {
@@ -230,6 +232,7 @@
                 label: window.t('pcResultsModels', {}, lang) || (lang === 'ru' ? 'Модели' : 'Models'),
                 newCount: newModels,
                 totalCount: modelsTotal,
+                detail: summary.android_range || '',
                 title: window.t('pcResultsChipCoverageTitle', {}, lang) || 'Модели устройств',
                 action: 'openProjectCoverage(' + appId + ', \'models\');'
             },
@@ -240,6 +243,7 @@
                 label: window.t('pcResultsCountry', {}, lang) || (lang === 'ru' ? 'Страна' : 'Country'),
                 newCount: newCountries,
                 totalCount: countriesTotal,
+                detail: (Array.isArray(summary.countries_list) ? summary.countries_list.slice(0, 3).join(' · ') : ''),
                 title: window.t('pcResultsChipCountryTitle', {}, lang) || 'Страны тестирования',
                 action: 'openProjectCoverage(' + appId + ', \'countries\');'
             },
@@ -250,6 +254,7 @@
                 label: window.t('pcResultsBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug'),
                 newCount: newBugs,
                 totalCount: bugsTotal,
+                detail: '',
                 title: window.t('pcResultsChipBugsTitle', {}, lang) || 'Баги',
                 action: 'openProjectResultsFeedback(' + appId + ', \'bug\');'
             },
@@ -260,6 +265,7 @@
                 label: window.t('pcResultsIdea', {}, lang) || (lang === 'ru' ? 'Идеи' : 'Ideas'),
                 newCount: newIdeas,
                 totalCount: ideasTotal,
+                detail: '',
                 title: window.t('pcResultsChipIdeasTitle', {}, lang) || 'Идеи и рекомендации',
                 action: 'openProjectResultsFeedback(' + appId + ', \'idea\');'
             },
@@ -270,6 +276,7 @@
                 label: window.t('pcResultsReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review'),
                 newCount: newReviews,
                 totalCount: reviewsTotal,
+                detail: '',
                 title: window.t('pcResultsChipReviewsTitle', {}, lang) || 'Отзывы Google Play',
                 action: 'openProjectResultsFeedback(' + appId + ', \'google_play\');'
             }
@@ -284,9 +291,10 @@
             else if (isZero) valClass += ' is-zero';
 
             var valText = hasNew ? ('+' + ind.newCount) : String(ind.totalCount);
-            var subHtml = hasNew
-                ? ('<span class="pc-results-tile__sub">' + ind.totalCount + ' ' + window.escapeHTML(totalWord) + '</span>')
-                : '';
+            var detailText = hasNew ? (ind.totalCount + ' ' + totalWord) : String(ind.detail || '');
+            var subHtml = detailText
+                ? ('<span class="pc-results-tile__sub">' + window.escapeHTML(detailText) + '</span>')
+                : '<span class="pc-results-tile__sub" aria-hidden="true">&nbsp;</span>';
 
             return (
                 '<button type="button" class="pc-results-tile pc-results-tile--' + ind.key + ' pc-results-chip--' + ind.type + (isZero ? ' is-zero' : '') + (hasNew ? ' has-new' : '') + '" ' +
@@ -304,8 +312,13 @@
         return (
             '<section class="pc-results-card" data-app-id="' + appId + '" aria-label="' + window.escapeHTML(resultsTitle) + '">' +
                 '<div class="pc-results-header" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" role="button" tabindex="0" title="' + window.escapeHTML(resultsTitle) + '">' +
-                    '<span class="pc-results-title">' + window.escapeHTML(resultsTitle) + '</span>' +
-                    '<svg class="pc-results-header__chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
+                    '<span class="pc-results-header__copy">' +
+                        '<span class="pc-results-title">' + window.escapeHTML(resultsTitle) + '</span>' +
+                        '<span class="pc-results-subtitle">' + window.escapeHTML(resultsSubtitle) + '</span>' +
+                    '</span>' +
+                    '<span class="pc-results-header__action">' + window.escapeHTML(overviewLabel) +
+                        '<svg class="pc-results-header__chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
+                    '</span>' +
                 '</div>' +
                 '<div class="pc-results-grid">' +
                     tilesHtml +
@@ -316,19 +329,40 @@
 
     // ── Collapsed Card Results Builder (Ultra-compact) ──
 
+    function resultMiniIcon(key) {
+        var paths = {
+            models: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M11 18h2"/>',
+            countries: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+            bugs: '<path d="M9 7V5.5a3 3 0 0 1 6 0V7M8 4 6.5 2.5M16 4l1.5-1.5M6 10H3M21 10h-3M6 15H3M21 15h-3"/><rect x="6" y="7" width="12" height="13" rx="6"/><path d="M12 8v11"/>',
+            ideas: '<path d="M9 18h6M10 21h4M8.5 13.8a5.5 5.5 0 1 1 7 0c-1 .8-1.5 1.8-1.5 3.2h-4c0-1.4-.5-2.4-1.5-3.2Z"/>',
+            reviews: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
+        };
+        return '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[key] || paths.models) + '</svg>';
+    }
+
+    function resultCollapsedMetric(key, value, isNew) {
+        return '<span class="pc-results-collapsed__metric is-' + key + (isNew ? ' has-new' : '') + '">' +
+            resultMiniIcon(key) + '<strong>' + (isNew ? '+' : '') + Number(value || 0) + '</strong>' +
+        '</span>';
+    }
+
     function buildProjectResultsCollapsed(project) {
         var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
         var appId = Number(project.app_id || project.id || 0);
         var summary = project.results_summary || {};
         var modelsCount = Number(summary.models_count || 0);
+        var countriesCount = Number(summary.countries_count || 0);
         var totalFeedback = Number(project.feedback_total_count || 0);
+        var collapsedTitle = lang === 'ru' ? 'Итоги' : 'Results';
+        var openLabel = lang === 'ru' ? 'Открыть сводку' : 'Open overview';
 
         if (modelsCount === 0 && totalFeedback === 0) {
             return (
                 '<button type="button" class="pc-results-collapsed" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
+                    '<span class="pc-results-collapsed__label">' + window.escapeHTML(collapsedTitle) + '</span>' +
                     '<span class="pc-results-collapsed__text">' +
                         window.escapeHTML(window.t('pcResultsEmpty', {}, lang) || 'Результаты появятся по мере тестирования') +
-                    '</span>' +
+                    '</span><span class="pc-results-collapsed__arrow" aria-hidden="true">›</span>' +
                 '</button>'
             );
         }
@@ -336,32 +370,30 @@
         var unseen = getProjectCoverageUnseenCounts(project);
         if (unseen.hasNew) {
             var items = [];
-            if (unseen.newCoverage > 0) items.push('<span class="pc-results-collapsed__item">📱 +' + unseen.newCoverage + '</span>');
-            if (unseen.newCountries > 0) items.push('<span class="pc-results-collapsed__item">🌍 +' + unseen.newCountries + '</span>');
-            if (unseen.newBugs > 0) items.push('<span class="pc-results-collapsed__item">🐞 +' + unseen.newBugs + '</span>');
-            if (unseen.newIdeas > 0) items.push('<span class="pc-results-collapsed__item">💡 +' + unseen.newIdeas + '</span>');
-            if (unseen.newReviews > 0) items.push('<span class="pc-results-collapsed__item">★ +' + unseen.newReviews + '</span>');
+            if (unseen.newCoverage > 0) items.push(resultCollapsedMetric('models', unseen.newCoverage, true));
+            if (unseen.newCountries > 0) items.push(resultCollapsedMetric('countries', unseen.newCountries, true));
+            if (unseen.newBugs > 0) items.push(resultCollapsedMetric('bugs', unseen.newBugs, true));
+            if (unseen.newIdeas > 0) items.push(resultCollapsedMetric('ideas', unseen.newIdeas, true));
+            if (unseen.newReviews > 0) items.push(resultCollapsedMetric('reviews', unseen.newReviews, true));
 
             return (
                 '<button type="button" class="pc-results-collapsed pc-results-collapsed--badges" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
-                    items.join('<span class="pc-results-collapsed__sep">·</span>') +
+                    '<span class="pc-results-collapsed__label">' + window.escapeHTML(collapsedTitle) + '</span>' +
+                    '<span class="pc-results-collapsed__metrics">' + items.join('') + '</span>' +
+                    '<span class="pc-results-collapsed__arrow" aria-hidden="true">›</span>' +
                 '</button>'
             );
         }
 
-        var calmParts = [];
-        if (modelsCount > 0) {
-            var mWord = lang === 'ru'
-                ? formatPluralRu(modelsCount, 'модель', 'модели', 'моделей')
-                : (modelsCount === 1 ? 'model' : 'models');
-            calmParts.push(modelsCount + ' ' + mWord);
-        }
-        if (summary.android_range) calmParts.push(summary.android_range);
-
-        var calmLine = calmParts.join(' · ') || (window.t('pcResultsEmpty', {}, lang) || 'Результаты появятся по мере тестирования');
+        var calmMetrics = [];
+        if (modelsCount > 0) calmMetrics.push(resultCollapsedMetric('models', modelsCount, false));
+        if (countriesCount > 0) calmMetrics.push(resultCollapsedMetric('countries', countriesCount, false));
+        if (totalFeedback > 0) calmMetrics.push(resultCollapsedMetric('ideas', totalFeedback, false));
         return (
-            '<button type="button" class="pc-results-collapsed" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
-                '<span class="pc-results-collapsed__text">' + window.escapeHTML(calmLine) + '</span>' +
+            '<button type="button" class="pc-results-collapsed pc-results-collapsed--badges" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" aria-label="' + window.escapeHTML(openLabel) + '">' +
+                '<span class="pc-results-collapsed__label">' + window.escapeHTML(collapsedTitle) + '</span>' +
+                '<span class="pc-results-collapsed__metrics">' + calmMetrics.join('') + '</span>' +
+                '<span class="pc-results-collapsed__arrow" aria-hidden="true">›</span>' +
             '</button>'
         );
     }

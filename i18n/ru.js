@@ -755,6 +755,8 @@
             karmaHowOvertimeReward: "Овертайм-награда (одному тестеру)",
             karmaHowPlayReviewReward: "Награда за отзыв в Google Play",
             karmaHowAbandon: "Покинуть проект досрочно (abandoned)",
+            karmaHowCatchupMiss: "Незакрытый дозапрос контрольного дня",
+            karmaHowCatchupMissNote: "за каждый, если проект завершён без отчёта",
             karmaHowValueUpTo30: "до +3.0",
             karmaHowValueCustom: "индивидуально",
             karmaSrc_checkin: "Ежедневные чекины (архив)",

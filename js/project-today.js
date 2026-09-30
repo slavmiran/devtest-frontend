@@ -4345,6 +4345,219 @@
         };
     }
 
+    function activeTeamRoster(project) {
+        return (project && project.testers || []).filter(function (tester) {
+            return tester && !tester.is_left_soft && !tester.is_guest_tester && !tester.is_external;
+        });
+    }
+
+    function teamTesterId(source) {
+        return Number(source && (source.testerId || source.tester_id || source.id
+            || (source.tester && (source.tester.tester_id || source.tester.id))) || 0);
+    }
+
+    function teamTesterCheckedInToday(tester) {
+        var lastCheck = String(tester && tester.last_check_date || '').slice(0, 10);
+        return !!lastCheck && lastCheck === String(actorTodayString(tester) || '').slice(0, 10);
+    }
+
+    function teamAvatarUrl(tester) {
+        tester = tester || {};
+        function resolve(value) {
+            var clean = String(value || '').trim();
+            if (!clean) return '';
+            if (/^(?:https?:|data:|blob:)/i.test(clean)) return clean;
+            return mediaUrl(clean);
+        }
+        var direct = tester.small_avatar_url || tester.avatar_small_url || tester.avatar_thumb_url
+            || tester.thumbnail_url || tester.small_file_url;
+        if (direct) return resolve(direct);
+        var smallFileId = String(tester.small_file_id || tester.avatar_small_file_id || '').trim();
+        if (smallFileId) {
+            if (/^(?:https?:|data:|blob:)/i.test(smallFileId) || smallFileId.indexOf('/') === 0) return resolve(smallFileId);
+            return mediaUrl('/api/telegram-media/' + encodeURIComponent(smallFileId));
+        }
+        return resolve(tester.avatar_url || '');
+    }
+
+    function teamInitials(tester) {
+        var fullName = String(tester && (tester.full_name || tester.name) || '').trim();
+        var parts = fullName.split(/\s+/).filter(Boolean);
+        if (parts.length > 1) return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+        var handle = String(tester && tester.username || fullName || '?').replace(/^@+/, '');
+        return (handle.slice(0, 2) || '?').toUpperCase();
+    }
+
+    function teamContributionKind(item) {
+        var reasons = item && item.reasons || [];
+        if (reasons.some(function (reason) { return reason.kind === 'bug'; })) return 'bug';
+        if (reasons.some(function (reason) { return reason.kind === 'idea'; })) return 'idea';
+        if (reasons.some(function (reason) { return reason.kind === 'play_review'; })) return 'review';
+        return 'screenshots';
+    }
+
+    function teamStatusIcon(status, detail) {
+        var paths = {
+            attention: '<path d="M12 3.2 21 19H3z"/><path d="M12 8.2v5.4M12 16.8h.01"/>',
+            control: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/>',
+            bug: '<path d="M9 7V5.8a3 3 0 0 1 6 0V7M8 4 6.5 2.5M16 4l1.5-1.5M6.5 10H3M21 10h-3.5M6.5 15H3M21 15h-3.5"/><rect x="6.5" y="7" width="11" height="13" rx="5.5"/><path d="M12 8v11"/>',
+            idea: '<path d="M9 18h6M10 21h4M8.5 13.8a5.5 5.5 0 1 1 7 0c-1 .8-1.5 1.8-1.5 3.2h-4c0-1.4-.5-2.4-1.5-3.2Z"/>',
+            review: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
+            screenshots: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/>',
+            done: '<path d="m5 12.5 4.2 4L19 7"/>',
+            waiting: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/>',
+        };
+        var key = status === 'contribution' ? (detail || 'screenshots') : status;
+        return '<svg class="pc-avatar-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            (paths[key] || paths.waiting) + '</svg>';
+    }
+
+    function teamContributionScore(item) {
+        var weights = { bug: 40, idea: 30, play_review: 20, screenshots: 10 };
+        return (item && item.reasons || []).reduce(function (score, reason) {
+            return score + Number(weights[reason.kind] || 0) + Math.min(9, Number(reason.imageCount || 0));
+        }, 0);
+    }
+
+    function representativeTeam(project, data) {
+        var roster = activeTeamRoster(project);
+        var rosterById = {};
+        roster.forEach(function (tester) { rosterById[teamTesterId(tester)] = tester; });
+
+        var attention = (data.attention || []).filter(function (item) { return rosterById[teamTesterId(item)]; });
+        var control = (data.controlRows || []).concat(data.regularReportRows || []).filter(function (item) {
+            return rosterById[teamTesterId(item)];
+        });
+        control.sort(function (left, right) { return Number(!!left.received) - Number(!!right.received); });
+        var contribution = (data.contribution || []).filter(function (item) { return rosterById[teamTesterId(item)]; }).slice();
+        contribution.sort(function (left, right) { return teamContributionScore(right) - teamContributionScore(left); });
+
+        var attentionById = {};
+        var controlById = {};
+        var contributionById = {};
+        attention.forEach(function (item) { attentionById[teamTesterId(item)] = item; });
+        control.forEach(function (item) { controlById[teamTesterId(item)] = item; });
+        contribution.forEach(function (item) { contributionById[teamTesterId(item)] = item; });
+
+        var ordered = [];
+        var added = {};
+        function add(source) {
+            var id = teamTesterId(source);
+            if (!id || added[id] || !rosterById[id]) return;
+            added[id] = true;
+            ordered.push(rosterById[id]);
+        }
+
+        // First screen is deliberately representative instead of being a run
+        // of people from one category. Remaining people stay in roster order.
+        add(attention[0]);
+        add(control[0]);
+        add(contribution[0]);
+        add(roster.find(function (tester) {
+            var id = teamTesterId(tester);
+            return !attentionById[id] && !controlById[id] && !contributionById[id] && teamTesterCheckedInToday(tester);
+        }) || roster.find(function (tester) { return !added[teamTesterId(tester)]; }));
+        roster.forEach(add);
+
+        return ordered.map(function (tester) {
+            var id = teamTesterId(tester);
+            var status = attentionById[id] ? 'attention'
+                : controlById[id] ? 'control'
+                    : contributionById[id] ? 'contribution'
+                        : teamTesterCheckedInToday(tester) ? 'done' : 'waiting';
+            return {
+                tester: tester,
+                status: status,
+                detail: status === 'contribution' ? teamContributionKind(contributionById[id]) : '',
+            };
+        });
+    }
+
+    function teamAvatarCardHtml(appId, entry, index) {
+        var tester = entry.tester || {};
+        var id = teamTesterId(tester);
+        var label = handleOf(tester);
+        var compactLabel = String(tester.username || tester.full_name || tester.name || label).replace(/^@+/, '');
+        var visibleLabel = String(tester.username ? '@' + compactLabel : compactLabel);
+        var avatarUrl = teamAvatarUrl(tester);
+        var hue = (id * 47 + index * 23) % 360;
+        var statusLabels = {
+            attention: workspaceText('Нужно внимание', 'Needs attention'),
+            control: workspaceText('Контрольный отчёт', 'Control report'),
+            contribution: workspaceText('Полезный вклад', 'Valuable contribution'),
+            done: workspaceText('Отметился сегодня', 'Checked in today'),
+            waiting: workspaceText('Ожидается отметка', 'Check-in pending'),
+        };
+        var imageHtml = avatarUrl
+            ? '<img class="pc-avatar-card__image" src="' + esc(avatarUrl) + '" alt="" loading="lazy" decoding="async" onload="this.parentElement.classList.add(\'is-loaded\')" onerror="this.remove()">'
+            : '';
+        return '<button type="button" class="pc-avatar-card is-' + entry.status + '" style="--avatar-hue:' + hue + '" ' +
+            'onclick="event.stopPropagation(); ' + dossierClick(appId, tester) + '" ' +
+            'title="' + esc(label + ' · ' + statusLabels[entry.status]) + '" aria-label="' + esc(label + '. ' + statusLabels[entry.status]) + '">' +
+                '<span class="pc-avatar-card__visual">' +
+                    '<span class="pc-avatar-card__fallback">' + esc(teamInitials(tester)) + '</span>' +
+                    imageHtml +
+                    '<span class="pc-avatar-status is-' + entry.status + '">' + teamStatusIcon(entry.status, entry.detail) + '</span>' +
+                '</span>' +
+                '<span class="pc-avatar-card__name notranslate">' + esc(visibleLabel) + '</span>' +
+            '</button>';
+    }
+
+    function collapsedKarmaButtonHtml(project) {
+        var appId = Number(project && project.id || 0);
+        var avail = karmaAvailability(project);
+        var karmaIcon = typeof window.karmaIconHtml === 'function'
+            ? window.karmaIconHtml('karma-yin-icon--inline')
+            : '<span class="rewards-icon-glyph">☯</span>';
+        var title = workspaceText('Распределить награды', 'Distribute rewards');
+        return '<button type="button" class="pc-team-rewards" onclick="event.stopPropagation(); openKarmaDistribution(' + appId + ')" ' +
+            'title="' + esc(title) + '" aria-label="' + esc(title + ': ' + avail.available + '/' + avail.max) + '">' +
+                '<span class="pc-team-rewards__icon">' + karmaIcon + '</span>' +
+                '<span class="pc-team-rewards__prefix">' + esc(workspaceText('Доступно наград:', 'Rewards available:')) + '</span>' +
+                '<strong>' + avail.available + '/' + avail.max + '</strong><span aria-hidden="true">↗</span>' +
+            '</button>';
+    }
+
+    function collapsedTeamHtml(project, data) {
+        var appId = Number(project.id || 0);
+        var team = representativeTeam(project, data);
+        var teamLabel = text('pcTeamLabel', 'Команда');
+        var quickTabs = [
+            { key: 'attention', warn: hasCriticalAttentionIssue(data.attention) },
+            { key: 'control', warn: false },
+            { key: 'contribution', warn: false },
+        ].map(function (tab) {
+            tab.count = filterCount(tab.key, data);
+            return tab;
+        }).filter(function (tab) { return tab.count > 0; });
+        var avatarsHtml = team.length
+            ? team.map(function (entry, index) { return teamAvatarCardHtml(appId, entry, index); }).join('')
+            : '<button type="button" class="pc-team-empty" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');">' +
+                filterIcon('testers') + '<span>' + esc(workspaceText('Участники появятся после принятия заявок', 'Participants will appear after applications are accepted')) + '</span></button>';
+        var quickHtml = quickTabs.length ? '<div class="pc-team-quick-filters" role="group" aria-label="' + esc(workspaceText('Быстрые фильтры команды', 'Team quick filters')) + '">' +
+            quickTabs.map(function (tab) {
+                return '<button type="button" class="pc-team-quick-filter is-' + tab.key + (tab.warn ? ' is-warn' : '') + '" ' +
+                    'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ',\'' + tab.key + '\')">' +
+                    filterIcon(tab.key) + '<strong>' + tab.count + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
+                '</button>';
+            }).join('') + '</div>' : '';
+
+        return '<div class="pc-team-collapsed">' +
+            '<div class="pc-team-collapsed__header">' +
+                '<button type="button" class="pc-team-collapsed__identity" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" aria-expanded="false">' +
+                    filterIcon('testers') + '<span>' + esc(teamLabel) + ' · ' + team.length + '</span>' +
+                '</button>' +
+                '<div class="pc-team-collapsed__actions">' + collapsedKarmaButtonHtml(project) +
+                    '<button type="button" class="pc-team-collapsed__chevron" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" aria-label="' + esc(workspaceText('Развернуть команду', 'Expand team')) + '">' +
+                        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+            '<div class="pc-avatar-carousel" role="list" aria-label="' + esc(workspaceText('Участники проекта', 'Project participants')) + '">' + avatarsHtml + '</div>' +
+            quickHtml +
+        '</div>';
+    }
+
     function innerHtml(project) {
         var appId = Number(project.id || 0);
         var data = activityCounts(project);
@@ -4360,7 +4573,7 @@
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
 
-        var participantsTitle = text('pcParticipantsTitle', 'Участники');
+        var participantsTitle = text('pcTeamLabel', 'Команда');
 
         var headerHtml = '<div class="pc-participants-header" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
             '<span class="pc-participants-title">' + esc(participantsTitle) + '</span>' +
@@ -4371,68 +4584,7 @@
 
         var contentHtml = '';
         if (collapsed) {
-            var specialTabs = [
-                {
-                    key: 'attention',
-                    label: filterLabel('attention'),
-                    icon: filterIcon('attention'),
-                    count: filterCount('attention', data),
-                    isWarn: hasCriticalAttentionIssue(data && data.attention)
-                },
-                {
-                    key: 'contribution',
-                    label: filterLabel('contribution'),
-                    icon: filterIcon('contribution'),
-                    count: filterCount('contribution', data),
-                    isWarn: false
-                },
-                {
-                    key: 'control',
-                    label: filterLabel('control'),
-                    icon: filterIcon('control'),
-                    count: filterCount('control', data),
-                    isWarn: false
-                }
-            ];
-            var activeSpecialTabs = specialTabs.filter(function (t) { return t.count > 0; });
-            var totalTesters = Array.isArray(project.testers) ? project.testers.length : 0;
-
-            var bodyCollapsedHtml = '';
-            if (activeSpecialTabs.length > 0) {
-                var chipsHtml = activeSpecialTabs.map(function (tab) {
-                    return '<button type="button" class="pc-collapsed-special-chip' + (tab.isWarn ? ' is-warn' : '') + ' pc-special--' + tab.key + '" ' +
-                        'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ', \'' + tab.key + '\');" ' +
-                        'title="' + esc(tab.label + ' ' + tab.count) + '" aria-label="' + esc(tab.label + ' ' + tab.count) + '">' +
-                        '<span class="pc-collapsed-special-top">' +
-                            tab.icon +
-                            '<span class="pc-collapsed-special-count' + (tab.isWarn ? ' is-warn' : '') + '">' + tab.count + '</span>' +
-                        '</span>' +
-                        '<span class="pc-collapsed-special-label">' + esc(tab.label) + '</span>' +
-                    '</button>';
-                }).join('');
-                bodyCollapsedHtml = '<div class="pc-collapsed-special-row">' + chipsHtml + '</div>';
-            } else {
-                var teamTesters = (project.testers || []).slice(0, 4);
-                var avatarsHtml = teamTesters.map(function (tester, idx) {
-                    var avatarUrl = tester.avatar_url;
-                    var name = tester.username || tester.full_name || ('ID ' + (tester.tester_id || ''));
-                    if (avatarUrl) {
-                        return '<img class="pc-team-avatar" src="' + esc(avatarUrl) + '" alt="' + esc(name) + '" style="z-index:' + (10 - idx) + ';">';
-                    }
-                    var initial = (name.replace(/^@/, '')[0] || 'T').toUpperCase();
-                    return '<span class="pc-team-avatar pc-team-avatar--initial" style="z-index:' + (10 - idx) + ';">' + esc(initial) + '</span>';
-                }).join('');
-
-                bodyCollapsedHtml = '<div class="pc-team-summary" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" role="button" tabindex="0">' +
-                    '<div class="pc-team-avatars">' + (avatarsHtml || '<span class="pc-team-avatar pc-team-avatar--placeholder">👥</span>') + '</div>' +
-                    '<span class="pc-team-label">' + esc(text('pcTeamLabel', 'Команда')) + ' · ' + totalTesters + '</span>' +
-                '</div>';
-            }
-
-            contentHtml = '<div class="pc-participants-collapsed-row">' +
-                bodyCollapsedHtml +
-                '<div class="pc-participants-collapsed-actions">' + karmaButtonHtml(project) + '</div>' +
-            '</div>';
+            contentHtml = collapsedTeamHtml(project, data);
         } else {
             contentHtml = filterbarHtml(appId, visibleFilters(data), filter, data, project) +
                 '<div class="pc-activity__folder-body" data-active-filter="' + filter + '">' +
@@ -4444,7 +4596,7 @@
 
         return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + (collapsed ? ' is-participants-collapsed' : ' is-participants-expanded') + '">' +
             '<div class="participants-inset-card' + (collapsed ? ' is-collapsed' : '') + '">' +
-                headerHtml +
+                (collapsed ? '' : headerHtml) +
                 contentHtml +
             '</div>' +
         '</section>';

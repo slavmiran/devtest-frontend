@@ -1766,10 +1766,29 @@ button.pc-stage-badge {
 
 .pc-today {
     display: block;
+    min-width: 0;
+    contain: layout style;
 }
 
 .pc-today:empty {
     display: none;
+}
+
+.pc-results-block-slot {
+    min-width: 0;
+    contain: layout style;
+}
+
+.pc-results-block-slot:empty,
+.pc-results-collapsed-slot:empty {
+    display: none;
+}
+
+/* Fixed media geometry in the two dashboard summaries prevents late avatar
+   and thumbnail decodes from nudging the project card during page scroll. */
+.pc-results-block-slot img,
+.pc-today img {
+    content-visibility: auto;
 }
 
 .pc-control {

@@ -756,6 +756,8 @@
             karmaHowOvertimeReward: "Overtime reward (one tester)",
             karmaHowPlayReviewReward: "Google Play review reward",
             karmaHowAbandon: "Leaving a project early (abandoned)",
+            karmaHowCatchupMiss: "Unclosed control-day catch-up",
+            karmaHowCatchupMissNote: "each one, if the project ends without a report",
             karmaHowValueUpTo30: "up to +3.0",
             karmaHowValueCustom: "custom",
             karmaInfoNetworkFallbackToast: "Showing saved balance. Breakdown is temporarily unavailable.",
