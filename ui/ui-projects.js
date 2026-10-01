@@ -624,7 +624,9 @@ function buildProjectRecruitBreakdownHtml(project) {
             '</div>';
     }
 
-    return '<div class="pc-recruit-primary">' + parts.join('') + '</div>' + guestHtml;
+    const attractTitle = window.escapeHTML(window.t('pcInviteTesters', {}, uiLang) || (uiLang === 'ru' ? 'Привлечь тестеров' : 'Attract testers'));
+    const addButtonHtml = '<button type="button" class="pc-recruit-add" onclick="event.stopPropagation(); openAttractTestersSheet(' + project.id + ');" title="' + attractTitle + '" aria-label="' + attractTitle + '">+</button>';
+    return addButtonHtml + '<div class="pc-recruit-primary">' + parts.join('') + '</div>' + guestHtml;
 }
 window.buildProjectRecruitBreakdownHtml = buildProjectRecruitBreakdownHtml;
 

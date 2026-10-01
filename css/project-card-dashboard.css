@@ -5521,6 +5521,33 @@ button.pc-recruit-toggle-btn:focus-visible {
     transition: opacity 0.2s ease, transform 0.24s ease, padding 0.24s ease, border-color 0.24s ease;
 }
 
+.pc-metrics-recruit .pc-recruit-add {
+    appearance: none;
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0 0 2px;
+    border: 1px solid rgba(166, 186, 215, .2);
+    border-radius: 50%;
+    background: rgba(124, 147, 179, .09);
+    color: #b6c5d8;
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    flex: 0 0 24px;
+}
+
+.pc-metrics-recruit .pc-recruit-add:active {
+    transform: scale(.94);
+}
+
+.pc-metrics-recruit .pc-recruit-add:focus-visible {
+    outline: 2px solid #8aaad2;
+    outline-offset: 2px;
+}
+
 .pc-metrics-recruit .pc-recruit-primary {
     display: inline-flex;
     align-items: center;

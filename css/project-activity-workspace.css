@@ -2565,7 +2565,7 @@
     gap: 4px;
     min-width: 0;
     min-height: 28px;
-    padding: 4px 7px;
+    padding: 4px 8px;
     border: 1px solid rgba(153, 174, 202, .11);
     border-radius: 9px;
     background: rgba(116, 139, 170, .045);
@@ -2589,24 +2589,11 @@
     height: 100%;
 }
 
-.pc-team-rewards__prefix {
-    overflow: hidden;
-    max-width: 104px;
-    font-size: 10px;
-    font-weight: 570;
-    text-overflow: ellipsis;
-}
-
 .pc-team-rewards strong {
     color: #e6edf7;
-    font-size: 10.5px;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
     letter-spacing: -.08px;
-}
-
-.pc-team-rewards > span:last-child {
-    font-size: 9px;
-    color: #78899f;
 }
 
 .pc-team-rewards:active,
@@ -2952,9 +2939,6 @@
 }
 
 @media (max-width: 410px) {
-    .pc-team-rewards__prefix {
-        display: none;
-    }
     .pc-team-rewards {
         padding-inline: 6px;
     }

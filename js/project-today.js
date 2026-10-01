@@ -4544,8 +4544,7 @@
         return '<button type="button" class="pc-team-rewards" onclick="event.stopPropagation(); openKarmaDistribution(' + appId + ')" ' +
             'title="' + esc(title) + '" aria-label="' + esc(title + ': ' + avail.available + '/' + avail.max) + '">' +
                 '<span class="pc-team-rewards__icon">' + karmaIcon + '</span>' +
-                '<span class="pc-team-rewards__prefix">' + esc(workspaceText('Доступно наград:', 'Rewards available:')) + '</span>' +
-                '<strong>' + avail.available + '/' + avail.max + '</strong><span aria-hidden="true">↗</span>' +
+                '<strong>' + avail.available + '/' + avail.max + '</strong>' +
             '</button>';
     }
 

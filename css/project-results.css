@@ -372,7 +372,7 @@
     align-items: center;
     gap: 7px;
     min-width: 0;
-    color: #78899f;
+    color: #778596;
     font-size: 9.5px;
     font-weight: 560;
     white-space: nowrap;
@@ -385,7 +385,7 @@
 }
 
 .pc-results-evidence-summary__item svg {
-    color: #7898b9;
+    color: #7d8999;
     flex: 0 0 auto;
 }
 
@@ -395,8 +395,9 @@
 }
 
 .pc-results-evidence-summary__item strong {
-    color: #bdc9d8;
-    font-size: 10.5px;
+    color: #9ba8b8;
+    font-size: 10px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
 
@@ -750,6 +751,11 @@
     pointer-events: all;
 }
 
+/* Shared proof viewer must sit above the full-screen coverage workspace. */
+#checkin-proof-preview-modal.active {
+    z-index: 1100;
+}
+
 #project-coverage-modal .modal-content,
 .project-coverage-modal-content {
     width: 100vw !important;
@@ -781,8 +787,8 @@
 }
 
 #project-coverage-body {
-    display: flex;
-    flex-direction: column;
+    display: block;
+    position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -790,14 +796,18 @@
 
 /* Modal Header */
 .coverage-header {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    left: 0;
     padding: 12px 16px 11px;
     padding-top: max(12px, env(safe-area-inset-top));
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    flex-shrink: 0;
     background: #14171f;
     width: 100%;
     box-sizing: border-box;
-    transition: padding .22s ease, background .22s ease;
+    transition: transform .24s cubic-bezier(.2, .75, .2, 1);
+    will-change: transform;
 }
 .coverage-header__top {
     display: flex;
@@ -939,29 +949,13 @@
 }
 
 #project-coverage-body.is-header-compact .coverage-header {
-    padding-top: 0;
-    padding-bottom: 0;
-    border-bottom-color: transparent;
-}
-#project-coverage-body.is-header-compact .coverage-header__top,
-#project-coverage-body.is-header-compact .coverage-scope-switcher {
-    max-height: 0;
-    margin: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    border-width: 0;
-    opacity: 0;
+    transform: translateY(-100%);
     pointer-events: none;
 }
-#project-coverage-body.is-header-compact .coverage-stat-bar {
-    min-height: 0;
-    max-height: 0;
-    margin: 0;
-    padding-block: 0;
-    border: 0;
-    opacity: 0;
-    overflow: hidden;
-    pointer-events: none;
+@media (prefers-reduced-motion: reduce) {
+    .coverage-header {
+        transition: none;
+    }
 }
 .coverage-stat-bar__dimensions {
     display: flex;
@@ -1183,10 +1177,10 @@
 
 /* Modal Scrollable Body */
 .coverage-body {
-    flex: 1;
+    height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 16px 16px max(32px, env(safe-area-inset-bottom));
+    padding: calc(var(--coverage-header-height, 170px) + 16px) 16px max(32px, env(safe-area-inset-bottom));
     width: 100%;
     box-sizing: border-box;
 }
@@ -1397,11 +1391,11 @@
 
 .coverage-model-card__head,
 .coverage-device-card__head {
-    min-height: 58px;
-    padding: 13px 15px 10px;
+    min-height: 48px;
+    padding: 12px 15px;
     cursor: pointer;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 10px;
     user-select: none;
@@ -1417,7 +1411,7 @@
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 7px;
+    margin-bottom: 0;
 }
 .coverage-model-card__name,
 .coverage-device-name {
@@ -1712,7 +1706,13 @@
 }
 .coverage-gallery-item {
     flex-shrink: 0;
-    width: 78px;
+    width: 112px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -1720,7 +1720,7 @@
 }
 .coverage-gallery-item .coverage-gallery-thumb {
     width: 100%;
-    aspect-ratio: 9/16;
+    aspect-ratio: 9/17;
     border-radius: 8px;
     overflow: hidden;
     position: relative;
@@ -1740,6 +1740,58 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 1.2;
+}
+
+.coverage-gallery-thumb__date {
+    position: absolute;
+    z-index: 3;
+    top: 4px;
+    right: 4px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: rgba(6, 10, 16, .78);
+    color: #e2eaf3;
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+}
+
+.coverage-gallery-thumb__meta {
+    position: absolute;
+    z-index: 3;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    gap: 3px;
+    padding: 16px 5px 5px;
+    background: linear-gradient(transparent, rgba(5, 9, 15, .9) 36%);
+    color: #e2eaf3;
+    font-size: 9px;
+    line-height: 1.15;
+}
+
+.coverage-gallery-thumb__author {
+    overflow-wrap: anywhere;
+}
+
+.coverage-gallery-thumb__specs,
+.coverage-gallery-thumb__specs > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.coverage-gallery-thumb__specs {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    color: #bdcde0;
+    font-size: 8.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.coverage-gallery-thumb__android {
+    width: 11px;
+    height: 11px;
 }
 .coverage-device-gallery-empty {
     font-size: 11.5px;
@@ -1993,13 +2045,13 @@
         padding-inline: 12px;
     }
     .coverage-body {
-        padding: 12px 12px max(28px, env(safe-area-inset-bottom));
+        padding: calc(var(--coverage-header-height, 170px) + 12px) 12px max(28px, env(safe-area-inset-bottom));
     }
     .coverage-cockpit {
         padding: 10px 11px;
     }
     .coverage-device-card__head {
-        padding: 11px 12px 8px;
+        padding: 11px 12px;
         gap: 7px;
     }
     .coverage-device-gallery {
@@ -2009,7 +2061,7 @@
         padding-inline: 12px;
     }
     .coverage-gallery-item {
-        width: 72px;
+        width: 108px;
     }
     .coverage-model-card__head-right,
     .coverage-device-card__head-right {

@@ -709,7 +709,7 @@
                 map[key] = {
                     model_name: m.model_name,
                     model_key: m.model_key || key,
-                    brand: extractDeviceBrand(m.model_name),
+                    brand: m.brand || extractDeviceBrand(m.model_name),
                     android_versions: [],
                     android_major_versions: [],
                     testers: [],
@@ -751,7 +751,9 @@
                     entry.screenshots.push(s);
                 }
             });
-            entry.screenshots_count = entry.screenshots.length || Number(m.screenshots_count || 0);
+            entry.screenshots_count = entry.screenshots.length
+                ? entry.screenshots.reduce(function (total, shot) { return total + Math.max(1, Number(shot.image_count || 1)); }, 0)
+                : Number(m.screenshots_count || 0);
 
             (m.feedback_items || []).forEach(function (fb) {
                 if (!fb) return;
@@ -792,7 +794,7 @@
             var count = Number(v.testers_count || (v.models && v.models.length) || 0);
             return '<span class="coverage-cockpit-chip" style="--chip-accent:' + color + ';">' +
                 '<span class="coverage-cockpit-chip__dot" style="background-color:' + color + ';"></span>' +
-                '<strong>A' + window.escapeHTML(major) + ':</strong> ' + v.percentage + '% ' +
+                '<strong>' + androidIconSvg('coverage-cockpit-chip__android') + window.escapeHTML(major) + ':</strong> ' + v.percentage + '% ' +
                 '<span class="coverage-cockpit-chip__count">(' + count + ')</span>' +
             '</span>';
         }).join('');
@@ -842,6 +844,8 @@
         });
 
         var brandNames = Object.keys(brandMap).sort(function (a, b) {
+            if (a.toLowerCase() === 'other') return 1;
+            if (b.toLowerCase() === 'other') return -1;
             return brandMap[b] - brandMap[a] || a.localeCompare(b);
         });
 
@@ -981,66 +985,8 @@
                 stackBadgeHtml = '<span class="coverage-device-stack-badge coverage-device-stack-badge--single">👤 ' + window.escapeHTML(singleWord) + '</span>';
             }
 
-            // 2. Android version chips with counts [ A15 · 2 ] [ A14 · 1 ]
-            var osCountMap = {};
-            (m.testers || []).forEach(function (t) {
-                var rawAv = t.android_version || '';
-                var match = String(rawAv).match(/(?:android\s*)?(\d+)/i);
-                var ver = match ? match[1] : (rawAv ? String(rawAv).replace(/^Android\s*/i, '') : '');
-                if (ver) osCountMap[ver] = (osCountMap[ver] || 0) + 1;
-            });
-            if (Object.keys(osCountMap).length === 0 && Array.isArray(m.android_versions)) {
-                m.android_versions.forEach(function (v) {
-                    var match = String(v).match(/(?:android\s*)?(\d+)/i);
-                    var ver = match ? match[1] : String(v).replace(/^Android\s*/i, '');
-                    if (ver) osCountMap[ver] = (osCountMap[ver] || 0) + 1;
-                });
-            }
-            var osChipsHtml = Object.keys(osCountMap).sort(function (a, b) {
-                return (Number(b) || 0) - (Number(a) || 0);
-            }).map(function (ver) {
-                var count = osCountMap[ver];
-                var label = 'A' + ver;
-                var countText = (count > 1 || Object.keys(osCountMap).length > 1) ? ' · ' + count : '';
-                return '<span class="coverage-os-chip">' + androidIconSvg('coverage-os-chip__icon') + '<span>' + window.escapeHTML(label + countText) + '</span></span>';
-            }).join(' ');
-
-            // 3. Countries on this model
-            var countrySeen = {};
-            var modelCountries = [];
-            (m.testers || []).forEach(function (t) {
-                var c = t.country;
-                var code = String(c && c.code || '').toUpperCase();
-                if (!code || countrySeen[code]) return;
-                countrySeen[code] = true;
-                modelCountries.push(c);
-            });
-            var countryChipsHtml = modelCountries.map(function (c) {
-                var name = (lang === 'ru' ? c.name_ru : c.name) || c.code;
-                return '<span class="coverage-model-country-chip" title="' + window.escapeHTML(name) + '">' +
-                    '<span aria-hidden="true">' + (c.flag || '🌐') + '</span><span>' + window.escapeHTML(c.code || '') + '</span></span>';
-            }).join(' ');
-
-            // 4. Screen resolution
-            var detectedResolution = '';
-            for (var sIdx = 0; sIdx < (m.screenshots || []).length; sIdx++) {
-                var sItem = m.screenshots[sIdx];
-                var mediaList = sItem.media_items || [];
-                for (var medIdx = 0; medIdx < mediaList.length; medIdx++) {
-                    var w = Number(mediaList[medIdx].width || 0);
-                    var h = Number(mediaList[medIdx].height || 0);
-                    if (w > 0 && h > 0) {
-                        detectedResolution = w + '×' + h;
-                        break;
-                    }
-                }
-                if (detectedResolution) break;
-            }
-            var resolutionHtml = detectedResolution
-                ? '<span class="coverage-device-resolution" title="' + window.escapeHTML(lang === 'ru' ? 'Разрешение экрана' : 'Screen resolution') + '">📐 ' + window.escapeHTML(detectedResolution) + '</span>'
-                : '';
-
-            // 5. Defect badges
+            // Feedback and status stay in the header; device details live with
+            // each tester and screenshot below, where they belong.
             var fbBadges = [];
             if (m.bugs_count > 0) fbBadges.push('<span class="coverage-fb-badge coverage-fb-badge--bug">🐞 ' + m.bugs_count + '</span>');
             if (m.ideas_count > 0) fbBadges.push('<span class="coverage-fb-badge coverage-fb-badge--idea">💡 ' + m.ideas_count + '</span>');
@@ -1050,7 +996,7 @@
                 ? '<span class="coverage-badge-current">' + window.escapeHTML(window.t('coverageCurrentBadge', {}, lang) || 'Текущая') + '</span>'
                 : '';
 
-            // 6. Inline screenshot gallery
+            // Inline screenshot gallery
             var galleryHtml = '';
             var screenshots = m.screenshots || [];
             if (screenshots.length > 0) {
@@ -1060,28 +1006,37 @@
                     var tObj = (m.testers || []).find(function (t) { return Number(t.tester_id || 0) === Number(s.tester_id || 0); }) || ((m.testers || []).length === 1 ? m.testers[0] : {});
                     var rawAv = s.android_version || tObj.android_version || '';
                     var matchAv = String(rawAv).match(/(?:android\s*)?(\d+)/i);
-                    var osPart = matchAv ? ('A' + matchAv[1]) : (rawAv ? 'A' + String(rawAv).replace(/^Android\s*/i, '') : '');
+                    var osPart = matchAv ? matchAv[1] : String(rawAv).replace(/^Android\s*/i, '').trim();
                     var authorName = s.tester_name || tObj.username || tObj.full_name || '';
                     if (authorName && !/^@/.test(authorName)) {
                         authorName = '@' + authorName;
                     }
-                    var captionParts = [];
-                    if (s.day) captionParts.push('D' + s.day);
-                    if (osPart) captionParts.push(osPart);
-                    if (authorName) captionParts.push(authorName);
-                    var caption = captionParts.join(' · ');
+                    var dateMatch = String(s.created_at || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                    var dateLabel = dateMatch ? dateMatch[3] + '.' + dateMatch[2] : '';
+                    var firstMedia = Array.isArray(s.media_items) ? s.media_items[0] : null;
+                    var width = Number(firstMedia && firstMedia.width || 0);
+                    var height = Number(firstMedia && firstMedia.height || 0);
+                    var resolutionLabel = width > 0 && height > 0 ? width + '×' + height : '';
+                    var screenshotTitle = [dateLabel, rawAv, resolutionLabel, authorName].filter(Boolean).join(' · ');
 
                     var thumbImgHtml = '<img class="coverage-gallery-thumb__img" data-proof-id="' + proofId + '" data-media-index="0" loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
-                        '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span><span style="font-size:10px; font-weight:700; margin-top:2px;">D' + (s.day || 1) + '</span></div>';
+                        '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span></div>';
 
                     return (
-                        '<div class="coverage-gallery-item" onclick="event.stopPropagation(); openCoverageScreenshotPreview(' + proofId + ', ' + imgCount + ', event);">' +
+                        '<button type="button" class="coverage-gallery-item" onclick="event.stopPropagation(); openCoverageScreenshotPreview(' + proofId + ', ' + imgCount + ', event);" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
                             '<div class="coverage-gallery-thumb">' +
                                 thumbImgHtml +
-                                (imgCount > 1 ? '<span class="coverage-gallery-thumb__count">+' + imgCount + '</span>' : '') +
+                                (imgCount > 1 ? '<span class="coverage-gallery-thumb__count">+' + (imgCount - 1) + '</span>' : '') +
+                                (dateLabel ? '<span class="coverage-gallery-thumb__date">' + window.escapeHTML(dateLabel) + '</span>' : '') +
+                                '<span class="coverage-gallery-thumb__meta">' +
+                                    (authorName ? '<span class="coverage-gallery-thumb__author notranslate">' + window.escapeHTML(authorName) + '</span>' : '') +
+                                    ((osPart || resolutionLabel) ? '<span class="coverage-gallery-thumb__specs">' +
+                                        (osPart ? '<span>' + androidIconSvg('coverage-gallery-thumb__android') + window.escapeHTML(osPart) + '</span>' : '') +
+                                        (resolutionLabel ? '<span>' + window.escapeHTML(resolutionLabel) + '</span>' : '') +
+                                    '</span>' : '') +
+                                '</span>' +
                             '</div>' +
-                            '<div class="coverage-gallery-item__caption notranslate" title="' + window.escapeHTML(caption) + '">' + window.escapeHTML(caption) + '</div>' +
-                        '</div>'
+                        '</button>'
                     );
                 }).join('');
                 galleryHtml = '<div class="coverage-device-gallery"><div class="coverage-device-gallery-scroller">' + thumbs + '</div></div>';
@@ -1089,7 +1044,7 @@
                 galleryHtml = '<div class="coverage-device-gallery"><div class="coverage-device-gallery-empty">' + window.escapeHTML(window.t('coverageScreenshotsEmpty', {}, lang) || 'Скриншоты интерфейса ещё не загружены') + '</div></div>';
             }
 
-            // 7. Accordion Details: Testers HTML
+            // Accordion Details: Testers HTML
             var testersHtml = (m.testers || []).map(function (t) {
                 var flag = (t.country && t.country.flag) ? t.country.flag : '🌐';
                 var cName = (t.country && (lang === 'ru' ? t.country.name_ru : t.country.name)) || '';
@@ -1109,7 +1064,7 @@
                 );
             }).join('');
 
-            // 8. Accordion Details: Feedback HTML
+            // Accordion Details: Feedback HTML
             var feedbackHtml = '';
             if (m.feedback_items && m.feedback_items.length > 0) {
                 var fbRows = m.feedback_items.map(function (fb) {
@@ -1140,7 +1095,7 @@
                 );
             }
 
-            // 9. Iterations
+            // Iterations
             var iterationsHtml = '';
             if (m.iterations && m.iterations.length > 0) {
                 var itChips = m.iterations.map(function (it) {
@@ -1157,11 +1112,6 @@
                                 '<span class="coverage-device-name notranslate">' + window.escapeHTML(m.model_name) + '</span>' +
                                 stackBadgeHtml +
                                 currentBadge +
-                            '</div>' +
-                            '<div class="coverage-device-card__meta-row">' +
-                                osChipsHtml +
-                                (countryChipsHtml ? countryChipsHtml : '') +
-                                resolutionHtml +
                             '</div>' +
                         '</div>' +
                         '<div class="coverage-device-card__head-right">' +
@@ -1275,6 +1225,10 @@
                 '</div>' +
             '</div>'
         );
+        var header = container.querySelector('.coverage-header');
+        if (header && container.style) {
+            container.style.setProperty('--coverage-header-height', header.offsetHeight + 'px');
+        }
         bindCoverageScrollHeader(container);
         hydrateCoverageThumbnails(container);
     }
@@ -1305,9 +1259,8 @@
             : function (callback) { return setTimeout(callback, 0); };
         function updateHeaderState() {
             animationFrame = 0;
-            // Collapsing the sibling header can slightly adjust scrollTop. Keep the
-            // compact state until the reader actually reaches the top; otherwise
-            // the two thresholds can fight each other and make the header flicker.
+            // The header is an overlay, so toggling it does not change scroll
+            // height. Keep it hidden until the reader returns to the top.
             var top = Math.max(0, Number(scroller.scrollTop || 0));
             var shouldCompact = compact ? top > 0 : top > 18;
             if (shouldCompact === compact) return;
