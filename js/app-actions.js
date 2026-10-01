@@ -529,6 +529,8 @@ function setAccessProblemAccordionOpen(appId, isOpen) {
     if (toggle) {
         toggle.classList.toggle('is-open', !!isOpen);
         toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        var issueInline = toggle.querySelector('[data-access-issue-wait-toggle]');
+        if (issueInline) issueInline.hidden = !!isOpen;
     }
     if (typeof syncCustomGroupAccessWaitUi === 'function') {
         syncCustomGroupAccessWaitUi();
@@ -957,7 +959,8 @@ function syncCustomGroupAccessWaitUi() {
         var clock = inlineWrap.querySelector('[data-custom-group-wait-toggle-clock]');
         var panel = document.getElementById('access-problem-panel-' + appId);
         var panelOpen = !!(panel && panel.classList.contains('is-open'));
-        if (remaining <= 0 || panelOpen) {
+        var issueInline = document.querySelector('[data-access-issue-wait-toggle="' + appId + '"]');
+        if (remaining <= 0 || panelOpen || issueInline) {
             inlineWrap.hidden = true;
             return;
         }
