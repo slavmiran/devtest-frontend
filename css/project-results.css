@@ -949,54 +949,185 @@
     opacity: 0.35;
 }
 
-/* Tabs */
-.coverage-tabs {
-    display: flex;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: #14171f;
-    padding: 0 14px;
-    gap: 2px;
+/* Cockpit (Google Play Overview) */
+.coverage-cockpit {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
 }
-.coverage-tab-btn {
-    position: relative;
-    justify-content: center;
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 11px 6px;
-    background: transparent;
-    border: none;
+.coverage-android-segment-bar {
+    display: flex;
+    height: 8px;
+    width: 100%;
+    border-radius: 9999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.06);
+    margin-bottom: 9px;
+}
+.coverage-android-segment {
+    height: 100%;
+    transition: width 0.3s ease;
+    min-width: 3px;
+}
+.coverage-cockpit-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.coverage-cockpit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-color, #e5e7eb);
+    line-height: 1.2;
+}
+.coverage-cockpit-chip__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.coverage-cockpit-chip strong {
+    color: #f3f4f6;
+    font-weight: 700;
+}
+.coverage-cockpit-chip__count {
     color: var(--text-secondary, #9ca3af);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: color 0.15s ease;
+    font-size: 10px;
+}
+.coverage-cockpit-countries {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.coverage-cockpit-countries__list {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+    flex: 1;
+}
+.coverage-cockpit-countries__list::-webkit-scrollbar {
+    display: none;
+}
+.coverage-country-pill {
+    display: inline-flex;
+    align-items: center;
     gap: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #d1d5db;
+    white-space: nowrap;
 }
-.coverage-tab-btn.is-active {
-    color: var(--accent-color, #38bdf8);
+.coverage-country-flag {
+    font-size: 14px;
 }
-.coverage-tab-btn.is-active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 8px;
-    right: 8px;
-    height: 2px;
-    background: var(--accent-color, #38bdf8);
-    border-radius: 2px;
+.coverage-country-sep {
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 10px;
 }
-.coverage-tab-badge {
-    padding: 1px 6px;
-    border-radius: 10px;
-    font-size: 10.5px;
-    font-weight: 700;
-    background: rgba(255, 255, 255, 0.08);
-    color: inherit;
+.coverage-cockpit-countries__badge {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    color: #38bdf8;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
 }
-.coverage-tab-btn.is-active .coverage-tab-badge {
+
+/* Adaptive Brand Filter */
+.coverage-brand-filter-wrapper {
+    position: relative;
+    margin-bottom: 14px;
+    border-radius: 12px;
+}
+.coverage-brand-filter-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(var(--brand-filter-rows, 1), 32px);
+    grid-auto-columns: max-content;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-right: 42px;
+    transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: calc(var(--brand-filter-rows, 1) * 32px + (var(--brand-filter-rows, 1) - 1) * 6px + 4px);
+}
+.coverage-brand-filter-track::-webkit-scrollbar {
+    display: none;
+}
+.coverage-brand-chip {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary, #9ca3af);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    box-sizing: border-box;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.coverage-brand-chip:active {
+    transform: scale(0.96);
+}
+.coverage-brand-chip.is-active {
     background: rgba(56, 189, 248, 0.18);
+    border-color: rgba(56, 189, 248, 0.45);
+    color: #38bdf8;
+    box-shadow: 0 1px 4px rgba(56, 189, 248, 0.15);
+}
+.coverage-brand-chip__count {
+    font-size: 10.5px;
+    opacity: 0.75;
+    font-weight: 500;
+}
+.brand-filter-expand-btn {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #1a1e28;
+    color: var(--text-color, #e5e7eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: -8px 0 12px #14171f;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.brand-filter-expand-btn:active {
+    transform: scale(0.94);
+    background: rgba(255, 255, 255, 0.15);
+}
+.brand-filter-expand-btn.is-expanded {
+    background: rgba(56, 189, 248, 0.16);
+    border-color: rgba(56, 189, 248, 0.35);
     color: #38bdf8;
 }
 
@@ -1196,43 +1327,72 @@
     gap: 12px;
 }
 
-.coverage-model-card {
+.coverage-model-card,
+.coverage-device-card {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(148, 168, 195, .09);
     border-radius: 15px;
     overflow: hidden;
+    margin-bottom: 12px;
     transition: border-color 0.15s ease, background 0.15s ease;
 }
-.coverage-model-card.is-expanded {
+.coverage-model-card.is-expanded,
+.coverage-device-card.is-expanded {
     border-color: rgba(56, 189, 248, 0.35);
     background: rgba(255, 255, 255, 0.045);
 }
+.coverage-device-card.is-brand-hidden {
+    display: none !important;
+}
 
-.coverage-model-card__head {
-    min-height: 72px;
-    padding: 14px 15px;
+.coverage-model-card__head,
+.coverage-device-card__head {
+    min-height: 58px;
+    padding: 13px 15px 10px;
     cursor: pointer;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
     user-select: none;
 }
-.coverage-model-card__head-left {
+.coverage-model-card__head-left,
+.coverage-device-card__head-left {
     min-width: 0;
     flex: 1;
 }
-.coverage-model-card__name-row {
+.coverage-model-card__name-row,
+.coverage-device-card__title-row {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 8px;
+    margin-bottom: 7px;
 }
-.coverage-model-card__name {
+.coverage-model-card__name,
+.coverage-device-name {
     font-size: 15px;
     font-weight: 700;
     color: var(--text-color, #f3f4f6);
+    line-height: 1.25;
+}
+.coverage-device-stack-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    line-height: 1.2;
+}
+.coverage-device-stack-badge--single {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary, #9ca3af);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 .coverage-badge-current {
     font-size: 10px;
@@ -1313,8 +1473,22 @@
     padding: 1px 6px;
     border-radius: 6px;
 }
+.coverage-device-resolution {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-variant-numeric: tabular-nums;
+}
 
-.coverage-model-card__head-right {
+.coverage-model-card__head-right,
+.coverage-device-card__head-right {
     display: flex;
     align-items: center;
     gap: 7px;
@@ -1364,19 +1538,28 @@
     opacity: 0.5;
     transition: transform 0.2s ease;
 }
-.coverage-model-card.is-expanded .coverage-model-card__chevron {
+.coverage-model-card.is-expanded .coverage-model-card__chevron,
+.coverage-device-card.is-expanded .coverage-model-card__chevron {
     transform: rotate(180deg);
     opacity: 0.9;
 }
 
 /* Accordion Expanded Details */
-.coverage-model-card__details {
+.coverage-model-card__details,
+.coverage-device-card__details {
     display: none;
-    padding: 2px 16px 16px;
+    padding: 4px 16px 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
-.coverage-model-card.is-expanded .coverage-model-card__details {
+.coverage-model-card.is-expanded .coverage-model-card__details,
+.coverage-device-card.is-expanded .coverage-device-card__details {
     display: block;
+}
+.coverage-fb-empty-note {
+    font-size: 11.5px;
+    color: var(--text-secondary, #9ca3af);
+    font-style: italic;
+    padding: 4px 0 6px;
 }
 
 .coverage-section-title {
@@ -1461,6 +1644,58 @@
 .coverage-model-iterations > span:first-child {
     color: #78879a;
     font-size: 10.5px;
+}
+
+/* Inline Device Screenshot Gallery */
+.coverage-device-gallery {
+    padding: 0 15px 12px;
+}
+.coverage-device-gallery-scroller {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+}
+.coverage-device-gallery-scroller::-webkit-scrollbar {
+    display: none;
+}
+.coverage-gallery-item {
+    flex-shrink: 0;
+    width: 78px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.coverage-gallery-item .coverage-gallery-thumb {
+    width: 100%;
+    aspect-ratio: 9/16;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.coverage-gallery-item:active .coverage-gallery-thumb {
+    transform: scale(0.96);
+    border-color: #38bdf8;
+}
+.coverage-gallery-item__caption {
+    font-size: 9.5px;
+    color: var(--text-secondary, #9ca3af);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+.coverage-device-gallery-empty {
+    font-size: 11.5px;
+    color: var(--text-secondary, #9ca3af);
+    font-style: italic;
+    padding: 2px 0 6px;
 }
 
 /* Screenshots Gallery */
@@ -1707,29 +1942,27 @@
     .coverage-header {
         padding-inline: 12px;
     }
-    .coverage-tabs {
-        padding-inline: 8px;
-    }
-    .coverage-tab-btn {
-        gap: 4px;
-        padding-inline: 4px;
-        font-size: 11.5px;
-    }
-    .coverage-tab-badge {
-        padding-inline: 5px;
-        font-size: 9.5px;
-    }
     .coverage-body {
         padding: 12px 12px max(28px, env(safe-area-inset-bottom));
     }
-    .coverage-focus-bar {
-        padding: 10px;
+    .coverage-cockpit {
+        padding: 10px 11px;
     }
-    .coverage-model-card__head {
-        padding: 13px 12px;
+    .coverage-device-card__head {
+        padding: 11px 12px 8px;
         gap: 7px;
     }
-    .coverage-model-card__head-right {
+    .coverage-device-gallery {
+        padding: 0 12px 10px;
+    }
+    .coverage-device-card__details {
+        padding-inline: 12px;
+    }
+    .coverage-gallery-item {
+        width: 72px;
+    }
+    .coverage-model-card__head-right,
+    .coverage-device-card__head-right {
         gap: 5px;
     }
     .coverage-model-feedback-badges {
@@ -1742,9 +1975,6 @@
         padding-inline: 4px;
         font-size: 9.5px;
     }
-    .coverage-model-card__details {
-        padding-inline: 12px;
-    }
     .coverage-tester-row {
         align-items: flex-start;
         gap: 8px;
@@ -1752,9 +1982,6 @@
     .coverage-tester-row__right {
         align-items: flex-end;
         flex-direction: column;
-    }
-    .coverage-gallery-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

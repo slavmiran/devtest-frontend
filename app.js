@@ -46,6 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        function _resumeMassInviteSafely() {
+            if (typeof resumeMassInviteIfNeeded === 'function') {
+                resumeMassInviteIfNeeded().catch(function () {});
+            }
+        }
+
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 if (typeof window.rememberTestsScrollForResume === 'function') {
@@ -53,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 return;
             }
+            _resumeMassInviteSafely();
             if (_pendingScreenshotReminderUsername !== null) {
                 const username = _pendingScreenshotReminderUsername;
                 _pendingScreenshotReminderUsername = null;
@@ -92,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         window.addEventListener('focus', function() {
+            _resumeMassInviteSafely();
             _syncActiveTimerState();
             var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
             if (hasPendingFeedback && typeof revealAllFeedbackPendingHints === 'function') {
@@ -116,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         window.addEventListener('pageshow', function() {
+            _resumeMassInviteSafely();
             _syncActiveTimerState();
             if (typeof hasPendingFeedbackCheckins === 'function'
                 && hasPendingFeedbackCheckins()
@@ -152,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             var webApp = (window.Telegram && window.Telegram.WebApp) || window.tg;
             if (webApp && typeof webApp.onEvent === 'function') {
                 webApp.onEvent('activated', function() {
+                    _resumeMassInviteSafely();
                     if (typeof hasPendingFeedbackCheckins === 'function'
                         && hasPendingFeedbackCheckins()
                         && typeof revealAllFeedbackPendingHints === 'function') {
@@ -203,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try { scheduleDeferredBootstrap(); } catch (e) { console.error('Bootstrap deferred error:', e); }
         console.log('[DEBUG] bootstrap: all fire-and-forget launched, calling _handleInitialRoute');
         await _handleInitialRoute();
+        _resumeMassInviteSafely();
         if (typeof initBrowserBackFallback === 'function') {
             initBrowserBackFallback();
         }
@@ -398,6 +409,7 @@ Object.assign(window, {
     setProjectTargetLang,
     getApiErrorMessage,
     startMassInvite,
+    resumeMassInviteIfNeeded,
     resetMassInviteCooldown,
     getReliabilityState,
     rerenderDynamicUi,
@@ -478,6 +490,7 @@ Object.assign(window.App, {
     generateProjectTransferLink,
     publishProjectToMarket,
     startMassInvite,
+    resumeMassInviteIfNeeded,
     resetMassInviteCooldown,
     loadExternalCounts,
     getExternalCounts,

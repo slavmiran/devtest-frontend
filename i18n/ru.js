@@ -395,6 +395,7 @@
             massInviteUnavailableBtn: "Рассылка недоступна",
             massInviteUnavailableNote: "Рассылка доступна только для активных взаимных или комбо-проектов со свободными слотами.",
             massInviteUnavailable: "Рассылка сейчас недоступна для этого проекта.",
+            massInviteInProgress: "Массовая рассылка ещё идёт. Дождитесь завершения.",
             massInviteSafetyBufferAlert: "Проект находится в буфере безопасности, пользователи продолжают держать приложение установленным, но обязательное тестирование по проекту остановлено",
             massInviteSetupIncompleteAlert: "Настройка не завершена. Для активации массовой рассылки вам необходимо подтвердить настройку Google-группы (отметить все 3 галочки) или указать ссылку на вашу персональную группу и сохранить изменения.",
             massInviteSetupIncompleteTitle: "Настройка не завершена",
@@ -3837,6 +3838,19 @@
             coverageEmptyDesc: "Данные об устройствах, версиях ОС и странах появятся автоматически, как только тестеры начнут чекины и загрузку скриншотов.",
             coverageLoadError: "Не удалось загрузить данные покрытия",
             coverageRetry: "Повторить",
+            coverageDevicesScreensTitle: "Устройства и экраны",
+            coverageScopeCurrentRun: "Текущий запуск (Запуск #{run})",
+            coverageBrandAll: "Все",
+            coverageTesterSingle: "1 тестер",
+            coverageTestersFew: "{count} тестера",
+            coverageTestersMany: "{count} тестеров",
+            coverageBrandFilterExpand: "Развернуть фильтр брендов",
+            coverageBrandFilterCollapse: "Свернуть фильтр брендов",
+            coverageNoIssuesOnDevice: "Замечаний на этой модели не зафиксировано",
+            coverageCockpitTitle: "Сводка Google Play",
+            coverageCountriesBadgeOne: "1 страна",
+            coverageCountriesBadgeFew: "{count} страны",
+            coverageCountriesBadgeMany: "{count} стран",
     };
     window.I18N_RU = window.I18NRU;
 })();

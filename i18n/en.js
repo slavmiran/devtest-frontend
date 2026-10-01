@@ -396,6 +396,7 @@
             massInviteUnavailableBtn: "Invite unavailable",
             massInviteUnavailableNote: "Mass Invite is available only for active mutual or combo projects with open slots.",
             massInviteUnavailable: "Mass Invite is unavailable for this project right now.",
+            massInviteInProgress: "Mass invite is still running. Wait until it finishes.",
             massInviteSafetyBufferAlert: "The project is in the Safety Buffer. Users should keep the app installed, but required testing for this project has stopped.",
             massInviteSetupIncompleteAlert: "Setup is incomplete. To activate mass invites, you must confirm Google Group setup (check all 3 boxes) or specify a link to your personal group and save the project.",
             massInviteSetupIncompleteTitle: "Setup Incomplete",
@@ -3831,6 +3832,19 @@
             coverageEmptyDesc: "Device models, OS versions, and countries will appear automatically as testers check in and upload screenshot proofs.",
             coverageLoadError: "Failed to load project coverage data",
             coverageRetry: "Retry",
+            coverageDevicesScreensTitle: "Devices & Screens",
+            coverageScopeCurrentRun: "Current Run (Run #{run})",
+            coverageBrandAll: "All",
+            coverageTesterSingle: "1 tester",
+            coverageTestersFew: "{count} testers",
+            coverageTestersMany: "{count} testers",
+            coverageBrandFilterExpand: "Expand brand filter",
+            coverageBrandFilterCollapse: "Collapse brand filter",
+            coverageNoIssuesOnDevice: "No issues reported on this model",
+            coverageCockpitTitle: "Google Play Summary",
+            coverageCountriesBadgeOne: "1 country",
+            coverageCountriesBadgeFew: "{count} countries",
+            coverageCountriesBadgeMany: "{count} countries",
     };
     window.I18N_EN = window.I18NEN;
 })();

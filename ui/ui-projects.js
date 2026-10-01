@@ -3983,7 +3983,9 @@ function getProjectMassInviteMeta(project) {
     var limitMutual = Math.max(0, Number(project && project.limit_mutual || 0));
     var neededSlots = Math.max(0, limitMutual - activeMutualTesters);
     var maxRecipients = neededSlots > 0 ? neededSlots * 2 : 0;
-    var parsedLastInvite = Date.parse(project && project.last_mass_invite_at ? project.last_mass_invite_at : '');
+    var parsedLastInvite = (typeof _parseMassInviteTimestamp === 'function')
+        ? _parseMassInviteTimestamp(project && project.last_mass_invite_at)
+        : Date.parse(project && project.last_mass_invite_at ? project.last_mass_invite_at : '');
     var remainingMs = Number.isFinite(parsedLastInvite)
         ? Math.max(0, (parsedLastInvite + 24 * 60 * 60 * 1000) - Date.now())
         : 0;
@@ -9046,6 +9048,9 @@ function openMassInviteModal(projectId) {
     
     renderMassInviteModalContent();
     modal.classList.add('active');
+    if (typeof resumeMassInviteIfNeeded === 'function') {
+        resumeMassInviteIfNeeded().catch(function () {});
+    }
 
     // Refresh offer statuses from server, then re-render once.
     refreshMassInviteSessionQuietly(projectId).then(function() {

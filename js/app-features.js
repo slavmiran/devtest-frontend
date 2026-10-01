@@ -2730,6 +2730,58 @@ var MassInviteProgressOverlay = (function () {
         return ok;
     }
 
+    function applyRunSnapshot(snapshot, options) {
+        var snap = snapshot || {};
+        var opts = options || {};
+        var currentLang = opts.lang || lang;
+        var candidates = snap.candidates || [];
+        var total = Number(snap.total || candidates.length || 0);
+        var current = Number(snap.current || 0);
+        var sentCount = Number(snap.sent_count || 0);
+        var runStatus = String(snap.run_status || '');
+        _sourceAppId = Number(snap.app_id || opts.sourceAppId || _sourceAppId || 0);
+        _sendTotal = total;
+        _sendCurrent = current;
+        _successCount = sentCount;
+
+        if (candidates.length) {
+            var strip = document.getElementById('mi-candidates-strip');
+            var mounted = strip && strip.querySelectorAll('.mi-candidate-card').length;
+            if (!mounted) {
+                setCandidates(candidates, _sourceAppId, { lang: currentLang, interactive: false });
+            }
+            candidates.forEach(function (item) {
+                var status = String(item.ui_status || 'selected');
+                if (status === 'pending') status = 'sent';
+                if (status === 'skipped' || status === 'failed') status = 'error';
+                setCandidateStatus(item.owner_id, status, {
+                    offer_id: item.offer_id,
+                    outcome: item.outcome,
+                    created_at: item.created_at,
+                    successCount: sentCount,
+                    total: total,
+                    current: current,
+                });
+            });
+        }
+
+        if (runStatus === 'empty' || (runStatus === 'done' && total <= 0 && sentCount <= 0)) {
+            return;
+        }
+        if (runStatus === 'done') {
+            _done = true;
+            updateHud('done', {
+                successCount: sentCount,
+                total: total,
+                lang: currentLang,
+            });
+            return;
+        }
+        if (runStatus === 'running' || current > 0) {
+            updateProgress(Math.max(1, current), Math.max(1, total), currentLang);
+        }
+    }
+
     function enableCandidateInteraction(enabled) {
         var strip = document.getElementById('mi-candidates-strip');
         var overlay = document.getElementById('mass-invite-progress-overlay');
@@ -2746,6 +2798,7 @@ var MassInviteProgressOverlay = (function () {
         showFinalState: showFinalState,
         setCandidates: setCandidates,
         setCandidateStatus: setCandidateStatus,
+        applyRunSnapshot: applyRunSnapshot,
         clearCandidates: clearCandidates,
         enableCandidateInteraction: enableCandidateInteraction,
         finishAndReturn: finishAndReturn,
@@ -2759,6 +2812,191 @@ var MassInviteProgressOverlay = (function () {
         updateHud: updateHud,
     };
 }());
+
+var _massInvitePollers = {};
+
+function _massInviteActiveStorageKey() {
+    return 'mi_active_run_v1_' + String(typeof userId !== 'undefined' ? userId : 0);
+}
+
+function _readActiveMassInviteAppIds() {
+    try {
+        var raw = localStorage.getItem(_massInviteActiveStorageKey());
+        var parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.map(Number).filter(Boolean) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function _writeActiveMassInviteAppIds(ids) {
+    try {
+        localStorage.setItem(_massInviteActiveStorageKey(), JSON.stringify(ids || []));
+    } catch (e) { /* ignore */ }
+}
+
+function _trackActiveMassInviteRun(appId, isActive) {
+    var id = Number(appId || 0);
+    if (!id) return;
+    var ids = _readActiveMassInviteAppIds();
+    var has = ids.indexOf(id) !== -1;
+    if (isActive && !has) ids.push(id);
+    if (!isActive && has) ids = ids.filter(function (item) { return item !== id; });
+    _writeActiveMassInviteAppIds(ids);
+}
+
+function _parseMassInviteTimestamp(value) {
+    if (value == null || value === '') return NaN;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+    if (value instanceof Date) return value.getTime();
+    var raw = String(value).trim();
+    if (!raw) return NaN;
+    if (/^\d+$/.test(raw)) {
+        var numeric = Number(raw);
+        return Number.isFinite(numeric) ? numeric : NaN;
+    }
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(raw) && !/[zZ]|[+\-]\d{2}:?\d{2}$/.test(raw)) {
+        raw = raw.replace(' ', 'T') + 'Z';
+    }
+    return Date.parse(raw);
+}
+
+async function _fetchMassInviteRunStatus(projectId) {
+    var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(withInitData({ owner_id: Number(userId) }))
+    });
+    var data = await response.json();
+    if (!response.ok || data.status !== 'success') {
+        throw new Error(getBackendErrorCode(data) || 'database_error');
+    }
+    return data;
+}
+
+function _applyMassInviteRunSnapshot(projectId, snapshot, options) {
+    var snap = snapshot || {};
+    var opts = options || {};
+    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.applyRunSnapshot) {
+        MassInviteProgressOverlay.applyRunSnapshot(snap, {
+            lang: opts.lang || lang,
+            sourceAppId: projectId,
+        });
+    }
+    if (typeof MassInviteSession !== 'undefined' && Array.isArray(snap.candidates)) {
+        snap.candidates.forEach(function (item) {
+            var status = String(item.ui_status || '');
+            if (status === 'sending') {
+                MassInviteSession.markSending(projectId, item.owner_id);
+            } else if (status === 'sent' || status === 'accepted' || status === 'pending') {
+                MassInviteSession.markSent(projectId, item.owner_id, {
+                    offer_id: item.offer_id,
+                    outcome: item.outcome || (status === 'accepted' ? 'auto_accepted' : 'pending'),
+                    created_at: item.created_at,
+                });
+            } else if (status === 'access_issue' && MassInviteSession.markAccessIssue) {
+                MassInviteSession.markAccessIssue(projectId, item.owner_id, item.code || 'access_issue');
+            } else if (status === 'error' || status === 'skipped' || status === 'failed') {
+                MassInviteSession.markFailed(projectId, item.owner_id, item.code || 'error');
+            }
+        });
+    }
+    if (snap.last_mass_invite_at) {
+        var project = (typeof myProjects !== 'undefined' && myProjects)
+            ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
+            : null;
+        if (project) {
+            project.last_mass_invite_at = snap.last_mass_invite_at;
+            project.last_mass_invite_sent_count = Number(snap.sent_count || project.last_mass_invite_sent_count || 0);
+        }
+    }
+}
+
+async function _pollMassInviteUntilDone(projectId, options) {
+    var id = Number(projectId || 0);
+    if (!id) return null;
+    if (_massInvitePollers[id]) return _massInvitePollers[id];
+
+    _massInvitePollers[id] = (async function () {
+        var idleTries = 0;
+        try {
+            while (true) {
+                var snap = null;
+                try {
+                    snap = await _fetchMassInviteRunStatus(id);
+                    idleTries = 0;
+                } catch (err) {
+                    idleTries += 1;
+                    if (idleTries > 8) throw err;
+                    await new Promise(function (resolve) { setTimeout(resolve, document.hidden ? 2500 : 1200); });
+                    continue;
+                }
+
+                var runStatus = String((snap && snap.run_status) || 'idle');
+                if (runStatus === 'idle') {
+                    idleTries += 1;
+                    if (idleTries >= 3) return snap;
+                } else {
+                    _applyMassInviteRunSnapshot(id, snap, options);
+                    if (runStatus === 'done' || runStatus === 'empty') return snap;
+                }
+                await new Promise(function (resolve) { setTimeout(resolve, document.hidden ? 2200 : 700); });
+            }
+        } finally {
+            delete _massInvitePollers[id];
+        }
+    })();
+    return _massInvitePollers[id];
+}
+
+function _finishMassInviteFromSnapshot(projectId, snapshot) {
+    var snap = snapshot || {};
+    var successCount = Number(snap.sent_count || 0);
+    var failedCount = Number(snap.failed_count || 0) + Number(snap.skipped_count || 0);
+    var runStatus = String(snap.run_status || '');
+    _trackActiveMassInviteRun(projectId, false);
+
+    if (typeof MassInviteSession !== 'undefined' && successCount > 0) {
+        MassInviteSession.finalize(projectId, {
+            sent_at: snap.last_mass_invite_at || new Date().toISOString(),
+            sent_count: successCount,
+        });
+    }
+
+    var project = (typeof myProjects !== 'undefined' && myProjects)
+        ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
+        : null;
+    if (project && successCount > 0) {
+        project.last_mass_invite_at = snap.last_mass_invite_at || project.last_mass_invite_at || new Date().toISOString();
+        project.last_mass_invite_sent_count = successCount;
+    }
+
+    if (runStatus === 'empty' || (successCount <= 0 && Number(snap.total || 0) <= 0)) {
+        var noCandidatesText = (window.t ? window.t('massInviteNoCandidates', {}, lang) : 'No candidates found');
+        MassInviteProgressOverlay.showFinalState(noCandidatesText, lang, {
+            empty: true,
+            sentCount: 0,
+            failedCount: 0,
+            sourceAppId: projectId,
+        });
+        return;
+    }
+
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    var finalStatusText = window.t
+        ? window.t('massInviteLaunchSuccess', { count: successCount }, lang)
+        : ('Sent: ' + successCount);
+    if (failedCount > 0 && window.t) {
+        finalStatusText += ' · ' + window.t('massInviteResultFailedMeta', { count: failedCount }, lang);
+    }
+    MassInviteProgressOverlay.showFinalState(finalStatusText, lang, {
+        sentCount: successCount,
+        failedCount: failedCount,
+        empty: successCount <= 0,
+        autoReturn: true,
+        sourceAppId: projectId,
+    });
+}
 
 async function startMassInvite(projectId) {
     if (!projectId) return null;
@@ -2789,7 +3027,14 @@ async function startMassInvite(projectId) {
     }
 
     var actionKey = 'mass_invite_start_' + projectId;
-    if (_pendingActions.has(actionKey)) return null;
+    if (_pendingActions.has(actionKey) || _massInvitePollers[Number(projectId)]) {
+        MassInviteProgressOverlay.show(lang);
+        if (MassInviteProgressOverlay.minimize) MassInviteProgressOverlay.minimize();
+        _pollMassInviteUntilDone(projectId).then(function (snap) {
+            if (snap) _finishMassInviteFromSnapshot(projectId, snap);
+        }).catch(function () {});
+        return null;
+    }
     _pendingActions.add(actionKey);
 
     var btn = document.getElementById('mass-invite-btn');
@@ -2803,205 +3048,47 @@ async function startMassInvite(projectId) {
     var shouldKeepOverlay = false;
     _apiStart();
     try {
-        var planResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/plan`, {
+        var startResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(withInitData({ owner_id: Number(userId) }))
         });
-        var planData = await planResponse.json();
-        if (!planResponse.ok || planData.status !== 'success') {
-            handleApiError(getBackendErrorCode(planData), planData && planData.details ? planData.details : {});
+        var startData = await startResponse.json();
+        if (!startResponse.ok || startData.status !== 'success') {
+            handleApiError(getBackendErrorCode(startData), startData && startData.details ? startData.details : {});
             return null;
         }
 
         shouldKeepOverlay = true;
-
-        var candidates = planData.candidates || [];
-        var totalCount = candidates.length;
+        var candidates = startData.candidates || [];
+        var runStatus = String(startData.run_status || '');
 
         if (typeof MassInviteSession !== 'undefined') {
             MassInviteSession.createFromPlan(projectId, candidates, {
-                run_iteration: Number(planData.run_iteration || 1),
+                run_iteration: Number(startData.run_iteration || 1),
             });
         }
 
-        if (totalCount === 0) {
-            var noCandidatesText = (window.t ? window.t('massInviteNoCandidates', {}, lang) : 'No candidates found');
-            MassInviteProgressOverlay.showFinalState(noCandidatesText, lang, { empty: true, sentCount: 0, failedCount: 0, sourceAppId: projectId });
+        if (runStatus === 'empty' || candidates.length === 0) {
+            _trackActiveMassInviteRun(projectId, false);
+            _finishMassInviteFromSnapshot(projectId, startData);
             await loadProjects(true);
-            return planData;
+            return startData;
         }
 
+        _trackActiveMassInviteRun(projectId, true);
         if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidates) {
             MassInviteProgressOverlay.setCandidates(candidates, projectId, { interactive: false, lang: lang });
         }
         if (typeof MassInviteProgressOverlay.setPhase === 'function') {
             MassInviteProgressOverlay.setPhase('sending', lang);
         }
+        _applyMassInviteRunSnapshot(projectId, startData);
 
-        var successCount = 0;
-        var failedCount = 0;
+        var snap = await _pollMassInviteUntilDone(projectId);
+        _finishMassInviteFromSnapshot(projectId, snap || startData);
 
-        for (var i = 0; i < totalCount; i++) {
-            var candidate = candidates[i];
-            MassInviteProgressOverlay.updateProgress(i + 1, totalCount, lang);
-            if (typeof MassInviteSession !== 'undefined') {
-                MassInviteSession.markSending(projectId, candidate.owner_id);
-            }
-            if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'sending');
-            }
-            await new Promise(function(resolve) { setTimeout(resolve, 150); });
-
-            try {
-                var sendResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/send_one`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(withInitData({
-                        owner_id: Number(userId),
-                        target_app_id: Number(candidate.app_id),
-                        target_owner_id: Number(candidate.owner_id)
-                    }))
-                });
-                var sendData = await sendResponse.json();
-                if (sendResponse.ok && sendData.status === 'success' && sendData.sent) {
-                    successCount++;
-                    var sentMeta = {
-                        offer_id: sendData.offer_id,
-                        outcome: sendData.outcome || 'pending',
-                        created_at: new Date().toISOString(),
-                        successCount: successCount,
-                        total: totalCount,
-                        current: i + 1,
-                    };
-                    if (typeof MassInviteSession !== 'undefined') {
-                        MassInviteSession.markSent(projectId, candidate.owner_id, sentMeta);
-                    }
-                    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                        if (sendData.outcome === 'auto_accepted') {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'accepted', sentMeta);
-                            if (MassInviteProgressOverlay.updateHud) {
-                                MassInviteProgressOverlay.updateHud('delivered', {
-                                    successCount: successCount,
-                                    total: totalCount,
-                                    current: i + 1,
-                                });
-                            }
-                        } else if (MassInviteProgressOverlay.playDeliveredBeat) {
-                            await MassInviteProgressOverlay.playDeliveredBeat(candidate.owner_id, sentMeta);
-                        } else {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'delivered', sentMeta);
-                            await new Promise(function (resolve) { setTimeout(resolve, 700); });
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'sent', sentMeta);
-                        }
-                    }
-                } else {
-                    var skipCode = String((sendData && sendData.code) || (sendData && sendData.outcome) || '');
-                    var isAccessIssue = skipCode === 'owner_has_access_issue'
-                        || skipCode === 'target_owner_has_access_issue'
-                        || skipCode === 'access_issue'
-                        || (sendData && sendData.outcome === 'access_issue');
-                    var isSlotCap = skipCode === 'mutual_limit_reached'
-                        || skipCode === 'source_mutual_limit_reached';
-                    if (isAccessIssue || isSlotCap) {
-                        // Soft skip: warn in UI, keep blast running unless the source is already full.
-                        if (typeof MassInviteSession !== 'undefined') {
-                            if (MassInviteSession.markAccessIssue && isAccessIssue) {
-                                MassInviteSession.markAccessIssue(projectId, candidate.owner_id, skipCode || 'access_issue');
-                            } else {
-                                MassInviteSession.markFailed(projectId, candidate.owner_id, skipCode || 'skipped');
-                            }
-                        }
-                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, isAccessIssue ? 'access_issue' : 'error');
-                        }
-                        if (skipCode === 'source_mutual_limit_reached') {
-                            for (var rest = i + 1; rest < totalCount; rest++) {
-                                var restOwnerId = candidates[rest] && candidates[rest].owner_id;
-                                if (!restOwnerId) continue;
-                                if (typeof MassInviteSession !== 'undefined' && MassInviteSession.markFailed) {
-                                    MassInviteSession.markFailed(projectId, restOwnerId, 'source_mutual_limit_reached');
-                                }
-                                if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                                    MassInviteProgressOverlay.setCandidateStatus(restOwnerId, 'error');
-                                }
-                            }
-                            break;
-                        }
-                    } else {
-                        failedCount++;
-                        if (typeof MassInviteSession !== 'undefined') {
-                            MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
-                        }
-                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error('Failed sending single mass invite:', err);
-                failedCount++;
-                if (typeof MassInviteSession !== 'undefined') {
-                    MassInviteSession.markFailed(projectId, candidate.owner_id, 'network_error');
-                }
-                if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                    MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
-                }
-            }
-        }
-
-        var lastMassInviteAt = null;
-
-        if (successCount > 0) {
-            try {
-                var finResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/finalize`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(withInitData({
-                        owner_id: Number(userId),
-                        sent_count: Number(successCount)
-                    }))
-                });
-                var finData = await finResponse.json();
-                if (finResponse.ok && finData.status === 'success') {
-                    lastMassInviteAt = finData.last_mass_invite_at;
-                }
-            } catch (err) {
-                console.error('Failed finalising mass invite stats:', err);
-            }
-            if (typeof MassInviteSession !== 'undefined') {
-                MassInviteSession.finalize(projectId, {
-                    sent_at: lastMassInviteAt || new Date().toISOString(),
-                    sent_count: successCount
-                });
-            }
-        }
-
-        var project = (myProjects || []).find(function(item) {
-            return Number(item.id) === Number(projectId);
-        });
-        if (project && successCount > 0) {
-            project.last_mass_invite_at = lastMassInviteAt || new Date().toISOString();
-            project.last_mass_invite_sent_count = successCount;
-        }
-
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
-        var finalStatusText = window.t
-            ? window.t('massInviteLaunchSuccess', { count: successCount }, lang)
-            : ('Sent: ' + successCount);
-        if (failedCount > 0 && window.t) {
-            finalStatusText += ' · ' + window.t('massInviteResultFailedMeta', { count: failedCount }, lang);
-        }
-        MassInviteProgressOverlay.showFinalState(finalStatusText, lang, {
-            sentCount: successCount,
-            failedCount: failedCount,
-            empty: successCount <= 0,
-            autoReturn: true,
-            sourceAppId: projectId
-        });
-
-        if (successCount > 0) {
+        if (Number((snap && snap.sent_count) || startData.sent_count || 0) > 0) {
             renderProjects(true);
             refreshOpenModals();
             await loadProjects(true, true);
@@ -3013,12 +3100,14 @@ async function startMassInvite(projectId) {
 
         return {
             status: 'success',
-            sent_count: successCount,
-            failed_count: failedCount
+            sent_count: Number((snap && snap.sent_count) || 0),
+            failed_count: Number((snap && snap.failed_count) || 0)
         };
     } catch (error) {
         console.error('Mass invite launch error:', error);
-        handleApiError('network_error');
+        if (!shouldKeepOverlay) {
+            handleApiError('network_error');
+        }
         return null;
     } finally {
         if (!shouldKeepOverlay) {
@@ -3031,6 +3120,49 @@ async function startMassInvite(projectId) {
         }
         _apiEnd();
         _pendingActions.delete(actionKey);
+    }
+}
+
+var _massInviteResumeInFlight = false;
+
+async function resumeMassInviteIfNeeded(options) {
+    if (_massInviteResumeInFlight) return;
+    var opts = options || {};
+    var ids = _readActiveMassInviteAppIds();
+    if (!ids.length) return;
+    _massInviteResumeInFlight = true;
+    try {
+    for (var i = 0; i < ids.length; i++) {
+        var projectId = ids[i];
+        try {
+            var snap = await _fetchMassInviteRunStatus(projectId);
+            var runStatus = String((snap && snap.run_status) || 'idle');
+            if (runStatus === 'idle') {
+                _trackActiveMassInviteRun(projectId, false);
+                continue;
+            }
+            MassInviteProgressOverlay.show(lang);
+            if (typeof MassInviteProgressOverlay.setCandidates === 'function') {
+                MassInviteProgressOverlay.setCandidates(snap.candidates || [], projectId, { interactive: false, lang: lang });
+            }
+            _applyMassInviteRunSnapshot(projectId, snap, opts);
+            if (runStatus === 'running' && MassInviteProgressOverlay.minimize) {
+                MassInviteProgressOverlay.minimize();
+            }
+            if (runStatus === 'done' || runStatus === 'empty') {
+                _finishMassInviteFromSnapshot(projectId, snap);
+                continue;
+            }
+            _pollMassInviteUntilDone(projectId, opts).then(function (doneSnap) {
+                if (doneSnap) _finishMassInviteFromSnapshot(projectId, doneSnap);
+                loadProjects(true, true).catch(function () {});
+            }).catch(function () {});
+        } catch (e) {
+            console.warn('Mass invite resume failed', e);
+        }
+    }
+    } finally {
+        _massInviteResumeInFlight = false;
     }
 }
 
