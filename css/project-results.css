@@ -462,6 +462,7 @@
 .pc-results-tile__glyph {
     width: 14px;
     height: 14px;
+    overflow: visible;
 }
 
 .pc-results-tile__val {
@@ -715,6 +716,7 @@
     background: #14171f;
     width: 100%;
     box-sizing: border-box;
+    transition: padding .22s ease, background .22s ease;
 }
 .coverage-header__top {
     display: flex;
@@ -722,6 +724,9 @@
     justify-content: space-between;
     gap: 10px;
     margin-bottom: 12px;
+    max-height: 48px;
+    overflow: hidden;
+    transition: margin .22s ease, opacity .18s ease, max-height .22s ease;
 }
 .coverage-header__brand {
     display: flex;
@@ -812,6 +817,9 @@
     padding: 3px;
     gap: 3px;
     margin-bottom: 10px;
+    max-height: 38px;
+    overflow: hidden;
+    transition: margin .22s ease, opacity .18s ease, max-height .22s ease, padding .22s ease;
 }
 .coverage-scope-btn {
     flex: 1;
@@ -844,6 +852,27 @@
     background: rgba(255, 255, 255, 0.03);
     border-radius: 8px;
     white-space: nowrap;
+    transition: min-height .22s ease, padding .22s ease, background .22s ease;
+}
+
+#project-coverage-body.is-header-compact .coverage-header {
+    padding-top: max(5px, env(safe-area-inset-top));
+    padding-bottom: 5px;
+}
+#project-coverage-body.is-header-compact .coverage-header__top,
+#project-coverage-body.is-header-compact .coverage-scope-switcher {
+    max-height: 0;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+#project-coverage-body.is-header-compact .coverage-stat-bar {
+    min-height: 27px;
+    padding-block: 3px;
+    background: rgba(255, 255, 255, .022);
 }
 .coverage-stat-bar__dimensions {
     display: flex;
@@ -904,7 +933,7 @@
     transition: color 0.15s ease;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
 }
 .coverage-tab-btn.is-active {
     color: var(--accent-color, #38bdf8);
@@ -945,6 +974,85 @@
 .coverage-tab-panel {
     width: 100%;
     box-sizing: border-box;
+}
+
+.coverage-overview-intro {
+    margin-bottom: 11px;
+    color: #7f8da1;
+    font-size: 11px;
+    line-height: 1.42;
+}
+.coverage-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 10px;
+}
+.coverage-overview-device {
+    width: 100%;
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid rgba(132, 158, 190, .11);
+    border-radius: 13px;
+    color: #dce5f1;
+    background: linear-gradient(145deg, rgba(105, 130, 163, .075), rgba(74, 92, 118, .025));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .022), 0 5px 16px rgba(0, 0, 0, .08);
+    font-family: inherit;
+    text-align: left;
+}
+.coverage-overview-device:active { transform: scale(.985); }
+.coverage-overview-device__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.coverage-overview-device__name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    color: #eef3f9;
+    font-size: 14px;
+    font-weight: 720;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.coverage-overview-device__arrow { color: #70839b; font-size: 21px; line-height: 1; }
+.coverage-overview-device__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 9px;
+}
+.coverage-overview-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 23px;
+    padding: 2px 7px;
+    border: 1px solid rgba(132, 154, 184, .1);
+    border-radius: 7px;
+    color: #9eb0c7;
+    background: rgba(105, 128, 160, .07);
+    font-size: 10px;
+}
+.coverage-overview-chip.is-android { color: #9cc6ed; background: rgba(45, 107, 171, .11); }
+.coverage-overview-chip.is-country { color: #a9cbb9; background: rgba(38, 113, 82, .1); }
+.coverage-overview-device__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 11px;
+}
+.coverage-overview-device__stats > span {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+    color: #738298;
+    font-size: 8.8px;
+}
+.coverage-overview-device__stats strong {
+    color: #cbd7e6;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
 }
 
 .coverage-focus-bar {
@@ -1121,6 +1229,9 @@
     opacity: .58;
 }
 .coverage-os-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 11px;
     font-weight: 600;
     padding: 1px 6px;
@@ -1128,6 +1239,10 @@
     background: rgba(59, 130, 246, 0.15);
     color: #93c5fd;
     border: 1px solid rgba(59, 130, 246, 0.25);
+}
+.coverage-os-chip__icon {
+    flex: 0 0 auto;
+    color: #78addf;
 }
 .coverage-model-card.is-focus-android .coverage-os-chip {
     border-color: rgba(86, 157, 229, .42);
@@ -1331,6 +1446,9 @@
     border-color: var(--accent-color, #38bdf8);
 }
 .coverage-gallery-thumb__img {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -1346,6 +1464,7 @@
     font-size: 9.5px;
     font-weight: 700;
     color: #fff;
+    z-index: 3;
 }
 .coverage-gallery-thumb__bug {
     position: absolute;
@@ -1367,8 +1486,24 @@
     font-size: 9.5px;
     font-weight: 600;
     color: #fff;
+    z-index: 3;
+}
+.coverage-gallery-thumb__resolution {
+    position: absolute;
+    z-index: 3;
+    right: 4px;
+    bottom: 3px;
+    padding: 2px 5px;
+    border-radius: 5px;
+    color: #dce7f5;
+    background: rgba(5, 9, 15, .72);
+    backdrop-filter: blur(3px);
+    font-size: 8px;
+    font-variant-numeric: tabular-nums;
 }
 .coverage-gallery-thumb__fallback {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     display: flex;
@@ -1388,6 +1523,7 @@
     margin-top: 6px;
 }
 .coverage-fb-item-row {
+    width: 100%;
     padding: 8px 10px;
     background: rgba(255, 255, 255, 0.025);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -1396,11 +1532,26 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    color: inherit;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
 }
+.coverage-fb-item-row.is-text-only {
+    padding-block: 7px;
+    background: rgba(255, 255, 255, .018);
+}
+.coverage-fb-item-row.has-media { border-color: rgba(104, 147, 193, .12); }
 .coverage-fb-item-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+.coverage-fb-item-media {
+    margin-left: auto;
+    margin-right: 6px;
+    color: #7fa8d1;
+    font-size: 12px;
 }
 .coverage-fb-item-type {
     font-weight: 700;
@@ -1439,10 +1590,14 @@
     margin-bottom: 6px;
 }
 .coverage-android-version-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     font-size: 14px;
     font-weight: 700;
     color: var(--text-color, #f3f4f6);
 }
+.coverage-android-version-icon { color: #77b5eb; }
 .coverage-android-pct {
     font-size: 12.5px;
     font-weight: 700;

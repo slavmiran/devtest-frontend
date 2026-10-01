@@ -261,7 +261,7 @@
             {
                 key: 'ideas',
                 type: 'idea',
-                iconSvg: '<svg class="pc-results-tile__glyph" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M15 9.5a4.5 4.5 0 1 0-7.3 3.5c.8.8 1.3 1.8 1.3 3h4c0-1.2.5-2.2 1.3-3 .4-.5.7-1.1.7-1.7v-1.8z"></path></svg>',
+                iconSvg: '<svg class="pc-results-tile__glyph" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-1 .65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8a6 6 0 0 0-12 0c0 1.3.5 2.5 1.5 3.5.76.76 1.23 1.5 1.41 2.5"></path></svg>',
                 label: window.t('pcResultsIdea', {}, lang) || (lang === 'ru' ? 'Идеи' : 'Ideas'),
                 newCount: newIdeas,
                 totalCount: ideasTotal,
@@ -339,7 +339,7 @@
             models: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M11 18h2"/>',
             countries: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
             bugs: '<path d="M9 7V5.5a3 3 0 0 1 6 0V7M8 4 6.5 2.5M16 4l1.5-1.5M6 10H3M21 10h-3M6 15H3M21 15h-3"/><rect x="6" y="7" width="12" height="13" rx="6"/><path d="M12 8v11"/>',
-            ideas: '<path d="M9 18h6M10 21h4M8.5 13.8a5.5 5.5 0 1 1 7 0c-1 .8-1.5 1.8-1.5 3.2h-4c0-1.4-.5-2.4-1.5-3.2Z"/>',
+            ideas: '<path d="M9 18h6"/><path d="M10 21.2h4"/><path d="M15.09 14c.18-1 .65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8a6 6 0 0 0-12 0c0 1.3.5 2.5 1.5 3.5.76.76 1.23 1.5 1.41 2.5"/>',
             reviews: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
         };
         return '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[key] || paths.models) + '</svg>';
@@ -405,11 +405,12 @@
 
     // ── Open Feedback filtered from Results block ──
 
-    function openProjectResultsFeedback(appId, typeFilter) {
+    function openProjectResultsFeedback(appId, typeFilter, feedbackId) {
         if (typeof window.openProjectFeedback === 'function') {
             window.openProjectFeedback(appId, false, {
                 preferUnprocessed: true,
-                typeFilter: typeFilter
+                typeFilter: typeFilter,
+                focusFeedbackId: Number(feedbackId || 0) || undefined
             });
         }
         if (typeof window.filterFeedback === 'function') {
@@ -423,7 +424,7 @@
 
     var _activeCoverageAppId = 0;
     var _activeCoverageScope = 'current';
-    var _activeCoverageTab = 'models';
+    var _activeCoverageTab = 'overview';
     var _activeCoverageData = null;
     var _expandedModelKeys = {};
     var _coverageMemoryCache = {}; // key: appId + ':' + scope -> { data: ..., timestamp: ... }
@@ -510,10 +511,10 @@
         }
         _activeCoverageAppId = targetAppId;
 
-        if (initialTab && (initialTab === 'countries' || initialTab === 'android' || initialTab === 'models')) {
+        if (initialTab && (initialTab === 'overview' || initialTab === 'countries' || initialTab === 'android' || initialTab === 'models')) {
             _activeCoverageTab = initialTab;
         } else {
-            _activeCoverageTab = 'models';
+            _activeCoverageTab = 'overview';
         }
 
         var modal = document.getElementById('project-coverage-modal');
@@ -633,6 +634,7 @@
 
     function renderCoverageScreen(container, data) {
         var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        if (container && container.classList) container.classList.remove('is-header-compact');
         var stats = data.stats || {};
         var models = data.models || [];
         var androidVersions = data.android_versions || [];
@@ -702,6 +704,9 @@
                 '<div class="coverage-stat-bar">' + statBarHtml + '</div>' +
             '</div>' +
             '<div class="coverage-tabs">' +
+                '<button type="button" id="cov-tab-btn-overview" class="coverage-tab-btn ' + (_activeCoverageTab === 'overview' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'overview\')">' +
+                    window.escapeHTML(lang === 'ru' ? 'Обзор' : 'Overview') +
+                '</button>' +
                 '<button type="button" id="cov-tab-btn-models" class="coverage-tab-btn ' + (_activeCoverageTab === 'models' ? 'is-active' : '') + '" onclick="switchCoverageTab(\'models\')">' +
                     window.escapeHTML(window.t('coverageTabModels', {}, lang) || 'Модели') +
                     ' <span class="coverage-tab-badge">' + models.length + '</span>' +
@@ -715,12 +720,13 @@
                 '</button>' +
             '</div>' +
             '<div class="coverage-body">' +
-                '<div id="coverage-unified-panel" class="coverage-tab-panel is-focus-' + _activeCoverageTab + '">' +
-                    renderCoverageFocusBar(data, lang, _activeCoverageTab) +
-                    renderModelsTab(models, lang, _activeCoverageTab) +
+                '<div id="coverage-tab-panel" class="coverage-tab-panel is-view-' + _activeCoverageTab + '">' +
+                    renderCoverageTabContent(data, lang, _activeCoverageTab) +
                 '</div>' +
             '</div>'
         );
+        bindCoverageScrollHeader(container);
+        hydrateCoverageThumbnails(container);
     }
 
     function toggleCoverageScope(scope) {
@@ -729,9 +735,49 @@
     }
 
     function switchCoverageTab(tab) {
+        if (['overview', 'models', 'android', 'countries'].indexOf(tab) < 0) tab = 'overview';
         _activeCoverageTab = tab;
         var body = document.getElementById('project-coverage-body');
         if (body && _activeCoverageData) renderCoverageScreen(body, _activeCoverageData);
+    }
+
+    function renderCoverageTabContent(data, lang, tab) {
+        if (tab === 'models') return renderModelsTab(data.models || [], lang, 'models');
+        if (tab === 'android') return renderAndroidTab(data.android_versions || [], lang);
+        if (tab === 'countries') return renderCountriesTab(data.countries || [], lang);
+        return renderCoverageOverview(data, lang);
+    }
+
+    function bindCoverageScrollHeader(container) {
+        var scroller = container && container.querySelector ? container.querySelector('.coverage-body') : null;
+        if (!scroller) return;
+        var compact = false;
+        scroller.addEventListener('scroll', function () {
+            var shouldCompact = scroller.scrollTop > (compact ? 24 : 56);
+            if (shouldCompact === compact) return;
+            compact = shouldCompact;
+            container.classList.toggle('is-header-compact', compact);
+        }, { passive: true });
+    }
+
+    function androidIconSvg(className) {
+        return '<svg class="' + (className || 'coverage-android-icon') + '" viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M17.523 15.341a1 1 0 0 1 0-1.999 1 1 0 0 1 0 1.999m-11.046 0a1 1 0 0 1 0-1.999 1 1 0 0 1 0 1.999m11.405-6.02 1.997-3.46a.416.416 0 0 0-.72-.415L17.137 8.95A12.2 12.2 0 0 0 12 7.85c-1.853 0-3.59.394-5.137 1.1L4.841 5.447a.416.416 0 0 0-.72.415l1.997 3.46C2.688 11.186.343 14.658 0 18.76h24c-.344-4.102-2.69-7.574-6.118-9.44"/></svg>';
+    }
+
+    function hydrateCoverageThumbnails(container) {
+        if (!container || !container.querySelectorAll || typeof window.loadCheckinProofPreviewThumbnail !== 'function') return;
+        container.querySelectorAll('.coverage-gallery-thumb__img[data-proof-id]').forEach(function (img) {
+            var proofId = Number(img.getAttribute('data-proof-id') || 0);
+            var mediaIndex = Number(img.getAttribute('data-media-index') || 0);
+            if (proofId <= 0 || img.getAttribute('src')) return;
+            window.loadCheckinProofPreviewThumbnail(proofId, mediaIndex).then(function (source) {
+                if (!img.isConnected || !source) return;
+                img.src = source;
+            }).catch(function () {
+                if (!img.isConnected) return;
+                img.style.display = 'none';
+            });
+        });
     }
 
     function toggleCoverageModelExpand(modelKey) {
@@ -747,7 +793,59 @@
         }
     }
 
-    // ── Tab 1: Models Tab Builder ──
+    function openCoverageModel(modelKey) {
+        _expandedModelKeys[String(modelKey || '')] = true;
+        _activeCoverageTab = 'models';
+        var body = document.getElementById('project-coverage-body');
+        if (body && _activeCoverageData) {
+            renderCoverageScreen(body, _activeCoverageData);
+            setTimeout(function () {
+                var card = document.getElementById('cov-model-' + String(modelKey || ''));
+                if (card && typeof card.scrollIntoView === 'function') card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 30);
+        }
+    }
+
+    // ── Overview: cross-dimensional device cards ──
+
+    function renderCoverageOverview(data, lang) {
+        var models = data.models || [];
+        if (!models.length) return renderModelsTab(models, lang, 'overview');
+        var intro = lang === 'ru'
+            ? 'Устройства, версии Android, география и полезные находки — без дублирования экранов.'
+            : 'Devices, Android versions, geography, and useful findings without duplicated screens.';
+        var cards = models.map(function (m) {
+            var countries = [];
+            var countrySeen = {};
+            (m.testers || []).forEach(function (tester) {
+                var country = tester && tester.country;
+                var code = String(country && country.code || '').toUpperCase();
+                if (!code || countrySeen[code]) return;
+                countrySeen[code] = true;
+                countries.push(country);
+            });
+            var android = (m.android_versions || []).slice(0, 3).map(function (version) {
+                return '<span class="coverage-overview-chip is-android">' + androidIconSvg() + '<span>' + window.escapeHTML(String(version).replace(/^Android\s+/i, '')) + '</span></span>';
+            }).join('');
+            var geography = countries.slice(0, 3).map(function (country) {
+                return '<span class="coverage-overview-chip is-country"><span>' + (country.flag || '🌐') + '</span><span>' + window.escapeHTML(country.code || '') + '</span></span>';
+            }).join('');
+            var findings = Number(m.bugs_count || 0) + Number(m.ideas_count || 0) + Number(m.reviews_count || 0);
+            var token = encodeURIComponent(String(m.model_key || '')).replace(/'/g, '%27');
+            return '<button type="button" class="coverage-overview-device" onclick="openCoverageModel(decodeURIComponent(\'' + token + '\'))">' +
+                '<span class="coverage-overview-device__top"><span class="coverage-overview-device__name notranslate">' + window.escapeHTML(m.model_name) + '</span><span class="coverage-overview-device__arrow">›</span></span>' +
+                '<span class="coverage-overview-device__chips">' + android + geography + '</span>' +
+                '<span class="coverage-overview-device__stats">' +
+                    '<span><strong>' + (m.testers || []).length + '</strong>' + window.escapeHTML(lang === 'ru' ? 'тестеров' : 'testers') + '</span>' +
+                    '<span><strong>' + Number(m.screenshots_count || 0) + '</strong>' + window.escapeHTML(lang === 'ru' ? 'скриншотов' : 'screenshots') + '</span>' +
+                    '<span><strong>' + findings + '</strong>' + window.escapeHTML(lang === 'ru' ? 'находок' : 'findings') + '</span>' +
+                '</span>' +
+            '</button>';
+        }).join('');
+        return '<div class="coverage-overview-intro">' + window.escapeHTML(intro) + '</div><div class="coverage-overview-grid">' + cards + '</div>';
+    }
+
+    // ── Models: detailed expandable model cards ──
 
     function renderCoverageFocusBar(data, lang, focus) {
         var stats = data.stats || {};
@@ -819,8 +917,8 @@
 
             // Badges in head
             var osChips = (m.android_versions || []).map(function (v) {
-                var short = String(v).replace(/^Android\s+/i, 'A');
-                return '<span class="coverage-os-chip">' + window.escapeHTML(short) + '</span>';
+                var version = String(v).replace(/^Android\s+/i, '');
+                return '<span class="coverage-os-chip">' + androidIconSvg('coverage-os-chip__icon') + '<span>' + window.escapeHTML(version) + '</span></span>';
             }).join(' ');
             var countryChips = modelCountries.map(function (country) {
                 var countryName = (lang === 'ru' ? country.name_ru : country.name) || country.code;
@@ -864,23 +962,18 @@
                 var thumbs = m.screenshots.map(function (s) {
                     var proofId = Number(s.id);
                     var imgCount = Number(s.image_count || 1);
-                    var thumbFileId = '';
-                    if (s.media_items && s.media_items[0] && s.media_items[0].thumb_file_id) {
-                        thumbFileId = s.media_items[0].thumb_file_id;
-                    } else if (s.media_items && s.media_items[0] && s.media_items[0].file_id) {
-                        thumbFileId = s.media_items[0].file_id;
-                    }
-                    var thumbUrl = thumbFileId ? _getCoverageMediaUrl(thumbFileId) : '';
-                    var thumbImgHtml = thumbUrl
-                        ? '<img class="coverage-gallery-thumb__img" src="' + window.escapeHTML(thumbUrl) + '" loading="lazy" alt="" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
-                          '<div class="coverage-gallery-thumb__fallback" style="display:none;"><span style="font-size:22px;">📱</span><span style="font-size:10px; font-weight:700; margin-top:2px;">D' + s.day + '</span></div>'
-                        : '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span><span style="font-size:10px; font-weight:700; margin-top:2px;">D' + s.day + '</span></div>';
+                    var firstMedia = (s.media_items && s.media_items[0]) || {};
+                    var width = Number(firstMedia.width || 0);
+                    var height = Number(firstMedia.height || 0);
+                    var resolution = width > 0 && height > 0 ? (width + '×' + height) : '';
+                    var thumbImgHtml = '<img class="coverage-gallery-thumb__img" data-proof-id="' + proofId + '" data-media-index="0" loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
+                        '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span><span style="font-size:10px; font-weight:700; margin-top:2px;">D' + s.day + '</span></div>';
 
                     return (
                         '<div class="coverage-gallery-thumb" onclick="event.stopPropagation(); openCoverageScreenshotPreview(' + proofId + ', ' + imgCount + ', event);">' +
                             thumbImgHtml +
                             '<span class="coverage-gallery-thumb__day">D' + s.day + '</span>' +
-                            (s.has_bug ? '<span class="coverage-gallery-thumb__bug">🐞</span>' : '') +
+                            '<span class="coverage-gallery-thumb__resolution"' + (resolution ? '' : ' hidden') + '>' + window.escapeHTML(resolution) + '</span>' +
                             (imgCount > 1 ? '<span class="coverage-gallery-thumb__count">+' + imgCount + '</span>' : '') +
                         '</div>'
                     );
@@ -904,16 +997,19 @@
             if (m.feedback_items && m.feedback_items.length > 0) {
                 var fbRows = m.feedback_items.map(function (fb) {
                     var typeClass = fb.type === 'bug' ? 'bug' : (fb.type === 'idea' ? 'idea' : 'review');
-                    var typeLabel = fb.type === 'bug' ? '🐞 Баг' : (fb.type === 'idea' ? '💡 Идея' : '★ Отзыв');
+                    var typeLabel = fb.type === 'bug'
+                        ? (lang === 'ru' ? 'Баг' : 'Bug')
+                        : (fb.type === 'idea' ? (lang === 'ru' ? 'Идея' : 'Idea') : (lang === 'ru' ? 'Отзыв' : 'Review'));
                     return (
-                        '<div class="coverage-fb-item-row" onclick="event.stopPropagation(); openProjectResultsFeedback(' + _activeCoverageAppId + ', \'' + fb.type + '\');">' +
+                        '<button type="button" class="coverage-fb-item-row' + (fb.has_media ? ' has-media' : ' is-text-only') + '" onclick="event.stopPropagation(); openProjectResultsFeedback(' + _activeCoverageAppId + ', \'' + fb.type + '\', ' + Number(fb.id || 0) + ');">' +
                             '<div class="coverage-fb-item-head">' +
-                                '<span class="coverage-fb-item-type coverage-fb-item-type--' + typeClass + '">' + typeLabel + '</span>' +
+                                '<span class="coverage-fb-item-type coverage-fb-item-type--' + typeClass + '">' + (fb.type === 'bug' ? '🐞 ' : (fb.type === 'idea' ? '💡 ' : '★ ')) + window.escapeHTML(typeLabel) + '</span>' +
+                                (fb.has_media ? '<span class="coverage-fb-item-media" title="' + window.escapeHTML(lang === 'ru' ? 'Есть изображение' : 'Image attached') + '">▧</span>' : '') +
                                 '<span style="font-size:10.5px; opacity:0.6;">' + (fb.status || 'new') + '</span>' +
                             '</div>' +
                             (fb.title ? '<div style="font-weight:600; font-size:12px;">' + window.escapeHTML(fb.title) + '</div>' : '') +
                             '<div class="coverage-fb-item-text">' + window.escapeHTML(fb.text || '') + '</div>' +
-                        '</div>'
+                        '</button>'
                     );
                 }).join('');
 
@@ -943,7 +1039,6 @@
                             '<div class="coverage-model-card__meta-row">' +
                                 '<span class="coverage-model-meta-group coverage-model-meta-group--android">' + osChips + '</span>' +
                                 (countryChips ? '<span class="coverage-model-meta-group coverage-model-meta-group--countries">' + countryChips + '</span>' : '') +
-                                (m.testing_days_count > 0 ? '<span class="coverage-meta-pill">📅 ' + m.testing_days_count + ' ' + window.escapeHTML(lang === 'ru' ? 'дн.' : 'days') + '</span>' : '') +
                             '</div>' +
                         '</div>' +
                         '<div class="coverage-model-card__head-right">' +
@@ -970,7 +1065,7 @@
 
     function renderAndroidTab(versions, lang) {
         if (!versions || versions.length === 0) {
-            return '<div style="text-align:center; padding: 40px 16px; color: var(--text-secondary);">Нет данных по версиям Android</div>';
+            return '<div style="text-align:center; padding: 40px 16px; color: var(--text-secondary);">' + window.escapeHTML(lang === 'ru' ? 'Нет данных по версиям Android' : 'No Android version data yet') + '</div>';
         }
 
         var cards = versions.map(function (v) {
@@ -981,7 +1076,7 @@
             return (
                 '<div class="coverage-android-card">' +
                     '<div class="coverage-android-card__head">' +
-                        '<span class="coverage-android-version-title">' + window.escapeHTML(v.version) + '</span>' +
+                        '<span class="coverage-android-version-title">' + androidIconSvg('coverage-android-version-icon') + window.escapeHTML(v.version) + '</span>' +
                         '<span class="coverage-android-pct">' + v.percentage + '%</span>' +
                     '</div>' +
                     '<div class="coverage-android-bar-wrap">' +
@@ -1003,7 +1098,7 @@
 
     function renderCountriesTab(countries, lang) {
         if (!countries || countries.length === 0) {
-            return '<div style="text-align:center; padding: 40px 16px; color: var(--text-secondary);">Нет данных по странам</div>';
+            return '<div style="text-align:center; padding: 40px 16px; color: var(--text-secondary);">' + window.escapeHTML(lang === 'ru' ? 'Нет данных по странам' : 'No country data yet') + '</div>';
         }
 
         var cards = countries.map(function (c) {
@@ -1220,6 +1315,14 @@
         var targetProofId = Number(proofId || 0);
         if (targetProofId <= 0) return;
 
+        // The shared proof viewer already owns secure media tickets, progressive
+        // thumbnail/medium loading, swipe navigation, and Telegram originals.
+        // Coverage previously bypassed it with raw Telegram file IDs.
+        if (typeof window.openCheckinProofOverview === 'function') {
+            window.openCheckinProofOverview(targetProofId, { imageCount: Number(imageCount || 1) });
+            return;
+        }
+
         // Find proof in _activeCoverageData
         var foundScreenshot = null;
         var foundModel = null;
@@ -1313,6 +1416,7 @@
     window.toggleCoverageScope = toggleCoverageScope;
     window.switchCoverageTab = switchCoverageTab;
     window.toggleCoverageModelExpand = toggleCoverageModelExpand;
+    window.openCoverageModel = openCoverageModel;
     window.openCoverageScreenshotPreview = openCoverageScreenshotPreview;
     window.closeCoverageScreenshotModal = closeCoverageScreenshotModal;
     window.stepCoverageScreenshot = stepCoverageScreenshot;

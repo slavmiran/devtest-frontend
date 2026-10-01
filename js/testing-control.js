@@ -739,7 +739,11 @@
             (payload.tickets || []).forEach(function(ticket) {
                 (variant === 'medium' ? previewMediumCachePut : previewThumbnailCachePut)(proofId, Number(ticket.media_index), secureMediaUrl(ticket.url), Number(ticket.expires_at) * 1000);
             });
-            var details = { image_count: Number(payload.image_count || count), original_message_urls: payload.original_message_urls || [] };
+            var details = {
+                image_count: Number(payload.image_count || count),
+                original_message_urls: payload.original_message_urls || [],
+                dimensions: Array.isArray(payload.dimensions) ? payload.dimensions : [],
+            };
             state.albumDetails.set(Number(proofId), details);
             return details;
         })();
@@ -884,11 +888,17 @@
         }
         var source = mediumSource || thumbnailSource;
         var qualityClass = mediumSource ? ' is-medium' : ' is-thumbnail';
+        var details = state.albumDetails.get(Number(proofId)) || {};
+        var dimension = (details.dimensions || []).find(function (item) { return Number(item.media_index) === Number(mediaIndex); }) || {};
+        var resolution = Number(dimension.width || 0) > 0 && Number(dimension.height || 0) > 0
+            ? Number(dimension.width) + '×' + Number(dimension.height)
+            : '';
         return '<section class="checkin-proof-preview-slide" data-media-index="' + mediaIndex + '">' +
             '<img class="checkin-proof-preview-image' + qualityClass + '" alt="" data-quality="' + (mediumSource ? 'medium' : 'thumbnail') + '"' +
                 ' onload="this.closest(\'.checkin-proof-preview-slide\').classList.add(\'is-loaded\')"' +
                 ' onerror="this.closest(\'.checkin-proof-preview-slide\').classList.add(\'is-error\')"' +
                 (source ? ' src="' + escape(source) + '"' : '') + '>' +
+            '<span class="checkin-proof-preview-resolution"' + (resolution ? '' : ' hidden') + '>' + escape(resolution) + '</span>' +
             '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>' +
         '</section>';
     }
@@ -900,7 +910,7 @@
         body.innerHTML = '<div class="checkin-proof-preview-album' + singleClass + '" data-proof-id="' + proofId + '" data-image-count="' + imageCount + '" data-media-index="' + mediaIndex + '">' +
             '<div class="checkin-proof-preview-track" style="transform:translate3d(-' + (mediaIndex * 100) + '%,0,0)">' + slides.join('') + '</div>' +
             albumNavigation(proofId, mediaIndex, imageCount) +
-            '<button type="button" class="checkin-proof-preview-quality" onclick="openCheckinProofOriginal(' + proofId + ',0,event)">' +
+            '<button type="button" class="checkin-proof-preview-quality" onclick="openCurrentCheckinProofOriginal(' + proofId + ',event)">' +
                 escape(text('testingControlOpenOriginal', 'Open original in Telegram')) +
             '</button>' +
         '</div>';
@@ -993,7 +1003,6 @@
         if (previous) previous.disabled = safeIndex <= 0;
         if (next) next.disabled = safeIndex >= imageCount - 1;
         hydrateAlbumThumbnails(proofId, safeIndex, imageCount);
-        hydrateAlbumFull(proofId, safeIndex);
     }
 
     function bindAlbumSwipe(album, proofId, imageCount) {
@@ -1289,7 +1298,7 @@
         try {
             var details = await requestProofDetails(proofId);
             var urls = details && details.original_message_urls;
-            var targetUrl = Array.isArray(urls) ? String(urls[0] || urls[Number(mediaIndex || 0)] || '') : '';
+            var targetUrl = Array.isArray(urls) ? String(urls[Number(mediaIndex || 0)] || urls[0] || '') : '';
             if (!/^https:\/\/t\.me\//i.test(targetUrl)) throw new Error('original_message_unavailable');
             if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
                 window.Telegram.WebApp.openTelegramLink(targetUrl);
@@ -1306,6 +1315,12 @@
                 showToast(text('testingControlOriginalUnavailable', 'The original is unavailable outside the proofs topic.'));
             }
         }
+    }
+
+    function openCurrentCheckinProofOriginal(proofId, event) {
+        var album = document.querySelector('#checkin-proof-preview-body .checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
+        var mediaIndex = album ? Number(album.dataset.mediaIndex || 0) : 0;
+        return openCheckinProofOriginal(proofId, mediaIndex, event);
     }
 
     function renderProofOverview(body, proofId, count) {
@@ -1416,7 +1431,6 @@
             renderPreviewAlbum(body, safeProofId, safeIndex, imageCount);
             bindAlbumSwipe(body.querySelector('.checkin-proof-preview-album'), safeProofId, imageCount);
             hydrateAlbumThumbnails(safeProofId, safeIndex, imageCount);
-            hydrateAlbumFull(safeProofId, safeIndex);
         }
         var album = body.querySelector('.checkin-proof-preview-album');
         if (imageCount > 1 && album && !album.querySelector('.checkin-proof-album-overview-link')) {
@@ -1642,6 +1656,8 @@
     window.openCheckinProofOverview = openCheckinProofOverview;
     window.stepCheckinProofPreview = stepCheckinProofPreview;
     window.openCheckinProofOriginal = openCheckinProofOriginal;
+    window.openCurrentCheckinProofOriginal = openCurrentCheckinProofOriginal;
+    window.loadCheckinProofPreviewThumbnail = loadPreviewThumbnailSource;
     window.openTestingControlFeedbackPreview = openTestingControlFeedbackPreview;
     window.openFeedbackFromProofPreview = openFeedbackFromProofPreview;
     window.closeCheckinProofPreview = closeCheckinProofPreview;
