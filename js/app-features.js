@@ -3132,7 +3132,7 @@ async function resumeMassInviteIfNeeded(options) {
     if (!ids.length) return;
     _massInviteResumeInFlight = true;
     try {
-    for (var i = 0; i < ids.length; i++) {
+        for (var i = 0; i < ids.length; i++) {
         var projectId = ids[i];
         try {
             var snap = await _fetchMassInviteRunStatus(projectId);
