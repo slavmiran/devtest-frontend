@@ -209,9 +209,9 @@
 
         var modelsTotal = Number(summary.models_count || 0);
         var countriesTotal = Number(summary.countries_count || 0);
-        var bugsTotal = Number(project.bugs_total_count || summary.bugs_total_count || 0);
-        var ideasTotal = Number(project.ideas_total_count || summary.ideas_total_count || 0);
-        var reviewsTotal = Number(project.reviews_total_count || summary.reviews_total_count || 0);
+        var bugsTotal = Number(project.bugs_total_count || summary.bugs_total_count || project.bugs_count || summary.bugs_count || 0);
+        var ideasTotal = Number(project.ideas_total_count || summary.ideas_total_count || project.ideas_count || summary.ideas_count || 0);
+        var reviewsTotal = Number(project.reviews_total_count || summary.reviews_total_count || project.reviews_count || summary.reviews_count || 0);
 
         var newModels = Number(unseen.newCoverage || 0);
         var newCountries = Number(unseen.newCountries || 0);
@@ -282,7 +282,10 @@
             }
         ];
 
-        var tilesHtml = indicators.map(function (ind) {
+        var visibleIndicators = indicators.filter(function (ind) {
+            return Number(ind.newCount || 0) > 0 || Number(ind.totalCount || 0) > 0;
+        });
+        var tilesHtml = visibleIndicators.map(function (ind) {
             var hasNew = ind.newCount > 0;
             var isZero = !hasNew && ind.totalCount === 0;
 
@@ -320,8 +323,10 @@
                         '<svg class="pc-results-header__chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
                     '</span>' +
                 '</div>' +
-                '<div class="pc-results-grid">' +
-                    tilesHtml +
+                '<div class="pc-results-grid' + (visibleIndicators.length ? '' : ' is-empty') + '" style="--pc-result-count:' + Math.max(1, visibleIndicators.length) + '">' +
+                    (tilesHtml || '<button type="button" class="pc-results-grid__empty" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
+                        '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
+                        '<span aria-hidden="true">→</span></button>') +
                 '</div>' +
             '</section>'
         );
@@ -587,7 +592,6 @@
                             '<div class="coverage-header__subtitle">' + window.escapeHTML(window.t('coverageLoading', {}, lang) || 'Загрузка…') + '</div>' +
                         '</div>' +
                     '</div>' +
-                    '<button type="button" class="coverage-header__close" onclick="closeProjectCoverageModal()" aria-label="Close">✕</button>' +
                 '</div>' +
             '</div>' +
             '<div class="coverage-body">' +
@@ -612,7 +616,6 @@
                             '<div class="coverage-header__title">' + window.escapeHTML(window.t('coverageTitle', {}, lang) || 'Покрытие проекта') + '</div>' +
                         '</div>' +
                     '</div>' +
-                    '<button type="button" class="coverage-header__close" onclick="closeProjectCoverageModal()" aria-label="Close">✕</button>' +
                 '</div>' +
             '</div>' +
             '<div class="coverage-body" style="text-align: center; padding: 40px 16px;">' +
@@ -635,29 +638,35 @@
         var androidVersions = data.android_versions || [];
         var countries = data.countries || [];
 
-        // Stat bar line
-        var statParts = [];
+        // Coverage dimensions and evidence are intentionally separated:
+        // screenshots are proof material, not another device characteristic.
+        var dimensionParts = [];
         var mCount = stats.models_count || 0;
         var mWord = lang === 'ru'
             ? formatPluralRu(mCount, 'модель', 'модели', 'моделей')
             : (mCount === 1 ? 'model' : 'models');
-        statParts.push(mCount + ' ' + mWord);
+        dimensionParts.push('<span class="coverage-stat-bar__item">' + window.escapeHTML(mCount + ' ' + mWord) + '</span>');
 
-        if (stats.android_range) statParts.push(stats.android_range);
+        if (stats.android_range) {
+            dimensionParts.push('<span class="coverage-stat-bar__item">' + window.escapeHTML(stats.android_range) + '</span>');
+        }
 
         var cCount = stats.countries_count || 0;
         var cWord = lang === 'ru'
             ? formatPluralRu(cCount, 'страна', 'страны', 'стран')
             : (cCount === 1 ? 'country' : 'countries');
-        statParts.push(cCount + ' ' + cWord);
+        dimensionParts.push('<span class="coverage-stat-bar__item">' + window.escapeHTML(cCount + ' ' + cWord) + '</span>');
 
         var sCount = stats.screenshots_count || 0;
         var sWord = lang === 'ru'
             ? formatPluralRu(sCount, 'скриншот', 'скриншота', 'скриншотов')
             : (sCount === 1 ? 'screenshot' : 'screenshots');
-        statParts.push(sCount + ' ' + sWord);
-
-        var statBarHtml = statParts.join(' <span class="coverage-stat-bar__sep">·</span> ');
+        var statBarHtml = '<div class="coverage-stat-bar__dimensions">' +
+            dimensionParts.join('<span class="coverage-stat-bar__sep">·</span>') +
+            '</div><div class="coverage-stat-bar__evidence" title="' + window.escapeHTML(lang === 'ru' ? 'Визуальные подтверждения интерфейса' : 'Visual interface evidence') + '">' +
+                '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/></svg>' +
+                '<strong>' + sCount + '</strong><span>' + window.escapeHTML(sWord) + '</span>' +
+            '</div>';
 
         var iconUrl = data.icon_url ? (typeof resolveIconUrl === 'function' ? resolveIconUrl(data.icon_url) : _getCoverageMediaUrl(data.icon_url)) : '';
         var firstLetter = window.escapeHTML(String(data.name || 'P').charAt(0).toUpperCase());
@@ -681,7 +690,6 @@
                             '<div class="coverage-header__subtitle">' + window.escapeHTML(window.t('coverageTitle', {}, lang) || 'Покрытие проекта') + '</div>' +
                         '</div>' +
                     '</div>' +
-                    '<button type="button" class="coverage-header__close" onclick="closeProjectCoverageModal()" aria-label="Close">✕</button>' +
                 '</div>' +
                 '<div class="coverage-scope-switcher">' +
                     '<button type="button" class="coverage-scope-btn ' + (_activeCoverageScope === 'current' ? 'is-active' : '') + '" onclick="toggleCoverageScope(\'current\')">' +
@@ -707,14 +715,9 @@
                 '</button>' +
             '</div>' +
             '<div class="coverage-body">' +
-                '<div id="coverage-tab-panel-models" class="coverage-tab-panel" style="display:' + (_activeCoverageTab === 'models' ? 'block' : 'none') + ';">' +
-                    renderModelsTab(models, lang) +
-                '</div>' +
-                '<div id="coverage-tab-panel-android" class="coverage-tab-panel" style="display:' + (_activeCoverageTab === 'android' ? 'block' : 'none') + ';">' +
-                    renderAndroidTab(androidVersions, lang) +
-                '</div>' +
-                '<div id="coverage-tab-panel-countries" class="coverage-tab-panel" style="display:' + (_activeCoverageTab === 'countries' ? 'block' : 'none') + ';">' +
-                    renderCountriesTab(countries, lang) +
+                '<div id="coverage-unified-panel" class="coverage-tab-panel is-focus-' + _activeCoverageTab + '">' +
+                    renderCoverageFocusBar(data, lang, _activeCoverageTab) +
+                    renderModelsTab(models, lang, _activeCoverageTab) +
                 '</div>' +
             '</div>'
         );
@@ -727,16 +730,8 @@
 
     function switchCoverageTab(tab) {
         _activeCoverageTab = tab;
-        var tabs = ['models', 'android', 'countries'];
-        tabs.forEach(function (t) {
-            var panel = document.getElementById('coverage-tab-panel-' + t);
-            if (panel && panel.style) panel.style.display = (t === tab ? 'block' : 'none');
-            var btn = document.getElementById('cov-tab-btn-' + t);
-            if (btn) {
-                if (t === tab) btn.classList.add('is-active');
-                else btn.classList.remove('is-active');
-            }
-        });
+        var body = document.getElementById('project-coverage-body');
+        if (body && _activeCoverageData) renderCoverageScreen(body, _activeCoverageData);
     }
 
     function toggleCoverageModelExpand(modelKey) {
@@ -754,7 +749,48 @@
 
     // ── Tab 1: Models Tab Builder ──
 
-    function renderModelsTab(models, lang) {
+    function renderCoverageFocusBar(data, lang, focus) {
+        var stats = data.stats || {};
+        var title = '';
+        var description = '';
+        var facets = [];
+        if (focus === 'android') {
+            title = lang === 'ru' ? 'Фокус: версии Android' : 'Focus: Android versions';
+            description = lang === 'ru'
+                ? 'Версия выделена в каждой карточке устройства — состав тестирования остаётся перед глазами.'
+                : 'The version is emphasized on every device card, while the test composition stays visible.';
+            facets = (data.android_versions || []).map(function (item) {
+                return '<span class="coverage-focus-chip is-android"><strong>' + window.escapeHTML(item.version) + '</strong><span>' +
+                    item.models_count + ' ' + window.escapeHTML(lang === 'ru'
+                        ? formatPluralRu(item.models_count, 'модель', 'модели', 'моделей')
+                        : (item.models_count === 1 ? 'model' : 'models')) + '</span></span>';
+            });
+        } else if (focus === 'countries') {
+            title = lang === 'ru' ? 'Фокус: география тестирования' : 'Focus: testing geography';
+            description = lang === 'ru'
+                ? 'Страны выделены в карточках моделей — видно и географию, и устройство конкретного тестера.'
+                : 'Countries are emphasized inside model cards, keeping geography tied to each tester’s device.';
+            facets = (data.countries || []).map(function (item) {
+                var name = (lang === 'ru' ? item.name_ru : item.name) || item.code;
+                return '<span class="coverage-focus-chip is-country"><span aria-hidden="true">' + (item.flag || '🌐') + '</span><strong>' +
+                    window.escapeHTML(name) + '</strong><span>' + item.testers_count + '</span></span>';
+            });
+        } else {
+            title = lang === 'ru' ? 'Устройства текущего покрытия' : 'Devices in current coverage';
+            description = lang === 'ru'
+                ? 'Каждая карточка объединяет модель, Android, страну, тестеров, скриншоты и найденные замечания.'
+                : 'Each card connects the model, Android version, country, testers, screenshots, and findings.';
+            if (stats.android_range) {
+                facets.push('<span class="coverage-focus-chip is-neutral"><strong>' + window.escapeHTML(stats.android_range) + '</strong></span>');
+            }
+        }
+        return '<div class="coverage-focus-bar">' +
+            '<div class="coverage-focus-bar__copy"><strong>' + window.escapeHTML(title) + '</strong><span>' + window.escapeHTML(description) + '</span></div>' +
+            (facets.length ? '<div class="coverage-focus-bar__facets">' + facets.join('') + '</div>' : '') +
+        '</div>';
+    }
+
+    function renderModelsTab(models, lang, focus) {
         if (!models || models.length === 0) {
             return (
                 '<div style="text-align: center; padding: 40px 16px; color: var(--text-secondary);">' +
@@ -771,11 +807,25 @@
 
         var cards = models.map(function (m) {
             var isExpanded = !!_expandedModelKeys[m.model_key];
+            var modelCountries = [];
+            var seenCountryCodes = {};
+            (m.testers || []).forEach(function (tester) {
+                var country = tester && tester.country;
+                var code = String(country && country.code || '').toUpperCase();
+                if (!code || seenCountryCodes[code]) return;
+                seenCountryCodes[code] = true;
+                modelCountries.push(country);
+            });
 
             // Badges in head
             var osChips = (m.android_versions || []).map(function (v) {
                 var short = String(v).replace(/^Android\s+/i, 'A');
                 return '<span class="coverage-os-chip">' + window.escapeHTML(short) + '</span>';
+            }).join(' ');
+            var countryChips = modelCountries.map(function (country) {
+                var countryName = (lang === 'ru' ? country.name_ru : country.name) || country.code;
+                return '<span class="coverage-model-country-chip" title="' + window.escapeHTML(countryName) + '">' +
+                    '<span aria-hidden="true">' + (country.flag || '🌐') + '</span><span>' + window.escapeHTML(country.code || countryName) + '</span></span>';
             }).join(' ');
 
             var fbBadges = [];
@@ -795,13 +845,13 @@
                     '<div class="coverage-tester-row">' +
                         '<div class="coverage-tester-row__left">' +
                             (t.avatar_url
-                                ? '<img class="coverage-tester-avatar" src="' + window.escapeHTML(t.avatar_url) + '" alt="">'
+                                ? '<img class="coverage-tester-avatar" src="' + window.escapeHTML(t.avatar_url) + '" alt="" loading="lazy" decoding="async">'
                                 : '<div class="coverage-tester-avatar" style="display:flex;align-items:center;justify-content:center;font-size:11px;">👤</div>') +
                             '<span class="coverage-tester-name notranslate">' + window.escapeHTML(t.username || t.full_name || 'Tester #' + t.tester_id) + '</span>' +
                         '</div>' +
                         '<div class="coverage-tester-row__right">' +
-                            '<span>' + flag + ' ' + window.escapeHTML(cName) + '</span>' +
-                            (t.android_version ? '<span>· ' + window.escapeHTML(t.android_version) + '</span>' : '') +
+                            '<span class="coverage-tester-country">' + flag + ' ' + window.escapeHTML(cName) + '</span>' +
+                            (t.android_version ? '<span class="coverage-tester-android">' + window.escapeHTML(t.android_version) + '</span>' : '') +
                         '</div>' +
                     '</div>'
                 );
@@ -879,11 +929,11 @@
                 var itChips = m.iterations.map(function (it) {
                     return '<span class="coverage-meta-pill">Run #' + it + '</span>';
                 }).join(' ');
-                iterationsHtml = '<div style="margin-top: 10px; display:flex; gap:6px; align-items:center;"><span style="font-size:11px; opacity:0.6;">Итерации:</span> ' + itChips + '</div>';
+                iterationsHtml = '<div class="coverage-model-iterations"><span>' + window.escapeHTML(lang === 'ru' ? 'Итерации:' : 'Runs:') + '</span>' + itChips + '</div>';
             }
 
             return (
-                '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-model-card ' + (isExpanded ? 'is-expanded' : '') + '">' +
+                '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-model-card is-focus-' + (focus || 'models') + ' ' + (isExpanded ? 'is-expanded' : '') + '">' +
                     '<div class="coverage-model-card__head" onclick="toggleCoverageModelExpand(\'' + window.escapeHTML(m.model_key) + '\')">' +
                         '<div class="coverage-model-card__head-left">' +
                             '<div class="coverage-model-card__name-row">' +
@@ -891,12 +941,13 @@
                                 currentBadge +
                             '</div>' +
                             '<div class="coverage-model-card__meta-row">' +
-                                osChips +
-                                (m.testing_days_count > 0 ? '<span class="coverage-meta-pill">📅 ' + m.testing_days_count + ' дн.</span>' : '') +
-                                (m.screenshots_count > 0 ? '<span class="coverage-meta-pill">📷 ' + m.screenshots_count + '</span>' : '') +
+                                '<span class="coverage-model-meta-group coverage-model-meta-group--android">' + osChips + '</span>' +
+                                (countryChips ? '<span class="coverage-model-meta-group coverage-model-meta-group--countries">' + countryChips + '</span>' : '') +
+                                (m.testing_days_count > 0 ? '<span class="coverage-meta-pill">📅 ' + m.testing_days_count + ' ' + window.escapeHTML(lang === 'ru' ? 'дн.' : 'days') + '</span>' : '') +
                             '</div>' +
                         '</div>' +
                         '<div class="coverage-model-card__head-right">' +
+                            (m.screenshots_count > 0 ? '<span class="coverage-model-evidence" title="' + window.escapeHTML(lang === 'ru' ? 'Скриншоты интерфейса' : 'Interface screenshots') + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/></svg><strong>' + m.screenshots_count + '</strong></span>' : '') +
                             '<div class="coverage-model-feedback-badges">' + fbBadges.join('') + '</div>' +
                             '<svg class="coverage-model-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
                         '</div>' +

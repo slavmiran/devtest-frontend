@@ -2383,8 +2383,24 @@ function _mapProjectsFromApi(data) {
             last_mass_invite_at: project.last_mass_invite_at || null,
             last_mass_invite_sent_count: Number(project.last_mass_invite_sent_count || 0),
             run_iteration: Number(project.run_iteration || 1),
-            feedback_new_count: project.feedback_new_count || 0,
-            feedback_total_count: project.feedback_total_count || 0,
+            feedback_new_count: Number(project.feedback_new_count || 0),
+            feedback_total_count: Number(project.feedback_total_count || 0),
+            bugs_new_count: Number(project.bugs_new_count || 0),
+            bugs_total_count: Number(project.bugs_total_count || 0),
+            ideas_new_count: Number(project.ideas_new_count || 0),
+            ideas_total_count: Number(project.ideas_total_count || 0),
+            reviews_new_count: Number(project.reviews_new_count || 0),
+            reviews_total_count: Number(project.reviews_total_count || 0),
+            // Keep the lightweight coverage aggregate returned by the
+            // dashboard API. Dropping this object made the card render five
+            // zeroes even though the detailed coverage endpoint had data.
+            results_summary: Object.assign({
+                models_count: 0,
+                android_range: '',
+                countries_count: 0,
+                coverage_tuples: [],
+                countries_list: [],
+            }, project.results_summary || {}),
             guest_testers_count: Number(project.guest_testers_count || 0),
             verified_testers_count: Number(project.verified_testers_count || 0),
             twelve_verified_testers_at: project.twelve_verified_testers_at || null,
