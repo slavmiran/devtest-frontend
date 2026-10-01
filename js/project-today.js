@@ -3752,6 +3752,15 @@
 
     function pcSelectSpecialTabAndExpand(appId, tabKey) {
         var safeAppId = Number(appId || 0);
+        var card = document.getElementById('project-card-' + safeAppId);
+        if (card && card.classList.contains('card-collapsed')) {
+            card.classList.remove('card-collapsed');
+            try {
+                localStorage.setItem('project_card_collapsed_' + safeAppId, 'false');
+            } catch (_) {}
+            var chevron = card.querySelector('.card-expand-chevron');
+            if (chevron) chevron.classList.remove('is-collapsed');
+        }
         setParticipantsCollapsed(safeAppId, false);
         var prefs = readPrefs(safeAppId);
         prefs.filter = tabKey;
@@ -3768,6 +3777,21 @@
         }
     }
     window.pcSelectSpecialTabAndExpand = pcSelectSpecialTabAndExpand;
+
+    function pcOnTodayLabelClick(appId) {
+        var safeAppId = Number(appId || 0);
+        var card = document.getElementById('project-card-' + safeAppId);
+        if (card && card.classList.contains('card-collapsed')) {
+            card.classList.remove('card-collapsed');
+            try {
+                localStorage.setItem('project_card_collapsed_' + safeAppId, 'false');
+            } catch (_) {}
+            var chevron = card.querySelector('.card-expand-chevron');
+            if (chevron) chevron.classList.remove('is-collapsed');
+        }
+        pcToggleParticipantsCollapse(safeAppId, false);
+    }
+    window.pcOnTodayLabelClick = pcOnTodayLabelClick;
 
     function visibleFilters(data) {
         var list = ['testers'];
@@ -4127,6 +4151,13 @@
             initKarmaSparkleCycle(Number(appId));
         } else {
             stopKarmaSparkle(Number(appId));
+        }
+        var card = document.getElementById('project-card-' + Number(appId || 0));
+        if (card) {
+            var teamSlot = card.querySelector('.pc-team-collapsed-slot');
+            if (teamSlot && typeof buildProjectTeamCollapsedBar === 'function') {
+                teamSlot.innerHTML = buildProjectTeamCollapsedBar(project);
+            }
         }
     }
 
@@ -4534,7 +4565,9 @@
             ? team.map(function (entry, index) { return teamAvatarCardHtml(appId, entry, index); }).join('')
             : '<button type="button" class="pc-team-empty" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');">' +
                 filterIcon('testers') + '<span>' + esc(workspaceText('Участники появятся после принятия заявок', 'Participants will appear after applications are accepted')) + '</span></button>';
+        var todayLabel = text('pcTeamQuickToday', workspaceText('Сегодня', 'Today'));
         var quickHtml = quickTabs.length ? '<div class="pc-team-quick-filters" role="group" aria-label="' + esc(workspaceText('Быстрые фильтры команды', 'Team quick filters')) + '">' +
+            '<span class="pc-team-quick-today" onclick="event.stopPropagation(); pcOnTodayLabelClick(' + appId + ');" title="' + esc(todayLabel) + '">' + esc(todayLabel) + '</span>' +
             quickTabs.map(function (tab) {
                 return '<button type="button" class="pc-team-quick-filter is-' + tab.key + (tab.warn ? ' is-warn' : '') + '" ' +
                     'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ',\'' + tab.key + '\')">' +
@@ -4557,6 +4590,36 @@
             quickHtml +
         '</div>';
     }
+
+    function buildProjectTeamCollapsedBar(project) {
+        if (!project) return '';
+        var appId = Number(project.app_id || project.id || 0);
+        var data = activityCounts(project);
+        var quickTabs = [
+            { key: 'attention', warn: hasCriticalAttentionIssue(data.attention) },
+            { key: 'control', warn: false },
+            { key: 'contribution', warn: false },
+        ].map(function (tab) {
+            tab.count = filterCount(tab.key, data);
+            return tab;
+        }).filter(function (tab) { return tab.count > 0; });
+
+        if (!quickTabs.length) return '';
+
+        var todayLabel = text('pcTeamQuickToday', workspaceText('Сегодня', 'Today'));
+        var chipsHtml = quickTabs.map(function (tab) {
+            return '<button type="button" class="pc-team-quick-filter is-' + tab.key + (tab.warn ? ' is-warn' : '') + '" ' +
+                'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ',\'' + tab.key + '\')">' +
+                filterIcon(tab.key) + '<strong>' + tab.count + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
+            '</button>';
+        }).join('');
+
+        return '<div class="pc-team-collapsed-bar" role="group" aria-label="' + esc(workspaceText('Активные вкладки сегодня', 'Active tabs today')) + '" onclick="event.stopPropagation(); pcOnTodayLabelClick(' + appId + ');">' +
+            '<span class="pc-team-quick-today" onclick="event.stopPropagation(); pcOnTodayLabelClick(' + appId + ');" title="' + esc(todayLabel) + '">' + esc(todayLabel) + '</span>' +
+            chipsHtml +
+        '</div>';
+    }
+    window.buildProjectTeamCollapsedBar = buildProjectTeamCollapsedBar;
 
     function innerHtml(project) {
         var appId = Number(project.id || 0);
@@ -4684,6 +4747,7 @@
 
     window.ProjectToday = {
         buildSection: buildSection,
+        buildCollapsedBar: buildProjectTeamCollapsedBar,
         mount: mount,
         isControlDay: isControlDay,
         getCacheEntry: getCacheEntry,

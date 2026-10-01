@@ -2393,6 +2393,7 @@ function renderProjects(force) {
             ${updateTipHtml}
             ${stateBlockHtml}
             <div class="pc-results-collapsed-slot">${typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>
+            <div class="pc-team-collapsed-slot">${typeof window.buildProjectTeamCollapsedBar === 'function' ? window.buildProjectTeamCollapsedBar(project) : ''}</div>
             </section>
 
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->

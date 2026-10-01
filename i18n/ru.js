@@ -3789,6 +3789,7 @@
             pcResultsAllFeedback: "Все фидбэки",
             pcParticipantsTitle: "Участники",
             pcTeamLabel: "Команда",
+            pcTeamQuickToday: "Сегодня",
             pcResultsEmpty: "Результаты появятся по мере тестирования",
             pcResultsChipCoverage: "Покрытие",
             pcResultsChipCountry: "Страна",

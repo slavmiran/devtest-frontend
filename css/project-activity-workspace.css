@@ -2813,11 +2813,77 @@
     border-top: 1px solid rgba(153, 174, 202, .075);
     scrollbar-width: none;
     scroll-snap-type: x proximity;
+    scroll-padding-left: 64px;
     -webkit-overflow-scrolling: touch;
 }
 
 .pc-team-quick-filters::-webkit-scrollbar {
     display: none;
+}
+
+.pc-team-quick-today {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 650;
+    color: #9fb0c7;
+    white-space: nowrap;
+    background: #151c28;
+    padding: 3px 6px 3px 2px;
+    margin-right: 2px;
+    cursor: pointer;
+    user-select: none;
+    letter-spacing: .01em;
+}
+
+.pc-team-quick-today::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -12px;
+    bottom: 0;
+    width: 12px;
+    background: linear-gradient(to right, #151c28 25%, rgba(21, 28, 40, 0));
+    pointer-events: none;
+}
+
+/* ── Collapsed Card Team Compact Bar ── */
+.pc-team-collapsed-bar {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    width: calc(100% - 24px);
+    margin: 2px 12px 6px 12px;
+    padding: 5px 8px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 9px;
+    box-sizing: border-box;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-padding-left: 64px;
+    -webkit-overflow-scrolling: touch;
+    cursor: pointer;
+}
+
+.pc-team-collapsed-bar::-webkit-scrollbar {
+    display: none;
+}
+
+#tab-projects .card.card-collapsed .pc-team-collapsed-bar {
+    display: flex;
+}
+
+.pc-team-collapsed-bar .pc-team-quick-today {
+    background: #141b25;
+}
+
+.pc-team-collapsed-bar .pc-team-quick-today::after {
+    background: linear-gradient(to right, #141b25 25%, rgba(20, 27, 37, 0));
 }
 
 .pc-team-quick-filter {

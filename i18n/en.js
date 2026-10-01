@@ -3783,6 +3783,7 @@
             pcResultsAllFeedback: "All feedback",
             pcParticipantsTitle: "Participants",
             pcTeamLabel: "Team",
+            pcTeamQuickToday: "Today",
             pcResultsEmpty: "Results will appear as testing progresses",
             pcResultsChipCoverage: "Coverage",
             pcResultsChipCountry: "Country",
