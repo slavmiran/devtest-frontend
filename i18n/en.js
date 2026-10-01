@@ -3780,6 +3780,7 @@
             pcResultsReview: "Review",
             pcResultsReviews: "Reviews",
             pcResultsTotalShort: "total",
+            pcResultsAllFeedback: "All feedback",
             pcParticipantsTitle: "Participants",
             pcTeamLabel: "Team",
             pcResultsEmpty: "Results will appear as testing progresses",

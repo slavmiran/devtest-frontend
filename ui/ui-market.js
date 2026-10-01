@@ -5288,8 +5288,8 @@ var _projectFeedbackTypeFilter = 'all';
 var _projectFeedbackStatusFilter = 'all';
 var _projectFeedbackCardNodes = null;
 
-function resetProjectFeedbackFilters(preferUnprocessed) {
-    _projectFeedbackTypeFilter = 'all';
+function resetProjectFeedbackFilters(preferUnprocessed, typeFilter) {
+    _projectFeedbackTypeFilter = ['all', 'google_play', 'bug', 'idea'].includes(typeFilter) ? typeFilter : 'all';
     _projectFeedbackStatusFilter = preferUnprocessed ? 'new' : 'all';
     _projectFeedbackCardNodes = null;
 }
@@ -5326,6 +5326,7 @@ function rerenderActiveFeedbackList(preferUnprocessed, items, partialLoad) {
     if (typeof window.showProjectFeedbackModal === 'function' && project) {
         window.showProjectFeedbackModal(project, items || activeFeedbackItems(), {
             preferUnprocessed: !!preferUnprocessed,
+            typeFilter: _projectFeedbackTypeFilter,
             partialLoad: !!partialLoad
         });
         return true;
@@ -6333,7 +6334,7 @@ function showProjectFeedbackModal(project, items, options) {
     if (options.preserveFilters) {
         _projectFeedbackCardNodes = null;
     } else {
-        resetProjectFeedbackFilters(!!options.preferUnprocessed);
+        resetProjectFeedbackFilters(!!options.preferUnprocessed, options.typeFilter);
     }
     const body = document.getElementById('project-feedback-body');
     if (!body) return;

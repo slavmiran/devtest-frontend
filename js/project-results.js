@@ -150,9 +150,9 @@
             }
         });
 
-        var newBugs = Number(project.bugs_new_count || summary.bugs_new_count || 0);
-        var newIdeas = Number(project.ideas_new_count || summary.ideas_new_count || 0);
-        var newReviews = Number(project.reviews_new_count || summary.reviews_new_count || 0);
+        var newBugs = Number(project.bugs_new_count != null ? project.bugs_new_count : (summary.bugs_new_count || 0));
+        var newIdeas = Number(project.ideas_new_count != null ? project.ideas_new_count : (summary.ideas_new_count || 0));
+        var newReviews = Number(project.reviews_new_count != null ? project.reviews_new_count : (summary.reviews_new_count || 0));
 
         var totalNew = unseenCoverageCount + unseenCountriesCount + newBugs + newIdeas + newReviews;
 
@@ -223,6 +223,9 @@
         var resultsTitle = lang === 'ru' ? 'Результаты тестирования' : 'Testing results';
         var resultsSubtitle = lang === 'ru' ? 'Покрытие и полезные находки' : 'Coverage and useful findings';
         var overviewLabel = lang === 'ru' ? 'Сводка' : 'Overview';
+        var allFeedbackLabel = window.t('pcResultsAllFeedback', {}, lang);
+        var feedbackTotal = Number(project.feedback_total_count || 0);
+        var feedbackNew = Number(project.feedback_new_count || 0);
 
         var indicators = [
             {
@@ -256,7 +259,7 @@
                 totalCount: bugsTotal,
                 detail: '',
                 title: window.t('pcResultsChipBugsTitle', {}, lang) || 'Баги',
-                action: 'openProjectResultsFeedback(' + appId + ', \'bug\');'
+                action: 'openProjectResultsFeedback(' + appId + ', \'bug\', 0, ' + (newBugs > 0) + ');'
             },
             {
                 key: 'ideas',
@@ -267,7 +270,7 @@
                 totalCount: ideasTotal,
                 detail: '',
                 title: window.t('pcResultsChipIdeasTitle', {}, lang) || 'Идеи и рекомендации',
-                action: 'openProjectResultsFeedback(' + appId + ', \'idea\');'
+                action: 'openProjectResultsFeedback(' + appId + ', \'idea\', 0, ' + (newIdeas > 0) + ');'
             },
             {
                 key: 'reviews',
@@ -278,7 +281,7 @@
                 totalCount: reviewsTotal,
                 detail: '',
                 title: window.t('pcResultsChipReviewsTitle', {}, lang) || 'Отзывы Google Play',
-                action: 'openProjectResultsFeedback(' + appId + ', \'google_play\');'
+                action: 'openProjectResultsFeedback(' + appId + ', \'google_play\', 0, ' + (newReviews > 0) + ');'
             }
         ];
 
@@ -328,6 +331,11 @@
                         '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
                         '<span aria-hidden="true">→</span></button>') +
                 '</div>' +
+                '<button type="button" class="pc-results-feedback-link" onclick="event.stopPropagation(); openProjectFeedback(' + appId + ', false, { preferUnprocessed: false, typeFilter: \'all\' });">' +
+                    '<span>' + window.escapeHTML(allFeedbackLabel) + '</span>' +
+                    (feedbackNew > 0 ? '<span class="pc-results-feedback-link__badge is-new">+' + feedbackNew + '</span>' : (feedbackTotal > 0 ? '<span class="pc-results-feedback-link__badge">' + feedbackTotal + '</span>' : '')) +
+                    '<span class="pc-results-feedback-link__arrow" aria-hidden="true">›</span>' +
+                '</button>' +
             '</section>'
         );
     }
@@ -405,18 +413,13 @@
 
     // ── Open Feedback filtered from Results block ──
 
-    function openProjectResultsFeedback(appId, typeFilter, feedbackId) {
+    function openProjectResultsFeedback(appId, typeFilter, feedbackId, hasNewInCategory) {
         if (typeof window.openProjectFeedback === 'function') {
             window.openProjectFeedback(appId, false, {
-                preferUnprocessed: true,
+                preferUnprocessed: hasNewInCategory === true,
                 typeFilter: typeFilter,
                 focusFeedbackId: Number(feedbackId || 0) || undefined
             });
-        }
-        if (typeof window.filterFeedback === 'function') {
-            setTimeout(function () {
-                window.filterFeedback(typeFilter);
-            }, 60);
         }
     }
 

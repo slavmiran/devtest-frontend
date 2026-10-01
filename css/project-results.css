@@ -351,11 +351,55 @@
     margin: 8px 8px 10px;
     padding: 10px 10px 11px;
     border-color: rgba(153, 174, 202, .075);
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, .033), rgba(255, 255, 255, .018));
+    background: #151c28;
     box-shadow:
-        0 2px 7px rgba(0, 0, 0, .13),
-        inset 0 1px 0 rgba(255, 255, 255, .018);
+        inset 0 1px 4px rgba(0, 0, 0, .24),
+        inset 0 1px 0 rgba(255, 255, 255, .012);
+}
+
+.pc-results-feedback-link {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    width: 100%;
+    min-height: 29px;
+    margin-top: 5px;
+    padding: 2px 4px 0;
+    border: 0;
+    background: transparent;
+    color: #91a1b6;
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pc-results-feedback-link:focus-visible {
+    outline: 1px solid #7188a7;
+    outline-offset: -2px;
+    border-radius: 6px;
+}
+
+.pc-results-feedback-link__badge {
+    min-width: 16px;
+    padding: 1px 4px;
+    border-radius: 6px;
+    background: rgba(145, 161, 182, .12);
+    color: #aebdd0;
+    text-align: center;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.pc-results-feedback-link__badge.is-new {
+    background: rgba(92, 144, 196, .16);
+    color: #9bbfe3;
+}
+
+.pc-results-feedback-link__arrow {
+    font-size: 18px;
+    line-height: 1;
 }
 
 .pc-results-header {
@@ -548,33 +592,28 @@
     font-variant-numeric: tabular-nums;
 }
 
-.pc-results-collapsed__metric.is-models {
+.pc-results-collapsed__metric.is-models svg {
     color: #6fa6d2;
 }
 
-.pc-results-collapsed__metric.is-countries {
+.pc-results-collapsed__metric.is-countries svg {
     color: #6fad95;
 }
 
-.pc-results-collapsed__metric.is-bugs {
+.pc-results-collapsed__metric.is-bugs svg {
     color: #c57c82;
 }
 
-.pc-results-collapsed__metric.is-ideas {
+.pc-results-collapsed__metric.is-ideas svg {
     color: #c7a25f;
 }
 
-.pc-results-collapsed__metric.is-reviews {
+.pc-results-collapsed__metric.is-reviews svg {
     color: #aa86c7;
 }
 
 .pc-results-collapsed__metric.has-new {
-    border-color: currentColor;
     background: rgba(123, 148, 181, .08);
-}
-
-.pc-results-collapsed__metric.has-new strong {
-    color: currentColor;
 }
 
 .pc-results-collapsed__text {

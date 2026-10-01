@@ -3786,6 +3786,7 @@
             pcResultsReview: "Отзыв",
             pcResultsReviews: "Отзывы",
             pcResultsTotalShort: "всего",
+            pcResultsAllFeedback: "Все фидбэки",
             pcParticipantsTitle: "Участники",
             pcTeamLabel: "Команда",
             pcResultsEmpty: "Результаты появятся по мере тестирования",

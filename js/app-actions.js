@@ -4061,11 +4061,14 @@ async function openProjectFeedback(appId, isArchived, options) {
     });
     if (!project) return;
 
+    var explicitUnprocessed = typeof options.preferUnprocessed === 'boolean';
     var forceUnprocessed = options.preferUnprocessed === true;
     var focusId = Number(options.focusFeedbackId || 0);
     var reportedOpen = Number(project.feedback_new_count || 0);
-    var preferUnprocessed = forceUnprocessed || (focusId <= 0 && reportedOpen > 0);
+    var preferUnprocessed = explicitUnprocessed ? forceUnprocessed : (focusId <= 0 && reportedOpen > 0);
+    var typeFilter = options.typeFilter || 'all';
     var cached = getProjectFeedbackSession(appId);
+    if (cached && !preferUnprocessed && !cached.fullLoaded) cached = null;
 
     _activeProjectFeedbackAppId = Number(appId);
     _activeProjectFeedbackArchived = !!isArchived;
@@ -4084,6 +4087,7 @@ async function openProjectFeedback(appId, isArchived, options) {
             if (window.showProjectFeedbackModal) {
                 window.showProjectFeedbackModal(project, cached.items, {
                     preferUnprocessed: preferUnprocessed,
+                    typeFilter: typeFilter,
                     focusFeedbackId: focusId,
                     partialLoad: !!_activeProjectFeedbackPartial
                 });
@@ -4128,6 +4132,7 @@ async function openProjectFeedback(appId, isArchived, options) {
                 if (window.showProjectFeedbackModal) {
                     window.showProjectFeedbackModal(project, stageItems, {
                         preferUnprocessed: true,
+                        typeFilter: typeFilter,
                         partialLoad: true
                     });
                 }
@@ -4171,7 +4176,8 @@ async function openProjectFeedback(appId, isArchived, options) {
         rememberProjectFeedbackSession(appId);
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, stageItems, {
-                preferUnprocessed: forceUnprocessed,
+                preferUnprocessed: preferUnprocessed,
+                typeFilter: typeFilter,
                 focusFeedbackId: focusId,
                 partialLoad: false
             });
