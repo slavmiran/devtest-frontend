@@ -226,6 +226,29 @@
         var allFeedbackLabel = window.t('pcResultsAllFeedback', {}, lang);
         var feedbackTotal = Number(project.feedback_total_count || 0);
         var feedbackNew = Number(project.feedback_new_count || 0);
+        var screenshotsCount = Number(summary.screenshots_count || 0);
+        var checkinsCount = Number(summary.checkins_count || project.checkins_count || 0);
+        if (!checkinsCount && Array.isArray(project.testers)) {
+            checkinsCount = project.testers.reduce(function (total, tester) {
+                return total + Number(tester && tester.checkins_count || 0);
+            }, 0);
+        }
+        var screenshotsShortLabel = window.t('pcResultsScreenshotsShort', {}, lang);
+        var checkinsShortLabel = window.t('pcResultsCheckinsShort', {}, lang);
+        var evidenceHtml = (screenshotsCount > 0 || checkinsCount > 0)
+            ? '<div class="pc-results-evidence-summary" aria-label="' + window.escapeHTML(
+                screenshotsCount + ' ' + screenshotsShortLabel + ' · ' + checkinsCount + ' ' + checkinsShortLabel
+            ) + '">' +
+                '<span class="pc-results-evidence-summary__item" title="' + window.escapeHTML(screenshotsShortLabel) + '">' +
+                    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"></rect><circle cx="9" cy="10" r="2"></circle><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"></path></svg>' +
+                    '<strong>' + screenshotsCount + '</strong><span>' + window.escapeHTML(screenshotsShortLabel) + '</span>' +
+                '</span>' +
+                '<span class="pc-results-evidence-summary__item" title="' + window.escapeHTML(checkinsShortLabel) + '">' +
+                    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16"></path><rect x="4" y="5" width="16" height="15" rx="2.5"></rect><path d="m8.5 14 2.1 2.1 4.9-5"></path></svg>' +
+                    '<strong>' + checkinsCount + '</strong><span>' + window.escapeHTML(checkinsShortLabel) + '</span>' +
+                '</span>' +
+            '</div>'
+            : '';
 
         var indicators = [
             {
@@ -331,11 +354,14 @@
                         '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
                         '<span aria-hidden="true">→</span></button>') +
                 '</div>' +
-                '<button type="button" class="pc-results-feedback-link" onclick="event.stopPropagation(); openProjectFeedback(' + appId + ', false, { preferUnprocessed: false, typeFilter: \'all\' });">' +
-                    '<span>' + window.escapeHTML(allFeedbackLabel) + '</span>' +
-                    (feedbackNew > 0 ? '<span class="pc-results-feedback-link__badge is-new">+' + feedbackNew + '</span>' : (feedbackTotal > 0 ? '<span class="pc-results-feedback-link__badge">' + feedbackTotal + '</span>' : '')) +
-                    '<span class="pc-results-feedback-link__arrow" aria-hidden="true">›</span>' +
-                '</button>' +
+                '<div class="pc-results-footer">' +
+                    evidenceHtml +
+                    '<button type="button" class="pc-results-feedback-link" onclick="event.stopPropagation(); openProjectFeedback(' + appId + ', false, { preferUnprocessed: false, typeFilter: \'all\' });">' +
+                        '<span>' + window.escapeHTML(allFeedbackLabel) + '</span>' +
+                        (feedbackNew > 0 ? '<span class="pc-results-feedback-link__badge is-new">+' + feedbackNew + '</span>' : (feedbackTotal > 0 ? '<span class="pc-results-feedback-link__badge">' + feedbackTotal + '</span>' : '')) +
+                        '<span class="pc-results-feedback-link__arrow" aria-hidden="true">›</span>' +
+                    '</button>' +
+                '</div>' +
             '</section>'
         );
     }
@@ -1272,12 +1298,25 @@
     function bindCoverageScrollHeader(container) {
         var scroller = container && container.querySelector ? container.querySelector('.coverage-body') : null;
         if (!scroller) return;
-        var compact = false;
-        scroller.addEventListener('scroll', function () {
-            var shouldCompact = scroller.scrollTop > (compact ? 24 : 56);
+        var compact = !!(container.classList && container.classList.contains('is-header-compact'));
+        var animationFrame = 0;
+        var scheduleFrame = typeof window.requestAnimationFrame === 'function'
+            ? window.requestAnimationFrame.bind(window)
+            : function (callback) { return setTimeout(callback, 0); };
+        function updateHeaderState() {
+            animationFrame = 0;
+            // Collapsing the sibling header can slightly adjust scrollTop. Keep the
+            // compact state until the reader actually reaches the top; otherwise
+            // the two thresholds can fight each other and make the header flicker.
+            var top = Math.max(0, Number(scroller.scrollTop || 0));
+            var shouldCompact = compact ? top > 0 : top > 18;
             if (shouldCompact === compact) return;
             compact = shouldCompact;
             container.classList.toggle('is-header-compact', compact);
+        }
+        scroller.addEventListener('scroll', function () {
+            if (animationFrame) return;
+            animationFrame = scheduleFrame(updateHeaderState);
         }, { passive: true });
     }
 

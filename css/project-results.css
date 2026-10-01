@@ -357,15 +357,57 @@
         inset 0 1px 0 rgba(255, 255, 255, .012);
 }
 
+.pc-results-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 31px;
+    margin-top: 5px;
+    padding: 1px 4px 0;
+}
+
+.pc-results-evidence-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    color: #78899f;
+    font-size: 9.5px;
+    font-weight: 560;
+    white-space: nowrap;
+}
+
+.pc-results-evidence-summary__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.pc-results-evidence-summary__item svg {
+    color: #7898b9;
+    flex: 0 0 auto;
+}
+
+.pc-results-evidence-summary__item + .pc-results-evidence-summary__item {
+    padding-left: 7px;
+    border-left: 1px solid rgba(151, 172, 198, .12);
+}
+
+.pc-results-evidence-summary__item strong {
+    color: #bdc9d8;
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+}
+
 .pc-results-feedback-link {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
-    width: 100%;
     min-height: 29px;
-    margin-top: 5px;
-    padding: 2px 4px 0;
+    margin-left: auto;
+    padding: 2px 0 0;
     border: 0;
     background: transparent;
     color: #91a1b6;
@@ -887,16 +929,19 @@
     font-size: 12px;
     color: var(--text-secondary, #9ca3af);
     min-height: 34px;
+    max-height: 48px;
     padding: 6px 9px;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 8px;
     white-space: nowrap;
-    transition: min-height .22s ease, padding .22s ease, background .22s ease;
+    overflow: hidden;
+    transition: min-height .22s ease, max-height .22s ease, margin .22s ease, padding .22s ease, opacity .18s ease, background .22s ease;
 }
 
 #project-coverage-body.is-header-compact .coverage-header {
-    padding-top: max(5px, env(safe-area-inset-top));
-    padding-bottom: 5px;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-color: transparent;
 }
 #project-coverage-body.is-header-compact .coverage-header__top,
 #project-coverage-body.is-header-compact .coverage-scope-switcher {
@@ -909,9 +954,14 @@
     pointer-events: none;
 }
 #project-coverage-body.is-header-compact .coverage-stat-bar {
-    min-height: 27px;
-    padding-block: 3px;
-    background: rgba(255, 255, 255, .022);
+    min-height: 0;
+    max-height: 0;
+    margin: 0;
+    padding-block: 0;
+    border: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 .coverage-stat-bar__dimensions {
     display: flex;

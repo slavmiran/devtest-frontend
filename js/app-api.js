@@ -2399,6 +2399,8 @@ function _mapProjectsFromApi(data) {
                 models_count: 0,
                 android_range: '',
                 countries_count: 0,
+                screenshots_count: 0,
+                checkins_count: 0,
                 coverage_tuples: [],
                 countries_list: [],
             }, project.results_summary || {}),

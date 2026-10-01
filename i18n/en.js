@@ -3782,6 +3782,8 @@
             pcResultsReviews: "Reviews",
             pcResultsTotalShort: "total",
             pcResultsAllFeedback: "All feedback",
+            pcResultsScreenshotsShort: "shots",
+            pcResultsCheckinsShort: "check-ins",
             pcParticipantsTitle: "Participants",
             pcTeamLabel: "Team",
             pcTeamQuickToday: "Today",

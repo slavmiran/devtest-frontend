@@ -3788,6 +3788,8 @@
             pcResultsReviews: "Отзывы",
             pcResultsTotalShort: "всего",
             pcResultsAllFeedback: "Все фидбэки",
+            pcResultsScreenshotsShort: "скр.",
+            pcResultsCheckinsShort: "чекинов",
             pcParticipantsTitle: "Участники",
             pcTeamLabel: "Команда",
             pcTeamQuickToday: "Сегодня",
