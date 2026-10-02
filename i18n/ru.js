@@ -3166,6 +3166,7 @@
             testingControlGalleryImageLoading: "Загрузка превью…",
             testingControlAlbumCount: "{count} фото",
             testingControlAlbumImage: "Скриншоты {current} из {total}",
+            testingControlAlbumStep: "{current} из {total}",
             testingControlAlbumSwipeHint: "Свайпните, чтобы посмотреть остальные",
             testingControlOpenOriginal: "Открыть оригинал в Telegram",
             testingControlOriginalUnavailable: "Оригинал доступен только в topic Testing Proofs.",

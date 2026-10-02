@@ -862,6 +862,47 @@
         return '';
     }
 
+    function proofDeviceModel(proofId) {
+        var galleryItem = findGalleryProof(proofId);
+        if (galleryItem && galleryItem.device) {
+            var gDev = galleryItem.device;
+            var gBrand = String(gDev.brand || '').trim();
+            var gModel = String(gDev.model || '').trim();
+            if (gBrand && gModel && !new RegExp('^' + gBrand, 'i').test(gModel)) {
+                return gBrand + ' ' + gModel;
+            }
+            return gModel || gBrand || '';
+        }
+        var found = findProof(proofId);
+        if (found && found.item && found.item.device) {
+            var fDev = found.item.device;
+            var fBrand = String(fDev.brand || '').trim();
+            var fModel = String(fDev.model || '').trim();
+            if (fBrand && fModel && !new RegExp('^' + fBrand, 'i').test(fModel)) {
+                return fBrand + ' ' + fModel;
+            }
+            return fModel || fBrand || '';
+        }
+        var fallback = state.previewFallback;
+        if (fallback && Number(fallback.proofId) === Number(proofId)) {
+            if (fallback.modelName) return String(fallback.modelName).trim();
+            var fallbackTitle = String(fallback.title || '').trim();
+            if (fallbackTitle && !/^скриншот/i.test(fallbackTitle) && !/^screenshot/i.test(fallbackTitle)) {
+                return fallbackTitle;
+            }
+        }
+        return '';
+    }
+
+    function albumCounterText(proofId, current, total) {
+        var model = proofDeviceModel(proofId);
+        if (model) {
+            var step = text('testingControlAlbumStep', '{current} из {total}', { current: current, total: total });
+            return model + ' · ' + step;
+        }
+        return text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: current, total: total });
+    }
+
     function albumNavigation(proofId, mediaIndex, imageCount) {
         if (imageCount <= 1) return '';
         var indicators = [];
@@ -871,7 +912,7 @@
         }
         return '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="stepCheckinProofPreview(-1)"' + (mediaIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
             '<div class="checkin-proof-preview-album-meta">' +
-                '<span class="checkin-proof-preview-counter">' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: mediaIndex + 1, total: imageCount })) + '</span>' +
+                '<span class="checkin-proof-preview-counter notranslate">' + escape(albumCounterText(proofId, mediaIndex + 1, imageCount)) + '</span>' +
                 (deviceHint
                     ? '<span class="checkin-proof-preview-swipe-hint">' + escape(deviceHint) + '</span>'
                     : '') +
@@ -994,7 +1035,7 @@
         album.dataset.mediaIndex = String(safeIndex);
         state.previewMediaIndex = safeIndex;
         var counter = album.querySelector('.checkin-proof-preview-counter');
-        if (counter) counter.textContent = text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: safeIndex + 1, total: imageCount });
+        if (counter) counter.textContent = albumCounterText(proofId, safeIndex + 1, imageCount);
         album.querySelectorAll('.checkin-proof-preview-indicator').forEach(function (indicator, index) {
             indicator.classList.toggle('is-active', index === safeIndex);
         });
@@ -1331,7 +1372,7 @@
                 '<span class="checkin-proof-overview-placeholder" aria-hidden="true">▧</span><img alt="' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: index + 1, total: count })) + '"' + (source ? ' src="' + escape(source) + '"' : '') + '>' +
                 '<span class="checkin-proof-overview-number">' + (index + 1) + '</span></button>');
         }
-        body.innerHTML = '<div class="checkin-proof-overview"><div class="checkin-proof-overview-intro"><div><strong>' + escape(text('pcProofOverviewTitle', 'All screenshots')) + '</strong><p>' + escape(text('pcProofOverviewHint', 'Tap any image to inspect it in detail.')) + '</p></div>' +
+        body.innerHTML = '<div class="checkin-proof-overview"><div class="checkin-proof-overview-intro"><div><strong>' + escape(text('pcProofOverviewTitle', 'All screenshots')) + ' (' + count + ')</strong></div>' +
             '<button class="checkin-proof-overview-topic" type="button" onclick="openCheckinProofOriginal(' + proofId + ',0,event)">↗ ' + escape(text('pcProofOpenTopic', 'Open in topic')) + '</button></div>' +
             '<div class="checkin-proof-overview-grid">' + tiles.join('') + '</div></div>';
         body.querySelectorAll('.checkin-proof-overview-tile img').forEach(function(image) {

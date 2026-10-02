@@ -3160,6 +3160,7 @@
             testingControlGalleryImageLoading: "Loading preview…",
             testingControlAlbumCount: "{count} images",
             testingControlAlbumImage: "Screenshots {current} of {total}",
+            testingControlAlbumStep: "{current} of {total}",
             testingControlAlbumSwipeHint: "Swipe to view the rest",
             testingControlOpenOriginal: "Open original in Telegram",
             testingControlOriginalUnavailable: "The original is available only in the Testing Proofs topic.",

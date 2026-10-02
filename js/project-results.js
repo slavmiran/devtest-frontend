@@ -1032,6 +1032,7 @@
                                     (authorName ? '<span class="coverage-gallery-thumb__author notranslate">' + window.escapeHTML(authorName) + '</span>' : '') +
                                     ((osPart || resolutionLabel) ? '<span class="coverage-gallery-thumb__specs">' +
                                         (osPart ? '<span>' + androidIconSvg('coverage-gallery-thumb__android') + window.escapeHTML(osPart) + '</span>' : '') +
+                                        ((osPart && resolutionLabel) ? '<span class="coverage-gallery-thumb__sep" aria-hidden="true">·</span>' : '') +
                                         (resolutionLabel ? '<span>' + window.escapeHTML(resolutionLabel) + '</span>' : '') +
                                     '</span>' : '') +
                                 '</span>' +
@@ -1414,10 +1415,11 @@
         var dotsEl = document.getElementById('coverage-screenshot-dots');
 
         if (titleEl) {
-            titleEl.textContent = (s.day ? 'D' + s.day : 'Скриншот') + (s.modelName ? ' · ' + s.modelName : '');
+            titleEl.textContent = s.modelName || (s.day ? 'D' + s.day : 'Скриншот');
         }
         if (subtitleEl) {
             var subParts = [];
+            if (s.modelName && s.day) subParts.push('D' + s.day);
             if (s.testerName) subParts.push(window.escapeHTML(s.testerName));
             if (s.hasBug) subParts.push('<span style="color:#f87171;font-weight:700;">🐞 Баг</span>');
             subtitleEl.innerHTML = subParts.join(' · ');
@@ -1515,14 +1517,6 @@
         var targetProofId = Number(proofId || 0);
         if (targetProofId <= 0) return;
 
-        // The shared proof viewer already owns secure media tickets, progressive
-        // thumbnail/medium loading, swipe navigation, and Telegram originals.
-        // Coverage previously bypassed it with raw Telegram file IDs.
-        if (typeof window.openCheckinProofOverview === 'function') {
-            window.openCheckinProofOverview(targetProofId, { imageCount: Number(imageCount || 1) });
-            return;
-        }
-
         // Find proof in _activeCoverageData
         var foundScreenshot = null;
         var foundModel = null;
@@ -1542,12 +1536,25 @@
             }
         }
 
-        var images = [];
-        var day = 0;
-        var testerName = '';
-        var hasBug = false;
-        var modelName = foundModel ? foundModel.model_name : '';
+        var day = foundScreenshot ? (foundScreenshot.day || 0) : 0;
+        var testerName = foundScreenshot ? (foundScreenshot.tester_name || '') : '';
+        var hasBug = foundScreenshot ? !!foundScreenshot.has_bug : false;
+        var modelName = foundModel ? (foundModel.model_name || '') : '';
 
+        // The shared proof viewer already owns secure media tickets, progressive
+        // thumbnail/medium loading, swipe navigation, and Telegram originals.
+        // Coverage previously bypassed it with raw Telegram file IDs.
+        if (typeof window.openCheckinProofOverview === 'function') {
+            window.openCheckinProofOverview(targetProofId, {
+                imageCount: Number(imageCount || 1),
+                modelName: modelName,
+                title: modelName || (testerName || (day ? ('D' + day) : 'Скриншот')),
+                subtitle: [day ? ('D' + day) : '', testerName].filter(Boolean).join(' · ')
+            });
+            return;
+        }
+
+        var images = [];
         if (foundScreenshot) {
             day = foundScreenshot.day || 0;
             testerName = foundScreenshot.tester_name || '';

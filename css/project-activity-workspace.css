@@ -2815,27 +2815,24 @@
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
+    gap: 4px;
+    min-height: 25px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #151c28;
+    border: 1px solid rgba(142, 159, 183, .16);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
     font-size: 11px;
     font-weight: 650;
-    color: #9fb0c7;
+    color: #c5d3e5;
     white-space: nowrap;
-    background: #151c28;
-    padding: 3px 6px 3px 2px;
-    margin-right: 2px;
     cursor: pointer;
     user-select: none;
     letter-spacing: .01em;
 }
 
 .pc-team-quick-today::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: -12px;
-    bottom: 0;
-    width: 12px;
-    background: linear-gradient(to right, #151c28 25%, rgba(21, 28, 40, 0));
-    pointer-events: none;
+    display: none;
 }
 
 /* ── Collapsed Card Team Compact Bar ── */
@@ -2870,7 +2867,7 @@
 }
 
 .pc-team-collapsed-bar .pc-team-quick-today::after {
-    background: linear-gradient(to right, #141b25 25%, rgba(20, 27, 37, 0));
+    display: none;
 }
 
 .pc-team-quick-filter {

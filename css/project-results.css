@@ -1040,8 +1040,18 @@
     flex-shrink: 0;
 }
 .coverage-cockpit-chip strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     color: #f3f4f6;
     font-weight: 700;
+}
+.coverage-cockpit-chip__android {
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+    flex-shrink: 0;
+    transform: translateY(1px);
 }
 .coverage-cockpit-chip__count {
     color: var(--text-secondary, #9ca3af);
@@ -1792,6 +1802,10 @@
 .coverage-gallery-thumb__android {
     width: 11px;
     height: 11px;
+}
+.coverage-gallery-thumb__sep {
+    opacity: 0.55;
+    padding: 0 1px;
 }
 .coverage-device-gallery-empty {
     font-size: 11.5px;
