@@ -1780,7 +1780,8 @@ button.pc-stage-badge {
 }
 
 .pc-results-block-slot:empty,
-.pc-results-collapsed-slot:empty {
+.pc-results-collapsed-slot:empty,
+.pc-team-collapsed-slot:empty {
     display: none;
 }
 

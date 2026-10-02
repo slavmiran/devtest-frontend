@@ -2815,38 +2815,52 @@
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    min-height: 25px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: #151c28;
-    border: 1px solid rgba(142, 159, 183, .16);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-    font-size: 11px;
-    font-weight: 650;
-    color: #c5d3e5;
+    gap: 5px;
+    min-height: 26px;
+    padding: 0 9px;
+    border-radius: 7px;
+    background: linear-gradient(180deg, #1c2536 0%, #131924 100%);
+    border: 1px solid rgba(142, 168, 204, 0.2);
+    box-shadow: 6px 0 12px -2px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    font-size: 10px;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #e2e8f0;
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
-    letter-spacing: .01em;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.pc-team-quick-today::before {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
+    flex-shrink: 0;
 }
 
 .pc-team-quick-today::after {
     display: none;
 }
 
-/* ── Collapsed Card Team Compact Bar ── */
+/* ── Collapsed Card Team Compact Bar (Приборная панель: Команда) ── */
 .pc-team-collapsed-bar {
     display: none;
     align-items: center;
     gap: 6px;
     width: calc(100% - 24px);
-    margin: 2px 12px 6px 12px;
-    padding: 5px 8px;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 9px;
+    margin: 6px 12px 3px 12px;
+    padding: 5px 6px;
+    background: linear-gradient(180deg, rgba(22, 29, 41, 0.94) 0%, rgba(14, 19, 28, 0.98) 100%);
+    border: 1px solid rgba(142, 168, 204, 0.14);
+    border-radius: 10px;
     box-sizing: border-box;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
     overflow-x: auto;
     scrollbar-width: none;
     scroll-padding-left: 64px;
@@ -2863,7 +2877,7 @@
 }
 
 .pc-team-collapsed-bar .pc-team-quick-today {
-    background: #141b25;
+    background: linear-gradient(180deg, #1c2536 0%, #131924 100%);
 }
 
 .pc-team-collapsed-bar .pc-team-quick-today::after {
