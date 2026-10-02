@@ -260,7 +260,9 @@
                 totalCount: modelsTotal,
                 detail: summary.android_range || '',
                 title: window.t('pcResultsChipCoverageTitle', {}, lang) || 'Модели устройств',
-                action: 'openProjectCoverage(' + appId + ', \'models\', { focusNewModel: ' + (newModels > 0) + ' });'
+                action: (newModels > 0)
+                    ? ('openContinuousCoverageGallery(' + appId + ', { onlyNew: true });')
+                    : ('openProjectCoverage(' + appId + ', \'models\');')
             },
             {
                 key: 'countries',
@@ -338,10 +340,8 @@
             );
         }).join('');
 
-        var cardHasNew = Boolean(unseen.hasNew || newModels > 0 || newCountries > 0 || newBugs > 0 || newIdeas > 0 || newReviews > 0 || feedbackNew > 0);
-
         return (
-            '<section class="pc-results-card' + (cardHasNew ? ' has-new' : '') + '" data-app-id="' + appId + '" aria-label="' + window.escapeHTML(resultsTitle) + '">' +
+            '<section class="pc-results-card" data-app-id="' + appId + '" aria-label="' + window.escapeHTML(resultsTitle) + '">' +
                 '<div class="pc-results-header" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" role="button" tabindex="0" title="' + window.escapeHTML(resultsTitle) + '">' +
                     '<span class="pc-results-header__copy">' +
                         '<span class="pc-results-title">' + window.escapeHTML(resultsTitle) + '</span>' +
@@ -456,11 +456,87 @@
     var _activeCoverageAppId = 0;
     var _activeCoverageScope = 'current';
     var _activeCoverageTab = 'overview';
+    var _activeCoverageModelFilter = 'all';
     var _activeCoverageData = null;
     var _expandedModelKeys = {};
     var _coverageMemoryCache = {}; // key: appId + ':' + scope -> { data: ..., timestamp: ... }
     var _activeBrandFilter = 'all';
     var _isBrandFilterExpanded = false;
+
+    // ── Screenshot UI Defects & Tagging Helpers ──
+
+    function getProjectScreenshotDefects(appId) {
+        if (!appId) return {};
+        try {
+            var raw = localStorage.getItem('pc_screenshot_defects_' + appId);
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveProjectScreenshotDefects(appId, map) {
+        if (!appId) return;
+        try {
+            localStorage.setItem('pc_screenshot_defects_' + appId, JSON.stringify(map || {}));
+        } catch (e) {}
+    }
+
+    function isScreenshotDefect(appId, proofId, mediaIndex) {
+        var defects = getProjectScreenshotDefects(appId);
+        var key = String(proofId) + '_' + String(mediaIndex || 0);
+        return !!defects[key];
+    }
+
+    function toggleScreenshotDefect(appId, proofId, mediaIndex) {
+        var defects = getProjectScreenshotDefects(appId);
+        var key = String(proofId) + '_' + String(mediaIndex || 0);
+        if (defects[key]) {
+            delete defects[key];
+        } else {
+            defects[key] = true;
+        }
+        saveProjectScreenshotDefects(appId, defects);
+        return !!defects[key];
+    }
+
+    function getProjectDefectsCount(appId, covData) {
+        if (!appId || !covData || !Array.isArray(covData.models)) return 0;
+        var defects = getProjectScreenshotDefects(appId);
+        var count = 0;
+        covData.models.forEach(function (m) {
+            (m.screenshots || []).forEach(function (s) {
+                var pId = Number(s.id || 0);
+                var mItems = (s.media_items && s.media_items.length) ? s.media_items : [1];
+                mItems.forEach(function (_, mIdx) {
+                    if (defects[String(pId) + '_' + String(mIdx)]) count++;
+                });
+            });
+        });
+        return count;
+    }
+
+    function tagCoverageNewModels(appId, covData) {
+        if (!covData || !Array.isArray(covData.models)) return;
+        var seenState = getProjectResultsSeenState(appId);
+        var seenTuplesMap = {};
+        (seenState.seen_tuples || []).forEach(function (t) {
+            seenTuplesMap[String(t[0]) + '::' + String(t[1])] = true;
+        });
+        covData.models.forEach(function (m) {
+            var mKey = String(m.model_key || m.model_name || '');
+            var versions = m.android_versions || [];
+            var isNew = false;
+            if (versions.length > 0) {
+                isNew = versions.some(function (v) { return !seenTuplesMap[mKey + '::' + v]; });
+            } else {
+                isNew = !seenTuplesMap[mKey + '::all'];
+            }
+            if (isNew) {
+                m.is_new = true;
+            }
+        });
+    }
 
     function _getCoverageMediaUrl(fileIdOrPath) {
         if (!fileIdOrPath || typeof fileIdOrPath !== 'string') return '';
@@ -543,6 +619,7 @@
             _activeCoverageScope = 'current';
             _activeBrandFilter = 'all';
             _isBrandFilterExpanded = false;
+            _activeCoverageModelFilter = 'all';
         }
         _activeCoverageAppId = targetAppId;
 
@@ -558,29 +635,6 @@
 
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
-
-        var seenState = getProjectResultsSeenState(targetAppId);
-        var seenTuplesMap = {};
-        (seenState.seen_tuples || []).forEach(function (t) {
-            seenTuplesMap[String(t[0]) + '::' + String(t[1])] = true;
-        });
-
-        function tagNewModels(covData) {
-            if (!covData || !Array.isArray(covData.models)) return;
-            covData.models.forEach(function (m) {
-                var mKey = String(m.model_key || m.model_name || '');
-                var versions = m.android_versions || [];
-                var isNew = false;
-                if (versions.length > 0) {
-                    isNew = versions.some(function (v) { return !seenTuplesMap[mKey + '::' + v]; });
-                } else {
-                    isNew = !seenTuplesMap[mKey + '::all'];
-                }
-                if (isNew) {
-                    m.is_new = true;
-                }
-            });
-        }
 
         function applyNewModelFocus(container) {
             if (!options || !options.focusNewModel || !container) return;
@@ -605,7 +659,7 @@
         var forceReload = !!(options && options.forceReload);
 
         if (cached && cached.data) {
-            tagNewModels(cached.data);
+            tagCoverageNewModels(_activeCoverageAppId, cached.data);
             _activeCoverageData = cached.data;
             renderCoverageScreen(body, cached.data);
             applyNewModelFocus(body);
@@ -620,7 +674,7 @@
             fetchProjectCoverage(_activeCoverageAppId, _activeCoverageScope).then(function (fresh) {
                 _coverageMemoryCache[cacheKey] = { data: fresh, timestamp: Date.now() };
                 if (_activeCoverageAppId === targetAppId) {
-                    tagNewModels(fresh);
+                    tagCoverageNewModels(_activeCoverageAppId, fresh);
                     _activeCoverageData = fresh;
                     renderCoverageScreen(body, fresh);
                     markProjectCoverageSeen(_activeCoverageAppId, fresh);
@@ -636,7 +690,7 @@
         try {
             var coverage = await fetchProjectCoverage(_activeCoverageAppId, _activeCoverageScope);
             _coverageMemoryCache[cacheKey] = { data: coverage, timestamp: Date.now() };
-            tagNewModels(coverage);
+            tagCoverageNewModels(_activeCoverageAppId, coverage);
             _activeCoverageData = coverage;
             renderCoverageScreen(body, coverage);
             applyNewModelFocus(body);
@@ -760,12 +814,14 @@
                     reviews_count: 0,
                     feedback_items: [],
                     iterations: [],
-                    in_current_iteration: !!m.in_current_iteration
+                    in_current_iteration: !!m.in_current_iteration,
+                    is_new: !!m.is_new
                 };
                 order.push(key);
             }
             var entry = map[key];
             if (m.in_current_iteration) entry.in_current_iteration = true;
+            if (m.is_new) entry.is_new = true;
             entry.bugs_count += Number(m.bugs_count || 0);
             entry.ideas_count += Number(m.ideas_count || 0);
             entry.reviews_count += Number(m.reviews_count || 0);
@@ -1006,7 +1062,50 @@
             );
         }
 
-        var cardsHtml = models.map(function (m) {
+        var filteredModels = models;
+        if (_activeCoverageModelFilter === 'new') {
+            filteredModels = models.filter(function (m) { return m.is_new; });
+        } else if (_activeCoverageModelFilter === 'defects') {
+            filteredModels = models.filter(function (m) {
+                return (m.screenshots || []).some(function (s) {
+                    var sProofId = Number(s.id || 0);
+                    var mCount = Number(s.image_count || 1);
+                    for (var i = 0; i < mCount; i++) {
+                        if (isScreenshotDefect(_activeCoverageAppId, sProofId, i)) return true;
+                    }
+                    return false;
+                });
+            });
+        }
+
+        if (_activeCoverageModelFilter === 'defects' && filteredModels.length === 0) {
+            return (
+                '<div class="coverage-defects-empty">' +
+                    '<div class="coverage-defects-empty__icon">🛡️</div>' +
+                    '<div class="coverage-defects-empty__title">' +
+                        window.escapeHTML(lang === 'ru' ? 'Дефекты не отмечены' : 'No defects reported') +
+                    '</div>' +
+                    '<div class="coverage-defects-empty__desc">' +
+                        window.escapeHTML(window.t('coverageNoDefectsEmpty', {}, lang) || (lang === 'ru'
+                            ? 'Дефектов интерфейса пока не отмечено. Вы можете пометить скриншот дефектом в режиме полноэкранного просмотра кнопкой [⚠️ Дефект].'
+                            : 'No UI defects reported yet. You can flag a screenshot as a defect in fullscreen view using the [⚠️ Defect] button.')) +
+                    '</div>' +
+                '</div>'
+            );
+        }
+
+        if (_activeCoverageModelFilter === 'new' && filteredModels.length === 0) {
+            return (
+                '<div style="text-align: center; padding: 40px 16px; color: var(--text-secondary);">' +
+                    '<div style="font-size: 36px; margin-bottom: 10px;">✨</div>' +
+                    '<div style="font-size: 15px; font-weight: 700; color: var(--text-color); margin-bottom: 6px;">' +
+                        window.escapeHTML(lang === 'ru' ? 'Новых устройств пока нет' : 'No new devices') +
+                    '</div>' +
+                '</div>'
+            );
+        }
+
+        var cardsHtml = filteredModels.map(function (m) {
             var isExpanded = !!_expandedModelKeys[m.model_key];
             var brand = m.brand || extractDeviceBrand(m.model_name);
             var isBrandHidden = (_activeBrandFilter !== 'all' && _activeBrandFilter !== brand);
@@ -1045,6 +1144,11 @@
                 var thumbs = screenshots.map(function (s) {
                     var proofId = Number(s.id);
                     var imgCount = Number(s.image_count || 1);
+                    var isDefect = isScreenshotDefect(_activeCoverageAppId, proofId, 0);
+                    if (_activeCoverageModelFilter === 'defects' && !isDefect) {
+                        return '';
+                    }
+
                     var tObj = (m.testers || []).find(function (t) { return Number(t.tester_id || 0) === Number(s.tester_id || 0); }) || ((m.testers || []).length === 1 ? m.testers[0] : {});
                     var rawAv = s.android_version || tObj.android_version || '';
                     var matchAv = String(rawAv).match(/(?:android\s*)?(\d+)/i);
@@ -1062,10 +1166,11 @@
                     var screenshotTitle = [dateLabel, rawAv, resolutionLabel, authorName].filter(Boolean).join(' · ');
 
                     var thumbImgHtml = '<img class="coverage-gallery-thumb__img" data-proof-id="' + proofId + '" data-media-index="0" loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
-                        '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span></div>';
+                        '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span></div>' +
+                        (isDefect ? '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(lang === 'ru' ? 'Дефект UI' : 'UI Defect') + '">⚠️</span>' : '');
 
                     return (
-                        '<button type="button" class="coverage-gallery-item" onclick="event.stopPropagation(); openCoverageScreenshotPreview(' + proofId + ', ' + imgCount + ', event);" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
+                        '<button type="button" class="coverage-gallery-item' + (isDefect ? ' has-defect' : '') + '" data-proof-id="' + proofId + '" data-media-index="0" onclick="event.stopPropagation(); openContinuousCoverageGallery(_activeCoverageAppId, { initialProofId: ' + proofId + ', onlyNew: (_activeCoverageModelFilter === \'new\'), onlyDefects: (_activeCoverageModelFilter === \'defects\') });" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
                             '<div class="coverage-gallery-thumb">' +
                                 thumbImgHtml +
                                 (imgCount > 1 ? '<span class="coverage-gallery-thumb__count">+' + (imgCount - 1) + '</span>' : '') +
@@ -1231,11 +1336,26 @@
         );
 
         var currentRun = Number(data.current_iteration || 1);
-        var currentRunText = window.t('coverageScopeCurrentRun', { run: currentRun }, lang) || ('Текущий запуск (Запуск #' + currentRun + ')');
+        var currentRunText = window.t('coverageScopeCurrentRun', { run: currentRun }, lang) || (lang === 'ru' ? ('Текущий запуск (№' + currentRun + ')') : ('Current run (#' + currentRun + ')'));
         var allTimeLabel = window.t('coverageScopeAll', {}, lang) || 'За всё время';
 
         var aggregatedModels = aggregateModelStacks(models);
         var cockpitHtml = renderCoverageCockpit(data, lang);
+        var defectCount = getProjectDefectsCount(_activeCoverageAppId, data);
+        var filterPillsHtml = (
+            '<div class="coverage-filter-pills" role="tablist" aria-label="' + window.escapeHTML(lang === 'ru' ? 'Фильтры' : 'Filters') + '">' +
+                '<button type="button" class="coverage-filter-pill ' + (_activeCoverageModelFilter === 'all' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'all\')">' +
+                    window.escapeHTML(window.t('coverageFilterAll', {}, lang) || (lang === 'ru' ? 'Все' : 'All')) +
+                '</button>' +
+                '<button type="button" class="coverage-filter-pill ' + (_activeCoverageModelFilter === 'new' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'new\')">' +
+                    window.escapeHTML(window.t('coverageFilterNew', {}, lang) || (lang === 'ru' ? 'Новые' : 'New')) +
+                '</button>' +
+                '<button type="button" class="coverage-filter-pill coverage-filter-pill--defects ' + (_activeCoverageModelFilter === 'defects' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'defects\')">' +
+                    '⚠️ ' + window.escapeHTML(window.t('coverageFilterDefects', {}, lang) || (lang === 'ru' ? 'С дефектами' : 'With defects')) +
+                    ' <span class="coverage-filter-pill__count">(' + defectCount + ')</span>' +
+                '</button>' +
+            '</div>'
+        );
         var brandFilterHtml = renderCoverageBrandFilter(aggregatedModels, lang);
         var deviceCardsHtml = renderCoverageDeviceCards(aggregatedModels, lang);
 
@@ -1264,6 +1384,7 @@
             '<div class="coverage-body">' +
                 '<div id="coverage-tab-panel" class="coverage-tab-panel is-unified-view">' +
                     cockpitHtml +
+                    filterPillsHtml +
                     brandFilterHtml +
                     deviceCardsHtml +
                 '</div>' +
@@ -1275,6 +1396,14 @@
         }
         bindCoverageScrollHeader(container);
         hydrateCoverageThumbnails(container);
+    }
+
+    function selectCoverageModelFilter(filter) {
+        _activeCoverageModelFilter = filter || 'all';
+        var body = document.getElementById('project-coverage-body');
+        if (body && _activeCoverageData) {
+            renderCoverageScreen(body, _activeCoverageData);
+        }
     }
 
     function toggleCoverageScope(scope) {
@@ -1373,9 +1502,17 @@
 
     // ── Fullscreen Coverage Screenshot Viewer ──
 
+    function _getCoverageMediaUrl(fileId) {
+        if (!fileId) return '';
+        return '/api/telegram-media/' + encodeURIComponent(fileId);
+    }
+
     var _coverageViewerState = {
         isOpen: false,
+        isContinuous: false,
+        appId: 0,
         proofId: 0,
+        items: [],
         images: [],
         currentIndex: 0,
         day: 0,
@@ -1396,6 +1533,9 @@
                             '<div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>' +
                         '</div>' +
                         '<div class="coverage-screenshot-actions">' +
+                            '<button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)" title="Пометить дефект интерфейса">' +
+                                '⚠️ <span>Дефект</span>' +
+                            '</button>' +
                             '<span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>' +
                             '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Close">✕</button>' +
                         '</div>' +
@@ -1404,6 +1544,7 @@
                         '<button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>' +
                         '<div class="coverage-screenshot-img-wrap" onclick="toggleCoverageScreenshotZoom()">' +
                             '<img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager">' +
+                            '<div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;">⚠️ ДЕФЕКТ UI</div>' +
                             '<div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>' +
                         '</div>' +
                         '<button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>' +
@@ -1445,8 +1586,10 @@
 
     function _renderCoverageViewerCurrentSlide() {
         var s = _coverageViewerState;
-        if (!s.images || s.images.length === 0) return;
-        var cur = s.images[s.currentIndex] || {};
+        var list = (s.items && s.items.length > 0) ? s.items : (s.images || []);
+        if (!list || list.length === 0) return;
+        var cur = list[s.currentIndex] || {};
+        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
 
         var titleEl = document.getElementById('coverage-screenshot-title');
         var subtitleEl = document.getElementById('coverage-screenshot-subtitle');
@@ -1456,43 +1599,115 @@
         var prevBtn = document.getElementById('coverage-screenshot-prev');
         var nextBtn = document.getElementById('coverage-screenshot-next');
         var dotsEl = document.getElementById('coverage-screenshot-dots');
+        var defectBtn = document.getElementById('coverage-screenshot-defect-btn');
+        var defectBadge = document.getElementById('coverage-screenshot-defect-badge');
+        var imgWrap = imgEl ? (typeof imgEl.closest === 'function' ? imgEl.closest('.coverage-screenshot-img-wrap') : (imgEl.parentElement || null)) : null;
 
+        // Title: {Manufacturer} {Model} · Android {OS} (e.g. Samsung Galaxy S23 · A14)
         if (titleEl) {
-            titleEl.textContent = s.modelName || (s.day ? 'D' + s.day : 'Скриншот');
-        }
-        if (subtitleEl) {
-            var subParts = [];
-            if (s.modelName && s.day) subParts.push('D' + s.day);
-            if (s.testerName) subParts.push(window.escapeHTML(s.testerName));
-            if (s.hasBug) subParts.push('<span style="color:#f87171;font-weight:700;">🐞 Баг</span>');
-            subtitleEl.innerHTML = subParts.join(' · ');
+            titleEl.textContent = cur.deviceTitle || cur.modelName || s.modelName || (cur.day ? 'D' + cur.day : (lang === 'ru' ? 'Скриншот' : 'Screenshot'));
         }
 
+        // Subtitle:
+        // Progress: Устройство {X} из {Y} · фото {A}/{B}
+        if (subtitleEl) {
+            if (cur.totalDevices && cur.totalDevices > 1) {
+                var progressText = window.t('coverageGalleryProgress', {
+                    deviceIndex: cur.deviceIndex || 1,
+                    totalDevices: cur.totalDevices || 1,
+                    photoIndex: cur.photoIndex || (s.currentIndex + 1),
+                    totalPhotos: cur.totalPhotos || list.length,
+                    deviceCurrent: cur.deviceIndex || 1,
+                    deviceTotal: cur.totalDevices || 1,
+                    photoCurrent: cur.photoIndex || (s.currentIndex + 1),
+                    photoTotal: cur.totalPhotos || list.length
+                }, lang);
+                if (!progressText || progressText === 'coverageGalleryProgress') {
+                    progressText = (lang === 'ru'
+                        ? ('Устройство ' + (cur.deviceIndex || 1) + ' из ' + (cur.totalDevices || 1) + ' · фото ' + (cur.photoIndex || (s.currentIndex + 1)) + '/' + (cur.totalPhotos || list.length))
+                        : ('Device ' + (cur.deviceIndex || 1) + ' of ' + (cur.totalDevices || 1) + ' · photo ' + (cur.photoIndex || (s.currentIndex + 1)) + '/' + (cur.totalPhotos || list.length)));
+                }
+                var subParts = [progressText];
+                var author = cur.testerName || s.testerName;
+                if (author) subParts.push(window.escapeHTML(author));
+                if (cur.hasBug || s.hasBug) subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                subtitleEl.innerHTML = subParts.join(' · ');
+            } else {
+                var subParts = [];
+                var totalOnDev = cur.totalPhotos || list.length;
+                if (totalOnDev > 1) {
+                    subParts.push((lang === 'ru' ? 'Фото ' : 'Photo ') + (cur.photoIndex || (s.currentIndex + 1)) + '/' + totalOnDev);
+                } else if (cur.day || s.day) {
+                    subParts.push('D' + (cur.day || s.day));
+                }
+                var author = cur.testerName || s.testerName;
+                if (author) subParts.push(window.escapeHTML(author));
+                if (cur.hasBug || s.hasBug) subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                subtitleEl.innerHTML = subParts.join(' · ');
+            }
+        }
+
+        // Counter
         if (counterEl) {
-            if (s.images.length > 1) {
+            if (list.length > 1) {
                 counterEl.style.display = 'inline-block';
-                counterEl.textContent = (s.currentIndex + 1) + ' / ' + s.images.length;
+                counterEl.textContent = (s.currentIndex + 1) + ' / ' + list.length;
             } else {
                 counterEl.style.display = 'none';
             }
         }
 
+        // Defect status
+        var curAppId = cur.appId || s.appId || _activeCoverageAppId;
+        var proofId = cur.proofId || s.proofId || 0;
+        var mediaIndex = cur.mediaIndex != null ? cur.mediaIndex : 0;
+        var hasDefect = isScreenshotDefect(curAppId, proofId, mediaIndex);
+
+        if (defectBtn) {
+            if (defectBtn.classList && typeof defectBtn.classList.toggle === 'function') {
+                defectBtn.classList.toggle('is-defect-active', hasDefect);
+            } else if (defectBtn.classList) {
+                if (hasDefect) defectBtn.classList.add('is-defect-active');
+                else defectBtn.classList.remove('is-defect-active');
+            }
+            if (typeof defectBtn.setAttribute === 'function') {
+                defectBtn.setAttribute('aria-pressed', hasDefect ? 'true' : 'false');
+            }
+            var defectLabel = window.t('coverageDefectBtn', {}, lang) || (lang === 'ru' ? 'Дефект' : 'Defect');
+            defectBtn.innerHTML = '⚠️ <span>' + window.escapeHTML(defectLabel) + '</span>';
+        }
+        if (defectBadge) {
+            defectBadge.style.display = hasDefect ? 'inline-flex' : 'none';
+            var badgeText = window.t('coverageDefectBadge', {}, lang) || (lang === 'ru' ? '⚠️ ДЕФЕКТ UI' : '⚠️ UI DEFECT');
+            defectBadge.textContent = badgeText;
+        }
+        if (imgWrap && imgWrap.classList) {
+            if (typeof imgWrap.classList.toggle === 'function') {
+                imgWrap.classList.toggle('has-defect', hasDefect);
+            } else {
+                if (hasDefect) imgWrap.classList.add('has-defect');
+                else imgWrap.classList.remove('has-defect');
+            }
+        }
+
+        // Navigation buttons
         if (prevBtn) {
-            prevBtn.style.display = s.images.length > 1 ? 'flex' : 'none';
+            prevBtn.style.display = list.length > 1 ? 'flex' : 'none';
             prevBtn.style.opacity = s.currentIndex > 0 ? '1' : '0.25';
             prevBtn.style.pointerEvents = s.currentIndex > 0 ? 'auto' : 'none';
         }
         if (nextBtn) {
-            nextBtn.style.display = s.images.length > 1 ? 'flex' : 'none';
-            nextBtn.style.opacity = s.currentIndex < s.images.length - 1 ? '1' : '0.25';
-            nextBtn.style.pointerEvents = s.currentIndex < s.images.length - 1 ? 'auto' : 'none';
+            nextBtn.style.display = list.length > 1 ? 'flex' : 'none';
+            nextBtn.style.opacity = s.currentIndex < list.length - 1 ? '1' : '0.25';
+            nextBtn.style.pointerEvents = s.currentIndex < list.length - 1 ? 'auto' : 'none';
         }
 
+        // Dots (render only if <= 10 items)
         if (dotsEl) {
-            if (s.images.length > 1) {
+            if (list.length > 1 && list.length <= 10) {
                 dotsEl.style.display = 'flex';
                 var dotsHtml = '';
-                for (var d = 0; d < s.images.length; d++) {
+                for (var d = 0; d < list.length; d++) {
                     dotsHtml += '<div class="coverage-screenshot-dot ' + (d === s.currentIndex ? 'is-active' : '') + '"></div>';
                 }
                 dotsEl.innerHTML = dotsHtml;
@@ -1501,6 +1716,7 @@
             }
         }
 
+        // Image loading
         if (imgEl) {
             imgEl.classList.remove('is-zoomed');
             var targetSrc = cur.fullUrl || cur.thumbUrl || '';
@@ -1520,14 +1736,25 @@
                 }
             };
             imgEl.src = targetSrc;
+
+            // Progressive enhancement: load signed medium ticket if available
+            var slideIdx = s.currentIndex;
+            if (proofId > 0 && typeof window.loadCheckinProofPreviewMedium === 'function') {
+                window.loadCheckinProofPreviewMedium(proofId, mediaIndex).then(function (src) {
+                    if (_coverageViewerState.currentIndex === slideIdx && src) {
+                        imgEl.src = src;
+                    }
+                }).catch(function () {});
+            }
         }
     }
 
     function stepCoverageScreenshot(delta) {
         var s = _coverageViewerState;
-        if (!s.isOpen || !s.images || s.images.length <= 1) return;
+        var list = (s.items && s.items.length > 0) ? s.items : (s.images || []);
+        if (!s.isOpen || !list || list.length <= 1) return;
         var nextIdx = s.currentIndex + delta;
-        if (nextIdx < 0 || nextIdx >= s.images.length) return;
+        if (nextIdx < 0 || nextIdx >= list.length) return;
         s.currentIndex = nextIdx;
         _renderCoverageViewerCurrentSlide();
     }
@@ -1539,15 +1766,241 @@
         }
     }
 
+    function toggleCurrentCoverageDefect(event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        var s = _coverageViewerState;
+        var list = (s.items && s.items.length > 0) ? s.items : (s.images || []);
+        if (!s.isOpen || !list || list.length === 0) return;
+        var cur = list[s.currentIndex];
+        if (!cur) return;
+        var appId = cur.appId || s.appId || _activeCoverageAppId;
+        var proofId = cur.proofId || s.proofId || 0;
+        var mediaIndex = cur.mediaIndex != null ? cur.mediaIndex : 0;
+        if (!appId || !proofId) return;
+
+        var newState = toggleScreenshotDefect(appId, proofId, mediaIndex);
+
+        // Update viewer UI
+        var defectBtn = document.getElementById('coverage-screenshot-defect-btn');
+        var defectBadge = document.getElementById('coverage-screenshot-defect-badge');
+        var imgEl = document.getElementById('coverage-screenshot-img');
+        var imgWrap = imgEl ? (typeof imgEl.closest === 'function' ? imgEl.closest('.coverage-screenshot-img-wrap') : (imgEl.parentElement || null)) : null;
+
+        if (defectBtn) {
+            if (defectBtn.classList && typeof defectBtn.classList.toggle === 'function') {
+                defectBtn.classList.toggle('is-defect-active', newState);
+            } else if (defectBtn.classList) {
+                if (newState) defectBtn.classList.add('is-defect-active');
+                else defectBtn.classList.remove('is-defect-active');
+            }
+            if (typeof defectBtn.setAttribute === 'function') {
+                defectBtn.setAttribute('aria-pressed', newState ? 'true' : 'false');
+            }
+        }
+        if (defectBadge) {
+            defectBadge.style.display = newState ? 'inline-flex' : 'none';
+        }
+        if (imgWrap && imgWrap.classList) {
+            if (typeof imgWrap.classList.toggle === 'function') {
+                imgWrap.classList.toggle('has-defect', newState);
+            } else {
+                if (newState) imgWrap.classList.add('has-defect');
+                else imgWrap.classList.remove('has-defect');
+            }
+        }
+
+        // Reflect in coverage modal thumbnails if visible
+        if (typeof document.querySelectorAll === 'function') {
+            var selector = '.coverage-gallery-item[data-proof-id="' + proofId + '"][data-media-index="' + mediaIndex + '"], .coverage-gallery-item[data-proof-id="' + proofId + '"]';
+            document.querySelectorAll(selector).forEach(function (thumbBtn) {
+                if (thumbBtn && thumbBtn.classList) {
+                    if (typeof thumbBtn.classList.toggle === 'function') thumbBtn.classList.toggle('has-defect', newState);
+                    else if (newState) thumbBtn.classList.add('has-defect');
+                    else thumbBtn.classList.remove('has-defect');
+                }
+                var thumbWrap = thumbBtn.querySelector ? thumbBtn.querySelector('.coverage-gallery-thumb') : null;
+                if (thumbWrap) {
+                    var icon = thumbWrap.querySelector ? thumbWrap.querySelector('.coverage-gallery-thumb__defect-icon') : null;
+                    if (newState) {
+                        if (!icon && typeof thumbWrap.insertAdjacentHTML === 'function') {
+                            var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+                            thumbWrap.insertAdjacentHTML('beforeend', '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(lang === 'ru' ? 'Дефект UI' : 'UI Defect') + '">⚠️</span>');
+                        }
+                    } else {
+                        if (icon && typeof icon.remove === 'function') icon.remove();
+                    }
+                }
+            });
+        }
+
+        // Update defects count in filter pills if coverage screen is rendered
+        if (_activeCoverageData) {
+            var newCount = getProjectDefectsCount(appId, _activeCoverageData);
+            var pillCountEl = document.querySelector('.coverage-filter-pill--defects .coverage-filter-pill__count');
+            if (pillCountEl) {
+                pillCountEl.textContent = '(' + newCount + ')';
+            }
+        }
+    }
+
+    function openContinuousCoverageGallery(appId, options) {
+        options = options || {};
+        var safeAppId = Number(appId || _activeCoverageAppId || 0);
+        if (safeAppId <= 0) return;
+
+        function launchViewerWithData(covData) {
+            if (!covData) return;
+            tagCoverageNewModels(safeAppId, covData);
+
+            var models = Array.isArray(covData.models) ? covData.models : [];
+            var aggregated = aggregateModelStacks(models);
+
+            if (options.onlyNew) {
+                aggregated = aggregated.filter(function (m) { return !!m.is_new; });
+            } else if (options.onlyDefects) {
+                aggregated = aggregated.filter(function (m) {
+                    return (m.screenshots || []).some(function (s) {
+                        return isScreenshotDefect(safeAppId, Number(s.id), 0);
+                    });
+                });
+            }
+
+            // Filter to models that actually have screenshots
+            var modelsWithScreenshots = aggregated.filter(function (m) {
+                return Array.isArray(m.screenshots) && m.screenshots.length > 0;
+            });
+
+            if (modelsWithScreenshots.length === 0) {
+                openProjectCoverage(safeAppId, 'models');
+                return;
+            }
+
+            var totalDevices = modelsWithScreenshots.length;
+            var flatItems = [];
+
+            modelsWithScreenshots.forEach(function (m, devIdx) {
+                var deviceIndex = devIdx + 1; // 1-based
+                var brand = m.brand || extractDeviceBrand(m.model_name);
+                var rawAv = (m.android_versions && m.android_versions[0]) || '';
+                var matchAv = String(rawAv).match(/(?:android\s*)?(\d+)/i);
+                var osPart = matchAv ? ('A' + matchAv[1]) : (rawAv ? ('Android ' + String(rawAv).trim()) : '');
+
+                var devTitle = m.model_name || '';
+                if (brand && devTitle.toLowerCase().indexOf(brand.toLowerCase()) === -1) {
+                    devTitle = brand + ' ' + devTitle;
+                }
+                if (osPart) {
+                    devTitle = devTitle + ' · ' + osPart;
+                }
+
+                var devScreenshots = m.screenshots || [];
+                var devTotalPhotos = 0;
+                devScreenshots.forEach(function (s) {
+                    var count = Number(s.image_count || (s.media_items && s.media_items.length) || 1);
+                    devTotalPhotos += count;
+                });
+
+                var currentPhotoOnDevice = 0;
+                devScreenshots.forEach(function (s) {
+                    var proofId = Number(s.id);
+                    var imgCount = Number(s.image_count || (s.media_items && s.media_items.length) || 1);
+                    var mediaItems = Array.isArray(s.media_items) ? s.media_items : [];
+
+                    for (var mi = 0; mi < imgCount; mi++) {
+                        currentPhotoOnDevice++;
+                        var itemMedia = mediaItems[mi] || {};
+
+                        flatItems.push({
+                            appId: safeAppId,
+                            proofId: proofId,
+                            mediaIndex: mi,
+                            modelKey: m.model_key,
+                            modelName: m.model_name,
+                            brand: brand,
+                            androidVersion: rawAv,
+                            deviceTitle: devTitle,
+                            deviceIndex: deviceIndex,
+                            totalDevices: totalDevices,
+                            photoIndex: currentPhotoOnDevice,
+                            totalPhotos: devTotalPhotos,
+                            overallIndex: flatItems.length,
+                            testerName: s.tester_name || '',
+                            day: s.day || 0,
+                            hasBug: !!s.has_bug,
+                            fullUrl: itemMedia.file_id ? _getCoverageMediaUrl(itemMedia.file_id) : '',
+                            thumbUrl: itemMedia.thumb_file_id ? _getCoverageMediaUrl(itemMedia.thumb_file_id) : ''
+                        });
+                    }
+                });
+            });
+
+            if (flatItems.length === 0) {
+                openProjectCoverage(safeAppId, 'models');
+                return;
+            }
+
+            var startIdx = 0;
+            if (options.initialProofId) {
+                var foundIdx = flatItems.findIndex(function (it) {
+                    return Number(it.proofId) === Number(options.initialProofId) && Number(it.mediaIndex || 0) === Number(options.initialMediaIndex || 0);
+                });
+                if (foundIdx >= 0) startIdx = foundIdx;
+            }
+
+            _coverageViewerState.isOpen = true;
+            _coverageViewerState.isContinuous = true;
+            _coverageViewerState.appId = safeAppId;
+            _coverageViewerState.items = flatItems;
+            _coverageViewerState.images = flatItems;
+            _coverageViewerState.currentIndex = startIdx;
+
+            _ensureCoverageScreenshotModal();
+            _renderCoverageViewerCurrentSlide();
+
+            var modal = document.getElementById('coverage-screenshot-modal');
+            if (modal) {
+                modal.classList.add('active');
+                if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+            }
+
+            markProjectCoverageSeen(safeAppId, covData);
+        }
+
+        var cacheKey = String(safeAppId) + ':' + String(_activeCoverageScope || 'current');
+        var cached = _coverageMemoryCache && _coverageMemoryCache[cacheKey];
+        if (_activeCoverageData && Number(_activeCoverageAppId) === safeAppId) {
+            launchViewerWithData(_activeCoverageData);
+        } else if (cached && cached.data) {
+            launchViewerWithData(cached.data);
+        } else {
+            fetchProjectCoverage(safeAppId).then(function (data) {
+                launchViewerWithData(data);
+            }).catch(function () {
+                openProjectCoverage(safeAppId, 'models');
+            });
+        }
+    }
+
     function closeCoverageScreenshotModal(event) {
         if (event && event.target && event.target !== document.getElementById('coverage-screenshot-modal')) return;
         var modal = document.getElementById('coverage-screenshot-modal');
         if (modal) modal.classList.remove('active');
+        var wasContinuous = _coverageViewerState.isContinuous;
+        var curAppId = _coverageViewerState.appId || _activeCoverageAppId;
         _coverageViewerState.isOpen = false;
+        _coverageViewerState.isContinuous = false;
+        _coverageViewerState.items = [];
+        _coverageViewerState.images = [];
         var imgEl = document.getElementById('coverage-screenshot-img');
         if (imgEl) {
             imgEl.classList.remove('is-zoomed');
             imgEl.src = '';
+        }
+        if (curAppId && _activeCoverageData) {
+            markProjectCoverageSeen(curAppId, _activeCoverageData);
         }
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
@@ -1593,10 +2046,8 @@
 
         var subParts = [day ? ('D' + day) : '', osPart, testerName].filter(Boolean);
 
-        // The shared proof viewer already owns secure media tickets, progressive
-        // thumbnail/medium loading, swipe navigation, and Telegram originals.
-        // Coverage previously bypassed it with raw Telegram file IDs.
-        if (typeof window.openCheckinProofOverview === 'function') {
+        // If openCheckinProofOverview is available and not in coverage screenshot mode
+        if (typeof window.openCheckinProofOverview === 'function' && !document.getElementById('coverage-screenshot-modal')) {
             window.openCheckinProofOverview(targetProofId, {
                 imageCount: Number(imageCount || 1),
                 modelName: modelName,
@@ -1613,14 +2064,25 @@
             hasBug = !!foundScreenshot.has_bug;
             var mediaList = foundScreenshot.media_items || [];
             if (mediaList.length > 0) {
-                images = mediaList.map(function (item) {
+                images = mediaList.map(function (item, idx) {
                     var fullFileId = item.file_id || item.thumb_file_id || '';
                     var thumbFileId = item.thumb_file_id || item.file_id || '';
                     return {
+                        appId: _activeCoverageAppId,
+                        proofId: targetProofId,
+                        mediaIndex: idx,
                         fullUrl: _getCoverageMediaUrl(fullFileId),
                         thumbUrl: _getCoverageMediaUrl(thumbFileId),
                         width: item.width,
-                        height: item.height
+                        height: item.height,
+                        day: day,
+                        testerName: testerName,
+                        hasBug: hasBug,
+                        modelName: modelName,
+                        totalPhotos: mediaList.length,
+                        photoIndex: idx + 1,
+                        totalDevices: 1,
+                        deviceIndex: 1
                     };
                 });
             }
@@ -1639,7 +2101,10 @@
         }
 
         _coverageViewerState.isOpen = true;
+        _coverageViewerState.isContinuous = false;
+        _coverageViewerState.appId = _activeCoverageAppId;
         _coverageViewerState.proofId = targetProofId;
+        _coverageViewerState.items = images;
         _coverageViewerState.images = images;
         _coverageViewerState.currentIndex = 0;
         _coverageViewerState.day = day;
@@ -1664,7 +2129,10 @@
         buildCollapsed: buildProjectResultsCollapsed,
         openCoverage: openProjectCoverage,
         markSeen: markProjectCoverageSeen,
-        getUnseenCounts: getProjectCoverageUnseenCounts
+        getUnseenCounts: getProjectCoverageUnseenCounts,
+        openContinuousGallery: openContinuousCoverageGallery,
+        toggleDefect: toggleScreenshotDefect,
+        isDefect: isScreenshotDefect
     };
 
     window.buildProjectResultsBlock = buildProjectResultsBlock;
@@ -1682,5 +2150,10 @@
     window.closeCoverageScreenshotModal = closeCoverageScreenshotModal;
     window.stepCoverageScreenshot = stepCoverageScreenshot;
     window.toggleCoverageScreenshotZoom = toggleCoverageScreenshotZoom;
+    window.openContinuousCoverageGallery = openContinuousCoverageGallery;
+    window.toggleCurrentCoverageDefect = toggleCurrentCoverageDefect;
+    window.selectCoverageModelFilter = selectCoverageModelFilter;
+    window.isScreenshotDefect = isScreenshotDefect;
+    window.markProjectCoverageSeen = markProjectCoverageSeen;
 
 })();

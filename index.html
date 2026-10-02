@@ -58,7 +58,7 @@
     <script src="./js/testing-control.js?v=20261001-fast-media-viewer-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20260920-not-opened-v1"></script>
-    <script src="./js/project-today.js?v=20261001-coverage-polish-v2"></script>
+    <script src="./js/project-today.js?v=20261002-control-proof-attention-v1"></script>
     <script src="./js/smart-ping.js?v=20260921-smart-ping-catchup-v1"></script>
     <script src="./js/proof-ping.js?v=20260910-quick-ping-explain-v1"></script>
     <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
@@ -2869,6 +2869,9 @@
                     <div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>
                 </div>
                 <div class="coverage-screenshot-actions">
+                    <button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect()" title="Пометить дефект интерфейса">
+                        ⚠️ <span>Дефект</span>
+                    </button>
                     <span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>
                     <button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Close">✕</button>
                 </div>
@@ -2877,6 +2880,7 @@
                 <button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>
                 <div class="coverage-screenshot-img-wrap">
                     <img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager">
+                    <div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;">⚠️ ДЕФЕКТ UI</div>
                     <div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>
                 </div>
                 <button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>

@@ -219,8 +219,6 @@
 
     function collectCatchupAttentionReasons(project, tester) {
         var catchup = catchupStateFor(project, tester);
-        var yesterday = shiftDateString(actorTodayString(tester), -1);
-        var yesterdayDay = testerDayNumber(tester) - 1;
         var requestableDays = (catchup && catchup.requestableMissedDays || []).map(Number);
         var requestedDays = (catchup && catchup.requestedDays || []).map(Number);
         var states = (catchup && catchup.states) || {};
@@ -261,9 +259,10 @@
         requestedDays.forEach(consider);
         Object.keys(states).forEach(consider);
         requestableDays.forEach(consider);
-        if (yesterday && isCatchupControlDay(yesterdayDay) && String(tester.last_check_date || '') !== yesterday) {
-            consider(yesterdayDay);
-        }
+        // The latest check-in date says nothing about an earlier control day:
+        // after a Day 5 check-in it no longer equals Day 4 even when Day 4
+        // has an attached screenshot. Only the server's proof-backed catch-up
+        // state can identify a missed control day.
         days.sort(function (left, right) { return left.day - right.day; });
         return days.map(function (row) {
             var request = row.request || {};
@@ -5187,14 +5186,10 @@
         var catchup = catchupStateFor(project, tester);
         var day = Number(missedDay || 0);
         var requestableDays = (catchup && catchup.requestableMissedDays || []).map(Number);
-        if (!isCatchupControlDay(day) || (requestableDays.length && requestableDays.indexOf(day) === -1)) {
-            day = Number(requestableDays[0] || (catchup && catchup.requestableMissedDay) || 0);
+        if (!isCatchupControlDay(day) || requestableDays.indexOf(day) === -1) {
+            day = Number(requestableDays[0] || 0);
         }
-        if (!isCatchupControlDay(day)) {
-            var yesterdayDay = testerDayNumber(tester) - 1;
-            day = isCatchupControlDay(yesterdayDay) ? yesterdayDay : 0;
-        }
-        if (!isCatchupControlDay(day)) return;
+        if (!isCatchupControlDay(day) || requestableDays.indexOf(day) === -1) return;
         var html = '<div id="pc-catchup-proof-request-dialog" class="modal-overlay pc-catchup-request-modal" role="presentation" onclick="if (event.target === this) pcCloseCatchupProofRequestDialog()">' +
             '<section class="modal-content pc-catchup-request-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-catchup-request-title">' +
                 '<div class="sheet-handle" aria-hidden="true"></div>' +

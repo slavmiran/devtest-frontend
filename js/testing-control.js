@@ -1708,6 +1708,7 @@
     window.openCheckinProofOriginal = openCheckinProofOriginal;
     window.openCurrentCheckinProofOriginal = openCurrentCheckinProofOriginal;
     window.loadCheckinProofPreviewThumbnail = loadPreviewThumbnailSource;
+    window.loadCheckinProofPreviewMedium = loadPreviewMediumSource;
     window.openTestingControlFeedbackPreview = openTestingControlFeedbackPreview;
     window.openFeedbackFromProofPreview = openFeedbackFromProofPreview;
     window.closeCheckinProofPreview = closeCheckinProofPreview;

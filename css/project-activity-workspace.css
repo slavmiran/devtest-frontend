@@ -2815,38 +2815,22 @@
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    min-height: 26px;
-    padding: 0 9px;
-    border-radius: 7px;
-    background: linear-gradient(180deg, #1c2536 0%, #131924 100%);
-    border: 1px solid rgba(142, 168, 204, 0.2);
-    box-shadow: 6px 0 12px -2px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    min-height: 24px;
+    padding: 0 4px 0 2px;
+    border-radius: 0;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
     font-size: 10px;
     font-weight: 750;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #e2e8f0;
+    color: rgba(189, 205, 231, 0.7);
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
-    transition: border-color .15s ease, background .15s ease;
 }
 
-.pc-team-quick-today::before {
-    content: "";
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #38bdf8;
-    box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
-    flex-shrink: 0;
-}
-
-.pc-team-quick-today::after {
-    display: none;
-}
 
 /* ── Collapsed Card Team Compact Bar (Приборная панель: Команда) ── */
 .pc-team-collapsed-bar {
@@ -2855,12 +2839,12 @@
     gap: 6px;
     width: calc(100% - 24px);
     margin: 6px 12px 3px 12px;
-    padding: 5px 6px;
-    background: linear-gradient(180deg, rgba(22, 29, 41, 0.94) 0%, rgba(14, 19, 28, 0.98) 100%);
-    border: 1px solid rgba(142, 168, 204, 0.14);
-    border-radius: 10px;
+    padding: 5px 8px;
+    background: rgba(7, 14, 25, 0.24);
+    border: 1px solid rgba(188, 206, 238, 0.09);
+    border-radius: 12px;
     box-sizing: border-box;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
     overflow-x: auto;
     scrollbar-width: none;
     scroll-padding-left: 64px;
@@ -2877,11 +2861,9 @@
 }
 
 .pc-team-collapsed-bar .pc-team-quick-today {
-    background: linear-gradient(180deg, #1c2536 0%, #131924 100%);
-}
-
-.pc-team-collapsed-bar .pc-team-quick-today::after {
-    display: none;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .pc-team-quick-filter {
