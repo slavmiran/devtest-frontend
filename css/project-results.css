@@ -1150,40 +1150,72 @@
     white-space: nowrap;
 }
 
-/* Adaptive Brand Filter */
+/* ── Dedicated Brand Filter Panel ── */
+.coverage-brands-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(188, 206, 238, 0.07);
+    border-radius: 12px;
+    padding: 8px 10px 9px;
+    margin-bottom: 12px;
+}
+.coverage-brands-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 7px;
+    padding: 0 2px;
+}
+.coverage-brands-panel__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(188, 206, 238, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.coverage-brands-panel__count {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+}
 .coverage-brand-filter-wrapper {
     position: relative;
-    margin-bottom: 14px;
-    border-radius: 12px;
+    border-radius: 8px;
 }
 .coverage-brand-filter-track {
     display: grid;
     grid-auto-flow: column;
-    grid-template-rows: repeat(var(--brand-filter-rows, 1), 32px);
+    grid-template-rows: repeat(var(--brand-filter-rows, 1), 28px);
     grid-auto-columns: max-content;
     gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
-    padding-right: 42px;
+    padding-right: 38px;
     transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    max-height: calc(var(--brand-filter-rows, 1) * 32px + (var(--brand-filter-rows, 1) - 1) * 6px + 4px);
+    max-height: calc(var(--brand-filter-rows, 1) * 28px + (var(--brand-filter-rows, 1) - 1) * 6px + 4px);
 }
 .coverage-brand-filter-track::-webkit-scrollbar {
     display: none;
 }
 .coverage-brand-chip {
-    height: 32px;
-    padding: 0 12px;
-    border-radius: 16px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 7px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.035);
     color: var(--text-secondary, #9ca3af);
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     white-space: nowrap;
     box-sizing: border-box;
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
@@ -1192,13 +1224,13 @@
     transform: scale(0.96);
 }
 .coverage-brand-chip.is-active {
-    background: rgba(56, 189, 248, 0.18);
-    border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(56, 189, 248, 0.16);
+    border-color: rgba(56, 189, 248, 0.4);
     color: #38bdf8;
-    box-shadow: 0 1px 4px rgba(56, 189, 248, 0.15);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .coverage-brand-chip__count {
-    font-size: 10.5px;
+    font-size: 10px;
     opacity: 0.75;
     font-weight: 500;
 }
@@ -1206,18 +1238,18 @@
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background: #1a1e28;
+    background: #181d27;
     color: var(--text-color, #e5e7eb);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     z-index: 2;
-    box-shadow: -8px 0 12px #14171f;
+    box-shadow: -8px 0 10px #14171f;
     transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 .brand-filter-expand-btn:active {
@@ -2451,22 +2483,63 @@
 .coverage-gallery-item.has-defect .coverage-gallery-thumb {
     border: 1.5px solid #f59e0b !important;
 }
+.coverage-gallery-item.has-bug .coverage-gallery-thumb {
+    border-color: rgba(239, 68, 68, 0.45);
+}
 .coverage-gallery-thumb__defect-icon {
     position: absolute;
     top: 3px;
     right: 3px;
     font-size: 11px;
     line-height: 1;
-    z-index: 2;
+    z-index: 5;
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+}
+.coverage-gallery-thumb__type-badge {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 4.5px;
+    border-radius: 4px;
+    font-size: 8px;
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.coverage-gallery-thumb__type-badge--bug {
+    background: rgba(220, 38, 38, 0.92);
+    color: #fff;
+    border: 1px solid rgba(254, 202, 202, 0.35);
+}
+.coverage-gallery-thumb__type-badge--idea {
+    background: rgba(217, 119, 6, 0.92);
+    color: #fff;
+    border: 1px solid rgba(254, 240, 138, 0.35);
+}
+.coverage-gallery-thumb__type-badge--review {
+    background: rgba(147, 51, 234, 0.92);
+    color: #fff;
+    border: 1px solid rgba(233, 213, 255, 0.35);
 }
 
 /* ── Modal Filter Pills: [ Все ] [ Новые ] [ ⚠️ С дефектами (N) ] ── */
+.coverage-status-filter-bar {
+    margin: 8px 0 10px;
+}
 .coverage-filter-pills {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin: 8px 0 12px;
+    gap: 4px;
+    padding: 3px;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(188, 206, 238, 0.08);
+    border-radius: 12px;
     overflow-x: auto;
     scrollbar-width: none;
 }
@@ -2474,14 +2547,16 @@
     display: none;
 }
 .coverage-filter-pill {
+    flex: 1;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
     height: 30px;
-    padding: 0 12px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    padding: 0 10px;
+    border-radius: 9px;
+    background: transparent;
+    border: 1px solid transparent;
     font-size: 12px;
     font-weight: 600;
     color: #94a3b8;
@@ -2491,17 +2566,17 @@
     transition: all 0.15s ease;
 }
 .coverage-filter-pill:active {
-    transform: scale(0.96);
+    transform: scale(0.97);
 }
 .coverage-filter-pill.is-active {
     background: rgba(56, 189, 248, 0.16);
-    border-color: rgba(56, 189, 248, 0.45);
+    border-color: rgba(56, 189, 248, 0.35);
     color: #38bdf8;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 .coverage-filter-pill--defects.is-active {
     background: rgba(245, 158, 11, 0.16);
-    border-color: rgba(245, 158, 11, 0.5);
+    border-color: rgba(245, 158, 11, 0.45);
     color: #fbbf24;
 }
 .coverage-filter-pill__count {

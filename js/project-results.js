@@ -622,6 +622,9 @@
             _activeCoverageModelFilter = 'all';
         }
         _activeCoverageAppId = targetAppId;
+        if (typeof window !== 'undefined') {
+            window._activeCoverageAppId = targetAppId;
+        }
 
         if (initialTab && (initialTab === 'overview' || initialTab === 'countries' || initialTab === 'android' || initialTab === 'models')) {
             _activeCoverageTab = initialTab;
@@ -957,9 +960,10 @@
         var allActive = (_activeBrandFilter === 'all' || !brandMap[_activeBrandFilter]);
         if (allActive) _activeBrandFilter = 'all';
 
+        var allBrandsLabel = window.t('coverageFilterAllBrands', {}, lang) || (lang === 'ru' ? 'Все бренды' : 'All brands');
         allChips.push(
             '<button type="button" class="coverage-brand-chip ' + (allActive ? 'is-active' : '') + '" data-brand="all" onclick="selectCoverageBrand(\'all\')">' +
-                window.escapeHTML(window.t('coverageBrandAll', {}, lang) || 'Все') + ' ' +
+                '<span class="coverage-brand-chip__text">' + window.escapeHTML(allBrandsLabel) + '</span> ' +
                 '<span class="coverage-brand-chip__count">(' + models.length + ')</span>' +
             '</button>'
         );
@@ -968,7 +972,7 @@
             var isActive = (_activeBrandFilter === b);
             allChips.push(
                 '<button type="button" class="coverage-brand-chip ' + (isActive ? 'is-active' : '') + '" data-brand="' + window.escapeHTML(b) + '" onclick="selectCoverageBrand(\'' + window.escapeHTML(b) + '\')">' +
-                    window.escapeHTML(b) + ' ' +
+                    '<span class="coverage-brand-chip__text">' + window.escapeHTML(b) + '</span> ' +
                     '<span class="coverage-brand-chip__count">(' + brandMap[b] + ')</span>' +
                 '</button>'
             );
@@ -988,12 +992,23 @@
             );
         }
 
+        var brandsTitle = window.t('coverageBrandsLabel', {}, lang) || (lang === 'ru' ? 'Бренды:' : 'Brands:');
+
         return (
-            '<div class="coverage-brand-filter-wrapper ' + (_isBrandFilterExpanded ? 'is-expanded' : '') + '" id="coverage-brand-filter-wrapper">' +
-                '<div class="coverage-brand-filter-track" style="--brand-filter-rows: ' + currentRows + ';">' +
-                    allChips.join('') +
+            '<div class="coverage-brands-panel" id="coverage-brands-panel">' +
+                '<div class="coverage-brands-panel__head">' +
+                    '<span class="coverage-brands-panel__title">' +
+                        '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>' +
+                        '<span>' + window.escapeHTML(brandsTitle) + '</span>' +
+                    '</span>' +
+                    '<span class="coverage-brands-panel__count">' + brandNames.length + '</span>' +
                 '</div>' +
-                expandBtnHtml +
+                '<div class="coverage-brand-filter-wrapper ' + (_isBrandFilterExpanded ? 'is-expanded' : '') + '" id="coverage-brand-filter-wrapper">' +
+                    '<div class="coverage-brand-filter-track" style="--brand-filter-rows: ' + currentRows + ';">' +
+                        allChips.join('') +
+                    '</div>' +
+                    expandBtnHtml +
+                '</div>' +
             '</div>'
         );
     }
@@ -1165,14 +1180,40 @@
                     var resolutionLabel = width > 0 && height > 0 ? width + '×' + height : '';
                     var screenshotTitle = [dateLabel, rawAv, resolutionLabel, authorName].filter(Boolean).join(' · ');
 
+                    var isBug = !!(s.has_bug || s.proof_type === 'bug');
+                    var isIdea = !isBug && !!(s.has_idea || s.proof_type === 'idea');
+                    var isReview = !isBug && !isIdea && (s.proof_type === 'play_review' || s.proof_type === 'review');
+
+                    var typeBadgeHtml = '';
+                    if (isBug) {
+                        var bugWord = window.t('coverageBadgeBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug');
+                        typeBadgeHtml = '<span class="coverage-gallery-thumb__type-badge coverage-gallery-thumb__type-badge--bug" title="' + window.escapeHTML(bugWord) + '">🐞 ' + window.escapeHTML(bugWord) + '</span>';
+                    } else if (isIdea) {
+                        var ideaWord = window.t('coverageBadgeIdea', {}, lang) || (lang === 'ru' ? 'Идея' : 'Idea');
+                        typeBadgeHtml = '<span class="coverage-gallery-thumb__type-badge coverage-gallery-thumb__type-badge--idea" title="' + window.escapeHTML(ideaWord) + '">💡 ' + window.escapeHTML(ideaWord) + '</span>';
+                    } else if (isReview) {
+                        var reviewWord = window.t('coverageBadgeReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review');
+                        typeBadgeHtml = '<span class="coverage-gallery-thumb__type-badge coverage-gallery-thumb__type-badge--review" title="' + window.escapeHTML(reviewWord) + '">★ ' + window.escapeHTML(reviewWord) + '</span>';
+                    }
+
+                    var itemClasses = ['coverage-gallery-item'];
+                    if (isDefect) itemClasses.push('has-defect');
+                    if (isBug) itemClasses.push('has-bug');
+                    if (isIdea) itemClasses.push('has-idea');
+
                     var thumbImgHtml = '<img class="coverage-gallery-thumb__img" data-proof-id="' + proofId + '" data-media-index="0" loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
                         '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span></div>' +
                         (isDefect ? '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(lang === 'ru' ? 'Дефект UI' : 'UI Defect') + '">⚠️</span>' : '');
 
+                    var onlyNewFlag = (_activeCoverageModelFilter === 'new');
+                    var onlyDefectsFlag = (_activeCoverageModelFilter === 'defects');
+                    var targetAppId = Number(_activeCoverageAppId || (typeof window !== 'undefined' && window._activeCoverageAppId) || 0);
+
                     return (
-                        '<button type="button" class="coverage-gallery-item' + (isDefect ? ' has-defect' : '') + '" data-proof-id="' + proofId + '" data-media-index="0" onclick="event.stopPropagation(); openContinuousCoverageGallery(_activeCoverageAppId, { initialProofId: ' + proofId + ', onlyNew: (_activeCoverageModelFilter === \'new\'), onlyDefects: (_activeCoverageModelFilter === \'defects\') });" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
+                        '<button type="button" class="' + itemClasses.join(' ') + '" data-proof-id="' + proofId + '" data-media-index="0" onclick="event.stopPropagation(); openContinuousCoverageGallery(' + targetAppId + ', { initialProofId: ' + proofId + ', onlyNew: ' + onlyNewFlag + ', onlyDefects: ' + onlyDefectsFlag + ' });" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
                             '<div class="coverage-gallery-thumb">' +
                                 thumbImgHtml +
+                                typeBadgeHtml +
                                 (imgCount > 1 ? '<span class="coverage-gallery-thumb__count">+' + (imgCount - 1) + '</span>' : '') +
                                 (dateLabel ? '<span class="coverage-gallery-thumb__date">' + window.escapeHTML(dateLabel) + '</span>' : '') +
                                 '<span class="coverage-gallery-thumb__meta">' +
@@ -1343,17 +1384,19 @@
         var cockpitHtml = renderCoverageCockpit(data, lang);
         var defectCount = getProjectDefectsCount(_activeCoverageAppId, data);
         var filterPillsHtml = (
-            '<div class="coverage-filter-pills" role="tablist" aria-label="' + window.escapeHTML(lang === 'ru' ? 'Фильтры' : 'Filters') + '">' +
-                '<button type="button" class="coverage-filter-pill ' + (_activeCoverageModelFilter === 'all' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'all\')">' +
-                    window.escapeHTML(window.t('coverageFilterAll', {}, lang) || (lang === 'ru' ? 'Все' : 'All')) +
-                '</button>' +
-                '<button type="button" class="coverage-filter-pill ' + (_activeCoverageModelFilter === 'new' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'new\')">' +
-                    window.escapeHTML(window.t('coverageFilterNew', {}, lang) || (lang === 'ru' ? 'Новые' : 'New')) +
-                '</button>' +
-                '<button type="button" class="coverage-filter-pill coverage-filter-pill--defects ' + (_activeCoverageModelFilter === 'defects' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'defects\')">' +
-                    '⚠️ ' + window.escapeHTML(window.t('coverageFilterDefects', {}, lang) || (lang === 'ru' ? 'С дефектами' : 'With defects')) +
-                    ' <span class="coverage-filter-pill__count">(' + defectCount + ')</span>' +
-                '</button>' +
+            '<div class="coverage-status-filter-bar">' +
+                '<div class="coverage-filter-pills" role="tablist" aria-label="' + window.escapeHTML(lang === 'ru' ? 'Фильтры' : 'Filters') + '">' +
+                    '<button type="button" class="coverage-filter-pill ' + (_activeCoverageModelFilter === 'all' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'all\')">' +
+                        window.escapeHTML(window.t('coverageFilterAll', {}, lang) || (lang === 'ru' ? 'Все' : 'All')) +
+                    '</button>' +
+                    '<button type="button" class="coverage-filter-pill ' + (_activeCoverageModelFilter === 'new' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'new\')">' +
+                        window.escapeHTML(window.t('coverageFilterNew', {}, lang) || (lang === 'ru' ? 'Новые' : 'New')) +
+                    '</button>' +
+                    '<button type="button" class="coverage-filter-pill coverage-filter-pill--defects ' + (_activeCoverageModelFilter === 'defects' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'defects\')">' +
+                        '⚠️ ' + window.escapeHTML(window.t('coverageFilterDefects', {}, lang) || (lang === 'ru' ? 'С дефектами' : 'With defects')) +
+                        ' <span class="coverage-filter-pill__count">(' + defectCount + ')</span>' +
+                    '</button>' +
+                '</div>' +
             '</div>'
         );
         var brandFilterHtml = renderCoverageBrandFilter(aggregatedModels, lang);
@@ -1400,6 +1443,9 @@
 
     function selectCoverageModelFilter(filter) {
         _activeCoverageModelFilter = filter || 'all';
+        if (typeof window !== 'undefined') {
+            window._activeCoverageModelFilter = _activeCoverageModelFilter;
+        }
         var body = document.getElementById('project-coverage-body');
         if (body && _activeCoverageData) {
             renderCoverageScreen(body, _activeCoverageData);
@@ -1630,7 +1676,13 @@
                 var subParts = [progressText];
                 var author = cur.testerName || s.testerName;
                 if (author) subParts.push(window.escapeHTML(author));
-                if (cur.hasBug || s.hasBug) subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                if (cur.hasBug || s.hasBug || cur.proofType === 'bug') {
+                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                } else if (cur.hasIdea || s.hasIdea || cur.proofType === 'idea') {
+                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + (lang === 'ru' ? 'Идея' : 'Idea') + '</span>');
+                } else if (cur.proofType === 'play_review' || cur.proofType === 'review') {
+                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + (lang === 'ru' ? 'Отзыв' : 'Review') + '</span>');
+                }
                 subtitleEl.innerHTML = subParts.join(' · ');
             } else {
                 var subParts = [];
@@ -1642,7 +1694,13 @@
                 }
                 var author = cur.testerName || s.testerName;
                 if (author) subParts.push(window.escapeHTML(author));
-                if (cur.hasBug || s.hasBug) subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                if (cur.hasBug || s.hasBug || cur.proofType === 'bug') {
+                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                } else if (cur.hasIdea || s.hasIdea || cur.proofType === 'idea') {
+                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + (lang === 'ru' ? 'Идея' : 'Idea') + '</span>');
+                } else if (cur.proofType === 'play_review' || cur.proofType === 'review') {
+                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + (lang === 'ru' ? 'Отзыв' : 'Review') + '</span>');
+                }
                 subtitleEl.innerHTML = subParts.join(' · ');
             }
         }
@@ -1848,7 +1906,7 @@
 
     function openContinuousCoverageGallery(appId, options) {
         options = options || {};
-        var safeAppId = Number(appId || _activeCoverageAppId || 0);
+        var safeAppId = Number(appId || _activeCoverageAppId || (typeof window !== 'undefined' && window._activeCoverageAppId) || 0);
         if (safeAppId <= 0) return;
 
         function launchViewerWithData(covData) {
@@ -1859,9 +1917,13 @@
             var aggregated = aggregateModelStacks(models);
 
             if (options.onlyNew) {
-                aggregated = aggregated.filter(function (m) { return !!m.is_new; });
+                aggregated = aggregated.filter(function (m) {
+                    if (options.initialProofId && (m.screenshots || []).some(function (s) { return Number(s.id) === Number(options.initialProofId); })) return true;
+                    return !!m.is_new;
+                });
             } else if (options.onlyDefects) {
                 aggregated = aggregated.filter(function (m) {
+                    if (options.initialProofId && (m.screenshots || []).some(function (s) { return Number(s.id) === Number(options.initialProofId); })) return true;
                     return (m.screenshots || []).some(function (s) {
                         return isScreenshotDefect(safeAppId, Number(s.id), 0);
                     });
@@ -1929,7 +1991,10 @@
                             overallIndex: flatItems.length,
                             testerName: s.tester_name || '',
                             day: s.day || 0,
-                            hasBug: !!s.has_bug,
+                            hasBug: !!(s.has_bug || s.proof_type === 'bug'),
+                            hasIdea: !!(s.has_idea || s.proof_type === 'idea'),
+                            proofType: s.proof_type || (s.has_bug ? 'bug' : (s.has_idea ? 'idea' : 'screenshot')),
+                            feedbackId: s.feedback_id || null,
                             fullUrl: itemMedia.file_id ? _getCoverageMediaUrl(itemMedia.file_id) : '',
                             thumbUrl: itemMedia.thumb_file_id ? _getCoverageMediaUrl(itemMedia.thumb_file_id) : ''
                         });
