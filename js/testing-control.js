@@ -912,7 +912,6 @@
         }
         return '<button type="button" class="checkin-proof-preview-nav is-prev" onclick="stepCheckinProofPreview(-1)"' + (mediaIndex <= 0 ? ' disabled' : '') + '>‹</button>' +
             '<div class="checkin-proof-preview-album-meta">' +
-                '<span class="checkin-proof-preview-counter notranslate">' + escape(albumCounterText(proofId, mediaIndex + 1, imageCount)) + '</span>' +
                 (deviceHint
                     ? '<span class="checkin-proof-preview-swipe-hint">' + escape(deviceHint) + '</span>'
                     : '') +
@@ -1264,25 +1263,35 @@
         }) || null;
     }
 
+    function formatDeviceOsBadge(rawAv) {
+        if (!rawAv) return '';
+        var m = String(rawAv).match(/(?:android\s*)?(\d+)/i);
+        return m ? ('A' + m[1]) : String(rawAv).trim();
+    }
+
     function previewMeta(proofId) {
         var galleryItem = findGalleryProof(proofId);
         if (galleryItem) {
+            var gDev = galleryItem.device;
+            var gModel = proofDeviceModel(proofId);
+            var gAv = formatDeviceOsBadge(gDev && gDev.android_version);
+            var gDay = galleryItem.testing_day ? ('D' + galleryItem.testing_day) : '';
+            var gTester = galleryTesterLabel(galleryItem);
             return {
-                title: galleryTesterLabel(galleryItem),
-                subtitle: [
-                    text('testingControlCurrentDay', 'Day {day}', { day: Number(galleryItem.testing_day || 0) }),
-                    deviceLine(galleryItem.device),
-                ].filter(Boolean).join(' • '),
+                title: gModel || gTester,
+                subtitle: [gDay, gAv, gTester].filter(Boolean).join(' · '),
             };
         }
         var found = findProof(proofId);
         if (found) {
+            var fDev = found.item && found.item.device;
+            var fModel = proofDeviceModel(proofId);
+            var fAv = formatDeviceOsBadge(fDev && fDev.android_version);
+            var fDay = found.day ? ('D' + found.day) : '';
+            var fTester = testerLabel(found.item);
             return {
-                title: testerLabel(found.item),
-                subtitle: [
-                    text('testingControlCurrentDay', 'Day {day}', { day: Number(found.day || 0) }),
-                    deviceLine(found.item && found.item.device),
-                ].filter(Boolean).join(' • '),
+                title: fModel || fTester,
+                subtitle: [fDay, fAv, fTester].filter(Boolean).join(' · '),
             };
         }
         var fallback = state.previewFallback;

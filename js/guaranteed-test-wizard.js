@@ -20,6 +20,7 @@
     var TESTER_GROUP_EMAIL = "google-play-dev-test@googlegroups.com";
     var PAYPAL_EMAIL = "pay.hubstation@gmail.com";
     var TELEGRAM_SUPPORT = "garantxchange";
+    var PAYPAL_PAY_URL = "https://paypal.me/devtesthub/23USD";
     var PAYPAL_OPEN_URL = "https://www.paypal.com/myaccount/transfer/homepage/pay";
 
     var CRYPTO_EXCHANGES = [
@@ -193,11 +194,17 @@
         ],
         flowPaypalTitle: ['PayPal transfer', 'Перевод через PayPal'],
         flowPaypalSubtitle: [
-            'Service $20 + $3 fee. Send $23 to our PayPal account.',
-            'Услуга $20 + комиссия $3. Отправьте $23 на наш PayPal.'
+            'Service $20 + $3 fee. Pay $23 in PayPal, then attach the screenshot.',
+            'Услуга $20 + комиссия $3. Оплатите $23 в PayPal, затем приложите скриншот.'
         ],
-        flowPaypalStep: ['Copy the address and pay', 'Скопируйте адрес и оплатите'],
+        flowPaypalStep: ['Pay in PayPal', 'Оплатите в PayPal'],
         flowPaypalDesc: [
+            'Tap the button — PayPal opens with $23 already filled in. After the transfer, come back and attach the screenshot.',
+            'Нажмите кнопку — откроется PayPal с уже указанной суммой $23. После перевода вернитесь и приложите скриншот.'
+        ],
+        payPaypal: ['Pay $23', 'Оплатить $23'],
+        paypalManual: ['Pay manually', 'оплатить вручную'],
+        paypalManualHint: [
             'Copy the email, open PayPal and complete the transfer of $23 ($20 + $3 fee).',
             'Скопируйте почту, откройте PayPal и переведите $23 ($20 + комиссия $3).'
         ],
@@ -372,6 +379,7 @@
 
     var GT_DRAFT_STORAGE_KEY = 'dt_gt_wizard_draft';
     var GT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+    var paypalManualExpanded = false;
 
     function readGuaranteedTestWizardDraft() {
         try {
@@ -1899,6 +1907,7 @@
         if (method === 'crypto') {
             wizardState.paymentExchange = exchangeId || wizardState.paymentExchange;
         }
+        if (method !== 'paypal') paypalManualExpanded = false;
         var switched =
             prevMethod !== method ||
             (method === 'crypto' && prevExchange !== wizardState.paymentExchange);
@@ -1977,18 +1986,32 @@
             step1Title = L('flowPaypalStep');
             step1Desc = L('flowPaypalDesc');
             step1Actions = `
-                <div class="gtw-credential-box">
-                    <span class="gtw-credential-value">${PAYPAL_EMAIL}</span>
-                    <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">${L('copy')}</button>
-                </div>
-                <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-paypal-btn">
-                    <span>${L('openPaypal')}</span>
+                <button type="button" class="gtw-paypal-pay-btn" id="gtw-flow-pay-paypal-btn">
+                    <span>${L('payPaypal')}</span>
                     <svg class="gtw-external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                         <polyline points="15 3 21 3 21 9"></polyline>
                         <line x1="10" y1="14" x2="21" y2="3"></line>
                     </svg>
                 </button>
+                <button type="button" class="gtw-paypal-manual-toggle" id="gtw-paypal-manual-toggle" aria-expanded="${paypalManualExpanded ? 'true' : 'false'}">
+                    ${L('paypalManual')}
+                </button>
+                <div class="gtw-paypal-manual-panel${paypalManualExpanded ? ' is-open' : ''}" id="gtw-paypal-manual-panel"${paypalManualExpanded ? '' : ' hidden'}>
+                    <p class="gtw-paypal-manual-hint">${L('paypalManualHint')}</p>
+                    <div class="gtw-credential-box">
+                        <span class="gtw-credential-value">${PAYPAL_EMAIL}</span>
+                        <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">${L('copy')}</button>
+                    </div>
+                    <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-paypal-btn">
+                        <span>${L('openPaypal')}</span>
+                        <svg class="gtw-external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </button>
+                </div>
             `;
         } else if (method === 'rub') {
             title = L('flowFiatTitle');
@@ -2095,7 +2118,7 @@
 
             <div class="gtw-payment-flow-footer">
                 <button type="button" class="gtw-continue-btn" id="gtw-flow-submit-btn" ${canSubmit ? '' : 'disabled'}>
-                    ${L('submitOrder', { amount: amount })}
+                    ${method === 'paypal' ? L('submitFallback') : L('submitOrder', { amount: amount })}
                 </button>
                 <button type="button" class="gtw-payment-flow-cancel" id="gtw-flow-cancel-btn">${L('cancel')}</button>
             </div>
@@ -2117,7 +2140,28 @@
                 if (wizardState.paymentMethod === 'crypto') {
                     markPaymentStep1Done();
                     handleCryptoCopyExitHint();
+                } else if (wizardState.paymentMethod === 'paypal') {
+                    markPaymentStep1Done();
                 }
+            });
+        }
+
+        var payPaypalBtn = document.getElementById('gtw-flow-pay-paypal-btn');
+        if (payPaypalBtn) {
+            payPaypalBtn.addEventListener('click', function () {
+                openExternalUrl(PAYPAL_PAY_URL);
+                markPaymentStep1Done();
+            });
+        }
+
+        var paypalManualToggle = document.getElementById('gtw-paypal-manual-toggle');
+        var paypalManualPanel = document.getElementById('gtw-paypal-manual-panel');
+        if (paypalManualToggle && paypalManualPanel) {
+            paypalManualToggle.addEventListener('click', function () {
+                paypalManualExpanded = !paypalManualExpanded;
+                paypalManualPanel.hidden = !paypalManualExpanded;
+                paypalManualPanel.classList.toggle('is-open', paypalManualExpanded);
+                paypalManualToggle.setAttribute('aria-expanded', paypalManualExpanded ? 'true' : 'false');
             });
         }
 

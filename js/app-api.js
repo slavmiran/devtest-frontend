@@ -1330,6 +1330,8 @@ function handleApiError(code, details = {}) {
         tester_profile_required: 'err_tester_profile_required',
         android_version_too_low: 'err_android_version_too_low',
         mutual_limit_reached: 'err_mutual_limit_reached',
+        user_interaction_blocked: 'user_interaction_blocked',
+        cannot_block_self: 'cannot_block_self',
     };
 
     var normalizedCode = String(code || '').trim();

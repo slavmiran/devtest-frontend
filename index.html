@@ -36,21 +36,21 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261001-coverage-compact-v1"></script>
-    <script src="./i18n/en.js?v=20261001-coverage-compact-v1"></script>
+    <script src="./i18n/ru.js?v=20261002-blacklist-v1"></script>
+    <script src="./i18n/en.js?v=20261002-blacklist-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260917-action-processing-v1"></script>
     <script src="./ui/ui-tests.js?v=20261001-access-issue-inline-v1"></script>
     <script src="./ui/ui-projects.js?v=20261001-coverage-polish-v2"></script>
     <script src="./js/project-parameters.js?v=20260920-smart-ping-v2"></script>
-    <script src="./ui/ui-market.js?v=20261001-results-feedback-v1"></script>
+    <script src="./ui/ui-market.js?v=20261002-blacklist-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20260917-back-navigation-v1"></script>
     <script src="./js/app-navigation.js?v=20260917-back-navigation-v1"></script>
-    <script src="./js/app-api.js?v=20261001-coverage-compact-v1"></script>
+    <script src="./js/app-api.js?v=20261002-blacklist-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20261001-results-feedback-v1"></script>
@@ -61,13 +61,14 @@
     <script src="./js/project-today.js?v=20261001-coverage-polish-v2"></script>
     <script src="./js/smart-ping.js?v=20260921-smart-ping-catchup-v1"></script>
     <script src="./js/proof-ping.js?v=20260910-quick-ping-explain-v1"></script>
+    <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260917-mi-run-context-v1"></script>
 <script src="./js/app-features.js?v=20260930-support-bugs-v1"></script>
 <script src="./js/mutual-exchange-ui.js?v=20260827-balance-actions-v17"></script>
 <script src="./js/termination-sheet.js?v=20260824-kick-confirm-v8"></script>
 <script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
-    <script src="./js/guaranteed-test-wizard.js?v=20260917-back-navigation-v1"></script>
+    <script src="./js/guaranteed-test-wizard.js?v=20261002-paypal-me-v1"></script>
     <script src="./js/project-results.js?v=20261001-coverage-polish-v2"></script>
     <script src="./app.js?v=20260930-support-bugs-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
@@ -101,11 +102,12 @@
     <link rel="stylesheet" href="./styles.css?v=20260921-access-owner-help-v2">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260917-scroll-smooth-v2">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
-    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260912-crypto-exit-v1">
+    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20261002-paypal-me-v1">
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260920-report-tab-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
+    <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v1">
 <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
@@ -292,6 +294,13 @@
                         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                     </svg>
                 </button>
+            </div>
+            <div class="system-setting-row system-setting-row--blacklist" id="blacklist-settings-row">
+                <div class="system-setting-copy-wrap">
+                    <button type="button" class="system-setting-copy" onclick="openBlacklistModal()" data-i18n="settingsBlacklistLabel">Чёрный список</button>
+                    <div class="system-setting-meta" id="settings-blacklist-meta" data-i18n="settingsBlacklistMeta">Заблокированные участники</div>
+                </div>
+                <button type="button" class="settings-email-edit-btn" onclick="openBlacklistModal()" aria-label="Open blacklist">›</button>
             </div>
             <div class="system-feedback-buttons">
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
@@ -1635,6 +1644,25 @@
             <div class="dossier-sheet-handle" aria-hidden="true"></div>
             <div id="dossier-modal-title" class="dossier-modal-title" hidden></div>
             <div id="dossier-body" class="dossier-body"></div>
+        </div>
+    </div>
+
+    <div id="blacklist-modal" class="modal-overlay" onclick="closeBlacklistModal(event)">
+        <div class="modal-content blacklist-sheet" onclick="event.stopPropagation()">
+            <div class="blacklist-sheet__handle" aria-hidden="true"></div>
+            <h3 class="blacklist-sheet__title" data-i18n="blacklistModalTitle">Чёрный список</h3>
+            <p class="blacklist-sheet__hint" data-i18n="blacklistModalHint">Заблокированные участники не смогут тестировать ваши проекты и предлагать взаимный обмен.</p>
+            <div class="blacklist-pref">
+                <div class="blacklist-pref__copy">
+                    <div class="blacklist-pref__label" data-i18n="blacklistShowProjectsLabel">Показывать их проекты в витрине</div>
+                    <div class="blacklist-pref__meta" data-i18n="blacklistShowProjectsHint">Карточка будет с пометкой, вступить или предложить взаимный тест всё равно нельзя.</div>
+                </div>
+                <label class="toggle-switch" aria-label="Show blocked projects">
+                    <input type="checkbox" id="blacklist-show-projects-toggle" onchange="setBlacklistShowProjects(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div id="blacklist-body" class="blacklist-sheet__body"></div>
         </div>
     </div>
 

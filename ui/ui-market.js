@@ -895,6 +895,10 @@ function renderFeedCard(item, kind) {
     const accessIssueChip = hasAccessIssue
         ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
         : '';
+    const blockedByMe = !!item.blocked_by_me;
+    const blockedChip = blockedByMe
+        ? `<span class="meta-chip accent-red">${window.escapeHTML(window.t('blacklistMarketChip', {}, lang))}</span>`
+        : '';
 
     if (kind === 'mutual-seeking' && !isOwnProject && !hasAccessIssue) {
         const hasAvailableMutual = typeof window.getAvailableMutualProjectsForOwner === 'function'
@@ -978,6 +982,13 @@ function renderFeedCard(item, kind) {
         buttonDisabledAttr = 'disabled';
         buttonExtraAttrs = '';
     }
+    if (blockedByMe && !isOwnProject) {
+        buttonText = window.t('blacklistBlockedCta', {}, lang);
+        clickAction = 'void(0)';
+        buttonClass = 'btn btn-secondary disabled';
+        buttonDisabledAttr = 'disabled';
+        buttonExtraAttrs = '';
+    }
     if (isOwnProject) {
         buttonText = window.t('ownProjectCta', {}, lang);
         clickAction = 'void(0)';
@@ -1010,6 +1021,7 @@ function renderFeedCard(item, kind) {
                 ${bountyChip}
                 ${syncChip}
                 ${accessIssueChip}
+                ${blockedChip}
             </div>
             <button class="${buttonClass}" ${buttonDisabledAttr} ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
             ${(kind === 'mutual-seeking' && pendingOfferMeta) ? `<div class="market-offer-note">${window.escapeHTML(pendingOfferMeta)}</div>` : ''}
@@ -9028,7 +9040,9 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var reliabilityLine = reliabilityState.expected >= 42
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
-    var joinBlocked = _isDossierProjectJoinBlocked(project);
+    var joinBlocked = _isDossierProjectJoinBlocked(project)
+        || !!project.blocked_by_me
+        || (typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId || project.owner_id));
     var projectMode = String(project.mode || 'mutual').toLowerCase();
     var isBountyProject = projectMode === 'bounty';
     var isHybridProject = projectMode === 'hybrid';
@@ -10403,6 +10417,10 @@ async function openDossierModal(username, testerId, appId) {
 
     const settled = await Promise.all([offersTask, profileTask, projectsTask]);
     if (openSeq !== _dossierOpenSeq) return;
+    if (typeof window.ensureUserBlacklistLoaded === 'function') {
+        try { await window.ensureUserBlacklistLoaded(); } catch (e) {}
+        if (openSeq !== _dossierOpenSeq) return;
+    }
 
     const profile = settled[1] || {};
     const projectsPayload = settled[2] || { testerProjects: [], relations: [] };
@@ -10440,7 +10458,9 @@ async function openDossierModal(username, testerId, appId) {
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
         && marketCandidate.market_kind !== 'mutual-return';
     const takeFromShowcaseBlockedByAccess = !!(marketCandidate && marketCandidate.has_access_issue);
-    const takeFromShowcaseDisabled = !!(marketCandidate && (marketCandidate.has_pending_offer || takeFromShowcaseBlockedByAccess));
+    const takeFromShowcaseBlockedByUser = !!(marketCandidate && marketCandidate.blocked_by_me)
+        || (typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId));
+    const takeFromShowcaseDisabled = !!(marketCandidate && (marketCandidate.has_pending_offer || takeFromShowcaseBlockedByAccess || takeFromShowcaseBlockedByUser));
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
     const pendingBountyApplication = (typeof findPendingBountyApplicationForTester === 'function')
         ? findPendingBountyApplicationForTester(testerId, appId)
@@ -10534,6 +10554,14 @@ async function openDossierModal(username, testerId, appId) {
     var isAdmin = Boolean(window.App && (window.App.isAdmin || (window.currentUser && window.currentUser.is_admin)));
     var currentUserId = Number((window.App && window.App.userId) || (window.currentUser && window.currentUser.user_id) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id) || 0);
     var canAdminBan = isAdmin && Number(testerId || 0) > 0 && Number(testerId || 0) !== currentUserId;
+    var canUserBlacklist = Number(testerId || 0) > 0 && Number(testerId || 0) !== currentUserId;
+    var alreadyBlacklisted = typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId);
+    var blacklistDisplayName = String(
+        (profile && (profile.full_name || profile.username))
+        || (dossierOwnerProfile && (dossierOwnerProfile.owner_full_name || dossierOwnerProfile.owner_username))
+        || ''
+    ).trim();
+    var blacklistConfirmName = escapeInlineJsString(blacklistDisplayName || ('#' + testerId));
 
     html += `<div class="dossier-actions-section">
         <div class="dossier-section-title">${t.dossierActionsTitle}</div>
@@ -10551,9 +10579,10 @@ async function openDossierModal(username, testerId, appId) {
                 </div>
             </div>` : ''}
             ${tgName ? `<button class="btn btn-accent-soft" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
-            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseBlockedByAccess ? 'accessIssueCta' : (takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest'), {}, lang))}</button>` : ''}
+            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseBlockedByAccess ? 'accessIssueCta' : (takeFromShowcaseBlockedByUser ? 'blacklistBlockedCta' : (takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest')), {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn btn-karma-soft" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
             ${canDeleteFromProject ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger-soft" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button></div>` : ''}
+            ${canUserBlacklist ? `<div class="dossier-action-danger-zone"><button class="btn ${alreadyBlacklisted ? 'btn-secondary' : 'btn-danger-soft'}" onclick="event.stopPropagation(); ${alreadyBlacklisted ? `unblockUserOnBlacklist(${testerId}, '${blacklistConfirmName}')` : `blockUserOnBlacklist(${testerId}, '${blacklistConfirmName}')`}.then(function(ok){ if(ok) closeDossierModal(); })">${window.escapeHTML(window.t(alreadyBlacklisted ? 'dossierBtnUnblacklist' : 'dossierBtnBlacklist', {}, lang))}</button></div>` : ''}
             ${canAdminBan ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger" onclick="closeDossierModal(); openBanUserModal(${testerId}, '${safeTelegramUsername}')">${t.dossierBtnBan || '🛑 Заблокировать'}</button></div>` : ''}
         </div>
     </div>`;

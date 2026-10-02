@@ -260,7 +260,7 @@
                 totalCount: modelsTotal,
                 detail: summary.android_range || '',
                 title: window.t('pcResultsChipCoverageTitle', {}, lang) || 'Модели устройств',
-                action: 'openProjectCoverage(' + appId + ', \'models\');'
+                action: 'openProjectCoverage(' + appId + ', \'models\', { focusNewModel: ' + (newModels > 0) + ' });'
             },
             {
                 key: 'countries',
@@ -338,8 +338,10 @@
             );
         }).join('');
 
+        var cardHasNew = Boolean(unseen.hasNew || newModels > 0 || newCountries > 0 || newBugs > 0 || newIdeas > 0 || newReviews > 0 || feedbackNew > 0);
+
         return (
-            '<section class="pc-results-card" data-app-id="' + appId + '" aria-label="' + window.escapeHTML(resultsTitle) + '">' +
+            '<section class="pc-results-card' + (cardHasNew ? ' has-new' : '') + '" data-app-id="' + appId + '" aria-label="' + window.escapeHTML(resultsTitle) + '">' +
                 '<div class="pc-results-header" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" role="button" tabindex="0" title="' + window.escapeHTML(resultsTitle) + '">' +
                     '<span class="pc-results-header__copy">' +
                         '<span class="pc-results-title">' + window.escapeHTML(resultsTitle) + '</span>' +
@@ -557,12 +559,45 @@
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
-        // Mark seen in local storage right upon opening
-        var project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function (p) {
-            return Number(p.app_id || p.id) === _activeCoverageAppId;
+        var seenState = getProjectResultsSeenState(targetAppId);
+        var seenTuplesMap = {};
+        (seenState.seen_tuples || []).forEach(function (t) {
+            seenTuplesMap[String(t[0]) + '::' + String(t[1])] = true;
         });
-        if (project && project.results_summary) {
-            markProjectCoverageSeen(_activeCoverageAppId, project.results_summary);
+
+        function tagNewModels(covData) {
+            if (!covData || !Array.isArray(covData.models)) return;
+            covData.models.forEach(function (m) {
+                var mKey = String(m.model_key || m.model_name || '');
+                var versions = m.android_versions || [];
+                var isNew = false;
+                if (versions.length > 0) {
+                    isNew = versions.some(function (v) { return !seenTuplesMap[mKey + '::' + v]; });
+                } else {
+                    isNew = !seenTuplesMap[mKey + '::all'];
+                }
+                if (isNew) {
+                    m.is_new = true;
+                }
+            });
+        }
+
+        function applyNewModelFocus(container) {
+            if (!options || !options.focusNewModel || !container) return;
+            setTimeout(function () {
+                var firstNewCard = container.querySelector('.coverage-device-card.is-new-model');
+                if (!firstNewCard) return;
+                var modelKey = firstNewCard.id ? firstNewCard.id.replace(/^cov-model-/, '') : '';
+                if (modelKey) {
+                    _expandedModelKeys[modelKey] = true;
+                    firstNewCard.classList.add('is-expanded');
+                }
+                firstNewCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstNewCard.classList.add('is-new-highlight');
+                setTimeout(function () {
+                    firstNewCard.classList.remove('is-new-highlight');
+                }, 3200);
+            }, 80);
         }
 
         var cacheKey = String(_activeCoverageAppId) + ':' + String(_activeCoverageScope);
@@ -570,9 +605,11 @@
         var forceReload = !!(options && options.forceReload);
 
         if (cached && cached.data) {
+            tagNewModels(cached.data);
             _activeCoverageData = cached.data;
-            markProjectCoverageSeen(_activeCoverageAppId, cached.data);
             renderCoverageScreen(body, cached.data);
+            applyNewModelFocus(body);
+            markProjectCoverageSeen(_activeCoverageAppId, cached.data);
 
             var ageMs = Date.now() - (cached.timestamp || 0);
             if (ageMs < 60000 && !forceReload) {
@@ -583,9 +620,10 @@
             fetchProjectCoverage(_activeCoverageAppId, _activeCoverageScope).then(function (fresh) {
                 _coverageMemoryCache[cacheKey] = { data: fresh, timestamp: Date.now() };
                 if (_activeCoverageAppId === targetAppId) {
+                    tagNewModels(fresh);
                     _activeCoverageData = fresh;
-                    markProjectCoverageSeen(_activeCoverageAppId, fresh);
                     renderCoverageScreen(body, fresh);
+                    markProjectCoverageSeen(_activeCoverageAppId, fresh);
                 }
             }).catch(function (e) {
                 console.warn('Background coverage revalidation failed:', e);
@@ -598,9 +636,11 @@
         try {
             var coverage = await fetchProjectCoverage(_activeCoverageAppId, _activeCoverageScope);
             _coverageMemoryCache[cacheKey] = { data: coverage, timestamp: Date.now() };
+            tagNewModels(coverage);
             _activeCoverageData = coverage;
-            markProjectCoverageSeen(_activeCoverageAppId, coverage);
             renderCoverageScreen(body, coverage);
+            applyNewModelFocus(body);
+            markProjectCoverageSeen(_activeCoverageAppId, coverage);
         } catch (err) {
             console.error('Failed to load project coverage:', err);
             renderCoverageError(body, err);
@@ -793,8 +833,7 @@
             var major = v.major_version || String(v.version || '').replace(/^Android\s*/i, '');
             var count = Number(v.testers_count || (v.models && v.models.length) || 0);
             return '<span class="coverage-cockpit-chip" style="--chip-accent:' + color + ';">' +
-                '<span class="coverage-cockpit-chip__dot" style="background-color:' + color + ';"></span>' +
-                '<strong>' + androidIconSvg('coverage-cockpit-chip__android') + window.escapeHTML(major) + ':</strong> ' + v.percentage + '% ' +
+                '<strong style="color:' + color + ';">' + androidIconSvg('coverage-cockpit-chip__android') + window.escapeHTML(major) + ':</strong> ' + v.percentage + '% ' +
                 '<span class="coverage-cockpit-chip__count">(' + count + ')</span>' +
             '</span>';
         }).join('');
@@ -995,6 +1034,9 @@
             var currentBadge = m.in_current_iteration
                 ? '<span class="coverage-badge-current">' + window.escapeHTML(window.t('coverageCurrentBadge', {}, lang) || 'Текущая') + '</span>'
                 : '';
+            var newBadge = m.is_new
+                ? '<span class="coverage-badge-new">+NEW</span>'
+                : '';
 
             // Inline screenshot gallery
             var galleryHtml = '';
@@ -1106,13 +1148,14 @@
             }
 
             return (
-                '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-device-card ' + (isExpanded ? 'is-expanded' : '') + (isBrandHidden ? ' is-brand-hidden' : '') + '" data-brand="' + window.escapeHTML(brand) + '">' +
+                '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-device-card' + (m.is_new ? ' is-new-model' : '') + ' ' + (isExpanded ? 'is-expanded' : '') + (isBrandHidden ? ' is-brand-hidden' : '') + '" data-brand="' + window.escapeHTML(brand) + '">' +
                     '<div class="coverage-device-card__head" onclick="toggleCoverageModelExpand(\'' + window.escapeHTML(m.model_key) + '\')">' +
                         '<div class="coverage-device-card__head-left">' +
                             '<div class="coverage-device-card__title-row">' +
                                 '<span class="coverage-device-name notranslate">' + window.escapeHTML(m.model_name) + '</span>' +
                                 stackBadgeHtml +
                                 currentBadge +
+                                newBadge +
                             '</div>' +
                         '</div>' +
                         '<div class="coverage-device-card__head-right">' +
@@ -1541,6 +1584,15 @@
         var hasBug = foundScreenshot ? !!foundScreenshot.has_bug : false;
         var modelName = foundModel ? (foundModel.model_name || '') : '';
 
+        var tObj = (foundModel && (foundModel.testers || []).find(function (t) {
+            return Number(t.tester_id || 0) === Number(foundScreenshot && foundScreenshot.tester_id || 0);
+        })) || (foundModel && (foundModel.testers || []).length === 1 ? foundModel.testers[0] : {});
+        var rawAv = (foundScreenshot && foundScreenshot.android_version) || tObj.android_version || (foundModel && foundModel.android_versions && foundModel.android_versions[0]) || '';
+        var matchAv = String(rawAv).match(/(?:android\s*)?(\d+)/i);
+        var osPart = matchAv ? ('A' + matchAv[1]) : (rawAv ? String(rawAv).trim() : '');
+
+        var subParts = [day ? ('D' + day) : '', osPart, testerName].filter(Boolean);
+
         // The shared proof viewer already owns secure media tickets, progressive
         // thumbnail/medium loading, swipe navigation, and Telegram originals.
         // Coverage previously bypassed it with raw Telegram file IDs.
@@ -1549,7 +1601,7 @@
                 imageCount: Number(imageCount || 1),
                 modelName: modelName,
                 title: modelName || (testerName || (day ? ('D' + day) : 'Скриншот')),
-                subtitle: [day ? ('D' + day) : '', testerName].filter(Boolean).join(' · ')
+                subtitle: subParts.join(' · ')
             });
             return;
         }
