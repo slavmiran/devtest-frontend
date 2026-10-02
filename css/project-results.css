@@ -1453,9 +1453,136 @@
 
 /* Models Tab Content */
 .coverage-models-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
+}
+
+.pc-model-card {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    min-width: 0;
+    aspect-ratio: 9 / 16;
+    margin: 0;
+    border-radius: 16px;
+    background: #121923;
+    box-shadow: inset 0 1px rgba(255,255,255,.035);
+}
+.pc-model-card:not(.is-expanded)::before {
+    content: '';
+    position: absolute;
+    z-index: 4;
+    top: 6px;
+    left: 50%;
+    width: 32px;
+    height: 6px;
+    border-radius: 9px;
+    transform: translateX(-50%);
+    background: #060a0f;
+    box-shadow: 0 0 0 1px rgba(180, 196, 214, .1);
+    pointer-events: none;
+}
+.pc-model-card__screen {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: radial-gradient(circle at 50% 35%, #26374b, #101823 70%);
+    color: #dce6f1;
+    cursor: pointer;
+}
+.pc-model-card__screen:disabled { cursor: default; }
+.pc-model-card__cover {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+}
+.pc-model-card__empty {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: #71859b;
+}
+.pc-model-card__android { width: 35px; height: 35px; }
+.pc-model-card__screen-shade {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(5,10,16,.42), transparent 22%, transparent 64%, rgba(5,10,16,.48));
+    pointer-events: none;
+}
+.pc-model-card__new,
+.pc-model-card__count {
+    position: absolute;
+    z-index: 2;
+    top: 15px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: rgba(8, 15, 24, .82);
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1.15;
+}
+.pc-model-card__new { left: 7px; color: #8ad9f4; }
+.pc-model-card__count { right: 7px; color: #dce6f1; }
+.pc-model-card__play {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: 35px;
+    height: 35px;
+    border: 1px solid rgba(230,239,250,.65);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(7,14,23,.55);
+    color: #f1f6fd;
+    font-size: 13px;
+    opacity: .78;
+    transition: opacity .15s ease, background .15s ease;
+}
+.pc-model-card__screen:active .pc-model-card__play { opacity: 1; background: rgba(42,87,125,.8); }
+.pc-model-card__footer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 62px;
+    padding: 9px 9px 10px;
+    border: 0;
+    border-top: 1px solid rgba(155,180,210,.11);
+    background: #17212d;
+    color: #eaf0f7;
+    text-align: left;
+    cursor: pointer;
+}
+.pc-model-card__footer-copy { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.pc-model-card__footer-copy strong,
+.pc-model-card__footer-copy small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pc-model-card__footer-copy strong { font-size: 12px; line-height: 1.2; }
+.pc-model-card__footer-copy small { color: #95a6b8; font-size: 10px; line-height: 1.2; }
+.pc-model-card__footer-chevron { color: #8fa3ba; font-size: 20px; line-height: 1; }
+.pc-model-card.is-expanded { grid-column: 1 / -1; aspect-ratio: auto; }
+.pc-model-card.is-expanded .pc-model-card__screen,
+.pc-model-card.is-expanded .pc-model-card__footer { display: none; }
+.pc-model-card.is-expanded .coverage-device-card__head { width: 100%; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; }
+.coverage-models-list > .coverage-defects-empty,
+.coverage-models-list > #coverage-brand-empty-notice { grid-column: 1 / -1; }
+@media (max-width: 380px) {
+    .pc-model-card__footer { min-height: 59px; padding-inline: 7px; }
+    .pc-model-card__footer-copy strong { font-size: 11.5px; }
+    .pc-model-card__footer-copy small { font-size: 9px; }
 }
 
 .coverage-model-card,
@@ -1466,6 +1593,14 @@
     overflow: hidden;
     margin-bottom: 12px;
     transition: border-color 0.15s ease, background 0.15s ease;
+}
+.coverage-device-card.pc-model-card {
+    margin: 0;
+    border-radius: 16px;
+    background: #121923;
+}
+.coverage-device-card.pc-model-card.is-expanded {
+    background: rgba(255, 255, 255, 0.045);
 }
 .coverage-model-card.is-expanded,
 .coverage-device-card.is-expanded {
@@ -2316,11 +2451,43 @@
     align-items: center;
     gap: 6px;
 }
+.coverage-screenshot-tester-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #a7c9ed;
+    font: inherit;
+    font-weight: 650;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
 .coverage-screenshot-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
+}
+.coverage-screenshot-archive-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid rgba(151, 170, 193, .22);
+    border-radius: 8px;
+    background: rgba(142, 160, 183, .09);
+    color: #b4c3d2;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.coverage-screenshot-archive-btn:disabled { opacity: .5; cursor: wait; }
+@media (max-width: 480px) {
+    .coverage-screenshot-header { flex-wrap: wrap; gap: 7px; }
+    .coverage-screenshot-actions { width: 100%; justify-content: flex-end; gap: 5px; }
 }
 .coverage-screenshot-counter {
     font-size: 11.5px;
@@ -2578,6 +2745,100 @@
     background: rgba(245, 158, 11, 0.16);
     border-color: rgba(245, 158, 11, 0.45);
     color: #fbbf24;
+}
+.coverage-filter-pill--archive {
+    flex: 0 0 auto;
+    color: #8392a3;
+    border-color: rgba(151, 170, 193, .1);
+}
+.coverage-filter-pill--archive.is-active {
+    background: rgba(145, 159, 180, .13);
+    border-color: rgba(151, 170, 193, .27);
+    color: #c2cbd8;
+    box-shadow: none;
+}
+.coverage-archive-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+.coverage-archive-item {
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(148, 168, 195, .13);
+    border-radius: 12px;
+    background: #151d27;
+    color: #e5eaf1;
+    text-align: left;
+    cursor: pointer;
+}
+.coverage-archive-item__image {
+    position: relative;
+    display: block;
+    aspect-ratio: 9 / 11;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 30%, #27384a, #111924);
+}
+.coverage-archive-item__marker {
+    position: absolute;
+    z-index: 2;
+    top: 7px;
+    right: 7px;
+    padding: 3px 5px;
+    border-radius: 6px;
+    background: rgba(8, 13, 20, .75);
+    font-size: 11px;
+}
+.coverage-archive-item__info {
+    display: grid;
+    gap: 3px;
+    padding: 9px;
+}
+.coverage-archive-item__info strong {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 12px;
+}
+.coverage-archive-item__info small { color: #91a0b1; font-size: 10px; }
+.coverage-archive-empty {
+    padding: 32px 16px;
+    border: 1px dashed rgba(148, 168, 195, .18);
+    border-radius: 12px;
+    color: #93a2b5;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.coverage-archive-toast {
+    position: fixed;
+    z-index: 100001;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: min(90vw, 440px);
+    padding: 11px 13px;
+    border: 1px solid rgba(165, 184, 207, .23);
+    border-radius: 11px;
+    transform: translateX(-50%);
+    background: #263341;
+    color: #f0f4fa;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    font-size: 12px;
+    line-height: 1.3;
+}
+.coverage-archive-toast button {
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: #a9d6fa;
+    font: inherit;
+    font-weight: 750;
+    white-space: nowrap;
+    cursor: pointer;
 }
 .coverage-filter-pill__count {
     font-size: 11px;

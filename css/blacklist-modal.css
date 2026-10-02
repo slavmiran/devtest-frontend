@@ -5,14 +5,6 @@
     padding: 10px 16px 20px;
 }
 
-.blacklist-sheet__handle {
-    width: 36px;
-    height: 4px;
-    border-radius: 99px;
-    background: var(--border-strong);
-    margin: 4px auto 12px;
-}
-
 .blacklist-sheet__title {
     margin: 0 0 6px;
     font-size: 18px;

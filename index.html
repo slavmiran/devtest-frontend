@@ -69,7 +69,7 @@
 <script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20261002-paypal-me-v1"></script>
-    <script src="./js/project-results.js?v=20261001-coverage-polish-v2"></script>
+    <script src="./js/project-results.js?v=20261002-coverage-archive-v1"></script>
     <script src="./app.js?v=20260930-support-bugs-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
@@ -107,11 +107,11 @@
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
-    <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v1">
+    <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v2">
 <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
-    <link rel="stylesheet" href="./css/project-results.css?v=20261001-coverage-polish-v2">
+    <link rel="stylesheet" href="./css/project-results.css?v=20261002-coverage-archive-v1">
 </head>
 <body>
 
@@ -1649,7 +1649,6 @@
 
     <div id="blacklist-modal" class="modal-overlay" onclick="closeBlacklistModal(event)">
         <div class="modal-content blacklist-sheet" onclick="event.stopPropagation()">
-            <div class="blacklist-sheet__handle" aria-hidden="true"></div>
             <h3 class="blacklist-sheet__title" data-i18n="blacklistModalTitle">Чёрный список</h3>
             <p class="blacklist-sheet__hint" data-i18n="blacklistModalHint">Заблокированные участники не смогут тестировать ваши проекты и предлагать взаимный обмен.</p>
             <div class="blacklist-pref">
