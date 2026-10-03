@@ -3870,6 +3870,8 @@
             coverageDefectTooltip: "Пометить дефект интерфейса",
             coverageFilterAll: "Все",
             coverageFilterNew: "Новые",
+            coverageMarkAllViewed: "Отметить всё просмотренным",
+            coverageViewDeviceAria: "Открыть устройство: {model}",
             coverageFilterDefects: "С дефектами",
             coverageNoDefectsEmpty: "Дефектов интерфейса пока не отмечено. Вы можете пометить скриншот дефектом в режиме полноэкранного просмотра кнопкой [⚠️ Дефект].",
             coverageBrandAll: "Все",

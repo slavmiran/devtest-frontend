@@ -3864,6 +3864,8 @@
             coverageDefectTooltip: "Flag UI defect",
             coverageFilterAll: "All",
             coverageFilterNew: "New",
+            coverageMarkAllViewed: "Mark all as viewed",
+            coverageViewDeviceAria: "Open device: {model}",
             coverageFilterDefects: "With defects",
             coverageNoDefectsEmpty: "No UI defects reported yet. You can flag a screenshot as a defect in fullscreen view using the [⚠️ Defect] button.",
             coverageBrandAll: "All",
