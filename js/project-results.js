@@ -11,6 +11,11 @@
         return 'results_seen_' + String(appId || 0);
     }
 
+    function coverageTupleKey(model, version) {
+        var major = String(version == null ? '' : version).match(/\d+/);
+        return String(model || '').trim().toLowerCase() + '::' + (major ? major[0] : 'all');
+    }
+
     function getProjectResultsSeenState(appId) {
         if (!appId) return { seen_tuples: [], seen_countries: [] };
         try {
@@ -39,9 +44,10 @@
     function markProjectCoverageSeen(appId, coverageSummaryOrData) {
         if (!appId || !coverageSummaryOrData) return;
         var current = getProjectResultsSeenState(appId);
+        var originalSeenCount = current.seen_tuples.length + current.seen_countries.length;
         var seenTuplesMap = {};
         current.seen_tuples.forEach(function (t) {
-            seenTuplesMap[String(t[0]) + '::' + String(t[1])] = true;
+            seenTuplesMap[coverageTupleKey(t[0], t[1])] = true;
         });
         var seenCountriesMap = {};
         current.seen_countries.forEach(function (c) {
@@ -52,7 +58,7 @@
         var tuples = coverageSummaryOrData.coverage_tuples;
         if (Array.isArray(tuples)) {
             tuples.forEach(function (t) {
-                var key = String(t[0]) + '::' + String(t[1]);
+                var key = coverageTupleKey(t[0], t[1]);
                 if (!seenTuplesMap[key]) {
                     seenTuplesMap[key] = true;
                     current.seen_tuples.push(t);
@@ -64,8 +70,9 @@
         if (Array.isArray(coverageSummaryOrData.models)) {
             coverageSummaryOrData.models.forEach(function (m) {
                 var mKey = m.model_key || (m.model_name || '').toLowerCase();
-                (m.android_major_versions || []).forEach(function (v) {
-                    var key = mKey + '::' + String(v);
+                var versions = (m.android_major_versions || []).length ? m.android_major_versions : (m.android_versions || []);
+                (versions.length ? versions : [null]).forEach(function (v) {
+                    var key = coverageTupleKey(mKey, v);
                     if (!seenTuplesMap[key]) {
                         seenTuplesMap[key] = true;
                         current.seen_tuples.push([mKey, v]);
@@ -98,6 +105,7 @@
         }
 
         saveProjectResultsSeenState(appId, current);
+        if (originalSeenCount === current.seen_tuples.length + current.seen_countries.length) return;
 
         // Refresh Results blocks on visible project card
         var card = document.getElementById('project-card-' + appId);
@@ -125,7 +133,7 @@
 
         var seenTuplesMap = {};
         seen.seen_tuples.forEach(function (t) {
-            seenTuplesMap[String(t[0]) + '::' + String(t[1])] = true;
+            seenTuplesMap[coverageTupleKey(t[0], t[1])] = true;
         });
         var seenCountriesMap = {};
         seen.seen_countries.forEach(function (c) {
@@ -135,7 +143,7 @@
         var currentTuples = Array.isArray(summary.coverage_tuples) ? summary.coverage_tuples : [];
         var unseenCoverageCount = 0;
         currentTuples.forEach(function (t) {
-            var key = String(t[0]) + '::' + String(t[1]);
+            var key = coverageTupleKey(t[0], t[1]);
             if (!seenTuplesMap[key]) {
                 unseenCoverageCount++;
             }
@@ -528,20 +536,18 @@
         var seenState = getProjectResultsSeenState(appId);
         var seenTuplesMap = {};
         (seenState.seen_tuples || []).forEach(function (t) {
-            seenTuplesMap[String(t[0]) + '::' + String(t[1])] = true;
+            seenTuplesMap[coverageTupleKey(t[0], t[1])] = true;
         });
         covData.models.forEach(function (m) {
             var mKey = String(m.model_key || m.model_name || '');
-            var versions = m.android_versions || [];
+            var versions = (m.android_major_versions || []).length ? m.android_major_versions : (m.android_versions || []);
             var isNew = false;
             if (versions.length > 0) {
-                isNew = versions.some(function (v) { return !seenTuplesMap[mKey + '::' + v]; });
+                isNew = versions.some(function (v) { return !seenTuplesMap[coverageTupleKey(mKey, v)]; });
             } else {
-                isNew = !seenTuplesMap[mKey + '::all'];
+                isNew = !seenTuplesMap[coverageTupleKey(mKey, null)];
             }
-            if (isNew) {
-                m.is_new = true;
-            }
+            m.is_new = isNew;
         });
     }
 
@@ -667,7 +673,7 @@
             _activeCoverageData = cached.data;
             renderCoverageScreen(body, cached.data);
             applyNewModelFocus(body);
-            markProjectCoverageSeen(_activeCoverageAppId, cached.data);
+            markProjectCoverageSeen(_activeCoverageAppId, { countries: cached.data.countries });
 
             var ageMs = Date.now() - (cached.timestamp || 0);
             if (ageMs < 60000 && !forceReload) {
@@ -681,7 +687,7 @@
                     tagCoverageNewModels(_activeCoverageAppId, fresh);
                     _activeCoverageData = fresh;
                     renderCoverageScreen(body, fresh);
-                    markProjectCoverageSeen(_activeCoverageAppId, fresh);
+                    markProjectCoverageSeen(_activeCoverageAppId, { countries: fresh.countries });
                 }
             }).catch(function (e) {
                 console.warn('Background coverage revalidation failed:', e);
@@ -698,7 +704,7 @@
             _activeCoverageData = coverage;
             renderCoverageScreen(body, coverage);
             applyNewModelFocus(body);
-            markProjectCoverageSeen(_activeCoverageAppId, coverage);
+            markProjectCoverageSeen(_activeCoverageAppId, { countries: coverage.countries });
         } catch (err) {
             console.error('Failed to load project coverage:', err);
             renderCoverageError(body, err);
@@ -1261,7 +1267,7 @@
                         ? (lang === 'ru' ? 'Баг' : 'Bug')
                         : (fb.type === 'idea' ? (lang === 'ru' ? 'Идея' : 'Idea') : (lang === 'ru' ? 'Отзыв' : 'Review'));
                     return (
-                        '<button type="button" class="coverage-fb-item-row' + (fb.has_media ? ' has-media' : ' is-text-only') + '" onclick="event.stopPropagation(); openProjectResultsFeedback(' + _activeCoverageAppId + ', \'' + fb.type + '\', ' + Number(fb.id || 0) + ');">' +
+                        '<button type="button" class="coverage-fb-item-row' + (fb.has_media ? ' has-media' : ' is-text-only') + '" onclick="event.stopPropagation(); openCoverageFeedbackViewer(\'' + window.escapeHTML(m.model_key) + '\', ' + Number(fb.id || 0) + ');">' +
                             '<div class="coverage-fb-item-head">' +
                                 '<span class="coverage-fb-item-type coverage-fb-item-type--' + typeClass + '">' + (fb.type === 'bug' ? '🐞 ' : (fb.type === 'idea' ? '💡 ' : '★ ')) + window.escapeHTML(typeLabel) + '</span>' +
                                 (fb.has_media ? '<span class="coverage-fb-item-media" title="' + window.escapeHTML(lang === 'ru' ? 'Есть изображение' : 'Image attached') + '">▧</span>' : '') +
@@ -1464,7 +1470,7 @@
             : renderCoverageDeviceCards(aggregatedModels, lang);
 
         container.innerHTML = (
-            '<div class="coverage-header">' +
+            '<div class="coverage-body"><div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
                         '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="Back">←</button>' +
@@ -1485,14 +1491,16 @@
                 '</div>' +
                 '<div class="coverage-stat-bar">' + statBarHtml + '</div>' +
             '</div>' +
-            '<div class="coverage-body">' +
+            '<div class="coverage-workspace">' +
                 '<div id="coverage-tab-panel" class="coverage-tab-panel is-unified-view">' +
-                    cockpitHtml +
+                    '<div class="coverage-tools">' +
                     filterPillsHtml +
                     brandFilterHtml +
+                    (cockpitHtml ? '<details class="coverage-distribution"><summary>' + window.escapeHTML(lang === 'ru' ? 'Версии Android и география' : 'Android versions & geography') + '<span>⌄</span></summary>' + cockpitHtml + '</details>' : '') +
+                    '</div>' +
                     deviceCardsHtml +
                 '</div>' +
-            '</div>'
+            '</div></div>'
         );
         var header = container.querySelector('.coverage-header');
         if (header && container.style) {
@@ -1533,6 +1541,7 @@
         var scroller = container && container.querySelector ? container.querySelector('.coverage-body') : null;
         var header = container && container.querySelector ? container.querySelector('.coverage-header') : null;
         if (!scroller || !header) return;
+        if (header.parentElement === scroller) return;
         // Move pixel-for-pixel with the content, without a delayed CSS transition.
         // The header overlays the scroller, so its movement does not alter scrollHeight.
         function syncHeaderPosition() {
@@ -1647,11 +1656,6 @@
 
     // ── Fullscreen Coverage Screenshot Viewer ──
 
-    function _getCoverageMediaUrl(fileId) {
-        if (!fileId) return '';
-        return '/api/telegram-media/' + encodeURIComponent(fileId);
-    }
-
     var _coverageViewerState = {
         isOpen: false,
         isContinuous: false,
@@ -1690,7 +1694,36 @@
     }
 
     function _ensureCoverageScreenshotModal() {
-        if (document.getElementById('coverage-screenshot-modal')) {
+        var existing = document.getElementById('coverage-screenshot-modal');
+        if (existing) {
+            // Upgrade cached index.html too: the script owns the viewer controls.
+            if (typeof existing.querySelector === 'function') {
+                var actions = existing.querySelector('.coverage-screenshot-actions');
+                if (actions) {
+                    actions.querySelectorAll('[aria-label="Close"], .coverage-screenshot-close').forEach(function (el) { el.remove(); });
+                    if (!document.getElementById('coverage-screenshot-archive-btn')) {
+                        actions.insertAdjacentHTML('afterbegin', '<button type="button" id="coverage-screenshot-archive-btn" class="coverage-screenshot-archive-btn" onclick="toggleCurrentCoverageArchive(event)"></button>');
+                    }
+                }
+                var header = existing.querySelector('.coverage-screenshot-header');
+                if (header && !header.querySelector('.coverage-screenshot-heading')) {
+                    var back = header.querySelector('[aria-label="Back"]');
+                    var meta = header.querySelector('.coverage-screenshot-meta');
+                    if (back && meta) {
+                        var heading = document.createElement('div');
+                        heading.className = 'coverage-screenshot-heading';
+                        header.prepend(heading);
+                        heading.append(back, meta);
+                    }
+                }
+                if (header && !document.getElementById('coverage-screenshot-feedback')) {
+                    header.insertAdjacentHTML('beforeend', '<div id="coverage-screenshot-feedback" class="coverage-viewer-feedback" hidden></div>');
+                }
+                var stage = existing.querySelector('.coverage-screenshot-stage');
+                if (stage && !document.getElementById('coverage-screenshot-load-error')) {
+                    stage.insertAdjacentHTML('beforeend', '<button type="button" id="coverage-screenshot-load-error" class="coverage-viewer-load-error" hidden onclick="retryCoverageScreenshot(event)"></button>');
+                }
+            }
             _initCoverageViewerTouch();
             return;
         }
@@ -1727,7 +1760,64 @@
             '</div>'
         );
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        _initCoverageViewerTouch();
+        _ensureCoverageScreenshotModal();
+    }
+
+    var _coverageSlideCache = new Map();
+    function _resolveCoverageSlide(item) {
+        var key = String(item.proofId || 0) + ':' + String(item.mediaIndex || 0) + ':' + String(item.fullUrl || item.thumbUrl || '');
+        if (_coverageSlideCache.has(key)) return _coverageSlideCache.get(key);
+        var request = item.proofId > 0 && typeof window.loadCheckinProofPreviewMedium === 'function'
+            ? window.loadCheckinProofPreviewMedium(item.proofId, item.mediaIndex || 0).catch(function () { return item.thumbUrl || item.fullUrl || ''; })
+            : Promise.resolve(item.thumbUrl || item.fullUrl || '');
+        var resolved = request.then(function (url) {
+            if (url && typeof Image === 'function') { var preload = new Image(); preload.src = url; }
+            return url;
+        });
+        _coverageSlideCache.set(key, resolved);
+        if (_coverageSlideCache.size > 96) _coverageSlideCache.delete(_coverageSlideCache.keys().next().value);
+        return resolved;
+    }
+
+    function processCoverageViewerFeedback() {
+        var s = _coverageViewerState;
+        var item = (s.items || [])[s.currentIndex] || {};
+        if (!item.feedbackId) return;
+        var appId = s.appId;
+        closeCoverageScreenshotModal();
+        closeProjectCoverageModal();
+        openProjectResultsFeedback(appId, item.proofType, item.feedbackId, true);
+    }
+
+    function retryCoverageScreenshot(event) {
+        if (event) event.stopPropagation();
+        _coverageSlideCache.clear();
+        _renderCoverageViewerCurrentSlide();
+    }
+
+    function openCoverageFeedbackViewer(modelKey, feedbackId) {
+        var model = aggregateModelStacks((_activeCoverageData || {}).models || []).find(function (m) { return String(m.model_key) === String(modelKey); });
+        if (!model) return;
+        var feedback = (model.feedback_items || []).find(function (fb) { return Number(fb.id) === Number(feedbackId); });
+        var shot = (model.screenshots || []).find(function (s) { return Number(s.feedback_id) === Number(feedbackId) || (feedback && Number(feedback.proof_id) > 0 && Number(s.id) === Number(feedback.proof_id)); });
+        if (shot) {
+            openContinuousCoverageGallery(_activeCoverageAppId, { modelKey: modelKey, initialProofId: Number(shot.id || 0), initialFeedbackId: Number(shot.feedback_id || 0), initialMediaIndex: Number(((shot.media_items || [])[0] || {}).media_index || 0) });
+        } else if (feedback) {
+            _coverageViewerState.isOpen = true;
+            _coverageViewerState.appId = _activeCoverageAppId;
+            _coverageViewerState.proofId = 0;
+            _coverageViewerState.hasBug = false;
+            _coverageViewerState.hasIdea = false;
+            _coverageViewerState.isContinuous = false;
+            _coverageViewerState.isArchiveViewer = false;
+            _coverageViewerState.archiveBusy = false;
+            _coverageViewerState.currentIndex = 0;
+            _coverageViewerState.items = [{ modelName: model.model_name, proofType: feedback.type, feedbackId: feedback.id, feedbackText: feedback.text, feedbackStatus: feedback.status, textOnly: true }];
+            _ensureCoverageScreenshotModal();
+            _renderCoverageViewerCurrentSlide();
+            document.getElementById('coverage-screenshot-modal').classList.add('active');
+            if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        }
     }
 
     function _initCoverageViewerTouch() {
@@ -1792,6 +1882,14 @@
         if (!list || list.length === 0) return;
         var cur = list[s.currentIndex] || {};
         var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var feedbackPanel = document.getElementById('coverage-screenshot-feedback');
+        if (feedbackPanel) {
+            var pending = !['accepted', 'rejected', 'processed', 'resolved'].includes(String(cur.feedbackStatus || ''));
+            feedbackPanel.hidden = !cur.feedbackText && !cur.isNew && !(cur.feedbackId && pending);
+            feedbackPanel.innerHTML = (cur.isNew ? '<span class="coverage-viewer-new">' + (lang === 'ru' ? 'Новая модель' : 'New model') + '</span>' : '') +
+                (cur.feedbackText ? '<div class="coverage-viewer-feedback__text">' + window.escapeHTML(cur.feedbackText) + '</div>' : '') +
+                (cur.feedbackId && pending ? '<button type="button" class="coverage-viewer-process" onclick="processCoverageViewerFeedback()">' + (lang === 'ru' ? 'Обработать фидбэк →' : 'Review feedback →') + '</button>' : '');
+        }
 
         var titleEl = document.getElementById('coverage-screenshot-title');
         var subtitleEl = document.getElementById('coverage-screenshot-subtitle');
@@ -1805,6 +1903,11 @@
         var archiveBtn = document.getElementById('coverage-screenshot-archive-btn');
         var defectBadge = document.getElementById('coverage-screenshot-defect-badge');
         var imgWrap = imgEl ? (typeof imgEl.closest === 'function' ? imgEl.closest('.coverage-screenshot-img-wrap') : (imgEl.parentElement || null)) : null;
+        var loadError = document.getElementById('coverage-screenshot-load-error');
+        if (loadError) {
+            loadError.hidden = true;
+            loadError.textContent = lang === 'ru' ? 'Не удалось загрузить изображение · Повторить' : 'Unable to load image · Retry';
+        }
 
         // Title: {Manufacturer} {Model} · Android {OS} (e.g. Samsung Galaxy S23 · A14)
         if (titleEl) {
@@ -1872,13 +1975,13 @@
 
         // Defect status
         var curAppId = cur.appId || s.appId || _activeCoverageAppId;
-        var proofId = cur.proofId || s.proofId || 0;
+        var proofId = cur.proofId != null ? Number(cur.proofId) : Number(s.proofId || 0);
         var feedbackId = Number(cur.feedbackId || 0);
         var mediaIndex = cur.mediaIndex != null ? cur.mediaIndex : 0;
-        var hasDefect = isScreenshotDefect(curAppId, feedbackId > 0 ? 'feedback-' + feedbackId : proofId, mediaIndex);
+        var hasDefect = isScreenshotDefect(curAppId, proofId > 0 ? proofId : 'feedback-' + feedbackId, mediaIndex);
 
         if (archiveBtn) {
-            archiveBtn.style.display = curAppId > 0 && (proofId > 0 || feedbackId > 0) ? 'inline-flex' : 'none';
+            archiveBtn.style.display = !cur.textOnly && curAppId > 0 && (proofId > 0 || feedbackId > 0) ? 'inline-flex' : 'none';
             archiveBtn.disabled = !!s.archiveBusy;
             archiveBtn.textContent = cur.isArchived
                 ? (lang === 'ru' ? '↩️ Вернуть' : '↩️ Restore')
@@ -1891,6 +1994,7 @@
         }
 
         if (defectBtn) {
+            defectBtn.style.display = cur.textOnly ? 'none' : 'inline-flex';
             if (defectBtn.classList && typeof defectBtn.classList.toggle === 'function') {
                 defectBtn.classList.toggle('is-defect-active', hasDefect);
             } else if (defectBtn.classList) {
@@ -1945,20 +2049,34 @@
 
         // Image loading
         if (imgEl) {
+            imgEl.style.display = cur.textOnly ? 'none' : '';
             imgEl.classList.remove('is-zoomed');
-            var targetSrc = cur.fullUrl || cur.thumbUrl || '';
-            if (spinnerEl) spinnerEl.style.display = 'block';
+            var targetSrc = cur.thumbUrl || cur.fullUrl || '';
+            if (spinnerEl) spinnerEl.style.display = cur.textOnly ? 'none' : 'block';
             imgEl.style.opacity = '0.35';
+            clearTimeout(s.loadTimeout);
+            s.loadTimeout = setTimeout(function () {
+                if (spinnerEl) spinnerEl.style.display = 'none';
+                if (loadError && !cur.textOnly && !imgEl.naturalWidth) loadError.hidden = false;
+            }, 12000);
 
             imgEl.onload = function () {
+                clearTimeout(s.loadTimeout);
                 if (spinnerEl) spinnerEl.style.display = 'none';
+                if (loadError) loadError.hidden = true;
                 imgEl.style.opacity = '1';
+                if (!cur.reviewed && cur.modelKey) {
+                    cur.reviewed = true;
+                    markProjectCoverageSeen(s.appId, { models: [{ model_key: cur.modelKey, android_versions: [cur.androidVersion || null] }] });
+                }
             };
             imgEl.onerror = function () {
-                if (cur.thumbUrl && imgEl.src !== cur.thumbUrl) {
+                if (cur.thumbUrl && imgEl.getAttribute('src') !== cur.thumbUrl) {
                     imgEl.src = cur.thumbUrl;
                 } else {
+                    clearTimeout(s.loadTimeout);
                     if (spinnerEl) spinnerEl.style.display = 'none';
+                    if (loadError) loadError.hidden = false;
                     imgEl.style.opacity = '1';
                 }
             };
@@ -1978,12 +2096,16 @@
                     if (isCurrentSlide() && src && !imgEl.getAttribute('src')) imgEl.src = src;
                 }).catch(function () {});
             }
-            if (proofId > 0 && typeof window.loadCheckinProofPreviewMedium === 'function') {
-                window.loadCheckinProofPreviewMedium(proofId, mediaIndex).then(function (src) {
+            if (!cur.textOnly) {
+                _resolveCoverageSlide(cur).then(function (src) {
                     if (isCurrentSlide() && src) {
-                        imgEl.src = src;
+                        if (imgEl.getAttribute('src') !== src) imgEl.src = src;
                     }
                 }).catch(function () {});
+                // Bound look-ahead: parallel warm-up, never load the whole gallery.
+                [s.currentIndex + 1, s.currentIndex + 2, s.currentIndex - 1].forEach(function (index) {
+                    if (list[index]) _resolveCoverageSlide(list[index]).catch(function () {});
+                });
             }
         }
     }
@@ -2021,7 +2143,7 @@
         var mediaIndex = cur.mediaIndex != null ? cur.mediaIndex : 0;
         if (!appId || (!proofId && !feedbackId)) return;
 
-        var newState = toggleScreenshotDefect(appId, feedbackId > 0 ? 'feedback-' + feedbackId : proofId, mediaIndex);
+        var newState = toggleScreenshotDefect(appId, proofId > 0 ? proofId : 'feedback-' + feedbackId, mediaIndex);
 
         // Update viewer UI
         var defectBtn = document.getElementById('coverage-screenshot-defect-btn');
@@ -2194,7 +2316,7 @@
         if (!current) return;
         var appId = Number(current.appId || state.appId);
         var proofId = Number(current.proofId);
-        var feedbackId = Number(current.feedbackId || 0);
+        var feedbackId = proofId > 0 ? 0 : Number(current.feedbackId || 0);
         var mediaIndex = Number(current.mediaIndex || 0);
         if (!proofId && !feedbackId) return;
         var nextArchived = !current.isArchived;
@@ -2206,7 +2328,7 @@
             _applyCoverageArchiveResult(appId, scope, result.coverage);
             // Remove only this media slot; the next active slide retains its index.
             var removeIndex = items.findIndex(function (item) {
-                return Number(item.proofId || 0) === proofId && Number(item.feedbackId || 0) === feedbackId && Number(item.mediaIndex || 0) === mediaIndex;
+                return Number(item.proofId || 0) === proofId && (proofId > 0 || Number(item.feedbackId || 0) === feedbackId) && Number(item.mediaIndex || 0) === mediaIndex;
             });
             if (removeIndex >= 0) items.splice(removeIndex, 1);
             _reindexCoverageViewerItems(items);
@@ -2341,6 +2463,10 @@
                     var imgCount = Number(s.image_count || (s.media_items && s.media_items.length) || 1);
                     var mediaItems = Array.isArray(s.media_items) ? s.media_items : [];
                     var tester = (m.testers || []).find(function (t) { return Number(t.tester_id || 0) === Number(s.tester_id || 0); }) || {};
+                    var feedback = (m.feedback_items || []).find(function (fb) { return Number(fb.id) === Number(s.feedback_id || 0) || (Number(fb.proof_id) > 0 && Number(fb.proof_id) === proofId); }) || {};
+                    var screenshotVersion = s.android_version || tester.android_version || rawAv;
+                    var screenshotTitle = devTitle.replace(/ · Android .*$/, '');
+                    if (screenshotVersion) screenshotTitle += ' · Android ' + String(screenshotVersion).replace(/^Android\s*/i, '');
 
                     for (var mi = 0; mi < imgCount; mi++) {
                         currentPhotoOnDevice++;
@@ -2354,10 +2480,11 @@
                             mediaSource: feedbackId > 0 ? 'feedback' : 'proof',
                             mediaIndex: originalMediaIndex,
                             modelKey: m.model_key,
+                            isNew: !!m.is_new,
                             modelName: m.model_name,
                             brand: brand,
-                            androidVersion: rawAv,
-                            deviceTitle: devTitle,
+                            androidVersion: screenshotVersion,
+                            deviceTitle: screenshotTitle,
                             deviceIndex: deviceIndex,
                             totalDevices: totalDevices,
                             photoIndex: currentPhotoOnDevice,
@@ -2373,7 +2500,9 @@
                             hasBug: !!(s.has_bug || s.proof_type === 'bug'),
                             hasIdea: !!(s.has_idea || s.proof_type === 'idea'),
                             proofType: s.proof_type || (s.has_bug ? 'bug' : (s.has_idea ? 'idea' : 'screenshot')),
-                            feedbackId: s.feedback_id || null,
+                            feedbackId: s.feedback_id || feedback.id || null,
+                            feedbackText: feedback.text || '',
+                            feedbackStatus: feedback.status || '',
                             fullUrl: itemMedia.file_id ? _getCoverageMediaUrl(itemMedia.file_id) : '',
                             thumbUrl: itemMedia.thumb_file_id ? _getCoverageMediaUrl(itemMedia.thumb_file_id) : (itemMedia.file_id ? _getCoverageMediaUrl(itemMedia.file_id) : '')
                         });
@@ -2390,8 +2519,10 @@
             var startIdx = 0;
             if (options.initialProofId || options.initialFeedbackId) {
                 var foundIdx = flatItems.findIndex(function (it) {
-                    return Number(it.proofId) === Number(options.initialProofId || 0) &&
-                        Number(it.feedbackId || 0) === Number(options.initialFeedbackId || 0) &&
+                    var matchesSource = Number(options.initialProofId || 0) > 0
+                        ? Number(it.proofId) === Number(options.initialProofId)
+                        : Number(it.feedbackId || 0) === Number(options.initialFeedbackId || 0);
+                    return matchesSource &&
                         Number(it.mediaIndex || 0) === Number(options.initialMediaIndex || 0);
                 });
                 if (foundIdx >= 0) startIdx = foundIdx;
@@ -2402,6 +2533,9 @@
             _coverageViewerState.isArchiveViewer = !!options.archive;
             _coverageViewerState.scope = covData.scope || 'current';
             _coverageViewerState.appId = safeAppId;
+            _coverageViewerState.proofId = 0;
+            _coverageViewerState.hasBug = false;
+            _coverageViewerState.hasIdea = false;
             _coverageViewerState.items = flatItems;
             _coverageViewerState.images = flatItems;
             _coverageViewerState.currentIndex = startIdx;
@@ -2415,17 +2549,19 @@
                 if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
             }
 
-            markProjectCoverageSeen(safeAppId, covData);
+            // Mark the displayed model only after its image has actually loaded.
         }
 
-        var cacheKey = String(safeAppId) + ':' + String(_activeCoverageScope || 'current');
+        var viewerScope = options.scope || (Number(_activeCoverageAppId) === safeAppId ? _activeCoverageScope : 'current') || 'current';
+        var cacheKey = String(safeAppId) + ':' + String(viewerScope);
         var cached = _coverageMemoryCache && _coverageMemoryCache[cacheKey];
         if (_activeCoverageData && Number(_activeCoverageAppId) === safeAppId) {
             launchViewerWithData(_activeCoverageData);
         } else if (cached && cached.data) {
             launchViewerWithData(cached.data);
         } else {
-            fetchProjectCoverage(safeAppId).then(function (data) {
+            fetchProjectCoverage(safeAppId, viewerScope).then(function (data) {
+                _coverageMemoryCache[cacheKey] = { data: data, timestamp: Date.now() };
                 launchViewerWithData(data);
             }).catch(function () {
                 openProjectCoverage(safeAppId, 'models');
@@ -2449,8 +2585,18 @@
             imgEl.classList.remove('is-zoomed');
             imgEl.src = '';
         }
-        if (curAppId && _activeCoverageData) {
-            markProjectCoverageSeen(curAppId, _activeCoverageData);
+        clearTimeout(_coverageViewerState.loadTimeout);
+        if (Number(_activeCoverageAppId) === Number(curAppId) && _activeCoverageData) {
+            tagCoverageNewModels(curAppId, _activeCoverageData);
+            var coverageModal = document.getElementById('project-coverage-modal');
+            var coverageBody = document.getElementById('project-coverage-body');
+            if (coverageBody && typeof coverageBody.querySelector === 'function' && coverageModal && coverageModal.classList.contains('active')) {
+                var scrollBody = coverageBody.querySelector('.coverage-body');
+                var scrollTop = scrollBody ? scrollBody.scrollTop : 0;
+                renderCoverageScreen(coverageBody, _activeCoverageData);
+                var refreshedBody = coverageBody.querySelector('.coverage-body');
+                if (refreshedBody) refreshedBody.scrollTop = scrollTop;
+            }
         }
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
@@ -2592,6 +2738,9 @@
     window.openProjectCoverage = openProjectCoverage;
     window.closeProjectCoverageModal = closeProjectCoverageModal;
     window.openProjectResultsFeedback = openProjectResultsFeedback;
+    window.openCoverageFeedbackViewer = openCoverageFeedbackViewer;
+    window.processCoverageViewerFeedback = processCoverageViewerFeedback;
+    window.retryCoverageScreenshot = retryCoverageScreenshot;
     window.toggleCoverageScope = toggleCoverageScope;
     window.switchCoverageTab = switchCoverageTab;
     window.selectCoverageBrand = selectCoverageBrand;

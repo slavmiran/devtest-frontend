@@ -69,7 +69,7 @@
 <script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20261002-paypal-me-v1"></script>
-    <script src="./js/project-results.js?v=20261003-coverage-viewer-v1"></script>
+    <script src="./js/project-results.js?v=20261003-coverage-viewer-v2"></script>
     <script src="./app.js?v=20260930-support-bugs-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
@@ -111,7 +111,7 @@
 <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
-    <link rel="stylesheet" href="./css/project-results.css?v=20261003-coverage-viewer-v1">
+    <link rel="stylesheet" href="./css/project-results.css?v=20261003-coverage-viewer-v2">
 </head>
 <body>
 
@@ -2862,23 +2862,25 @@
     <div id="coverage-screenshot-modal" class="modal-overlay coverage-screenshot-modal" onclick="closeCoverageScreenshotModal(event)">
         <div class="modal-content coverage-screenshot-shell" onclick="event.stopPropagation()">
             <div class="coverage-screenshot-header">
+                <div class="coverage-screenshot-heading">
                 <button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Back">←</button>
                 <div class="coverage-screenshot-meta">
                     <div id="coverage-screenshot-title" class="coverage-screenshot-title"></div>
                     <div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>
                 </div>
+                </div>
                 <div class="coverage-screenshot-actions">
-                    <button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect()" title="Пометить дефект интерфейса">
+                    <button type="button" id="coverage-screenshot-archive-btn" class="coverage-screenshot-archive-btn" onclick="toggleCurrentCoverageArchive(event)"></button>
+                    <button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)" title="Пометить дефект интерфейса">
                         ⚠️ <span>Дефект</span>
                     </button>
                     <span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>
-                    <button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Close">✕</button>
                 </div>
             </div>
             <div class="coverage-screenshot-stage" id="coverage-screenshot-stage">
                 <button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>
-                <div class="coverage-screenshot-img-wrap">
-                    <img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager">
+                <div class="coverage-screenshot-img-wrap" onclick="toggleCoverageScreenshotZoom()">
+                    <img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager" draggable="false">
                     <div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;">⚠️ ДЕФЕКТ UI</div>
                     <div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>
                 </div>
