@@ -1,4 +1,4 @@
-﻿/* =========================================================
+/* =========================================================
    GUARANTEED CLOSED TEST WIZARD - 3-SCREEN MODULE
    Step 1 of 2: App Details
    Step 2 of 2: Testing Link
