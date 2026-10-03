@@ -2518,7 +2518,7 @@
     touch-action: pan-y;
 }
 .coverage-screenshot-img-wrap,
-.coverage-screenshot-img { touch-action: pan-y; -webkit-user-drag: none; }
+.coverage-screenshot-img { touch-action: none; -webkit-user-drag: none; }
 .coverage-screenshot-img-wrap {
     width: 100%;
     height: 100%;
@@ -2530,18 +2530,24 @@
     position: relative;
 }
 .coverage-screenshot-img {
+    --coverage-zoom: 1;
+    --coverage-pan-x: 0px;
+    --coverage-pan-y: 0px;
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translate3d(var(--coverage-pan-x), var(--coverage-pan-y), 0) scale(var(--coverage-zoom));
+    transform-origin: center center;
+    transition: opacity 0.2s ease, transform 0.18s ease-out;
     cursor: zoom-in;
+    will-change: transform;
 }
 .coverage-screenshot-img.is-zoomed {
-    transform: scale(1.8);
     cursor: zoom-out;
 }
+.coverage-screenshot-img.is-gesturing { transition: opacity 0.2s ease; }
 .coverage-screenshot-spinner {
     position: absolute;
     width: 36px;
@@ -2892,7 +2898,8 @@
 .coverage-viewer-new { display: inline-block; color: #91c9ed; font-size: 10px; margin-bottom: 4px; }
 .coverage-viewer-process { margin-top: 8px; padding: 7px 10px; border: 1px solid rgba(121,174,221,.22); border-radius: 8px; background: rgba(82,137,189,.1); color: #a9ccea; font: inherit; cursor: pointer; }
 .coverage-screenshot-subtitle { flex-wrap: wrap; }
-.coverage-screenshot-stage, .coverage-screenshot-img-wrap, .coverage-screenshot-img { touch-action: pan-y; }
+.coverage-screenshot-stage { touch-action: pan-y; }
+.coverage-screenshot-img-wrap, .coverage-screenshot-img { touch-action: none; }
 .coverage-screenshot-img { -webkit-user-drag: none; }
 .coverage-viewer-load-error { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); max-width: 80%; border: 1px solid #3b4553; border-radius: 12px; padding: 14px; background: #17202c; color: #b9c7d8; font: inherit; cursor: pointer; z-index: 3; }
 .coverage-viewer-load-error[hidden] { display: none; }

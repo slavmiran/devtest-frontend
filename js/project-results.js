@@ -1841,13 +1841,49 @@
         var stage = document.getElementById('coverage-screenshot-stage');
         if (!stage || stage._touchBound || typeof stage.addEventListener !== 'function') return;
         stage._touchBound = true;
-        var startX = 0;
-        var startY = 0;
-        var pointerId = null;
-        var beganAt = 0;
+        var gesture = {
+            pointers: {}, scale: 1, panX: 0, panY: 0,
+            startScale: 1, startPanX: 0, startPanY: 0,
+            startDistance: 0, startMidX: 0, startMidY: 0,
+            startX: 0, startY: 0, pointerId: null, beganAt: 0,
+            moved: false, pinching: false
+        };
+        stage._coverageGesture = gesture;
+
+        function getImage() { return document.getElementById('coverage-screenshot-img'); }
+        function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+        function pointerPair() { return Object.keys(gesture.pointers).map(function (id) { return gesture.pointers[id]; }); }
+        function distance(a, b) {
+            var dx = a.x - b.x; var dy = a.y - b.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        function midpoint(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+        function applyTransform(withoutAnimation) {
+            var img = getImage();
+            if (!img) return;
+            var maxX = Math.max(0, ((img.offsetWidth || 0) * gesture.scale - (stage.clientWidth || 0)) / 2 + 10);
+            var maxY = Math.max(0, ((img.offsetHeight || 0) * gesture.scale - (stage.clientHeight || 0)) / 2 + 10);
+            gesture.panX = clamp(gesture.panX, -maxX, maxX);
+            gesture.panY = clamp(gesture.panY, -maxY, maxY);
+            img.style.setProperty('--coverage-zoom', String(gesture.scale));
+            img.style.setProperty('--coverage-pan-x', gesture.panX + 'px');
+            img.style.setProperty('--coverage-pan-y', gesture.panY + 'px');
+            img.classList.toggle('is-zoomed', gesture.scale > 1.01);
+            img.classList.toggle('is-gesturing', !!withoutAnimation);
+        }
+        function resetTransform() {
+            gesture.scale = 1; gesture.panX = 0; gesture.panY = 0;
+            gesture.startScale = 1; gesture.startPanX = 0; gesture.startPanY = 0;
+            applyTransform(false);
+        }
+        stage._resetCoverageTransform = resetTransform;
+        stage._toggleCoverageTransform = function () {
+            if (gesture.scale > 1.01) resetTransform();
+            else { gesture.scale = 1.8; applyTransform(false); }
+        };
         function finishSwipe(x, y) {
-            var diffX = x - startX;
-            var diffY = y - startY;
+            var diffX = x - gesture.startX;
+            var diffY = y - gesture.startY;
             if (Math.abs(diffX) < 42 || Math.abs(diffX) < Math.abs(diffY) * 1.25) return;
             stage._suppressClick = true;
             setTimeout(function () { stage._suppressClick = false; }, 350);
@@ -1863,33 +1899,157 @@
         if (typeof window.PointerEvent === 'function') {
             stage.addEventListener('pointerdown', function (event) {
                 if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
-                pointerId = event.pointerId;
-                startX = event.clientX;
-                startY = event.clientY;
-                beganAt = Date.now();
+                var wrapTarget = event.target && typeof event.target.closest === 'function' ? event.target.closest('.coverage-screenshot-img-wrap') : null;
+                if (!wrapTarget && event.target === stage) wrapTarget = stage.querySelector('.coverage-screenshot-img-wrap');
+                if (!wrapTarget) return;
+                gesture.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
+                gesture.pointerId = event.pointerId;
+                gesture.startX = event.clientX;
+                gesture.startY = event.clientY;
+                gesture.beganAt = Date.now();
+                gesture.moved = false;
+                var downPointers = pointerPair();
+                if (downPointers.length === 2) {
+                    gesture.pinching = true;
+                    gesture.startScale = gesture.scale;
+                    gesture.startPanX = gesture.panX;
+                    gesture.startPanY = gesture.panY;
+                    gesture.startDistance = Math.max(1, distance(downPointers[0], downPointers[1]));
+                    var downMid = midpoint(downPointers[0], downPointers[1]);
+                    gesture.startMidX = downMid.x;
+                    gesture.startMidY = downMid.y;
+                    stage._suppressClick = true;
+                }
                 if (typeof stage.setPointerCapture === 'function') {
                     try { stage.setPointerCapture(event.pointerId); } catch (_) {}
                 }
-            }, { passive: true });
-            stage.addEventListener('pointerup', function (event) {
-                if (event.pointerId !== pointerId) return;
-                pointerId = null;
-                if (Date.now() - beganAt < 1200) finishSwipe(event.clientX, event.clientY);
-            }, { passive: true });
-            stage.addEventListener('pointercancel', function () { pointerId = null; }, { passive: true });
-        } else {
-            stage.addEventListener('touchstart', function (event) {
-                if (event.touches && event.touches.length === 1) {
-                    startX = event.touches[0].clientX;
-                    startY = event.touches[0].clientY;
-                    beganAt = Date.now();
+            }, { passive: false });
+            stage.addEventListener('pointermove', function (event) {
+                if (!gesture.pointers[event.pointerId]) return;
+                gesture.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
+                var activePointers = pointerPair();
+                if (activePointers.length >= 2) {
+                    var currentDistance = distance(activePointers[0], activePointers[1]);
+                    var currentMid = midpoint(activePointers[0], activePointers[1]);
+                    gesture.scale = clamp(gesture.startScale * (currentDistance / gesture.startDistance), 1, 4);
+                    gesture.panX = gesture.startPanX + (currentMid.x - gesture.startMidX);
+                    gesture.panY = gesture.startPanY + (currentMid.y - gesture.startMidY);
+                    gesture.pinching = true;
+                    gesture.moved = true;
+                    stage._suppressClick = true;
+                    applyTransform(true);
+                    event.preventDefault();
+                } else if (gesture.scale > 1.01 && gesture.pointerId === event.pointerId) {
+                    var dx = event.clientX - gesture.startX;
+                    var dy = event.clientY - gesture.startY;
+                    if (Math.abs(dx) + Math.abs(dy) > 2) {
+                        gesture.panX = gesture.startPanX + dx;
+                        gesture.panY = gesture.startPanY + dy;
+                        gesture.moved = true;
+                        stage._suppressClick = true;
+                        applyTransform(true);
+                        event.preventDefault();
+                    }
                 }
+            }, { passive: false });
+            stage.addEventListener('pointerup', function (event) {
+                if (!gesture.pointers[event.pointerId]) return;
+                var wasPinching = gesture.pinching;
+                delete gesture.pointers[event.pointerId];
+                var remaining = pointerPair();
+                if (remaining.length === 1) {
+                    gesture.pointerId = Number(Object.keys(gesture.pointers)[0]);
+                    gesture.startX = remaining[0].x;
+                    gesture.startY = remaining[0].y;
+                    gesture.startPanX = gesture.panX;
+                    gesture.startPanY = gesture.panY;
+                    gesture.pinching = false;
+                } else {
+                    gesture.pointerId = null;
+                    gesture.pinching = false;
+                    if (gesture.scale < 1.03) resetTransform();
+                    else applyTransform(false);
+                    if (!wasPinching && !gesture.moved && gesture.scale <= 1.01 && Date.now() - gesture.beganAt < 1200) {
+                        finishSwipe(event.clientX, event.clientY);
+                    }
+                    setTimeout(function () { stage._suppressClick = false; }, 100);
+                }
+            }, { passive: false });
+            stage.addEventListener('pointercancel', function (event) {
+                delete gesture.pointers[event.pointerId];
+                if (!pointerPair().length) { gesture.pointerId = null; gesture.pinching = false; applyTransform(false); }
             }, { passive: true });
+        } else {
+            // Fallback for old embedded WebViews without Pointer Events.
+            stage.addEventListener('touchstart', function (event) {
+                var touches = event.touches;
+                if (!touches || !touches.length) return;
+                if (touches.length === 1) {
+                    gesture.startX = touches[0].clientX;
+                    gesture.startY = touches[0].clientY;
+                    gesture.beganAt = Date.now();
+                    gesture.moved = false;
+                } else if (touches.length === 2) {
+                    var first = { x: touches[0].clientX, y: touches[0].clientY };
+                    var second = { x: touches[1].clientX, y: touches[1].clientY };
+                    var startMid = midpoint(first, second);
+                    gesture.pinching = true;
+                    gesture.startScale = gesture.scale;
+                    gesture.startPanX = gesture.panX;
+                    gesture.startPanY = gesture.panY;
+                    gesture.startDistance = Math.max(1, distance(first, second));
+                    gesture.startMidX = startMid.x;
+                    gesture.startMidY = startMid.y;
+                    stage._suppressClick = true;
+                    event.preventDefault();
+                }
+            }, { passive: false });
+            stage.addEventListener('touchmove', function (event) {
+                var touches = event.touches;
+                if (!touches || !touches.length) return;
+                if (touches.length >= 2) {
+                    var first = { x: touches[0].clientX, y: touches[0].clientY };
+                    var second = { x: touches[1].clientX, y: touches[1].clientY };
+                    var currentMid = midpoint(first, second);
+                    gesture.scale = clamp(gesture.startScale * (distance(first, second) / gesture.startDistance), 1, 4);
+                    gesture.panX = gesture.startPanX + currentMid.x - gesture.startMidX;
+                    gesture.panY = gesture.startPanY + currentMid.y - gesture.startMidY;
+                    gesture.pinching = true;
+                    gesture.moved = true;
+                    stage._suppressClick = true;
+                    applyTransform(true);
+                    event.preventDefault();
+                } else if (gesture.scale > 1.01) {
+                    var dx = touches[0].clientX - gesture.startX;
+                    var dy = touches[0].clientY - gesture.startY;
+                    if (Math.abs(dx) + Math.abs(dy) > 2) {
+                        gesture.panX = gesture.startPanX + dx;
+                        gesture.panY = gesture.startPanY + dy;
+                        gesture.moved = true;
+                        stage._suppressClick = true;
+                        applyTransform(true);
+                        event.preventDefault();
+                    }
+                }
+            }, { passive: false });
             stage.addEventListener('touchend', function (event) {
-                if (event.changedTouches && event.changedTouches.length === 1 && Date.now() - beganAt < 1200) {
+                var wasPinching = gesture.pinching;
+                if (event.touches && event.touches.length === 1) {
+                    gesture.startX = event.touches[0].clientX;
+                    gesture.startY = event.touches[0].clientY;
+                    gesture.startPanX = gesture.panX;
+                    gesture.startPanY = gesture.panY;
+                    gesture.pinching = false;
+                    return;
+                }
+                gesture.pinching = false;
+                if (gesture.scale < 1.03) resetTransform();
+                else applyTransform(false);
+                if (!wasPinching && !gesture.moved && event.changedTouches && event.changedTouches.length === 1 && Date.now() - gesture.beganAt < 1200) {
                     finishSwipe(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
                 }
-            }, { passive: true });
+                setTimeout(function () { stage._suppressClick = false; }, 100);
+            }, { passive: false });
         }
     }
 
@@ -2090,7 +2250,8 @@
         // Image loading
         if (imgEl) {
             imgEl.style.display = cur.textOnly ? 'none' : '';
-            imgEl.classList.remove('is-zoomed');
+            resetCoverageScreenshotZoom();
+            imgEl.classList.remove('is-zoomed', 'is-gesturing');
             var targetSrc = cur.thumbUrl || cur.fullUrl || '';
             if (spinnerEl) spinnerEl.style.display = cur.textOnly ? 'none' : 'block';
             imgEl.style.opacity = '0.35';
@@ -2161,10 +2322,13 @@
     }
 
     function toggleCoverageScreenshotZoom() {
-        var imgEl = document.getElementById('coverage-screenshot-img');
-        if (imgEl) {
-            imgEl.classList.toggle('is-zoomed');
-        }
+        var stage = document.getElementById('coverage-screenshot-stage');
+        if (stage && typeof stage._toggleCoverageTransform === 'function') stage._toggleCoverageTransform();
+    }
+
+    function resetCoverageScreenshotZoom() {
+        var stage = document.getElementById('coverage-screenshot-stage');
+        if (stage && typeof stage._resetCoverageTransform === 'function') stage._resetCoverageTransform();
     }
 
     function toggleCurrentCoverageDefect(event) {
@@ -2622,7 +2786,8 @@
         _coverageViewerState.images = [];
         var imgEl = document.getElementById('coverage-screenshot-img');
         if (imgEl) {
-            imgEl.classList.remove('is-zoomed');
+            resetCoverageScreenshotZoom();
+            imgEl.classList.remove('is-zoomed', 'is-gesturing');
             imgEl.src = '';
         }
         clearTimeout(_coverageViewerState.loadTimeout);
@@ -2793,6 +2958,7 @@
     window.closeCoverageScreenshotModal = closeCoverageScreenshotModal;
     window.stepCoverageScreenshot = stepCoverageScreenshot;
     window.toggleCoverageScreenshotZoom = toggleCoverageScreenshotZoom;
+    window.resetCoverageScreenshotZoom = resetCoverageScreenshotZoom;
     window.openContinuousCoverageGallery = openContinuousCoverageGallery;
     window.toggleCurrentCoverageDefect = toggleCurrentCoverageDefect;
     window.toggleCurrentCoverageArchive = toggleCurrentCoverageArchive;
