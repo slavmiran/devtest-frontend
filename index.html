@@ -2871,8 +2871,8 @@
                 </div>
                 <div class="coverage-screenshot-actions">
                     <button type="button" id="coverage-screenshot-archive-btn" class="coverage-screenshot-archive-btn" onclick="toggleCurrentCoverageArchive(event)"></button>
-                    <button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)" title="Пометить дефект интерфейса">
-                        ⚠️ <span>Дефект</span>
+                    <button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)">
+                        ⚠️ <span></span>
                     </button>
                     <span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>
                 </div>
@@ -2881,7 +2881,7 @@
                 <button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>
                 <div class="coverage-screenshot-img-wrap" onclick="toggleCoverageScreenshotZoom()">
                     <img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager" draggable="false">
-                    <div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;">⚠️ ДЕФЕКТ UI</div>
+                    <div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;"></div>
                     <div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>
                 </div>
                 <button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>

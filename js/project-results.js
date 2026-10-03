@@ -5,6 +5,20 @@
 (function () {
     'use strict';
 
+    function _getLang() {
+        if (typeof window !== 'undefined') {
+            if (window.currentLang) return window.currentLang;
+            if (window.lang) return window.lang;
+            try {
+                var stored = localStorage.getItem('user_lang') || localStorage.getItem('lang');
+                if (stored) return stored;
+            } catch (e) {}
+        }
+        if (typeof currentLang !== 'undefined' && currentLang) return currentLang;
+        if (typeof lang !== 'undefined' && lang) return lang;
+        return 'ru';
+    }
+
     // ── Local Seen State Management ──
 
     function _getSeenStorageKey(appId) {
@@ -210,7 +224,7 @@
     // ── Card Results Block Builder (Expanded Card) ──
 
     function buildProjectResultsBlock(project) {
-        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var lang = _getLang();
         var appId = Number(project.app_id || project.id || 0);
         var summary = project.results_summary || {};
         var unseen = getProjectCoverageUnseenCounts(project);
@@ -396,7 +410,7 @@
     }
 
     function buildProjectResultsCollapsed(project) {
-        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var lang = _getLang();
         var appId = Number(project.app_id || project.id || 0);
         var summary = project.results_summary || {};
         var modelsCount = Number(summary.models_count || 0);
@@ -719,12 +733,12 @@
     }
 
     function renderCoverageLoading(container) {
-        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var lang = _getLang();
         container.innerHTML = (
             '<div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
-                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="Back">←</button>' +
+                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="' + window.escapeHTML(window.t('coverageBackBtnAria', {}, lang) || (lang === 'ru' ? 'Назад' : 'Back')) + '">←</button>' +
                         '<div class="coverage-header__title-wrap">' +
                             '<div class="coverage-header__title">' + window.escapeHTML(window.t('coverageDevicesScreensTitle', {}, lang) || 'Устройства и экраны') + '</div>' +
                             '<div class="coverage-header__subtitle">' + window.escapeHTML(window.t('coverageLoading', {}, lang) || 'Загрузка…') + '</div>' +
@@ -743,13 +757,13 @@
     }
 
     function renderCoverageError(container, error) {
-        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var lang = _getLang();
         var errMsg = error && (error.message || error.statusText || String(error));
         container.innerHTML = (
             '<div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
-                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="Back">←</button>' +
+                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="' + window.escapeHTML(window.t('coverageBackBtnAria', {}, lang) || (lang === 'ru' ? 'Назад' : 'Back')) + '">←</button>' +
                         '<div class="coverage-header__title-wrap">' +
                             '<div class="coverage-header__title">' + window.escapeHTML(window.t('coverageDevicesScreensTitle', {}, lang) || 'Устройства и экраны') + '</div>' +
                         '</div>' +
@@ -931,7 +945,7 @@
 
         return (
             '<div class="coverage-cockpit">' +
-                (segmentsHtml ? '<div class="coverage-android-segment-bar" role="progressbar" aria-label="Android versions">' + segmentsHtml + '</div>' : '') +
+                (segmentsHtml ? '<div class="coverage-android-segment-bar" role="progressbar" aria-label="' + window.escapeHTML(window.t('coverageAndroidVersionsAria', {}, lang) || (lang === 'ru' ? 'Версии Android' : 'Android versions')) + '">' + segmentsHtml + '</div>' : '') +
                 (chipsHtml ? '<div class="coverage-cockpit-chips">' + chipsHtml + '</div>' : '') +
                 countriesLineHtml +
             '</div>'
@@ -1103,7 +1117,7 @@
                 '<div class="coverage-defects-empty">' +
                     '<div class="coverage-defects-empty__icon">🛡️</div>' +
                     '<div class="coverage-defects-empty__title">' +
-                        window.escapeHTML(lang === 'ru' ? 'Дефекты не отмечены' : 'No defects reported') +
+                        window.escapeHTML(window.t('coverageNoDefectsReported', {}, lang) || (lang === 'ru' ? 'Дефекты не отмечены' : 'No defects reported')) +
                     '</div>' +
                     '<div class="coverage-defects-empty__desc">' +
                         window.escapeHTML(window.t('coverageNoDefectsEmpty', {}, lang) || (lang === 'ru'
@@ -1119,7 +1133,7 @@
                 '<div style="text-align: center; padding: 40px 16px; color: var(--text-secondary);">' +
                     '<div style="font-size: 36px; margin-bottom: 10px;">✨</div>' +
                     '<div style="font-size: 15px; font-weight: 700; color: var(--text-color); margin-bottom: 6px;">' +
-                        window.escapeHTML(lang === 'ru' ? 'Новых устройств пока нет' : 'No new devices') +
+                        window.escapeHTML(window.t('coverageNoNewDevices', {}, lang) || (lang === 'ru' ? 'Новых устройств пока нет' : 'No new devices')) +
                     '</div>' +
                 '</div>'
             );
@@ -1139,7 +1153,7 @@
                     : (tCount === 1 ? 'tester' : 'testers');
                 stackBadgeHtml = '<span class="coverage-device-stack-badge">👥 ' + tCount + ' ' + window.escapeHTML(tWord) + '</span>';
             } else if (tCount === 1) {
-                var singleWord = lang === 'ru' ? '1 тестер' : '1 tester';
+                var singleWord = window.t('coverageTesterSingle', {}, lang) || (lang === 'ru' ? '1 тестер' : '1 tester');
                 stackBadgeHtml = '<span class="coverage-device-stack-badge coverage-device-stack-badge--single">👤 ' + window.escapeHTML(singleWord) + '</span>';
             }
 
@@ -1212,10 +1226,10 @@
                     var thumbSource = feedbackId > 0 && firstMedia && firstMedia.file_id ? _getCoverageMediaUrl(firstMedia.file_id) : '';
                     var thumbImgHtml = '<img class="coverage-gallery-thumb__img"' + (proofId > 0 ? ' data-proof-id="' + proofId + '" data-media-index="' + firstMediaIndex + '"' : '') + (thumbSource ? ' src="' + window.escapeHTML(thumbSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
                         '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span></div>' +
-                        (isDefect ? '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(lang === 'ru' ? 'Дефект UI' : 'UI Defect') + '">⚠️</span>' : '');
+                        (isDefect ? '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(window.t('coverageDefectBadge', {}, lang) || (lang === 'ru' ? 'Дефект UI' : 'UI Defect')) + '">⚠️</span>' : '');
 
                     return (
-                        '<button type="button" class="' + itemClasses.join(' ') + '" data-proof-id="' + proofId + '" data-feedback-id="' + feedbackId + '" data-media-index="' + firstMediaIndex + '" onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + proofId + ', ' + firstMediaIndex + ', ' + feedbackId + ');" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
+                        '<button type="button" class="' + itemClasses.join(' ') + '" data-proof-id="' + proofId + '" data-feedback-id="' + feedbackId + '" data-media-index="' + firstMediaIndex + '" onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + proofId + ', ' + firstMediaIndex + ', ' + feedbackId + ');" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || window.t('coverageOpenScreenshotAria', {}, lang) || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
                             '<div class="coverage-gallery-thumb">' +
                                 thumbImgHtml +
                                 typeBadgeHtml +
@@ -1264,13 +1278,15 @@
                 var fbRows = m.feedback_items.map(function (fb) {
                     var typeClass = fb.type === 'bug' ? 'bug' : (fb.type === 'idea' ? 'idea' : 'review');
                     var typeLabel = fb.type === 'bug'
-                        ? (lang === 'ru' ? 'Баг' : 'Bug')
-                        : (fb.type === 'idea' ? (lang === 'ru' ? 'Идея' : 'Idea') : (lang === 'ru' ? 'Отзыв' : 'Review'));
+                        ? (window.t('coverageBadgeBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug'))
+                        : (fb.type === 'idea'
+                            ? (window.t('coverageBadgeIdea', {}, lang) || (lang === 'ru' ? 'Идея' : 'Idea'))
+                            : (window.t('coverageBadgeReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review')));
                     return (
                         '<button type="button" class="coverage-fb-item-row' + (fb.has_media ? ' has-media' : ' is-text-only') + '" onclick="event.stopPropagation(); openCoverageFeedbackViewer(\'' + window.escapeHTML(m.model_key) + '\', ' + Number(fb.id || 0) + ');">' +
                             '<div class="coverage-fb-item-head">' +
                                 '<span class="coverage-fb-item-type coverage-fb-item-type--' + typeClass + '">' + (fb.type === 'bug' ? '🐞 ' : (fb.type === 'idea' ? '💡 ' : '★ ')) + window.escapeHTML(typeLabel) + '</span>' +
-                                (fb.has_media ? '<span class="coverage-fb-item-media" title="' + window.escapeHTML(lang === 'ru' ? 'Есть изображение' : 'Image attached') + '">▧</span>' : '') +
+                                (fb.has_media ? '<span class="coverage-fb-item-media" title="' + window.escapeHTML(window.t('coverageHasMediaTitle', {}, lang) || (lang === 'ru' ? 'Есть изображение' : 'Image attached')) + '">▧</span>' : '') +
                                 '<span style="font-size:10.5px; opacity:0.6;">' + (fb.status || 'new') + '</span>' +
                             '</div>' +
                             (fb.title ? '<div style="font-weight:600; font-size:12px;">' + window.escapeHTML(fb.title) + '</div>' : '') +
@@ -1295,7 +1311,7 @@
                 var itChips = m.iterations.map(function (it) {
                     return '<span class="coverage-meta-pill">Run #' + it + '</span>';
                 }).join(' ');
-                iterationsHtml = '<div class="coverage-model-iterations"><span>' + window.escapeHTML(lang === 'ru' ? 'Итерации:' : 'Runs:') + '</span>' + itChips + '</div>';
+                iterationsHtml = '<div class="coverage-model-iterations"><span>' + window.escapeHTML(window.t('coverageIterationsLabel', {}, lang) || (lang === 'ru' ? 'Итерации:' : 'Runs:')) + '</span>' + itChips + '</div>';
             }
 
             var firstScreenshot = _activeCoverageModelFilter === 'defects'
@@ -1322,7 +1338,7 @@
                 : (isExpanded ? '' : '<span class="pc-model-card__empty" aria-hidden="true">' + androidIconSvg('pc-model-card__android') + '</span>');
             return (
                 '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-device-card pc-model-card' + (m.is_new ? ' is-new-model' : '') + ' ' + (isExpanded ? 'is-expanded' : '') + (isBrandHidden ? ' is-brand-hidden' : '') + '" data-brand="' + window.escapeHTML(brand) + '" data-model-key="' + window.escapeHTML(m.model_key) + '">' +
-                    '<button type="button" class="pc-model-card__screen" ' + (coverProofId > 0 || coverFeedbackId > 0 ? 'onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + coverProofId + ', ' + coverMediaIndex + ', ' + coverFeedbackId + ');"' : 'disabled') + ' aria-label="' + window.escapeHTML((lang === 'ru' ? 'Смотреть скриншоты: ' : 'View screenshots: ') + m.model_name) + '">' +
+                    '<button type="button" class="pc-model-card__screen" ' + (coverProofId > 0 || coverFeedbackId > 0 ? 'onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + coverProofId + ', ' + coverMediaIndex + ', ' + coverFeedbackId + ');"' : 'disabled') + ' aria-label="' + window.escapeHTML(window.t('coverageViewScreenshotsAria', { model: m.model_name }, lang) || ((lang === 'ru' ? 'Смотреть скриншоты: ' : 'View screenshots: ') + m.model_name)) + '">' +
                         coverHtml +
                         '<span class="pc-model-card__screen-shade" aria-hidden="true"></span>' +
                         (m.is_new ? '<span class="pc-model-card__new">+NEW</span>' : '') +
@@ -1343,7 +1359,7 @@
                             '</div>' +
                         '</div>' +
                         '<div class="coverage-device-card__head-right">' +
-                            (m.screenshots_count > 0 ? '<span class="coverage-model-evidence" title="' + window.escapeHTML(lang === 'ru' ? 'Скриншоты интерфейса' : 'Interface screenshots') + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/></svg><strong>' + m.screenshots_count + '</strong></span>' : '') +
+                            (m.screenshots_count > 0 ? '<span class="coverage-model-evidence" title="' + window.escapeHTML(window.t('coverageEvidenceTitle', {}, lang) || (lang === 'ru' ? 'Скриншоты интерфейса' : 'Interface screenshots')) + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/></svg><strong>' + m.screenshots_count + '</strong></span>' : '') +
                             '<div class="coverage-model-feedback-badges">' + fbBadges.join('') + '</div>' +
                             '<svg class="coverage-model-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
                         '</div>' +
@@ -1360,7 +1376,7 @@
         }).join('');
 
         var emptyNoticeHtml = '<div id="coverage-brand-empty-notice" style="display:none; text-align:center; padding: 24px 16px; color: var(--text-secondary);">' +
-            window.escapeHTML(lang === 'ru' ? 'Нет устройств выбранного бренда' : 'No devices for selected brand') +
+            window.escapeHTML(window.t('coverageNoDevicesForBrand', {}, lang) || (lang === 'ru' ? 'Нет устройств выбранного бренда' : 'No devices for selected brand')) +
         '</div>';
 
         return '<div class="coverage-models-list" id="coverage-device-cards-list">' + cardsHtml + emptyNoticeHtml + '</div>';
@@ -1368,9 +1384,9 @@
 
     function renderCoverageArchive(items, lang) {
         if (!items || !items.length) {
-            return '<div class="coverage-archive-empty">' + window.escapeHTML(lang === 'ru'
+            return '<div class="coverage-archive-empty">' + window.escapeHTML(window.t('coverageArchiveEmpty', {}, lang) || (lang === 'ru'
                 ? 'Архив пока пуст. Снимки можно отправить сюда из просмотрщика.'
-                : 'The archive is empty. Move screenshots here from the viewer.') + '</div>';
+                : 'The archive is empty. Move screenshots here from the viewer.')) + '</div>';
         }
         return '<div class="coverage-archive-grid">' + items.map(function (item) {
             var proofId = Number(item.proof_id || 0);
@@ -1378,7 +1394,7 @@
             var mediaIndex = Number(item.media_index || 0);
             var dateMatch = String(item.created_at || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
             var dateLabel = dateMatch ? dateMatch[3] + '.' + dateMatch[2] + '.' + dateMatch[1] : '';
-            var modelName = item.model_name || (lang === 'ru' ? 'Неизвестная модель' : 'Unknown model');
+            var modelName = item.model_name || window.t('coverageUnknownModel', {}, lang) || (lang === 'ru' ? 'Неизвестная модель' : 'Unknown model');
             var directSource = feedbackId > 0 && item.file_id ? _getCoverageMediaUrl(item.file_id) : '';
             return '<button type="button" class="coverage-archive-item" onclick="openContinuousCoverageGallery(' + Number(_activeCoverageAppId) + ', { archive: true, initialProofId: ' + proofId + ', initialFeedbackId: ' + feedbackId + ', initialMediaIndex: ' + mediaIndex + ' })" aria-label="' + window.escapeHTML(modelName + (dateLabel ? ' · ' + dateLabel : '')) + '">' +
                 '<span class="coverage-archive-item__image">' +
@@ -1393,7 +1409,7 @@
     // ── Main Coverage Screen Renderer ──
 
     function renderCoverageScreen(container, data) {
-        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var lang = _getLang();
         var stats = data.stats || {};
         var models = data.models || [];
 
@@ -1421,7 +1437,7 @@
             : (sCount === 1 ? 'screenshot' : 'screenshots');
         var statBarHtml = '<div class="coverage-stat-bar__dimensions">' +
             dimensionParts.join('<span class="coverage-stat-bar__sep">·</span>') +
-            '</div><div class="coverage-stat-bar__evidence" title="' + window.escapeHTML(lang === 'ru' ? 'Скриншоты интерфейса' : 'Interface screenshots') + '">' +
+            '</div><div class="coverage-stat-bar__evidence" title="' + window.escapeHTML(window.t('coverageEvidenceTitle', {}, lang) || (lang === 'ru' ? 'Скриншоты интерфейса' : 'Interface screenshots')) + '">' +
                 '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/></svg>' +
                 '<strong>' + sCount + '</strong><span>' + window.escapeHTML(sWord) + '</span>' +
             '</div>';
@@ -1447,7 +1463,7 @@
         var archiveCount = Number(data.archived_count || (data.archived_screenshots || []).length || 0);
         var filterPillsHtml = (
             '<div class="coverage-status-filter-bar">' +
-                '<div class="coverage-filter-pills" role="tablist" aria-label="' + window.escapeHTML(lang === 'ru' ? 'Фильтры' : 'Filters') + '">' +
+                '<div class="coverage-filter-pills" role="tablist" aria-label="' + window.escapeHTML(window.t('coverageFiltersAria', {}, lang) || (lang === 'ru' ? 'Фильтры' : 'Filters')) + '">' +
                     '<button type="button" class="coverage-filter-pill ' + (_activeCoverageModelFilter === 'all' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'all\')">' +
                         window.escapeHTML(window.t('coverageFilterAll', {}, lang) || (lang === 'ru' ? 'Все' : 'All')) +
                     '</button>' +
@@ -1459,7 +1475,7 @@
                         ' <span class="coverage-filter-pill__count">(' + defectCount + ')</span>' +
                     '</button>' +
                     '<button type="button" class="coverage-filter-pill coverage-filter-pill--archive ' + (_activeCoverageModelFilter === 'archive' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'archive\')">' +
-                        '📦 ' + window.escapeHTML(lang === 'ru' ? 'Архив' : 'Archive') + ' <span class="coverage-filter-pill__count">(' + archiveCount + ')</span>' +
+                        '📦 ' + window.escapeHTML(window.t('coverageFilterArchive', {}, lang) || (lang === 'ru' ? 'Архив' : 'Archive')) + ' <span class="coverage-filter-pill__count">(' + archiveCount + ')</span>' +
                     '</button>' +
                 '</div>' +
             '</div>'
@@ -1473,7 +1489,7 @@
             '<div class="coverage-body"><div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
-                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="Back">←</button>' +
+                        '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="' + window.escapeHTML(window.t('coverageBackBtnAria', {}, lang) || (lang === 'ru' ? 'Назад' : 'Back')) + '">←</button>' +
                         iconHtml +
                         '<div class="coverage-header__title-wrap">' +
                             '<div class="coverage-header__title notranslate">' + window.escapeHTML(data.name || 'Project') + '</div>' +
@@ -1496,7 +1512,7 @@
                     '<div class="coverage-tools">' +
                     filterPillsHtml +
                     brandFilterHtml +
-                    (cockpitHtml ? '<details class="coverage-distribution"><summary>' + window.escapeHTML(lang === 'ru' ? 'Версии Android и география' : 'Android versions & geography') + '<span>⌄</span></summary>' + cockpitHtml + '</details>' : '') +
+                    (cockpitHtml ? '<details class="coverage-distribution"><summary>' + window.escapeHTML(window.t('coverageAndroidVersionsAndGeography', {}, lang) || (lang === 'ru' ? 'Версии Android и география' : 'Android versions & geography')) + '<span>⌄</span></summary>' + cockpitHtml + '</details>' : '') +
                     '</div>' +
                     deviceCardsHtml +
                 '</div>' +
@@ -1727,12 +1743,13 @@
             _initCoverageViewerTouch();
             return;
         }
+        var lang = _getLang();
         var modalHtml = (
             '<div id="coverage-screenshot-modal" class="modal-overlay coverage-screenshot-modal" onclick="closeCoverageScreenshotModal(event)">' +
                 '<div class="modal-content coverage-screenshot-shell" onclick="event.stopPropagation()">' +
                     '<div class="coverage-screenshot-header">' +
                         '<div class="coverage-screenshot-heading">' +
-                            '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Back">←</button>' +
+                            '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="' + window.escapeHTML(window.t('coverageBackBtnAria', {}, lang) || (lang === 'ru' ? 'Назад' : 'Back')) + '">←</button>' +
                             '<div class="coverage-screenshot-meta">' +
                                 '<div id="coverage-screenshot-title" class="coverage-screenshot-title"></div>' +
                                 '<div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>' +
@@ -1740,20 +1757,20 @@
                         '</div>' +
                         '<div class="coverage-screenshot-actions">' +
                             '<button type="button" id="coverage-screenshot-archive-btn" class="coverage-screenshot-archive-btn" onclick="toggleCurrentCoverageArchive(event)"></button>' +
-                            '<button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)" title="Пометить дефект интерфейса">' +
-                                '⚠️ <span>Дефект</span>' +
+                            '<button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)" title="' + window.escapeHTML(window.t('coverageDefectTooltip', {}, lang) || (lang === 'ru' ? 'Пометить дефект интерфейса' : 'Flag UI defect')) + '">' +
+                                '⚠️ <span>' + window.escapeHTML(window.t('coverageDefectBtn', {}, lang) || (lang === 'ru' ? 'Дефект' : 'Defect')) + '</span>' +
                             '</button>' +
                         '</div>' +
                         '<span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;" aria-hidden="true"></span>' +
                     '</div>' +
                     '<div class="coverage-screenshot-stage" id="coverage-screenshot-stage">' +
-                        '<button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>' +
+                        '<button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="' + window.escapeHTML(window.t('coverageNavPrevAria', {}, lang) || (lang === 'ru' ? 'Назад' : 'Previous')) + '" style="display:none;">‹</button>' +
                         '<div class="coverage-screenshot-img-wrap" onclick="toggleCoverageScreenshotZoom()">' +
                             '<img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager" draggable="false">' +
-                            '<div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;">⚠️ ДЕФЕКТ UI</div>' +
+                            '<div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;">' + window.escapeHTML(window.t('coverageDefectBadgeFull', {}, lang) || (lang === 'ru' ? '⚠️ ДЕФЕКТ UI' : '⚠️ UI DEFECT')) + '</div>' +
                             '<div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>' +
                         '</div>' +
-                        '<button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>' +
+                        '<button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="' + window.escapeHTML(window.t('coverageNavNextAria', {}, lang) || (lang === 'ru' ? 'Вперёд' : 'Next')) + '" style="display:none;">›</button>' +
                         '<div id="coverage-screenshot-dots" class="coverage-screenshot-dots" style="display:none;"></div>' +
                     '</div>' +
                 '</div>' +
@@ -1881,14 +1898,14 @@
         var list = (s.items && s.items.length > 0) ? s.items : (s.images || []);
         if (!list || list.length === 0) return;
         var cur = list[s.currentIndex] || {};
-        var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+        var lang = _getLang();
         var feedbackPanel = document.getElementById('coverage-screenshot-feedback');
         if (feedbackPanel) {
             var pending = !['accepted', 'rejected', 'processed', 'resolved'].includes(String(cur.feedbackStatus || ''));
             feedbackPanel.hidden = !cur.feedbackText && !cur.isNew && !(cur.feedbackId && pending);
-            feedbackPanel.innerHTML = (cur.isNew ? '<span class="coverage-viewer-new">' + (lang === 'ru' ? 'Новая модель' : 'New model') + '</span>' : '') +
+            feedbackPanel.innerHTML = (cur.isNew ? '<span class="coverage-viewer-new">' + window.escapeHTML(window.t('coverageNewModelBadge', {}, lang) || (lang === 'ru' ? 'Новая модель' : 'New model')) + '</span>' : '') +
                 (cur.feedbackText ? '<div class="coverage-viewer-feedback__text">' + window.escapeHTML(cur.feedbackText) + '</div>' : '') +
-                (cur.feedbackId && pending ? '<button type="button" class="coverage-viewer-process" onclick="processCoverageViewerFeedback()">' + (lang === 'ru' ? 'Обработать фидбэк →' : 'Review feedback →') + '</button>' : '');
+                (cur.feedbackId && pending ? '<button type="button" class="coverage-viewer-process" onclick="processCoverageViewerFeedback()">' + window.escapeHTML(window.t('coverageProcessFeedbackBtn', {}, lang) || (lang === 'ru' ? 'Обработать фидбэк →' : 'Review feedback →')) + '</button>' : '');
         }
 
         var titleEl = document.getElementById('coverage-screenshot-title');
@@ -1906,12 +1923,12 @@
         var loadError = document.getElementById('coverage-screenshot-load-error');
         if (loadError) {
             loadError.hidden = true;
-            loadError.textContent = lang === 'ru' ? 'Не удалось загрузить изображение · Повторить' : 'Unable to load image · Retry';
+            loadError.textContent = window.t('coverageImageLoadError', {}, lang) || (lang === 'ru' ? 'Не удалось загрузить изображение · Повторить' : 'Unable to load image · Retry');
         }
 
         // Title: {Manufacturer} {Model} · Android {OS} (e.g. Samsung Galaxy S23 · A14)
         if (titleEl) {
-            titleEl.textContent = cur.deviceTitle || cur.modelName || s.modelName || (cur.day ? 'D' + cur.day : (lang === 'ru' ? 'Скриншот' : 'Screenshot'));
+            titleEl.textContent = cur.deviceTitle || cur.modelName || s.modelName || (cur.day ? 'D' + cur.day : (window.t('coverageScreenshotDefaultTitle', {}, lang) || (lang === 'ru' ? 'Скриншот' : 'Screenshot')));
         }
 
         // Subtitle:
@@ -1937,31 +1954,47 @@
                 var author = cur.testerName || s.testerName;
                 if (author) subParts.push(_coverageViewerAuthorHtml(cur, author));
                 if (cur.hasBug || s.hasBug || cur.proofType === 'bug') {
-                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + window.escapeHTML(window.t('coverageBadgeBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug')) + '</span>');
                 } else if (cur.hasIdea || s.hasIdea || cur.proofType === 'idea') {
-                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + (lang === 'ru' ? 'Идея' : 'Idea') + '</span>');
+                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + window.escapeHTML(window.t('coverageBadgeIdea', {}, lang) || (lang === 'ru' ? 'Идея' : 'Idea')) + '</span>');
                 } else if (cur.proofType === 'play_review' || cur.proofType === 'review') {
-                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + (lang === 'ru' ? 'Отзыв' : 'Review') + '</span>');
+                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + window.escapeHTML(window.t('coverageBadgeReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review')) + '</span>');
                 }
                 subtitleEl.innerHTML = subParts.join(' · ');
             } else {
                 var subParts = [];
                 var totalOnDev = cur.totalPhotos || list.length;
                 if (cur.totalStacks > 1) {
-                    subParts.push((lang === 'ru' ? 'Серия ' : 'Series ') + cur.stackIndex + '/' + cur.totalStacks + ' · ' + (lang === 'ru' ? 'фото ' : 'photo ') + cur.photoInStack + '/' + cur.photosInStack);
+                    var seriesText = window.t('coverageGallerySeries', {
+                        stackIndex: cur.stackIndex,
+                        totalStacks: cur.totalStacks,
+                        photoInStack: cur.photoInStack,
+                        photosInStack: cur.photosInStack
+                    }, lang);
+                    if (!seriesText || seriesText === 'coverageGallerySeries') {
+                        seriesText = (lang === 'ru' ? 'Серия ' : 'Series ') + cur.stackIndex + '/' + cur.totalStacks + ' · ' + (lang === 'ru' ? 'фото ' : 'photo ') + cur.photoInStack + '/' + cur.photosInStack;
+                    }
+                    subParts.push(seriesText);
                 } else if (totalOnDev > 1) {
-                    subParts.push((lang === 'ru' ? 'Фото ' : 'Photo ') + (cur.photoIndex || (s.currentIndex + 1)) + '/' + totalOnDev);
+                    var photoText = window.t('coverageGallerySinglePhoto', {
+                        photoIndex: cur.photoIndex || (s.currentIndex + 1),
+                        totalPhotos: totalOnDev
+                    }, lang);
+                    if (!photoText || photoText === 'coverageGallerySinglePhoto') {
+                        photoText = (lang === 'ru' ? 'Фото ' : 'Photo ') + (cur.photoIndex || (s.currentIndex + 1)) + '/' + totalOnDev;
+                    }
+                    subParts.push(photoText);
                 } else if (cur.day || s.day) {
                     subParts.push('D' + (cur.day || s.day));
                 }
                 var author = cur.testerName || s.testerName;
                 if (author) subParts.push(_coverageViewerAuthorHtml(cur, author));
                 if (cur.hasBug || s.hasBug || cur.proofType === 'bug') {
-                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + (lang === 'ru' ? 'Баг' : 'Bug') + '</span>');
+                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + window.escapeHTML(window.t('coverageBadgeBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug')) + '</span>');
                 } else if (cur.hasIdea || s.hasIdea || cur.proofType === 'idea') {
-                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + (lang === 'ru' ? 'Идея' : 'Idea') + '</span>');
+                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + window.escapeHTML(window.t('coverageBadgeIdea', {}, lang) || (lang === 'ru' ? 'Идея' : 'Idea')) + '</span>');
                 } else if (cur.proofType === 'play_review' || cur.proofType === 'review') {
-                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + (lang === 'ru' ? 'Отзыв' : 'Review') + '</span>');
+                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + window.escapeHTML(window.t('coverageBadgeReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review')) + '</span>');
                 }
                 subtitleEl.innerHTML = subParts.join(' · ');
             }
@@ -1984,12 +2017,12 @@
             archiveBtn.style.display = !cur.textOnly && curAppId > 0 && (proofId > 0 || feedbackId > 0) ? 'inline-flex' : 'none';
             archiveBtn.disabled = !!s.archiveBusy;
             archiveBtn.textContent = cur.isArchived
-                ? (lang === 'ru' ? '↩️ Вернуть' : '↩️ Restore')
-                : (lang === 'ru' ? '📦 В архив' : '📦 Archive');
+                ? (window.t('coverageArchiveRestoreBtn', {}, lang) || (lang === 'ru' ? '↩️ Вернуть' : '↩️ Restore'))
+                : (window.t('coverageArchiveMoveBtn', {}, lang) || (lang === 'ru' ? '📦 В архив' : '📦 Archive'));
             if (typeof archiveBtn.setAttribute === 'function') {
                 archiveBtn.setAttribute('aria-label', cur.isArchived
-                    ? (lang === 'ru' ? 'Вернуть скриншот из архива' : 'Restore screenshot from archive')
-                    : (lang === 'ru' ? 'Переместить скриншот в архив' : 'Move screenshot to archive'));
+                    ? (window.t('coverageArchiveRestoreAria', {}, lang) || (lang === 'ru' ? 'Вернуть скриншот из архива' : 'Restore screenshot from archive'))
+                    : (window.t('coverageArchiveMoveAria', {}, lang) || (lang === 'ru' ? 'Переместить скриншот в архив' : 'Move screenshot to archive')));
             }
         }
 
@@ -2003,13 +2036,14 @@
             }
             if (typeof defectBtn.setAttribute === 'function') {
                 defectBtn.setAttribute('aria-pressed', hasDefect ? 'true' : 'false');
+                defectBtn.setAttribute('title', window.t('coverageDefectTooltip', {}, lang) || (lang === 'ru' ? 'Пометить дефект интерфейса' : 'Flag UI defect'));
             }
             var defectLabel = window.t('coverageDefectBtn', {}, lang) || (lang === 'ru' ? 'Дефект' : 'Defect');
             defectBtn.innerHTML = '⚠️ <span>' + window.escapeHTML(defectLabel) + '</span>';
         }
         if (defectBadge) {
             defectBadge.style.display = hasDefect ? 'inline-flex' : 'none';
-            var badgeText = window.t('coverageDefectBadge', {}, lang) || (lang === 'ru' ? '⚠️ ДЕФЕКТ UI' : '⚠️ UI DEFECT');
+            var badgeText = window.t('coverageDefectBadgeFull', {}, lang) || (lang === 'ru' ? '⚠️ ДЕФЕКТ UI' : '⚠️ UI DEFECT');
             defectBadge.textContent = badgeText;
         }
         if (imgWrap && imgWrap.classList) {
@@ -2026,11 +2060,17 @@
             prevBtn.style.display = list.length > 1 ? 'flex' : 'none';
             prevBtn.style.opacity = s.currentIndex > 0 ? '1' : '0.25';
             prevBtn.style.pointerEvents = s.currentIndex > 0 ? 'auto' : 'none';
+            if (typeof prevBtn.setAttribute === 'function') {
+                prevBtn.setAttribute('aria-label', window.t('coverageNavPrevAria', {}, lang) || (lang === 'ru' ? 'Назад' : 'Previous'));
+            }
         }
         if (nextBtn) {
             nextBtn.style.display = list.length > 1 ? 'flex' : 'none';
             nextBtn.style.opacity = s.currentIndex < list.length - 1 ? '1' : '0.25';
             nextBtn.style.pointerEvents = s.currentIndex < list.length - 1 ? 'auto' : 'none';
+            if (typeof nextBtn.setAttribute === 'function') {
+                nextBtn.setAttribute('aria-label', window.t('coverageNavNextAria', {}, lang) || (lang === 'ru' ? 'Вперёд' : 'Next'));
+            }
         }
 
         // Dots (render only if <= 10 items)
@@ -2190,8 +2230,8 @@
                     var icon = thumbWrap.querySelector ? thumbWrap.querySelector('.coverage-gallery-thumb__defect-icon') : null;
                     if (newState) {
                         if (!icon && typeof thumbWrap.insertAdjacentHTML === 'function') {
-                            var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
-                            thumbWrap.insertAdjacentHTML('beforeend', '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(lang === 'ru' ? 'Дефект UI' : 'UI Defect') + '">⚠️</span>');
+                            var lang = _getLang();
+                            thumbWrap.insertAdjacentHTML('beforeend', '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(window.t('coverageDefectBadge', {}, lang) || (lang === 'ru' ? 'Дефект UI' : 'UI Defect')) + '">⚠️</span>');
                         }
                     } else {
                         if (icon && typeof icon.remove === 'function') icon.remove();
@@ -2226,7 +2266,7 @@
         if (undo) {
             var button = document.createElement('button');
             button.type = 'button';
-            button.textContent = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'Undo' : 'Отмена';
+            button.textContent = window.t('coverageArchiveToastUndo', {}, _getLang()) || ((_getLang() === 'en') ? 'Undo' : 'Отмена');
             button.onclick = function () { undo(); toast.remove(); };
             toast.appendChild(button);
         }
@@ -2338,22 +2378,22 @@
                 state.currentIndex = Math.min(Math.max(removeIndex, 0), items.length - 1);
                 _renderCoverageViewerCurrentSlide();
             }
-            var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
+            var lang = _getLang();
             if (nextArchived) {
-                _coverageArchiveToast(lang === 'ru' ? 'Скриншот перемещён в архив' : 'Screenshot moved to archive', async function () {
+                _coverageArchiveToast(window.t('coverageArchiveToastMoved', {}, lang) || (lang === 'ru' ? 'Скриншот перемещён в архив' : 'Screenshot moved to archive'), async function () {
                     try {
                         var undoResult = await _saveCoverageArchive(appId, proofId, mediaIndex, false, scope, feedbackId);
                         _applyCoverageArchiveResult(appId, scope, undoResult.coverage);
                     } catch (_) {
-                        _coverageArchiveToast(lang === 'ru' ? 'Не удалось восстановить скриншот' : 'Could not restore screenshot');
+                        _coverageArchiveToast(window.t('coverageArchiveToastRestoreFailed', {}, lang) || (lang === 'ru' ? 'Не удалось восстановить скриншот' : 'Could not restore screenshot'));
                     }
                 });
             } else {
-                _coverageArchiveToast(lang === 'ru' ? 'Скриншот возвращён из архива' : 'Screenshot restored');
+                _coverageArchiveToast(window.t('coverageArchiveToastRestored', {}, lang) || (lang === 'ru' ? 'Скриншот возвращён из архива' : 'Screenshot restored'));
             }
         } catch (_) {
-            var errorLang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
-            _coverageArchiveToast(errorLang === 'ru' ? 'Не удалось изменить архив' : 'Could not update archive');
+            var errorLang = _getLang();
+            _coverageArchiveToast(window.t('coverageArchiveToastUpdateFailed', {}, errorLang) || (errorLang === 'ru' ? 'Не удалось изменить архив' : 'Could not update archive'));
         } finally {
             state.archiveBusy = false;
             if (state.isOpen) _renderCoverageViewerCurrentSlide();
