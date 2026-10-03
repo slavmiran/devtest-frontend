@@ -8526,6 +8526,9 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'market') {
+        if (window.ShowcaseGeo && typeof window.ShowcaseGeo.mount === 'function') {
+            window.ShowcaseGeo.mount();
+        }
         if (window.hydrateMarketFromCache) {
             window.hydrateMarketFromCache();
         }
