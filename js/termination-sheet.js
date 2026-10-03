@@ -8,6 +8,9 @@
 
     var KARMA_ABANDONED_BURN = 3.0;
     var _termState = null;
+    // Compatibility bridge for clients that still have an older cached
+    // app-features.js which reads the historical global identifier directly.
+    window._termState = window._termState || null;
 
     function _lang() {
         return (typeof lang !== 'undefined' && lang) ? String(lang) : 'ru';
@@ -1026,6 +1029,7 @@
 
         _setPreserveSlot('');
         window._terminationState = _termState;
+        window._termState = _termState;
 
         // Write into the same lexical vars that confirmDropTest / confirmLeaveMutual read.
         if (mode === 'leave') {
@@ -1320,6 +1324,7 @@
         _setPreserveSlot('');
         _termState = null;
         window._terminationState = null;
+        window._termState = null;
         if (typeof window.setLeaveMutualAppId === 'function') {
             window.setLeaveMutualAppId(0);
         } else {
@@ -1627,7 +1632,9 @@
             var reciprocalIconUrl = (reciprocalTest && (reciprocalTest.icon_url || '')) ||
                 (_termState && _termState.reciprocalIconUrl) || '';
             var reciprocalPkg = (reciprocalTest && (reciprocalTest.package_name || '')) ||
-                (_termState && _termState.reciprocalPackageName) || '';
+                data.reciprocal_package_name || (_termState && _termState.reciprocalPackageName) || '';
+            var reciprocalPlayStoreUrl = (reciprocalTest && (reciprocalTest.play_store_url || '')) ||
+                data.reciprocal_play_store_url || '';
 
             // Tester info from _termState (saved during _fillKickFromLocal)
             var testerUsername = (_termState && _termState.testerUsername) || '';
@@ -1675,6 +1682,7 @@
                         name: reciprocalAppName,
                         iconUrl: reciprocalIconUrl,
                         packageName: reciprocalPkg,
+                        playStoreUrl: reciprocalPlayStoreUrl,
                         isSoftTail: true,
                     });
                 }
@@ -1851,6 +1859,7 @@
         _setPreserveSlot('');
         _termState = null;
         window._terminationState = null;
+        window._termState = null;
 
         if (typeof window.setLeaveMutualAppId === 'function') {
             window.setLeaveMutualAppId(0);

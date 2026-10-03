@@ -488,6 +488,12 @@
         return !!defects[key];
     }
 
+    function coverageMediaDefectId(item) {
+        return item && item.media_source === 'feedback'
+            ? 'feedback-' + Number(item.feedback_id || 0)
+            : Number(item && item.id || 0);
+    }
+
     function toggleScreenshotDefect(appId, proofId, mediaIndex) {
         var defects = getProjectScreenshotDefects(appId);
         var key = String(proofId) + '_' + String(mediaIndex || 0);
@@ -506,7 +512,7 @@
         var count = 0;
         covData.models.forEach(function (m) {
             (m.screenshots || []).forEach(function (s) {
-                var pId = Number(s.id || 0);
+                var pId = coverageMediaDefectId(s);
                 var mItems = (s.media_items && s.media_items.length) ? s.media_items : [1];
                 mItems.forEach(function (item, mIdx) {
                     var realIndex = item && item.media_index != null ? Number(item.media_index) : mIdx;
@@ -578,10 +584,6 @@
             : ((typeof getTelegramInitDataRaw === 'function')
                 ? getTelegramInitDataRaw()
                 : ((window.tg && window.tg.initData) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || ''));
-
-        if (initData) {
-            url += (url.indexOf('?') >= 0 ? '&' : '?') + 'init_data=' + encodeURIComponent(initData);
-        }
 
         var headers = {
             'Accept': 'application/json'
@@ -843,8 +845,8 @@
 
             (m.screenshots || []).forEach(function (s) {
                 if (!s) return;
-                var sid = Number(s.id || 0);
-                var existingS = entry.screenshots.find(function (x) { return Number(x.id || 0) === sid; });
+                var sid = coverageMediaDefectId(s);
+                var existingS = entry.screenshots.find(function (x) { return coverageMediaDefectId(x) === sid; });
                 if (!existingS) {
                     entry.screenshots.push(s);
                 }
@@ -1082,7 +1084,7 @@
         } else if (_activeCoverageModelFilter === 'defects') {
             filteredModels = models.filter(function (m) {
                 return (m.screenshots || []).some(function (s) {
-                    var sProofId = Number(s.id || 0);
+                    var sProofId = coverageMediaDefectId(s);
                     return (s.media_items || []).some(function (item, index) {
                         return isScreenshotDefect(_activeCoverageAppId, sProofId, item && item.media_index != null ? item.media_index : index);
                     });
@@ -1155,10 +1157,12 @@
             if (isExpanded && screenshots.length > 0) {
                 var thumbs = screenshots.map(function (s) {
                     var proofId = Number(s.id);
+                    var feedbackId = s.media_source === 'feedback' ? Number(s.feedback_id || 0) : 0;
+                    var mediaDefectId = coverageMediaDefectId(s);
                     var imgCount = Number(s.image_count || 1);
                     var firstMedia = Array.isArray(s.media_items) ? s.media_items[0] : null;
                     var firstMediaIndex = firstMedia && firstMedia.media_index != null ? Number(firstMedia.media_index) : 0;
-                    var isDefect = isScreenshotDefect(_activeCoverageAppId, proofId, firstMediaIndex);
+                    var isDefect = isScreenshotDefect(_activeCoverageAppId, mediaDefectId, firstMediaIndex);
                     if (_activeCoverageModelFilter === 'defects' && !isDefect) {
                         return '';
                     }
@@ -1199,12 +1203,13 @@
                     if (isBug) itemClasses.push('has-bug');
                     if (isIdea) itemClasses.push('has-idea');
 
-                    var thumbImgHtml = '<img class="coverage-gallery-thumb__img" data-proof-id="' + proofId + '" data-media-index="' + firstMediaIndex + '" loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
+                    var thumbSource = feedbackId > 0 && firstMedia && firstMedia.file_id ? _getCoverageMediaUrl(firstMedia.file_id) : '';
+                    var thumbImgHtml = '<img class="coverage-gallery-thumb__img"' + (proofId > 0 ? ' data-proof-id="' + proofId + '" data-media-index="' + firstMediaIndex + '"' : '') + (thumbSource ? ' src="' + window.escapeHTML(thumbSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
                         '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span></div>' +
                         (isDefect ? '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(lang === 'ru' ? 'Дефект UI' : 'UI Defect') + '">⚠️</span>' : '');
 
                     return (
-                        '<button type="button" class="' + itemClasses.join(' ') + '" data-proof-id="' + proofId + '" data-media-index="' + firstMediaIndex + '" onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + proofId + ', ' + firstMediaIndex + ');" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
+                        '<button type="button" class="' + itemClasses.join(' ') + '" data-proof-id="' + proofId + '" data-feedback-id="' + feedbackId + '" data-media-index="' + firstMediaIndex + '" onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + proofId + ', ' + firstMediaIndex + ', ' + feedbackId + ');" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
                             '<div class="coverage-gallery-thumb">' +
                                 thumbImgHtml +
                                 typeBadgeHtml +
@@ -1289,13 +1294,14 @@
 
             var firstScreenshot = _activeCoverageModelFilter === 'defects'
                 ? screenshots.find(function (shot) {
-                    var proofId = Number(shot.id || 0);
+                    var proofId = coverageMediaDefectId(shot);
                     return (shot.media_items || []).some(function (item, index) {
                         return isScreenshotDefect(_activeCoverageAppId, proofId, item && item.media_index != null ? item.media_index : index);
                     });
                 }) || screenshots[0]
                 : screenshots[0];
             var coverProofId = firstScreenshot ? Number(firstScreenshot.id || 0) : 0;
+            var coverFeedbackId = firstScreenshot && firstScreenshot.media_source === 'feedback' ? Number(firstScreenshot.feedback_id || 0) : 0;
             var coverMedia = firstScreenshot && Array.isArray(firstScreenshot.media_items) ? firstScreenshot.media_items[0] : null;
             var coverMediaIndex = coverMedia && coverMedia.media_index != null ? Number(coverMedia.media_index) : 0;
             var androidLabels = (m.android_versions || []).map(function (v) {
@@ -1304,17 +1310,18 @@
             }).filter(Boolean).sort(function (a, b) { return Number(a) - Number(b); });
             var androidText = androidLabels.length > 1 ? androidLabels[0] + '–' + androidLabels[androidLabels.length - 1] : (androidLabels[0] || '—');
             var testerWord = lang === 'ru' ? formatPluralRu(tCount, 'тестер', 'тестера', 'тестеров') : (tCount === 1 ? 'tester' : 'testers');
-            var coverHtml = !isExpanded && coverProofId > 0
-                ? '<img class="pc-model-card__cover coverage-gallery-thumb__img" data-proof-id="' + coverProofId + '" data-media-index="' + coverMediaIndex + '" loading="lazy" decoding="async" alt="" onerror="this.style.display=\'none\'">'
+            var coverSource = coverFeedbackId > 0 && coverMedia && coverMedia.file_id ? _getCoverageMediaUrl(coverMedia.file_id) : '';
+            var coverHtml = !isExpanded && (coverProofId > 0 || coverFeedbackId > 0)
+                ? '<img class="pc-model-card__cover coverage-gallery-thumb__img"' + (coverProofId > 0 ? ' data-proof-id="' + coverProofId + '" data-media-index="' + coverMediaIndex + '"' : '') + (coverSource ? ' src="' + window.escapeHTML(coverSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onerror="this.style.display=\'none\'">'
                 : (isExpanded ? '' : '<span class="pc-model-card__empty" aria-hidden="true">' + androidIconSvg('pc-model-card__android') + '</span>');
             return (
                 '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-device-card pc-model-card' + (m.is_new ? ' is-new-model' : '') + ' ' + (isExpanded ? 'is-expanded' : '') + (isBrandHidden ? ' is-brand-hidden' : '') + '" data-brand="' + window.escapeHTML(brand) + '" data-model-key="' + window.escapeHTML(m.model_key) + '">' +
-                    '<button type="button" class="pc-model-card__screen" ' + (coverProofId > 0 ? 'onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + coverProofId + ', ' + coverMediaIndex + ');"' : 'disabled') + ' aria-label="' + window.escapeHTML((lang === 'ru' ? 'Смотреть скриншоты: ' : 'View screenshots: ') + m.model_name) + '">' +
+                    '<button type="button" class="pc-model-card__screen" ' + (coverProofId > 0 || coverFeedbackId > 0 ? 'onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + coverProofId + ', ' + coverMediaIndex + ', ' + coverFeedbackId + ');"' : 'disabled') + ' aria-label="' + window.escapeHTML((lang === 'ru' ? 'Смотреть скриншоты: ' : 'View screenshots: ') + m.model_name) + '">' +
                         coverHtml +
                         '<span class="pc-model-card__screen-shade" aria-hidden="true"></span>' +
                         (m.is_new ? '<span class="pc-model-card__new">+NEW</span>' : '') +
                         '<span class="pc-model-card__count">▧ ' + Number(m.screenshots_count || 0) + '</span>' +
-                        (coverProofId > 0 ? '<span class="pc-model-card__play" aria-hidden="true">▶</span>' : '') +
+                        (coverProofId > 0 || coverFeedbackId > 0 ? '<span class="pc-model-card__play" aria-hidden="true">▶</span>' : '') +
                     '</button>' +
                     '<button type="button" class="pc-model-card__footer" onclick="toggleCoverageModelExpand(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'))" aria-expanded="false">' +
                         '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small>👤 ' + tCount + ' ' + window.escapeHTML(testerWord) + ' · Android ' + window.escapeHTML(androidText) + '</small></span>' +
@@ -1361,13 +1368,15 @@
         }
         return '<div class="coverage-archive-grid">' + items.map(function (item) {
             var proofId = Number(item.proof_id || 0);
+            var feedbackId = Number(item.feedback_id || 0);
             var mediaIndex = Number(item.media_index || 0);
             var dateMatch = String(item.created_at || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
             var dateLabel = dateMatch ? dateMatch[3] + '.' + dateMatch[2] + '.' + dateMatch[1] : '';
             var modelName = item.model_name || (lang === 'ru' ? 'Неизвестная модель' : 'Unknown model');
-            return '<button type="button" class="coverage-archive-item" onclick="openContinuousCoverageGallery(' + Number(_activeCoverageAppId) + ', { archive: true, initialProofId: ' + proofId + ', initialMediaIndex: ' + mediaIndex + ' })" aria-label="' + window.escapeHTML(modelName + (dateLabel ? ' · ' + dateLabel : '')) + '">' +
+            var directSource = feedbackId > 0 && item.file_id ? _getCoverageMediaUrl(item.file_id) : '';
+            return '<button type="button" class="coverage-archive-item" onclick="openContinuousCoverageGallery(' + Number(_activeCoverageAppId) + ', { archive: true, initialProofId: ' + proofId + ', initialFeedbackId: ' + feedbackId + ', initialMediaIndex: ' + mediaIndex + ' })" aria-label="' + window.escapeHTML(modelName + (dateLabel ? ' · ' + dateLabel : '')) + '">' +
                 '<span class="coverage-archive-item__image">' +
-                    '<img class="coverage-gallery-thumb__img" data-proof-id="' + proofId + '" data-media-index="' + mediaIndex + '" loading="lazy" decoding="async" alt="" onerror="this.style.display=\'none\'">' +
+                    '<img class="coverage-gallery-thumb__img"' + (proofId > 0 ? ' data-proof-id="' + proofId + '" data-media-index="' + mediaIndex + '"' : '') + (directSource ? ' src="' + window.escapeHTML(directSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onerror="this.style.display=\'none\'">' +
                     '<span class="coverage-archive-item__marker" aria-hidden="true">📦</span>' +
                 '</span>' +
                 '<span class="coverage-archive-item__info"><strong class="notranslate">' + window.escapeHTML(modelName) + '</strong><small>' + window.escapeHTML(dateLabel) + '</small></span>' +
@@ -1379,7 +1388,6 @@
 
     function renderCoverageScreen(container, data) {
         var lang = (typeof currentLang !== 'undefined' ? currentLang : 'ru');
-        if (container && container.classList) container.classList.remove('is-header-compact');
         var stats = data.stats || {};
         var models = data.models || [];
 
@@ -1523,26 +1531,18 @@
 
     function bindCoverageScrollHeader(container) {
         var scroller = container && container.querySelector ? container.querySelector('.coverage-body') : null;
-        if (!scroller) return;
-        var compact = !!(container.classList && container.classList.contains('is-header-compact'));
-        var animationFrame = 0;
-        var scheduleFrame = typeof window.requestAnimationFrame === 'function'
-            ? window.requestAnimationFrame.bind(window)
-            : function (callback) { return setTimeout(callback, 0); };
-        function updateHeaderState() {
-            animationFrame = 0;
-            // The header is an overlay, so toggling it does not change scroll
-            // height. Keep it hidden until the reader returns to the top.
+        var header = container && container.querySelector ? container.querySelector('.coverage-header') : null;
+        if (!scroller || !header) return;
+        // Move pixel-for-pixel with the content, without a delayed CSS transition.
+        // The header overlays the scroller, so its movement does not alter scrollHeight.
+        function syncHeaderPosition() {
             var top = Math.max(0, Number(scroller.scrollTop || 0));
-            var shouldCompact = compact ? top > 0 : top > 18;
-            if (shouldCompact === compact) return;
-            compact = shouldCompact;
-            container.classList.toggle('is-header-compact', compact);
+            var hidden = Math.min(top, header.offsetHeight);
+            header.style.transform = 'translate3d(0, -' + hidden + 'px, 0)';
+            header.style.pointerEvents = hidden >= header.offsetHeight ? 'none' : '';
         }
-        scroller.addEventListener('scroll', function () {
-            if (animationFrame) return;
-            animationFrame = scheduleFrame(updateHeaderState);
-        }, { passive: true });
+        scroller.addEventListener('scroll', syncHeaderPosition, { passive: true });
+        syncHeaderPosition();
     }
 
     function androidIconSvg(className) {
@@ -1578,8 +1578,34 @@
             holder.innerHTML = renderCoverageDeviceCards([model], (typeof currentLang !== 'undefined' ? currentLang : 'ru'));
             var replacement = holder.querySelector('.coverage-device-card');
             if (replacement) {
+                var previousHeight = typeof card.getBoundingClientRect === 'function'
+                    ? card.getBoundingClientRect().height : 0;
                 card.replaceWith(replacement);
                 hydrateCoverageThumbnails(replacement);
+                var reduceMotion = typeof window.matchMedia === 'function' &&
+                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                if (!reduceMotion && previousHeight > 0 && typeof replacement.getBoundingClientRect === 'function') {
+                    var targetHeight = replacement.getBoundingClientRect().height;
+                    if (Math.abs(targetHeight - previousHeight) > 2) {
+                        replacement.style.height = previousHeight + 'px';
+                        replacement.style.overflow = 'hidden';
+                        replacement.style.transition = 'height .28s cubic-bezier(.22,.72,.2,1)';
+                        var finish = function () {
+                            replacement.style.height = '';
+                            replacement.style.overflow = '';
+                            replacement.style.transition = '';
+                        };
+                        replacement.addEventListener('transitionend', function onEnd(event) {
+                            if (event.target !== replacement || event.propertyName !== 'height') return;
+                            replacement.removeEventListener('transitionend', onEnd);
+                            finish();
+                        });
+                        (window.requestAnimationFrame || function (callback) { setTimeout(callback, 16); })(function () {
+                            replacement.style.height = targetHeight + 'px';
+                        });
+                        setTimeout(finish, 400);
+                    }
+                }
             }
         } else if (_activeCoverageData) {
             var body = document.getElementById('project-coverage-body');
@@ -1591,11 +1617,12 @@
         expandCoverageModelCard(modelKey, !_expandedModelKeys[String(modelKey || '')]);
     }
 
-    function openCoverageModelGallery(modelKey, initialProofId, initialMediaIndex) {
+    function openCoverageModelGallery(modelKey, initialProofId, initialMediaIndex, initialFeedbackId) {
         openContinuousCoverageGallery(_activeCoverageAppId, {
             modelKey: String(modelKey || ''),
             initialProofId: Number(initialProofId || 0),
-            initialMediaIndex: Number(initialMediaIndex || 0)
+            initialMediaIndex: Number(initialMediaIndex || 0),
+            initialFeedbackId: Number(initialFeedbackId || 0)
         });
     }
 
@@ -1663,29 +1690,33 @@
     }
 
     function _ensureCoverageScreenshotModal() {
-        if (document.getElementById('coverage-screenshot-modal')) return;
+        if (document.getElementById('coverage-screenshot-modal')) {
+            _initCoverageViewerTouch();
+            return;
+        }
         var modalHtml = (
             '<div id="coverage-screenshot-modal" class="modal-overlay coverage-screenshot-modal" onclick="closeCoverageScreenshotModal(event)">' +
                 '<div class="modal-content coverage-screenshot-shell" onclick="event.stopPropagation()">' +
                     '<div class="coverage-screenshot-header">' +
-                        '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Back">←</button>' +
-                        '<div class="coverage-screenshot-meta">' +
-                            '<div id="coverage-screenshot-title" class="coverage-screenshot-title"></div>' +
-                            '<div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>' +
+                        '<div class="coverage-screenshot-heading">' +
+                            '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Back">←</button>' +
+                            '<div class="coverage-screenshot-meta">' +
+                                '<div id="coverage-screenshot-title" class="coverage-screenshot-title"></div>' +
+                                '<div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>' +
+                            '</div>' +
                         '</div>' +
                         '<div class="coverage-screenshot-actions">' +
                             '<button type="button" id="coverage-screenshot-archive-btn" class="coverage-screenshot-archive-btn" onclick="toggleCurrentCoverageArchive(event)"></button>' +
                             '<button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)" title="Пометить дефект интерфейса">' +
                                 '⚠️ <span>Дефект</span>' +
                             '</button>' +
-                            '<span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>' +
-                            '<button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Close">✕</button>' +
                         '</div>' +
+                        '<span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;" aria-hidden="true"></span>' +
                     '</div>' +
                     '<div class="coverage-screenshot-stage" id="coverage-screenshot-stage">' +
                         '<button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>' +
                         '<div class="coverage-screenshot-img-wrap" onclick="toggleCoverageScreenshotZoom()">' +
-                            '<img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager">' +
+                            '<img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager" draggable="false">' +
                             '<div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;">⚠️ ДЕФЕКТ UI</div>' +
                             '<div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>' +
                         '</div>' +
@@ -1701,29 +1732,58 @@
 
     function _initCoverageViewerTouch() {
         var stage = document.getElementById('coverage-screenshot-stage');
-        if (!stage || stage._touchBound) return;
+        if (!stage || stage._touchBound || typeof stage.addEventListener !== 'function') return;
         stage._touchBound = true;
         var startX = 0;
         var startY = 0;
-        stage.addEventListener('touchstart', function (e) {
-            if (e.touches && e.touches.length === 1) {
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-            }
-        }, { passive: true });
-        stage.addEventListener('touchend', function (e) {
-            if (e.changedTouches && e.changedTouches.length === 1) {
-                var diffX = e.changedTouches[0].clientX - startX;
-                var diffY = e.changedTouches[0].clientY - startY;
-                if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
-                    if (diffX < 0) {
-                        stepCoverageScreenshot(1);
-                    } else {
-                        stepCoverageScreenshot(-1);
-                    }
+        var pointerId = null;
+        var beganAt = 0;
+        function finishSwipe(x, y) {
+            var diffX = x - startX;
+            var diffY = y - startY;
+            if (Math.abs(diffX) < 42 || Math.abs(diffX) < Math.abs(diffY) * 1.25) return;
+            stage._suppressClick = true;
+            setTimeout(function () { stage._suppressClick = false; }, 350);
+            stepCoverageScreenshot(diffX < 0 ? 1 : -1);
+        }
+        var wrap = stage.querySelector('.coverage-screenshot-img-wrap');
+        if (wrap) wrap.addEventListener('click', function (event) {
+            if (!stage._suppressClick) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            stage._suppressClick = false;
+        }, true);
+        if (typeof window.PointerEvent === 'function') {
+            stage.addEventListener('pointerdown', function (event) {
+                if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+                pointerId = event.pointerId;
+                startX = event.clientX;
+                startY = event.clientY;
+                beganAt = Date.now();
+                if (typeof stage.setPointerCapture === 'function') {
+                    try { stage.setPointerCapture(event.pointerId); } catch (_) {}
                 }
-            }
-        }, { passive: true });
+            }, { passive: true });
+            stage.addEventListener('pointerup', function (event) {
+                if (event.pointerId !== pointerId) return;
+                pointerId = null;
+                if (Date.now() - beganAt < 1200) finishSwipe(event.clientX, event.clientY);
+            }, { passive: true });
+            stage.addEventListener('pointercancel', function () { pointerId = null; }, { passive: true });
+        } else {
+            stage.addEventListener('touchstart', function (event) {
+                if (event.touches && event.touches.length === 1) {
+                    startX = event.touches[0].clientX;
+                    startY = event.touches[0].clientY;
+                    beganAt = Date.now();
+                }
+            }, { passive: true });
+            stage.addEventListener('touchend', function (event) {
+                if (event.changedTouches && event.changedTouches.length === 1 && Date.now() - beganAt < 1200) {
+                    finishSwipe(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+                }
+            }, { passive: true });
+        }
     }
 
     function _renderCoverageViewerCurrentSlide() {
@@ -1806,22 +1866,19 @@
 
         // Counter
         if (counterEl) {
-            if (list.length > 1) {
-                counterEl.style.display = 'inline-block';
-                counterEl.textContent = (s.currentIndex + 1) + ' / ' + list.length;
-            } else {
-                counterEl.style.display = 'none';
-            }
+            counterEl.style.display = 'none';
+            counterEl.textContent = (s.currentIndex + 1) + ' / ' + list.length;
         }
 
         // Defect status
         var curAppId = cur.appId || s.appId || _activeCoverageAppId;
         var proofId = cur.proofId || s.proofId || 0;
+        var feedbackId = Number(cur.feedbackId || 0);
         var mediaIndex = cur.mediaIndex != null ? cur.mediaIndex : 0;
-        var hasDefect = isScreenshotDefect(curAppId, proofId, mediaIndex);
+        var hasDefect = isScreenshotDefect(curAppId, feedbackId > 0 ? 'feedback-' + feedbackId : proofId, mediaIndex);
 
         if (archiveBtn) {
-            archiveBtn.style.display = curAppId > 0 && proofId > 0 ? 'inline-flex' : 'none';
+            archiveBtn.style.display = curAppId > 0 && (proofId > 0 || feedbackId > 0) ? 'inline-flex' : 'none';
             archiveBtn.disabled = !!s.archiveBusy;
             archiveBtn.textContent = cur.isArchived
                 ? (lang === 'ru' ? '↩️ Вернуть' : '↩️ Restore')
@@ -1960,10 +2017,11 @@
         if (!cur) return;
         var appId = cur.appId || s.appId || _activeCoverageAppId;
         var proofId = cur.proofId || s.proofId || 0;
+        var feedbackId = Number(cur.feedbackId || 0);
         var mediaIndex = cur.mediaIndex != null ? cur.mediaIndex : 0;
-        if (!appId || !proofId) return;
+        if (!appId || (!proofId && !feedbackId)) return;
 
-        var newState = toggleScreenshotDefect(appId, proofId, mediaIndex);
+        var newState = toggleScreenshotDefect(appId, feedbackId > 0 ? 'feedback-' + feedbackId : proofId, mediaIndex);
 
         // Update viewer UI
         var defectBtn = document.getElementById('coverage-screenshot-defect-btn');
@@ -1996,7 +2054,9 @@
 
         // Reflect in coverage modal thumbnails if visible
         if (typeof document.querySelectorAll === 'function') {
-            var selector = '.coverage-gallery-item[data-proof-id="' + proofId + '"][data-media-index="' + mediaIndex + '"], .coverage-gallery-item[data-proof-id="' + proofId + '"]';
+            var selector = feedbackId > 0
+                ? '.coverage-gallery-item[data-feedback-id="' + feedbackId + '"][data-media-index="' + mediaIndex + '"]'
+                : '.coverage-gallery-item[data-proof-id="' + proofId + '"][data-media-index="' + mediaIndex + '"], .coverage-gallery-item[data-proof-id="' + proofId + '"]';
             document.querySelectorAll(selector).forEach(function (thumbBtn) {
                 if (thumbBtn && thumbBtn.classList) {
                     if (typeof thumbBtn.classList.toggle === 'function') thumbBtn.classList.toggle('has-defect', newState);
@@ -2052,7 +2112,7 @@
         toast._dismissTimer = setTimeout(function () { toast.remove(); }, undo ? 5500 : 3000);
     }
 
-    async function _saveCoverageArchive(appId, proofId, mediaIndex, isArchived, scope) {
+    async function _saveCoverageArchive(appId, proofId, mediaIndex, isArchived, scope, feedbackId) {
         var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || (typeof API_BASE !== 'undefined' ? API_BASE : '');
         var cleanBase = String(apiBase || '/api').trim().replace(/\/+$/, '');
         var initData = typeof window.getTelegramInitDataRaw === 'function'
@@ -2063,7 +2123,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
             body: JSON.stringify({
-                proof_id: Number(proofId), media_index: Number(mediaIndex),
+                proof_id: Number(proofId), feedback_id: Number(feedbackId || 0), media_index: Number(mediaIndex),
                 is_archived: !!isArchived, scope: scope === 'all' ? 'all' : 'current', init_data: initData
             })
         });
@@ -2131,20 +2191,22 @@
         if (!state.isOpen || state.archiveBusy) return;
         var items = state.items && state.items.length ? state.items : (state.images || []);
         var current = items[state.currentIndex];
-        if (!current || !current.proofId) return;
+        if (!current) return;
         var appId = Number(current.appId || state.appId);
         var proofId = Number(current.proofId);
+        var feedbackId = Number(current.feedbackId || 0);
         var mediaIndex = Number(current.mediaIndex || 0);
+        if (!proofId && !feedbackId) return;
         var nextArchived = !current.isArchived;
         var scope = state.scope || 'current';
         state.archiveBusy = true;
         _renderCoverageViewerCurrentSlide();
         try {
-            var result = await _saveCoverageArchive(appId, proofId, mediaIndex, nextArchived, scope);
+            var result = await _saveCoverageArchive(appId, proofId, mediaIndex, nextArchived, scope, feedbackId);
             _applyCoverageArchiveResult(appId, scope, result.coverage);
             // Remove only this media slot; the next active slide retains its index.
             var removeIndex = items.findIndex(function (item) {
-                return Number(item.proofId) === proofId && Number(item.mediaIndex || 0) === mediaIndex;
+                return Number(item.proofId || 0) === proofId && Number(item.feedbackId || 0) === feedbackId && Number(item.mediaIndex || 0) === mediaIndex;
             });
             if (removeIndex >= 0) items.splice(removeIndex, 1);
             _reindexCoverageViewerItems(items);
@@ -2158,7 +2220,7 @@
             if (nextArchived) {
                 _coverageArchiveToast(lang === 'ru' ? 'Скриншот перемещён в архив' : 'Screenshot moved to archive', async function () {
                     try {
-                        var undoResult = await _saveCoverageArchive(appId, proofId, mediaIndex, false, scope);
+                        var undoResult = await _saveCoverageArchive(appId, proofId, mediaIndex, false, scope, feedbackId);
                         _applyCoverageArchiveResult(appId, scope, undoResult.coverage);
                     } catch (_) {
                         _coverageArchiveToast(lang === 'ru' ? 'Не удалось восстановить скриншот' : 'Could not restore screenshot');
@@ -2192,6 +2254,8 @@
                     flatItems.push({
                         appId: safeAppId,
                         proofId: Number(item.proof_id || 0),
+                        feedbackId: Number(item.feedback_id || 0),
+                        mediaSource: item.source_type === 'feedback' ? 'feedback' : 'proof',
                         mediaIndex: Number(item.media_index || 0),
                         modelKey: item.model_key || '',
                         modelName: item.model_name || '',
@@ -2203,8 +2267,8 @@
                         day: item.day || 0,
                         isArchived: true,
                         createdAt: item.created_at || '',
-                        fullUrl: '',
-                        thumbUrl: ''
+                        fullUrl: item.file_id ? _getCoverageMediaUrl(item.file_id) : '',
+                        thumbUrl: item.file_id ? _getCoverageMediaUrl(item.file_id) : ''
                     });
                 });
             } else {
@@ -2217,15 +2281,21 @@
 
             if (options.onlyNew) {
                 aggregated = aggregated.filter(function (m) {
-                    if (options.initialProofId && (m.screenshots || []).some(function (s) { return Number(s.id) === Number(options.initialProofId); })) return true;
+                    if ((m.screenshots || []).some(function (s) {
+                        return (options.initialProofId && Number(s.id) === Number(options.initialProofId)) ||
+                            (options.initialFeedbackId && Number(s.feedback_id) === Number(options.initialFeedbackId));
+                    })) return true;
                     return !!m.is_new;
                 });
             } else if (options.onlyDefects) {
                 aggregated = aggregated.filter(function (m) {
-                    if (options.initialProofId && (m.screenshots || []).some(function (s) { return Number(s.id) === Number(options.initialProofId); })) return true;
+                    if ((m.screenshots || []).some(function (s) {
+                        return (options.initialProofId && Number(s.id) === Number(options.initialProofId)) ||
+                            (options.initialFeedbackId && Number(s.feedback_id) === Number(options.initialFeedbackId));
+                    })) return true;
                     return (m.screenshots || []).some(function (s) {
                         return (s.media_items || []).some(function (item, index) {
-                            return isScreenshotDefect(safeAppId, Number(s.id), item && item.media_index != null ? item.media_index : index);
+                            return isScreenshotDefect(safeAppId, coverageMediaDefectId(s), item && item.media_index != null ? item.media_index : index);
                         });
                     });
                 });
@@ -2267,6 +2337,7 @@
                 var currentPhotoOnDevice = 0;
                 devScreenshots.forEach(function (s, stackIdx) {
                     var proofId = Number(s.id);
+                    var feedbackId = s.media_source === 'feedback' ? Number(s.feedback_id || 0) : 0;
                     var imgCount = Number(s.image_count || (s.media_items && s.media_items.length) || 1);
                     var mediaItems = Array.isArray(s.media_items) ? s.media_items : [];
                     var tester = (m.testers || []).find(function (t) { return Number(t.tester_id || 0) === Number(s.tester_id || 0); }) || {};
@@ -2279,6 +2350,8 @@
                         flatItems.push({
                             appId: safeAppId,
                             proofId: proofId,
+                            feedbackId: feedbackId,
+                            mediaSource: feedbackId > 0 ? 'feedback' : 'proof',
                             mediaIndex: originalMediaIndex,
                             modelKey: m.model_key,
                             modelName: m.model_name,
@@ -2302,7 +2375,7 @@
                             proofType: s.proof_type || (s.has_bug ? 'bug' : (s.has_idea ? 'idea' : 'screenshot')),
                             feedbackId: s.feedback_id || null,
                             fullUrl: itemMedia.file_id ? _getCoverageMediaUrl(itemMedia.file_id) : '',
-                            thumbUrl: itemMedia.thumb_file_id ? _getCoverageMediaUrl(itemMedia.thumb_file_id) : ''
+                            thumbUrl: itemMedia.thumb_file_id ? _getCoverageMediaUrl(itemMedia.thumb_file_id) : (itemMedia.file_id ? _getCoverageMediaUrl(itemMedia.file_id) : '')
                         });
                     }
                 });
@@ -2315,9 +2388,11 @@
             }
 
             var startIdx = 0;
-            if (options.initialProofId) {
+            if (options.initialProofId || options.initialFeedbackId) {
                 var foundIdx = flatItems.findIndex(function (it) {
-                    return Number(it.proofId) === Number(options.initialProofId) && Number(it.mediaIndex || 0) === Number(options.initialMediaIndex || 0);
+                    return Number(it.proofId) === Number(options.initialProofId || 0) &&
+                        Number(it.feedbackId || 0) === Number(options.initialFeedbackId || 0) &&
+                        Number(it.mediaIndex || 0) === Number(options.initialMediaIndex || 0);
                 });
                 if (foundIdx >= 0) startIdx = foundIdx;
             }
