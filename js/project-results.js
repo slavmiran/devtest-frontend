@@ -478,6 +478,7 @@
     var _activeCoverageAppId = 0;
     var _activeCoverageScope = 'current';
     var _activeCoverageTab = 'overview';
+    var _coverageCountryObserver = null;
     var _activeCoverageModelFilter = 'all';
     var _activeCoverageData = null;
     var _expandedModelKeys = {};
@@ -679,6 +680,15 @@
             }, 80);
         }
 
+        function focusCountriesOnce(container) {
+            if (initialTab !== 'countries' || !container) return;
+            var scroller = container.querySelector('.coverage-body');
+            var target = container.querySelector('.coverage-cockpit-countries');
+            if (!scroller || !target) return;
+            var offset = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+            scroller.scrollTop += offset - Math.min(scroller.clientHeight * 0.3, 120);
+        }
+
         var cacheKey = String(_activeCoverageAppId) + ':' + String(_activeCoverageScope);
         var cached = _coverageMemoryCache[cacheKey];
         var forceReload = !!(options && options.forceReload);
@@ -687,6 +697,7 @@
             tagCoverageNewModels(_activeCoverageAppId, cached.data);
             _activeCoverageData = cached.data;
             renderCoverageScreen(body, cached.data);
+            focusCountriesOnce(body);
             applyNewModelFocus(body);
 
             var ageMs = Date.now() - (cached.timestamp || 0);
@@ -716,6 +727,7 @@
             tagCoverageNewModels(_activeCoverageAppId, coverage);
             _activeCoverageData = coverage;
             renderCoverageScreen(body, coverage);
+            focusCountriesOnce(body);
             applyNewModelFocus(body);
         } catch (err) {
             console.error('Failed to load project coverage:', err);
@@ -727,6 +739,10 @@
         if (event && event.target && event.target !== document.getElementById('project-coverage-modal')) return;
         var modal = document.getElementById('project-coverage-modal');
         if (modal) modal.classList.remove('active');
+        if (_coverageCountryObserver) {
+            _coverageCountryObserver.disconnect();
+            _coverageCountryObserver = null;
+        }
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
 
@@ -1533,12 +1549,34 @@
         }
         bindCoverageScrollHeader(container);
         hydrateCoverageThumbnails(container);
-        if (_activeCoverageTab === 'countries') {
-            var countryTarget = container.querySelector('.is-new-country') || container.querySelector('.coverage-cockpit-countries');
-            if (countryTarget && typeof countryTarget.scrollIntoView === 'function') {
-                countryTarget.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
-            }
+        bindCoverageCountryVisibility(container);
+    }
+
+    function bindCoverageCountryVisibility(container) {
+        if (_coverageCountryObserver) _coverageCountryObserver.disconnect();
+        _coverageCountryObserver = null;
+        if (typeof IntersectionObserver !== 'function') return;
+        var scroller = container.querySelector('.coverage-body');
+        var details = container.querySelector('.coverage-distribution');
+        if (!scroller || !details) return;
+        function observeVisibleCountries() {
+            if (_coverageCountryObserver) _coverageCountryObserver.disconnect();
+            if (!details.open) return;
+            var observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting || entry.intersectionRatio < 0.75) return;
+                    if (observer !== _coverageCountryObserver) return;
+                    observer.unobserve(entry.target);
+                    markCoverageCountryViewed(entry.target.getAttribute('data-country'));
+                });
+            }, { root: scroller, threshold: 0.75 });
+            _coverageCountryObserver = observer;
+            details.querySelectorAll('.coverage-country-pill.is-new-country').forEach(function (pill) {
+                _coverageCountryObserver.observe(pill);
+            });
         }
+        details.addEventListener('toggle', observeVisibleCountries);
+        observeVisibleCountries();
     }
 
     function selectCoverageModelFilter(filter) {
@@ -1567,7 +1605,21 @@
         });
         markProjectCoverageSeen(_activeCoverageAppId, { countries: countries });
         var body = document.getElementById('project-coverage-body');
-        if (body) renderCoverageScreen(body, _activeCoverageData);
+        if (!body) return;
+        var seen = getProjectResultsSeenState(_activeCoverageAppId).seen_countries;
+        var seenMap = {};
+        seen.forEach(function (country) { seenMap[String(country).toUpperCase()] = true; });
+        body.querySelectorAll('.coverage-country-pill.is-new-country').forEach(function (pill) {
+            if (!seenMap[String(pill.getAttribute('data-country') || '').toUpperCase()]) return;
+            if (_coverageCountryObserver) _coverageCountryObserver.unobserve(pill);
+            pill.classList.remove('is-new-country');
+            var badge = pill.querySelector('small');
+            if (badge) badge.remove();
+        });
+        if (!body.querySelector('.coverage-country-pill.is-new-country')) {
+            var help = body.querySelector('.coverage-countries-help');
+            if (help) help.remove();
+        }
     }
 
     function toggleCoverageScope(scope) {

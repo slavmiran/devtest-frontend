@@ -84,10 +84,13 @@
         };
     }
 
-    function formatShare(value) {
-        var number = Number(value);
-        if (!isFinite(number)) return '0';
-        return (Math.round(number * 10) / 10).toFixed(1).replace(/\.0$/, '');
+    function formatShare(total, registered) {
+        var count = Number(total) || 0;
+        var base = Number(registered) || 0;
+        if (count <= 0 || base <= 0) return '0.0';
+        var raw = count * 100 / base;
+        if (raw < 0.1) return '<0.1';
+        return (Math.round((raw + 1e-8) * 10) / 10).toFixed(1);
     }
 
     function maxCountryTotal(rows) {
@@ -119,10 +122,9 @@
         return (profile && profile.detected) || byCode(code) || { code: code, name: code, name_ru: code, flag: '' };
     }
 
-    function rowHtml(item, maxTotal) {
+    function rowHtml(item, maxTotal, registered) {
         var total = Math.max(0, Number(item.total_count) || 0);
         var active = Math.max(0, Math.min(total, Number(item.active_count) || 0));
-        var share = item.share_percent != null ? item.share_percent : (total ? (active * 100 / total) : 0);
         var outer = maxTotal > 0 ? Math.max(0, Math.min(100, total / maxTotal * 100)) : 0;
         var inner = total > 0 ? Math.max(0, Math.min(100, active / total * 100)) : 0;
         var name = displayName(item);
@@ -133,7 +135,7 @@
             '<div class="geo-bar-active" style="width:' + inner + '%"></div></div></div>' +
             '<div class="geo-stat-nums"><span class="geo-active-num">' + active + '</span>' +
             '<span class="geo-slash-total"> / ' + total + '</span>' +
-            '<span class="geo-percent">(' + esc(formatShare(share)) + '%)</span></div>' +
+            '<span class="geo-percent">(' + esc(formatShare(total, registered)) + '%)</span></div>' +
             '</div>';
     }
 
@@ -141,7 +143,8 @@
         var list = Array.isArray(rows) ? rows : [];
         var visible = limit ? list.slice(0, limit) : list;
         var maxTotal = maxCountryTotal(list);
-        return visible.map(function (item) { return rowHtml(item, maxTotal); }).join('');
+        var registered = stats ? Number(stats.total_registered) || 0 : 0;
+        return visible.map(function (item) { return rowHtml(item, maxTotal, registered); }).join('');
     }
 
     function legendHtml() {

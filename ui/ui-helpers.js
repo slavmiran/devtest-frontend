@@ -618,3 +618,51 @@ function applyCardButtonsBusy(card, busy, exceptBtn) {
 
 window.applyActionButtonProcessing = applyActionButtonProcessing;
 window.applyCardButtonsBusy = applyCardButtonsBusy;
+
+function normalizeTelegramCLinkChatId(raw) {
+    var value = String(raw == null ? '' : raw).trim().replace(/^[-@]+/, '');
+    if (/^100\d{10,}$/.test(value)) {
+        value = value.slice(3);
+    }
+    return /^\d+$/.test(value) ? value : '';
+}
+
+function buildTesterFeedbackMessageUrl(messageId, options) {
+    var msgId = Number(messageId || 0);
+    if (!Number.isFinite(msgId) || msgId <= 0) return '';
+    var opts = options || {};
+    var topicRaw = opts.topicId;
+    if (topicRaw == null && window.App) topicRaw = window.App.testerFeedbackTopicId;
+    var topicId = Number(topicRaw || 4000);
+    if (!Number.isFinite(topicId) || topicId <= 0) topicId = 4000;
+    var hasPublicOverride = Object.prototype.hasOwnProperty.call(opts, 'publicGroupUrl');
+    var publicBase = String(
+        hasPublicOverride
+            ? opts.publicGroupUrl
+            : ((window.App && window.App.publicGroupUrl)
+                || window.FEEDBACK_PUBLIC_LINK_BASE
+                || 'https://t.me/googleplay_console_12testers')
+    ).replace(/\/+$/, '');
+    if (publicBase && !/t\.me\/\+|joinchat/i.test(publicBase)) {
+        var tail = publicBase.split('/').pop();
+        if (/^\d+$/.test(tail)) {
+            if (Number(tail) === topicId) {
+                return publicBase + '/' + msgId;
+            }
+            publicBase = publicBase.replace(/\/\d+$/, '');
+        }
+        return publicBase + '/' + topicId + '/' + msgId;
+    }
+    var groupId = normalizeTelegramCLinkChatId(
+        opts.frontendGroupId != null
+            ? opts.frontendGroupId
+            : (window.App && window.App.frontendGroupId)
+    );
+    if (groupId) {
+        return 'https://t.me/c/' + groupId + '/' + topicId + '/' + msgId;
+    }
+    return '';
+}
+
+window.normalizeTelegramCLinkChatId = normalizeTelegramCLinkChatId;
+window.buildTesterFeedbackMessageUrl = buildTesterFeedbackMessageUrl;

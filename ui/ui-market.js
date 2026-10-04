@@ -6032,14 +6032,10 @@ function openFeedbackTopicLink(telegramMessageId, username) {
         username: cleanUsername || 'user',
     }, lang);
     var openLink = function() {
-        var groupId = (window.App && window.App.frontendGroupId) || '';
-        var url;
-        if (groupId) {
-            url = 'https://t.me/c/' + groupId + '/' + telegramMessageId;
-        } else {
-            var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
-            url = base + '/' + telegramMessageId;
-        }
+        var url = (typeof window.buildTesterFeedbackMessageUrl === 'function')
+            ? window.buildTesterFeedbackMessageUrl(telegramMessageId)
+            : '';
+        if (!url) return;
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
             window.Telegram.WebApp.openTelegramLink(url);
         } else {
