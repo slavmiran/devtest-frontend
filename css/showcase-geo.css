@@ -44,33 +44,52 @@
     cursor: pointer;
 }
 
-.showcase-geo-scope {
+.showcase-geo-legend {
     display: flex;
-    gap: 4px;
-    margin: 0 0 10px;
-    padding: 3px;
-    border-radius: 11px;
-    background: rgba(148, 163, 184, 0.12);
-}
-
-.showcase-geo-scope__btn {
-    flex: 1 1 0;
+    align-items: center;
+    gap: 6px;
+    margin: -2px 0 10px;
     min-width: 0;
-    height: 28px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-secondary, var(--hint-color));
-    font: inherit;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
+    overflow: hidden;
+    color: var(--text-tertiary, var(--hint-color, #717C89));
+    font-size: 11px;
+    line-height: 1.3;
+    white-space: nowrap;
 }
 
-.showcase-geo-scope__btn.is-on {
-    background: var(--bg-color, #171d27);
-    color: var(--text-color, #e8eef7);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+.showcase-geo-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.showcase-geo-legend__item:first-child {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.showcase-geo-legend__sep {
+    flex: 0 0 auto;
+    opacity: 0.7;
+}
+
+.showcase-geo-legend__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.showcase-geo-legend__dot.is-active {
+    background: var(--accent-primary, #4C8DFF);
+}
+
+.showcase-geo-legend__dot.is-total {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px rgba(76, 141, 255, 0.72);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent-primary, #4C8DFF) 72%, #ffffff);
 }
 
 .showcase-geo-rows {
@@ -81,8 +100,8 @@
 
 .showcase-geo-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(48px, 1fr) auto;
-    gap: 8px;
+    grid-template-columns: auto minmax(24px, 1fr) auto;
+    gap: 6px;
     align-items: center;
     min-width: 0;
 }
@@ -91,6 +110,8 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    width: 112px;
+    max-width: 112px;
     min-width: 0;
 }
 
@@ -101,6 +122,8 @@
 }
 
 .showcase-geo-row__name {
+    display: block;
+    max-width: 90px;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -109,26 +132,51 @@
     font-weight: 600;
 }
 
-.showcase-geo-row__bar {
-    height: 6px;
-    border-radius: 3px;
-    background: rgba(148, 163, 184, 0.22);
+.geo-bar-track {
+    height: 7px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
     overflow: hidden;
 }
 
-.showcase-geo-row__bar > span {
-    display: block;
+.geo-bar-total {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 4px;
+    background: rgba(76, 141, 255, 0.28);
+    background: color-mix(in srgb, var(--accent-primary, #4C8DFF) 28%, transparent);
+    overflow: hidden;
+}
+
+.geo-bar-active {
+    height: 100%;
+    border-radius: 4px;
     background: var(--accent-primary, #4C8DFF);
 }
 
-.showcase-geo-row__meta {
-    font-size: 11px;
-    font-weight: 650;
+.geo-stat-nums {
+    width: 15ch;
+    max-width: 15ch;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: right;
     white-space: nowrap;
-    color: var(--text-secondary, var(--hint-color));
+}
+
+.geo-active-num {
+    font-weight: 600;
+    color: var(--accent-primary, #4C8DFF);
+}
+
+.geo-slash-total,
+.geo-percent {
+    color: var(--text-tertiary, var(--hint-color, #717C89));
+    font-weight: 500;
+}
+
+.geo-percent {
+    margin-left: 3px;
+    font-size: 11px;
 }
 
 .showcase-geo-skeleton {
@@ -383,6 +431,43 @@
 .showcase-geo-sheet.is-busy .showcase-geo-option:not(.is-pressed) {
     opacity: 0.55;
     pointer-events: none;
+}
+
+.market-owner-line {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.market-owner-line .market-owner {
+    min-width: 0;
+}
+
+button.market-bot-contact-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.market-bot-contact-dot span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #b9a16d;
+}
+
+.market-bot-contact-dot:focus-visible {
+    outline: 1px solid #b9a16d;
+    outline-offset: 1px;
 }
 
 .showcase-geo-list-sheet .showcase-geo-rows {

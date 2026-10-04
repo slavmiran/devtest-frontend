@@ -1,10 +1,8 @@
 (function () {
-    var STATS_KEY_PREFIX = 'showcase_geo_stats_v2_';
-    var SCOPE_KEY = 'showcase_geo_scope_v1';
+    var STATS_KEY = 'showcase_geo_stats_v3';
     var FREQUENT = ['RU', 'KZ', 'BY', 'VN', 'US', 'TR', 'UA', 'TH', 'ID', 'IN', 'UZ'];
     var profile = null;
-    var statsByScope = { all: null, active: null };
-    var scope = 'all';
+    var stats = null;
     var saving = false;
     var profileLoaded = false;
 
@@ -56,55 +54,49 @@
         return tr(value === 1 ? 'geoAllCountriesOne' : 'geoAllCountries', { count: value });
     }
 
-    function normalizeScope(value) {
-        return String(value || '').toLowerCase() === 'active' ? 'active' : 'all';
-    }
-
-    function currentStats() {
-        return statsByScope[scope];
-    }
-
-    function readSavedScope() {
+    function readStatsCache() {
         try {
-            return normalizeScope(sessionStorage.getItem(SCOPE_KEY) || 'all');
-        } catch (error) {
-            return 'all';
-        }
-    }
-
-    function writeSavedScope(value) {
-        try { sessionStorage.setItem(SCOPE_KEY, value); } catch (error) {}
-    }
-
-    function readStatsCache(forScope) {
-        try {
-            var raw = sessionStorage.getItem(STATS_KEY_PREFIX + forScope);
+            var raw = sessionStorage.getItem(STATS_KEY);
             var parsed = raw ? JSON.parse(raw) : null;
-            return Array.isArray(parsed) ? parsed : null;
+            return parsed && Array.isArray(parsed.countries) ? parsed : null;
         } catch (error) {
             return null;
         }
     }
 
-    function writeStatsCache(forScope, rows) {
+    function writeStatsCache(payload) {
         try {
-            sessionStorage.setItem(STATS_KEY_PREFIX + forScope, JSON.stringify(rows));
+            sessionStorage.setItem(STATS_KEY, JSON.stringify(payload));
         } catch (error) {}
     }
 
     function clearStatsCache() {
-        try {
-            sessionStorage.removeItem(STATS_KEY_PREFIX + 'all');
-            sessionStorage.removeItem(STATS_KEY_PREFIX + 'active');
-        } catch (error) {}
-        statsByScope.all = null;
-        statsByScope.active = null;
+        try { sessionStorage.removeItem(STATS_KEY); } catch (error) {}
+        stats = null;
     }
 
     function parseStatsPayload(payload) {
-        if (Array.isArray(payload)) return payload;
-        if (payload && Array.isArray(payload.countries)) return payload.countries;
-        return null;
+        if (!payload || !Array.isArray(payload.countries)) return null;
+        return {
+            countries: payload.countries,
+            total_active: Number(payload.total_active) || 0,
+            total_registered: Number(payload.total_registered) || 0,
+        };
+    }
+
+    function formatShare(value) {
+        var number = Number(value);
+        if (!isFinite(number)) return '0';
+        return (Math.round(number * 10) / 10).toFixed(1).replace(/\.0$/, '');
+    }
+
+    function maxCountryTotal(rows) {
+        var max = 0;
+        for (var i = 0; i < rows.length; i += 1) {
+            var total = Number(rows[i].total_count) || 0;
+            if (total > max) max = total;
+        }
+        return max;
     }
 
     function initData() {
@@ -127,15 +119,40 @@
         return (profile && profile.detected) || byCode(code) || { code: code, name: code, name_ru: code, flag: '' };
     }
 
-    function rowHtml(item) {
-        var percent = Math.max(0, Math.min(100, Number(item.percent) || 0));
+    function rowHtml(item, maxTotal) {
+        var total = Math.max(0, Number(item.total_count) || 0);
+        var active = Math.max(0, Math.min(total, Number(item.active_count) || 0));
+        var share = item.share_percent != null ? item.share_percent : (total ? (active * 100 / total) : 0);
+        var outer = maxTotal > 0 ? Math.max(0, Math.min(100, total / maxTotal * 100)) : 0;
+        var inner = total > 0 ? Math.max(0, Math.min(100, active / total * 100)) : 0;
         var name = displayName(item);
         return '<div class="showcase-geo-row">' +
             '<div class="showcase-geo-row__label"><span class="showcase-geo-row__flag">' + esc(item.flag || '') + '</span>' +
             '<span class="showcase-geo-row__name">' + esc(name) + '</span></div>' +
-            '<div class="showcase-geo-row__bar" aria-hidden="true"><span style="width:' + percent + '%"></span></div>' +
-            '<div class="showcase-geo-row__meta">' + esc(percent + '% (' + (item.count || 0) + ')') + '</div>' +
+            '<div class="geo-bar-track" aria-hidden="true"><div class="geo-bar-total" style="width:' + outer + '%">' +
+            '<div class="geo-bar-active" style="width:' + inner + '%"></div></div></div>' +
+            '<div class="geo-stat-nums"><span class="geo-active-num">' + active + '</span>' +
+            '<span class="geo-slash-total"> / ' + total + '</span>' +
+            '<span class="geo-percent">(' + esc(formatShare(share)) + '%)</span></div>' +
             '</div>';
+    }
+
+    function rowsHtml(rows, limit) {
+        var list = Array.isArray(rows) ? rows : [];
+        var visible = limit ? list.slice(0, limit) : list;
+        var maxTotal = maxCountryTotal(list);
+        return visible.map(function (item) { return rowHtml(item, maxTotal); }).join('');
+    }
+
+    function legendHtml() {
+        if (!stats) return '';
+        return '<p class="showcase-geo-legend">' +
+            '<span class="showcase-geo-legend__item"><i class="showcase-geo-legend__dot is-active" aria-hidden="true"></i>' +
+            esc(tr('geoLegendActive', { count: stats.total_active })) + '</span>' +
+            '<span class="showcase-geo-legend__sep" aria-hidden="true">·</span>' +
+            '<span class="showcase-geo-legend__item"><i class="showcase-geo-legend__dot is-total" aria-hidden="true"></i>' +
+            esc(tr('geoLegendAll', { count: stats.total_registered })) + '</span>' +
+            '</p>';
     }
 
     function plaqueHtml() {
@@ -155,25 +172,14 @@
             '</button>';
     }
 
-    function scopeToggleHtml() {
-        return '<div class="showcase-geo-scope" role="tablist">' +
-            '<button type="button" class="showcase-geo-scope__btn' + (scope === 'all' ? ' is-on' : '') + '" onclick="ShowcaseGeo.setScope(\'all\')">' +
-                esc(tr('geoScopeAll')) +
-            '</button>' +
-            '<button type="button" class="showcase-geo-scope__btn' + (scope === 'active' ? ' is-on' : '') + '" onclick="ShowcaseGeo.setScope(\'active\')">' +
-                esc(tr('geoScopeActive')) +
-            '</button>' +
-            '</div>';
-    }
-
     function renderWidget() {
         var root = document.getElementById('showcase-geo-widget');
         if (!root) return;
-        var rows = currentStats();
+        var rows = stats ? stats.countries : null;
         var body = rows === null
             ? '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'
             : (rows.length
-                ? '<div class="showcase-geo-rows">' + rows.slice(0, 5).map(rowHtml).join('') + '</div>'
+                ? '<div class="showcase-geo-rows">' + rowsHtml(rows, 5) + '</div>'
                 : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>');
         root.innerHTML =
             '<div class="showcase-geo-widget__head">' +
@@ -182,7 +188,7 @@
                     esc(countryCountLabel(rows ? rows.length : 0)) +
                 '</button>' +
             '</div>' +
-            scopeToggleHtml() +
+            legendHtml() +
             body +
             plaqueHtml();
     }
@@ -190,13 +196,13 @@
     function renderCommunityList() {
         var body = document.getElementById('showcase-geo-list-body');
         if (!body) return;
-        var rows = currentStats();
+        var rows = stats ? stats.countries : null;
         var list = Array.isArray(rows) && rows.length
-            ? '<div class="showcase-geo-rows">' + rows.map(rowHtml).join('') + '</div>'
+            ? '<div class="showcase-geo-rows">' + rowsHtml(rows) + '</div>'
             : (rows === null
                 ? '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'
                 : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>');
-        body.innerHTML = scopeToggleHtml() + list;
+        body.innerHTML = legendHtml() + list;
     }
 
     function countryLabel(item) {
@@ -322,50 +328,37 @@
     }
 
     async function loadStats(force) {
-        var forScope = scope;
         if (!force) {
-            var cached = statsByScope[forScope] || readStatsCache(forScope);
+            var cached = stats || readStatsCache();
             if (cached) {
-                statsByScope[forScope] = cached;
+                stats = cached;
                 renderWidget();
                 renderCommunityList();
                 return;
             }
         }
-        if (statsByScope[forScope] === null) {
+        if (!stats) {
             renderWidget();
             renderCommunityList();
         }
-        var response = await fetch(apiBase() + '/stats/countries?scope=' + encodeURIComponent(forScope) + '&init_data=' + encodeURIComponent(initData()));
+        var response = await fetch(apiBase() + '/stats/countries?init_data=' + encodeURIComponent(initData()));
         if (!response.ok) {
-            if (statsByScope[forScope] === null) statsByScope[forScope] = [];
+            if (!stats) stats = { countries: [], total_active: 0, total_registered: 0 };
             renderWidget();
             renderCommunityList();
             return;
         }
-        var rows = parseStatsPayload(await response.json());
-        if (!rows) {
-            if (statsByScope[forScope] === null) statsByScope[forScope] = [];
+        var payload = parseStatsPayload(await response.json());
+        if (!payload) {
+            if (!stats) stats = { countries: [], total_active: 0, total_registered: 0 };
             renderWidget();
             renderCommunityList();
             return;
         }
-        statsByScope[forScope] = rows;
-        writeStatsCache(forScope, rows);
-        if (scope !== forScope) return;
+        stats = payload;
+        writeStatsCache(payload);
         renderWidget();
         renderCommunityList();
-    }
-
-    function setScope(next) {
-        var normalized = normalizeScope(next);
-        if (normalized === scope) return;
-        scope = normalized;
-        writeSavedScope(scope);
-        haptic('impact');
-        renderWidget();
-        renderCommunityList();
-        loadStats(false).catch(function () {});
     }
 
     async function choose(code) {
@@ -452,9 +445,7 @@
             return;
         }
         root.setAttribute('data-ready', '1');
-        scope = readSavedScope();
-        statsByScope.all = readStatsCache('all');
-        statsByScope.active = readStatsCache('active');
+        stats = readStatsCache();
         renderWidget();
         loadProfile().catch(function () {});
         loadStats(false).catch(function () {});
@@ -462,7 +453,6 @@
 
     window.ShowcaseGeo = {
         mount: mount,
-        setScope: setScope,
         openPicker: openPicker,
         closePicker: closePicker,
         openCommunityList: openCommunityList,
@@ -474,7 +464,6 @@
         },
         filterPicker: function (value) { renderPicker(value); },
         _profile: function () { return profile; },
-        _stats: function () { return currentStats(); },
-        _scope: function () { return scope; },
+        _stats: function () { return stats; },
     };
 })();
