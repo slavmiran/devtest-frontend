@@ -266,6 +266,20 @@
     font-weight: 600;
 }
 
+.checkin-proof-bonus-chip.is-active.is-boosted {
+    background: rgba(10, 132, 255, 0.18);
+    border: 1px solid rgba(10, 132, 255, 0.65);
+    color: #70d7ff;
+    box-shadow: 0 0 10px rgba(10, 132, 255, 0.3);
+}
+
+.checkin-proof-bonus-chip.is-active.is-boosted.is-max {
+    background: rgba(255, 200, 30, 0.16);
+    border: 1px solid rgba(255, 214, 10, 0.7);
+    color: #ffd60a;
+    box-shadow: 0 0 12px rgba(255, 214, 10, 0.35);
+}
+
 .checkin-proof-bonus-chip.is-active .checkin-proof-karma-icon {
     opacity: 1;
 }
@@ -279,25 +293,57 @@
 }
 
 .checkin-proof-segments {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
     height: 4px;
 }
 
+.checkin-proof-segments-base {
+    display: flex;
+    gap: 5px;
+    flex: 3;
+    height: 100%;
+}
+
+.checkin-proof-segments-extra {
+    display: flex;
+    gap: 5px;
+    flex: 2;
+    height: 100%;
+}
+
 .checkin-proof-segment {
+    flex: 1;
     height: 100%;
     border-radius: 2px;
     background: rgba(255, 255, 255, 0.1);
-    transition: background 0.3s ease;
+    transition: background 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
 }
 
 .checkin-proof-segment.is-filled {
     background: var(--accent-primary, var(--button-color, #0a84ff));
 }
 
-.checkin-proof-upload-status.is-bonus .checkin-proof-segment.is-filled {
+/* Extra segments: calm & subtle when empty, vibrant when unlocked */
+.checkin-proof-segment.is-extra {
+    background: rgba(255, 255, 255, 0.05);
+    opacity: 0.45;
+}
+
+.checkin-proof-segment.is-extra.is-filled {
+    opacity: 1;
+    background: linear-gradient(90deg, #0a84ff, #2ac9de);
+    box-shadow: 0 0 6px rgba(42, 201, 222, 0.45);
+}
+
+.checkin-proof-segments-extra .checkin-proof-segment.is-extra:last-child.is-filled {
+    background: linear-gradient(90deg, #2ac9de, #ffd60a);
+    box-shadow: 0 0 6px rgba(255, 214, 10, 0.45);
+}
+
+.checkin-proof-upload-status.is-bonus .checkin-proof-segment.is-filled:not(.is-extra) {
     background: var(--accent-primary, var(--button-color, #0a84ff));
 }
 

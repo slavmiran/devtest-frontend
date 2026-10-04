@@ -1,5 +1,5 @@
 (function () {
-    var STATS_KEY = 'showcase_geo_stats_v1';
+    var STATS_KEY = 'showcase_geo_stats_v3';
     var FREQUENT = ['RU', 'KZ', 'BY', 'VN', 'US', 'TR', 'UA', 'TH', 'ID', 'IN', 'UZ'];
     var profile = null;
     var stats = null;
@@ -58,20 +58,45 @@
         try {
             var raw = sessionStorage.getItem(STATS_KEY);
             var parsed = raw ? JSON.parse(raw) : null;
-            return Array.isArray(parsed) ? parsed : null;
+            return parsed && Array.isArray(parsed.countries) ? parsed : null;
         } catch (error) {
             return null;
         }
     }
 
-    function writeStatsCache(rows) {
+    function writeStatsCache(payload) {
         try {
-            sessionStorage.setItem(STATS_KEY, JSON.stringify(rows));
+            sessionStorage.setItem(STATS_KEY, JSON.stringify(payload));
         } catch (error) {}
     }
 
     function clearStatsCache() {
         try { sessionStorage.removeItem(STATS_KEY); } catch (error) {}
+        stats = null;
+    }
+
+    function parseStatsPayload(payload) {
+        if (!payload || !Array.isArray(payload.countries)) return null;
+        return {
+            countries: payload.countries,
+            total_active: Number(payload.total_active) || 0,
+            total_registered: Number(payload.total_registered) || 0,
+        };
+    }
+
+    function formatShare(value) {
+        var number = Number(value);
+        if (!isFinite(number)) return '0';
+        return (Math.round(number * 10) / 10).toFixed(1).replace(/\.0$/, '');
+    }
+
+    function maxCountryTotal(rows) {
+        var max = 0;
+        for (var i = 0; i < rows.length; i += 1) {
+            var total = Number(rows[i].total_count) || 0;
+            if (total > max) max = total;
+        }
+        return max;
     }
 
     function initData() {
@@ -94,15 +119,40 @@
         return (profile && profile.detected) || byCode(code) || { code: code, name: code, name_ru: code, flag: '' };
     }
 
-    function rowHtml(item) {
-        var percent = Math.max(0, Math.min(100, Number(item.percent) || 0));
+    function rowHtml(item, maxTotal) {
+        var total = Math.max(0, Number(item.total_count) || 0);
+        var active = Math.max(0, Math.min(total, Number(item.active_count) || 0));
+        var share = item.share_percent != null ? item.share_percent : (total ? (active * 100 / total) : 0);
+        var outer = maxTotal > 0 ? Math.max(0, Math.min(100, total / maxTotal * 100)) : 0;
+        var inner = total > 0 ? Math.max(0, Math.min(100, active / total * 100)) : 0;
         var name = displayName(item);
         return '<div class="showcase-geo-row">' +
             '<div class="showcase-geo-row__label"><span class="showcase-geo-row__flag">' + esc(item.flag || '') + '</span>' +
             '<span class="showcase-geo-row__name">' + esc(name) + '</span></div>' +
-            '<div class="showcase-geo-row__bar" aria-hidden="true"><span style="width:' + percent + '%"></span></div>' +
-            '<div class="showcase-geo-row__meta">' + esc(percent + '% (' + (item.count || 0) + ')') + '</div>' +
+            '<div class="geo-bar-track" aria-hidden="true"><div class="geo-bar-total" style="width:' + outer + '%">' +
+            '<div class="geo-bar-active" style="width:' + inner + '%"></div></div></div>' +
+            '<div class="geo-stat-nums"><span class="geo-active-num">' + active + '</span>' +
+            '<span class="geo-slash-total"> / ' + total + '</span>' +
+            '<span class="geo-percent">(' + esc(formatShare(share)) + '%)</span></div>' +
             '</div>';
+    }
+
+    function rowsHtml(rows, limit) {
+        var list = Array.isArray(rows) ? rows : [];
+        var visible = limit ? list.slice(0, limit) : list;
+        var maxTotal = maxCountryTotal(list);
+        return visible.map(function (item) { return rowHtml(item, maxTotal); }).join('');
+    }
+
+    function legendHtml() {
+        if (!stats) return '';
+        return '<p class="showcase-geo-legend">' +
+            '<span class="showcase-geo-legend__item"><i class="showcase-geo-legend__dot is-active" aria-hidden="true"></i>' +
+            esc(tr('geoLegendActive', { count: stats.total_active })) + '</span>' +
+            '<span class="showcase-geo-legend__sep" aria-hidden="true">·</span>' +
+            '<span class="showcase-geo-legend__item"><i class="showcase-geo-legend__dot is-total" aria-hidden="true"></i>' +
+            esc(tr('geoLegendAll', { count: stats.total_registered })) + '</span>' +
+            '</p>';
     }
 
     function plaqueHtml() {
@@ -111,9 +161,12 @@
         }
         var play = selectedPlay();
         if (play) {
-            return '<button type="button" class="showcase-geo-me" onclick="ShowcaseGeo.openPicker()">' +
-                '<span class="showcase-geo-me__copy">📍 ' + esc(tr('geoPlayCountryLabel')) + ': <strong>' +
-                esc((play.flag ? play.flag + ' ' : '') + displayName(play)) + '</strong> ▾ (' + esc(tr('geoPlayCountryChange')) + ')</span>' +
+            return '<button type="button" class="showcase-geo-me is-set" onclick="ShowcaseGeo.openPicker()">' +
+                '<span class="showcase-geo-me__copy">' +
+                    '<span class="showcase-geo-me__label">' + esc(tr('geoPlayCountryLabel')) + '</span>' +
+                    '<strong class="showcase-geo-me__value">' + esc((play.flag ? play.flag + ' ' : '') + displayName(play)) + '</strong>' +
+                '</span>' +
+                '<span class="showcase-geo-me__action is-ghost">' + esc(tr('geoPlayCountryChange')) + '</span>' +
                 '</button>';
         }
         return '<button type="button" class="showcase-geo-me is-empty" onclick="ShowcaseGeo.openPicker()">' +
@@ -125,11 +178,11 @@
     function renderWidget() {
         var root = document.getElementById('showcase-geo-widget');
         if (!root) return;
-        var rows = Array.isArray(stats) ? stats : null;
+        var rows = stats ? stats.countries : null;
         var body = rows === null
             ? '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'
             : (rows.length
-                ? '<div class="showcase-geo-rows">' + rows.slice(0, 5).map(rowHtml).join('') + '</div>'
+                ? '<div class="showcase-geo-rows">' + rowsHtml(rows, 5) + '</div>'
                 : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>');
         root.innerHTML =
             '<div class="showcase-geo-widget__head">' +
@@ -138,6 +191,7 @@
                     esc(countryCountLabel(rows ? rows.length : 0)) +
                 '</button>' +
             '</div>' +
+            legendHtml() +
             body +
             plaqueHtml();
     }
@@ -145,25 +199,78 @@
     function renderCommunityList() {
         var body = document.getElementById('showcase-geo-list-body');
         if (!body) return;
-        var rows = Array.isArray(stats) ? stats : [];
-        body.innerHTML = rows.length
-            ? '<div class="showcase-geo-rows">' + rows.map(rowHtml).join('') + '</div>'
-            : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>';
+        var rows = stats ? stats.countries : null;
+        var list = Array.isArray(rows) && rows.length
+            ? '<div class="showcase-geo-rows">' + rowsHtml(rows) + '</div>'
+            : (rows === null
+                ? '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'
+                : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>');
+        body.innerHTML = legendHtml() + list;
+    }
+
+    function countryLabel(item) {
+        if (!item) return '';
+        return (item.flag ? item.flag + ' ' : '') + displayName(item);
+    }
+
+    function markChoice(code) {
+        var wanted = String(code || '').toUpperCase();
+        var nodes = document.querySelectorAll('[data-geo-code]');
+        for (var i = 0; i < nodes.length; i += 1) {
+            var on = String(nodes[i].getAttribute('data-geo-code') || '').toUpperCase() === wanted;
+            nodes[i].classList.toggle('is-selected', on);
+            nodes[i].classList.toggle('is-pressed', on);
+        }
+        var currentNode = document.getElementById('showcase-geo-current');
+        var item = byCode(wanted);
+        if (currentNode && item) {
+            currentNode.hidden = false;
+            currentNode.innerHTML =
+                '<span>' + esc(tr('geoCurrentCountry')) + '</span>' +
+                '<strong>' + esc(countryLabel(item)) + '</strong>';
+        }
+    }
+
+    function haptic(kind) {
+        try {
+            if (window.tg && window.tg.HapticFeedback) {
+                if (kind === 'success' && window.tg.HapticFeedback.notificationOccurred) {
+                    window.tg.HapticFeedback.notificationOccurred('success');
+                } else if (window.tg.HapticFeedback.impactOccurred) {
+                    window.tg.HapticFeedback.impactOccurred('light');
+                }
+            }
+        } catch (error) {}
     }
 
     function renderPicker(query) {
+        var play = selectedPlay();
         var detected = detectedCountry();
+        var selected = play ? String(play.code || '').toUpperCase() : '';
+        var currentNode = document.getElementById('showcase-geo-current');
         var detectedNode = document.getElementById('showcase-geo-detected');
         var frequentNode = document.getElementById('showcase-geo-frequent');
         var listNode = document.getElementById('showcase-geo-options');
         var needle = String(query || '').trim().toLowerCase();
+        if (currentNode) {
+            if (play) {
+                currentNode.hidden = false;
+                currentNode.innerHTML =
+                    '<span>' + esc(tr('geoCurrentCountry')) + '</span>' +
+                    '<strong>' + esc(countryLabel(play)) + '</strong>';
+            } else {
+                currentNode.hidden = true;
+                currentNode.innerHTML = '';
+            }
+        }
         if (detectedNode) {
-            if (detected) {
-                var label = (detected.flag ? detected.flag + ' ' : '') + displayName(detected);
+            var detectedCode = detected ? String(detected.code || '').toUpperCase() : '';
+            if (detected && detectedCode !== selected) {
+                var label = countryLabel(detected);
                 detectedNode.hidden = false;
                 detectedNode.innerHTML =
                     '<p>📍 ' + esc(tr('geoDetectedQuickAction', { country: label })) + '</p>' +
-                    '<button type="button" class="btn btn-primary" onclick="ShowcaseGeo.useDetected()">' +
+                    '<button type="button" class="btn btn-primary" data-geo-code="' + esc(detectedCode) + '" onclick="ShowcaseGeo.useDetected()">' +
                         esc(tr('geoUseDetectedBtn', { country: label })) +
                     '</button>';
             } else {
@@ -171,13 +278,13 @@
                 detectedNode.innerHTML = '';
             }
         }
-        var selected = String((profile && profile.google_play_country) || '').toUpperCase();
         if (frequentNode) {
             frequentNode.innerHTML = FREQUENT.map(function (code) {
                 var item = byCode(code);
                 if (!item) return '';
-                return '<button type="button" class="showcase-geo-chip" onclick="ShowcaseGeo.choose(\'' + code + '\')">' +
-                    esc((item.flag ? item.flag + ' ' : '') + displayName(item)) + '</button>';
+                var selectedClass = code === selected ? ' is-selected' : '';
+                return '<button type="button" class="showcase-geo-chip' + selectedClass + '" data-geo-code="' + code + '" onclick="ShowcaseGeo.choose(\'' + code + '\')">' +
+                    esc(countryLabel(item)) + '</button>';
             }).join('');
         }
         if (!listNode) return;
@@ -191,12 +298,19 @@
         });
         listNode.innerHTML = rows.map(function (item) {
             var selectedClass = item.code === selected ? ' is-selected' : '';
-            return '<button type="button" class="showcase-geo-option' + selectedClass + '" onclick="ShowcaseGeo.choose(\'' + item.code + '\')">' +
+            return '<button type="button" class="showcase-geo-option' + selectedClass + '" data-geo-code="' + item.code + '" onclick="ShowcaseGeo.choose(\'' + item.code + '\')">' +
                 '<span>' + esc(item.flag || '') + '</span>' +
                 '<span>' + esc(displayName(item)) + '</span>' +
                 '<span class="showcase-geo-option__code">' + esc(item.code) + '</span>' +
                 '</button>';
         }).join('') || '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>';
+        if (selected && !needle) {
+            var selectedRow = listNode.querySelector('.showcase-geo-option.is-selected');
+            if (selectedRow) {
+                var top = selectedRow.offsetTop - Math.max(0, (listNode.clientHeight - selectedRow.offsetHeight) / 2);
+                listNode.scrollTop = Math.max(0, top);
+            }
+        }
     }
 
     async function loadProfile() {
@@ -218,32 +332,36 @@
 
     async function loadStats(force) {
         if (!force) {
-            var cached = readStatsCache();
+            var cached = stats || readStatsCache();
             if (cached) {
                 stats = cached;
                 renderWidget();
+                renderCommunityList();
                 return;
             }
         }
-        if (!stats) renderWidget();
+        if (!stats) {
+            renderWidget();
+            renderCommunityList();
+        }
         var response = await fetch(apiBase() + '/stats/countries?init_data=' + encodeURIComponent(initData()));
         if (!response.ok) {
-            if (stats === null) stats = [];
+            if (!stats) stats = { countries: [], total_active: 0, total_registered: 0 };
             renderWidget();
+            renderCommunityList();
             return;
         }
-        var payload = await response.json();
-        if (!Array.isArray(payload)) {
-            if (stats === null) stats = [];
+        var payload = parseStatsPayload(await response.json());
+        if (!payload) {
+            if (!stats) stats = { countries: [], total_active: 0, total_registered: 0 };
             renderWidget();
+            renderCommunityList();
             return;
         }
         stats = payload;
         writeStatsCache(payload);
         renderWidget();
-        if (document.getElementById('showcase-geo-list-modal') && document.getElementById('showcase-geo-list-modal').classList.contains('active')) {
-            renderCommunityList();
-        }
+        renderCommunityList();
     }
 
     async function choose(code) {
@@ -252,6 +370,10 @@
         if (!normalized || !item || saving) return;
         var previous = profile;
         saving = true;
+        haptic('impact');
+        markChoice(normalized);
+        var sheet = document.querySelector('#showcase-geo-picker-modal .showcase-geo-sheet');
+        if (sheet) sheet.classList.add('is-busy');
         profile = Object.assign({}, profile || {}, {
             google_play_country: normalized,
             google_play: item,
@@ -271,16 +393,19 @@
             if (payload.detected_country) profile.detected_country = payload.detected_country;
             if (window.App) window.App.googlePlayCountry = profile.google_play_country;
             clearStatsCache();
+            await new Promise(function (resolve) { setTimeout(resolve, 180); });
             closePicker();
-            if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
+            haptic('success');
             if (typeof showToast === 'function') showToast(tr('geoSavedToast'));
             await loadStats(true);
         } catch (error) {
             profile = previous;
             renderWidget();
+            renderPicker((document.getElementById('showcase-geo-search') || {}).value || '');
             if (typeof showToast === 'function') showToast(tr('geoSaveError'));
         } finally {
             saving = false;
+            if (sheet) sheet.classList.remove('is-busy');
         }
     }
 

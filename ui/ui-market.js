@@ -899,6 +899,9 @@ function renderFeedCard(item, kind) {
     const blockedChip = blockedByMe
         ? `<span class="meta-chip accent-red">${window.escapeHTML(window.t('blacklistMarketChip', {}, lang))}</span>`
         : '';
+    const botContactChip = item.owner_bot_unreachable === true
+        ? `<button type="button" class="market-bot-contact-dot" aria-label="${window.escapeHTML(window.t('marketBotUnreachableHint', {}, lang))}" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('marketBotUnreachableHint', {}, lang))}', 6000)"><span aria-hidden="true"></span></button>`
+        : '';
 
     if (kind === 'mutual-seeking' && !isOwnProject && !hasAccessIssue) {
         const hasAvailableMutual = typeof window.getAvailableMutualProjectsForOwner === 'function'
@@ -1006,7 +1009,7 @@ function renderFeedCard(item, kind) {
             <div class="market-top">
                 <div>
                     <div class="card-title notranslate">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
-                    <div class="market-owner notranslate" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
+                    <div class="market-owner-line"><div class="market-owner notranslate" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>${botContactChip}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                     ${langBadge}

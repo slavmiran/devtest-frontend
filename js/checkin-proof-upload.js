@@ -126,22 +126,46 @@ function _renderCheckinProofProgress(count) {
     var displayedMax = safeCount > 3 ? CHECKIN_PROOF_MAX_FILES : maxTarget;
     var countText = safeCount + ' ' + window.t('checkinProofOf', {}, lang) + ' ' + displayedMax;
 
-    var chipClass = isBonus ? 'checkin-proof-bonus-chip is-active' : 'checkin-proof-bonus-chip is-inactive';
-    var chipText = isBonus
-        ? window.t('checkinProofBonusActive', { karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang)
-        : window.t('checkinProofBonusInactive', { karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang);
+    var bonusAmountFormatted = (lang === 'ru') ? '0,3' : '0.3';
+    if (safeCount >= 5) {
+        bonusAmountFormatted = (lang === 'ru') ? '0,5' : '0.5';
+    } else if (safeCount === 4) {
+        bonusAmountFormatted = (lang === 'ru') ? '0,4' : '0.4';
+    }
+
+    var chipClass = 'checkin-proof-bonus-chip is-inactive';
+    var chipText = '';
+    if (!isBonus) {
+        chipClass = 'checkin-proof-bonus-chip is-inactive';
+        chipText = window.t('checkinProofBonusInactive', { karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang);
+    } else if (safeCount === 3) {
+        chipClass = 'checkin-proof-bonus-chip is-active';
+        chipText = window.t('checkinProofBonusActive', { amount: bonusAmountFormatted, karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang);
+    } else if (safeCount === 4) {
+        chipClass = 'checkin-proof-bonus-chip is-active is-boosted';
+        chipText = window.t('checkinProofBonusActive', { amount: bonusAmountFormatted, karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang);
+    } else {
+        chipClass = 'checkin-proof-bonus-chip is-active is-boosted is-max';
+        chipText = window.t('checkinProofBonusMax', { amount: bonusAmountFormatted, karmaIcon: CHECKIN_PROOF_KARMA_ICON_HTML }, lang);
+    }
 
     var seg1 = safeCount >= 1 ? ' is-filled' : '';
     var seg2 = safeCount >= 2 ? ' is-filled' : '';
     var seg3 = safeCount >= 3 ? ' is-filled' : '';
+    var seg4 = safeCount >= 4 ? ' is-filled' : '';
+    var seg5 = safeCount >= 5 ? ' is-filled' : '';
 
     var noteText = '';
     if (safeCount === 1) {
         noteText = window.t('checkinProofProgressNote1', {}, lang);
     } else if (safeCount === 2) {
         noteText = window.t('checkinProofProgressNote2', {}, lang);
-    } else {
+    } else if (safeCount === 3) {
         noteText = window.t('checkinProofProgressNoteBonus', {}, lang);
+    } else if (safeCount === 4) {
+        noteText = window.t('checkinProofProgressNoteBonus4', {}, lang);
+    } else {
+        noteText = window.t('checkinProofProgressNoteBonus5', {}, lang);
     }
 
     return (
@@ -156,9 +180,15 @@ function _renderCheckinProofProgress(count) {
                 '</div>' +
             '</div>' +
             '<div class="checkin-proof-segments" aria-hidden="true">' +
-                '<span class="checkin-proof-segment' + seg1 + '"></span>' +
-                '<span class="checkin-proof-segment' + seg2 + '"></span>' +
-                '<span class="checkin-proof-segment' + seg3 + '"></span>' +
+                '<div class="checkin-proof-segments-base">' +
+                    '<span class="checkin-proof-segment' + seg1 + '"></span>' +
+                    '<span class="checkin-proof-segment' + seg2 + '"></span>' +
+                    '<span class="checkin-proof-segment' + seg3 + '"></span>' +
+                '</div>' +
+                '<div class="checkin-proof-segments-extra">' +
+                    '<span class="checkin-proof-segment is-extra' + seg4 + '"></span>' +
+                    '<span class="checkin-proof-segment is-extra' + seg5 + '"></span>' +
+                '</div>' +
             '</div>' +
             '<div class="checkin-proof-progress-note">' +
                 noteText +
@@ -173,8 +203,12 @@ function _updateCheckinProofFileStatus() {
         _setCheckinProofStatus('', '');
     } else if (count < 3) {
         _setCheckinProofStatus(_renderCheckinProofProgress(count), 'incentive');
-    } else {
+    } else if (count === 3) {
         _setCheckinProofStatus(_renderCheckinProofProgress(count), 'bonus');
+    } else if (count === 4) {
+        _setCheckinProofStatus(_renderCheckinProofProgress(count), 'bonus bonus-boost');
+    } else {
+        _setCheckinProofStatus(_renderCheckinProofProgress(count), 'bonus bonus-max');
     }
 }
 
@@ -416,8 +450,9 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     var safeCount = Number(screenshotCount || (result && result.proof && result.proof.media_count) || 1);
     if (safeCount >= 3) {
         checkin.screenshot_count = safeCount;
-        if (!checkin.earned_karma || Number(checkin.earned_karma) < 0.3) {
-            checkin.earned_karma = 0.3;
+        var expectedBonus = safeCount >= 5 ? 0.5 : (safeCount === 4 ? 0.4 : 0.3);
+        if (!checkin.earned_karma || Number(checkin.earned_karma) < expectedBonus) {
+            checkin.earned_karma = expectedBonus;
         }
     }
     var test = _checkinProofTest(appId);
