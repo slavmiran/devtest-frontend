@@ -179,6 +179,12 @@
     flex-direction: column;
     max-height: min(86vh, 720px);
     padding: 8px 14px 16px;
+    overflow: hidden;
+}
+
+#showcase-geo-picker-modal .modal-content,
+#showcase-geo-list-modal .modal-content {
+    overflow: hidden;
 }
 
 .showcase-geo-sheet__handle {
@@ -190,11 +196,13 @@
 }
 
 .showcase-geo-sheet h3 {
+    flex-shrink: 0;
     margin: 0 0 6px;
     font-size: 18px;
 }
 
 .showcase-geo-sheet__hint {
+    flex-shrink: 0;
     margin: 0 0 12px;
     font-size: 13px;
     line-height: 1.4;
@@ -202,6 +210,7 @@
 }
 
 .showcase-geo-detected {
+    flex-shrink: 0;
     margin-bottom: 12px;
     padding: 12px;
     border-radius: 14px;
@@ -220,11 +229,13 @@
 }
 
 .showcase-geo-search {
+    flex-shrink: 0;
     width: 100%;
     margin-bottom: 10px;
 }
 
 .showcase-geo-frequent-label {
+    flex-shrink: 0;
     margin: 0 0 6px;
     font-size: 12px;
     font-weight: 700;
@@ -233,10 +244,11 @@
 
 .showcase-geo-frequent {
     display: flex;
+    flex-wrap: wrap;
+    flex-shrink: 0;
     gap: 6px;
     margin: 0 0 10px;
-    overflow-x: auto;
-    padding-bottom: 2px;
+    overflow: visible;
 }
 
 .showcase-geo-chip,
@@ -249,16 +261,20 @@
 
 .showcase-geo-chip {
     flex: 0 0 auto;
+    min-height: 32px;
     padding: 6px 10px;
     border-radius: 999px;
+    color: var(--text-color, inherit);
     font-size: 13px;
     font-weight: 650;
+    line-height: 1.2;
     white-space: nowrap;
 }
 
 .showcase-geo-options {
-    overflow-y: auto;
+    flex: 1 1 auto;
     min-height: 120px;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 4px;
