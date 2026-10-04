@@ -1106,6 +1106,16 @@
     gap: 6px;
     min-width: 0;
 }
+#feedback-reward-modal .feedback-reward-summary-contrib {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 750;
+}
 #feedback-reward-modal .feedback-reward-summary-bust {
     display: inline-flex;
     align-items: center;
@@ -1135,6 +1145,7 @@
     font-size: 12px;
     color: #7d8796;
 }
+#feedback-reward-modal .feedback-reward-summary-contrib[hidden],
 #feedback-reward-modal .feedback-reward-summary-bust[hidden],
 #feedback-reward-modal .feedback-reward-summary-karma[hidden],
 #feedback-reward-modal .feedback-reward-summary-empty[hidden] {
