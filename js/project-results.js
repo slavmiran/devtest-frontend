@@ -651,6 +651,7 @@
 
         if (initialTab && (initialTab === 'overview' || initialTab === 'countries' || initialTab === 'android' || initialTab === 'models')) {
             _activeCoverageTab = initialTab;
+            if (initialTab === 'countries') _activeCoverageScope = 'all';
         } else {
             _activeCoverageTab = 'overview';
         }
@@ -687,7 +688,6 @@
             _activeCoverageData = cached.data;
             renderCoverageScreen(body, cached.data);
             applyNewModelFocus(body);
-            markProjectCoverageSeen(_activeCoverageAppId, { countries: cached.data.countries });
 
             var ageMs = Date.now() - (cached.timestamp || 0);
             if (ageMs < 60000 && !forceReload) {
@@ -701,7 +701,6 @@
                     tagCoverageNewModels(_activeCoverageAppId, fresh);
                     _activeCoverageData = fresh;
                     renderCoverageScreen(body, fresh);
-                    markProjectCoverageSeen(_activeCoverageAppId, { countries: fresh.countries });
                 }
             }).catch(function (e) {
                 console.warn('Background coverage revalidation failed:', e);
@@ -718,7 +717,6 @@
             _activeCoverageData = coverage;
             renderCoverageScreen(body, coverage);
             applyNewModelFocus(body);
-            markProjectCoverageSeen(_activeCoverageAppId, { countries: coverage.countries });
         } catch (err) {
             console.error('Failed to load project coverage:', err);
             renderCoverageError(body, err);
@@ -920,12 +918,17 @@
 
         var countriesLineHtml = '';
         if (countries.length > 0) {
+            var seenCountries = getProjectResultsSeenState(_activeCoverageAppId).seen_countries.map(function (code) { return String(code).toUpperCase(); });
+            var hasNewCountries = false;
             var countryPills = countries.map(function (c) {
                 var cName = (lang === 'ru' ? c.name_ru : c.name) || c.code;
-                return '<span class="coverage-country-pill" title="' + window.escapeHTML(cName + ' (' + c.testers_count + ')') + '">' +
+                var isNew = seenCountries.indexOf(String(c.code).toUpperCase()) < 0;
+                hasNewCountries = hasNewCountries || isNew;
+                return '<button type="button" class="coverage-country-pill' + (isNew ? ' is-new-country' : '') + '" data-country="' + window.escapeHTML(c.code) + '" onclick="markCoverageCountryViewed(this.getAttribute(\'data-country\'))" title="' + window.escapeHTML(cName + (isNew ? ' · ' + window.t('coverageCountryMarkViewed', {}, lang) : '')) + '">' +
                     '<span class="coverage-country-flag" aria-hidden="true">' + (c.flag || '🌐') + '</span> ' +
-                    '<strong>' + window.escapeHTML(c.code) + '</strong>' +
-                '</span>';
+                    '<strong>' + window.escapeHTML(cName) + '</strong>' +
+                    (isNew ? '<small>' + window.escapeHTML(window.t('coverageCountryNew', {}, lang)) + '</small>' : '') +
+                '</button>';
             }).join('<span class="coverage-country-sep">·</span>');
 
             var cCount = Number((data.stats && data.stats.countries_count) || countries.length);
@@ -937,7 +940,8 @@
                 '<div class="coverage-cockpit-countries">' +
                     '<div class="coverage-cockpit-countries__list">' + countryPills + '</div>' +
                     '<span class="coverage-cockpit-countries__badge">🌐 ' + cCount + ' ' + window.escapeHTML(cWord) + '</span>' +
-                '</div>'
+                '</div>' +
+                (hasNewCountries ? '<div class="coverage-countries-help">' + window.escapeHTML(window.t('coverageCountrySeenHint', {}, lang)) + '<button type="button" class="coverage-mark-all-seen" onclick="markCoverageCountryViewed()">' + window.escapeHTML(window.t('coverageCountriesMarkAll', {}, lang)) + '</button></div>' : '')
             );
         }
 
@@ -1517,7 +1521,7 @@
                     '<div class="coverage-tools">' +
                     filterPillsHtml +
                     brandFilterHtml +
-                    (cockpitHtml ? '<details class="coverage-distribution"><summary>' + window.escapeHTML(window.t('coverageAndroidVersionsAndGeography', {}, lang) || (lang === 'ru' ? 'Версии Android и география' : 'Android versions & geography')) + '<span>⌄</span></summary>' + cockpitHtml + '</details>' : '') +
+                    (cockpitHtml ? '<details class="coverage-distribution"' + (_activeCoverageTab === 'countries' ? ' open' : '') + '><summary>' + window.escapeHTML(window.t('coverageAndroidVersionsAndGeography', {}, lang) || (lang === 'ru' ? 'Версии Android и география' : 'Android versions & geography')) + '<span>⌄</span></summary>' + cockpitHtml + '</details>' : '') +
                     '</div>' +
                     deviceCardsHtml +
                 '</div>' +
@@ -1529,6 +1533,12 @@
         }
         bindCoverageScrollHeader(container);
         hydrateCoverageThumbnails(container);
+        if (_activeCoverageTab === 'countries') {
+            var countryTarget = container.querySelector('.is-new-country') || container.querySelector('.coverage-cockpit-countries');
+            if (countryTarget && typeof countryTarget.scrollIntoView === 'function') {
+                countryTarget.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+            }
+        }
     }
 
     function selectCoverageModelFilter(filter) {
@@ -1546,6 +1556,16 @@
         if (!_activeCoverageAppId || !_activeCoverageData) return;
         markProjectCoverageSeen(_activeCoverageAppId, { models: _activeCoverageData.models || [] });
         tagCoverageNewModels(_activeCoverageAppId, _activeCoverageData);
+        var body = document.getElementById('project-coverage-body');
+        if (body) renderCoverageScreen(body, _activeCoverageData);
+    }
+
+    function markCoverageCountryViewed(code) {
+        if (!_activeCoverageData || !_activeCoverageAppId) return;
+        var countries = (_activeCoverageData.countries || []).filter(function (country) {
+            return country && country.code && country.code !== 'unknown' && (!code || String(country.code).toUpperCase() === String(code).toUpperCase());
+        });
+        markProjectCoverageSeen(_activeCoverageAppId, { countries: countries });
         var body = document.getElementById('project-coverage-body');
         if (body) renderCoverageScreen(body, _activeCoverageData);
     }
@@ -1616,7 +1636,7 @@
             markProjectCoverageSeen(_activeCoverageAppId, { models: [model] });
             tagCoverageNewModels(_activeCoverageAppId, _activeCoverageData);
             model.is_new = false;
-            var markAllButton = document.querySelector('.coverage-mark-all-seen');
+            var markAllButton = document.querySelector('.coverage-status-filter-bar > .coverage-mark-all-seen');
             if (markAllButton && !_activeCoverageData.models.some(function (m) { return m.is_new; })) markAllButton.hidden = true;
         }
         if (card && model) {
@@ -2987,5 +3007,6 @@
     window.isScreenshotDefect = isScreenshotDefect;
     window.markProjectCoverageSeen = markProjectCoverageSeen;
     window.markAllCoverageViewed = markAllCoverageViewed;
+    window.markCoverageCountryViewed = markCoverageCountryViewed;
 
 })();

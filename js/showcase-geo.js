@@ -1,8 +1,10 @@
 (function () {
-    var STATS_KEY = 'showcase_geo_stats_v1';
+    var STATS_KEY_PREFIX = 'showcase_geo_stats_v2_';
+    var SCOPE_KEY = 'showcase_geo_scope_v1';
     var FREQUENT = ['RU', 'KZ', 'BY', 'VN', 'US', 'TR', 'UA', 'TH', 'ID', 'IN', 'UZ'];
     var profile = null;
-    var stats = null;
+    var statsByScope = { all: null, active: null };
+    var scope = 'all';
     var saving = false;
     var profileLoaded = false;
 
@@ -54,9 +56,29 @@
         return tr(value === 1 ? 'geoAllCountriesOne' : 'geoAllCountries', { count: value });
     }
 
-    function readStatsCache() {
+    function normalizeScope(value) {
+        return String(value || '').toLowerCase() === 'active' ? 'active' : 'all';
+    }
+
+    function currentStats() {
+        return statsByScope[scope];
+    }
+
+    function readSavedScope() {
         try {
-            var raw = sessionStorage.getItem(STATS_KEY);
+            return normalizeScope(sessionStorage.getItem(SCOPE_KEY) || 'all');
+        } catch (error) {
+            return 'all';
+        }
+    }
+
+    function writeSavedScope(value) {
+        try { sessionStorage.setItem(SCOPE_KEY, value); } catch (error) {}
+    }
+
+    function readStatsCache(forScope) {
+        try {
+            var raw = sessionStorage.getItem(STATS_KEY_PREFIX + forScope);
             var parsed = raw ? JSON.parse(raw) : null;
             return Array.isArray(parsed) ? parsed : null;
         } catch (error) {
@@ -64,14 +86,25 @@
         }
     }
 
-    function writeStatsCache(rows) {
+    function writeStatsCache(forScope, rows) {
         try {
-            sessionStorage.setItem(STATS_KEY, JSON.stringify(rows));
+            sessionStorage.setItem(STATS_KEY_PREFIX + forScope, JSON.stringify(rows));
         } catch (error) {}
     }
 
     function clearStatsCache() {
-        try { sessionStorage.removeItem(STATS_KEY); } catch (error) {}
+        try {
+            sessionStorage.removeItem(STATS_KEY_PREFIX + 'all');
+            sessionStorage.removeItem(STATS_KEY_PREFIX + 'active');
+        } catch (error) {}
+        statsByScope.all = null;
+        statsByScope.active = null;
+    }
+
+    function parseStatsPayload(payload) {
+        if (Array.isArray(payload)) return payload;
+        if (payload && Array.isArray(payload.countries)) return payload.countries;
+        return null;
     }
 
     function initData() {
@@ -122,10 +155,21 @@
             '</button>';
     }
 
+    function scopeToggleHtml() {
+        return '<div class="showcase-geo-scope" role="tablist">' +
+            '<button type="button" class="showcase-geo-scope__btn' + (scope === 'all' ? ' is-on' : '') + '" onclick="ShowcaseGeo.setScope(\'all\')">' +
+                esc(tr('geoScopeAll')) +
+            '</button>' +
+            '<button type="button" class="showcase-geo-scope__btn' + (scope === 'active' ? ' is-on' : '') + '" onclick="ShowcaseGeo.setScope(\'active\')">' +
+                esc(tr('geoScopeActive')) +
+            '</button>' +
+            '</div>';
+    }
+
     function renderWidget() {
         var root = document.getElementById('showcase-geo-widget');
         if (!root) return;
-        var rows = Array.isArray(stats) ? stats : null;
+        var rows = currentStats();
         var body = rows === null
             ? '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'
             : (rows.length
@@ -138,6 +182,7 @@
                     esc(countryCountLabel(rows ? rows.length : 0)) +
                 '</button>' +
             '</div>' +
+            scopeToggleHtml() +
             body +
             plaqueHtml();
     }
@@ -145,25 +190,78 @@
     function renderCommunityList() {
         var body = document.getElementById('showcase-geo-list-body');
         if (!body) return;
-        var rows = Array.isArray(stats) ? stats : [];
-        body.innerHTML = rows.length
+        var rows = currentStats();
+        var list = Array.isArray(rows) && rows.length
             ? '<div class="showcase-geo-rows">' + rows.map(rowHtml).join('') + '</div>'
-            : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>';
+            : (rows === null
+                ? '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'
+                : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>');
+        body.innerHTML = scopeToggleHtml() + list;
+    }
+
+    function countryLabel(item) {
+        if (!item) return '';
+        return (item.flag ? item.flag + ' ' : '') + displayName(item);
+    }
+
+    function markChoice(code) {
+        var wanted = String(code || '').toUpperCase();
+        var nodes = document.querySelectorAll('[data-geo-code]');
+        for (var i = 0; i < nodes.length; i += 1) {
+            var on = String(nodes[i].getAttribute('data-geo-code') || '').toUpperCase() === wanted;
+            nodes[i].classList.toggle('is-selected', on);
+            nodes[i].classList.toggle('is-pressed', on);
+        }
+        var currentNode = document.getElementById('showcase-geo-current');
+        var item = byCode(wanted);
+        if (currentNode && item) {
+            currentNode.hidden = false;
+            currentNode.innerHTML =
+                '<span>' + esc(tr('geoCurrentCountry')) + '</span>' +
+                '<strong>' + esc(countryLabel(item)) + '</strong>';
+        }
+    }
+
+    function haptic(kind) {
+        try {
+            if (window.tg && window.tg.HapticFeedback) {
+                if (kind === 'success' && window.tg.HapticFeedback.notificationOccurred) {
+                    window.tg.HapticFeedback.notificationOccurred('success');
+                } else if (window.tg.HapticFeedback.impactOccurred) {
+                    window.tg.HapticFeedback.impactOccurred('light');
+                }
+            }
+        } catch (error) {}
     }
 
     function renderPicker(query) {
+        var play = selectedPlay();
         var detected = detectedCountry();
+        var selected = play ? String(play.code || '').toUpperCase() : '';
+        var currentNode = document.getElementById('showcase-geo-current');
         var detectedNode = document.getElementById('showcase-geo-detected');
         var frequentNode = document.getElementById('showcase-geo-frequent');
         var listNode = document.getElementById('showcase-geo-options');
         var needle = String(query || '').trim().toLowerCase();
+        if (currentNode) {
+            if (play) {
+                currentNode.hidden = false;
+                currentNode.innerHTML =
+                    '<span>' + esc(tr('geoCurrentCountry')) + '</span>' +
+                    '<strong>' + esc(countryLabel(play)) + '</strong>';
+            } else {
+                currentNode.hidden = true;
+                currentNode.innerHTML = '';
+            }
+        }
         if (detectedNode) {
-            if (detected) {
-                var label = (detected.flag ? detected.flag + ' ' : '') + displayName(detected);
+            var detectedCode = detected ? String(detected.code || '').toUpperCase() : '';
+            if (detected && detectedCode !== selected) {
+                var label = countryLabel(detected);
                 detectedNode.hidden = false;
                 detectedNode.innerHTML =
                     '<p>📍 ' + esc(tr('geoDetectedQuickAction', { country: label })) + '</p>' +
-                    '<button type="button" class="btn btn-primary" onclick="ShowcaseGeo.useDetected()">' +
+                    '<button type="button" class="btn btn-primary" data-geo-code="' + esc(detectedCode) + '" onclick="ShowcaseGeo.useDetected()">' +
                         esc(tr('geoUseDetectedBtn', { country: label })) +
                     '</button>';
             } else {
@@ -171,13 +269,13 @@
                 detectedNode.innerHTML = '';
             }
         }
-        var selected = String((profile && profile.google_play_country) || '').toUpperCase();
         if (frequentNode) {
             frequentNode.innerHTML = FREQUENT.map(function (code) {
                 var item = byCode(code);
                 if (!item) return '';
-                return '<button type="button" class="showcase-geo-chip" onclick="ShowcaseGeo.choose(\'' + code + '\')">' +
-                    esc((item.flag ? item.flag + ' ' : '') + displayName(item)) + '</button>';
+                var selectedClass = code === selected ? ' is-selected' : '';
+                return '<button type="button" class="showcase-geo-chip' + selectedClass + '" data-geo-code="' + code + '" onclick="ShowcaseGeo.choose(\'' + code + '\')">' +
+                    esc(countryLabel(item)) + '</button>';
             }).join('');
         }
         if (!listNode) return;
@@ -191,12 +289,19 @@
         });
         listNode.innerHTML = rows.map(function (item) {
             var selectedClass = item.code === selected ? ' is-selected' : '';
-            return '<button type="button" class="showcase-geo-option' + selectedClass + '" onclick="ShowcaseGeo.choose(\'' + item.code + '\')">' +
+            return '<button type="button" class="showcase-geo-option' + selectedClass + '" data-geo-code="' + item.code + '" onclick="ShowcaseGeo.choose(\'' + item.code + '\')">' +
                 '<span>' + esc(item.flag || '') + '</span>' +
                 '<span>' + esc(displayName(item)) + '</span>' +
                 '<span class="showcase-geo-option__code">' + esc(item.code) + '</span>' +
                 '</button>';
         }).join('') || '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>';
+        if (selected && !needle) {
+            var selectedRow = listNode.querySelector('.showcase-geo-option.is-selected');
+            if (selectedRow) {
+                var top = selectedRow.offsetTop - Math.max(0, (listNode.clientHeight - selectedRow.offsetHeight) / 2);
+                listNode.scrollTop = Math.max(0, top);
+            }
+        }
     }
 
     async function loadProfile() {
@@ -217,33 +322,50 @@
     }
 
     async function loadStats(force) {
+        var forScope = scope;
         if (!force) {
-            var cached = readStatsCache();
+            var cached = statsByScope[forScope] || readStatsCache(forScope);
             if (cached) {
-                stats = cached;
+                statsByScope[forScope] = cached;
                 renderWidget();
+                renderCommunityList();
                 return;
             }
         }
-        if (!stats) renderWidget();
-        var response = await fetch(apiBase() + '/stats/countries?init_data=' + encodeURIComponent(initData()));
-        if (!response.ok) {
-            if (stats === null) stats = [];
+        if (statsByScope[forScope] === null) {
             renderWidget();
-            return;
-        }
-        var payload = await response.json();
-        if (!Array.isArray(payload)) {
-            if (stats === null) stats = [];
-            renderWidget();
-            return;
-        }
-        stats = payload;
-        writeStatsCache(payload);
-        renderWidget();
-        if (document.getElementById('showcase-geo-list-modal') && document.getElementById('showcase-geo-list-modal').classList.contains('active')) {
             renderCommunityList();
         }
+        var response = await fetch(apiBase() + '/stats/countries?scope=' + encodeURIComponent(forScope) + '&init_data=' + encodeURIComponent(initData()));
+        if (!response.ok) {
+            if (statsByScope[forScope] === null) statsByScope[forScope] = [];
+            renderWidget();
+            renderCommunityList();
+            return;
+        }
+        var rows = parseStatsPayload(await response.json());
+        if (!rows) {
+            if (statsByScope[forScope] === null) statsByScope[forScope] = [];
+            renderWidget();
+            renderCommunityList();
+            return;
+        }
+        statsByScope[forScope] = rows;
+        writeStatsCache(forScope, rows);
+        if (scope !== forScope) return;
+        renderWidget();
+        renderCommunityList();
+    }
+
+    function setScope(next) {
+        var normalized = normalizeScope(next);
+        if (normalized === scope) return;
+        scope = normalized;
+        writeSavedScope(scope);
+        haptic('impact');
+        renderWidget();
+        renderCommunityList();
+        loadStats(false).catch(function () {});
     }
 
     async function choose(code) {
@@ -252,6 +374,10 @@
         if (!normalized || !item || saving) return;
         var previous = profile;
         saving = true;
+        haptic('impact');
+        markChoice(normalized);
+        var sheet = document.querySelector('#showcase-geo-picker-modal .showcase-geo-sheet');
+        if (sheet) sheet.classList.add('is-busy');
         profile = Object.assign({}, profile || {}, {
             google_play_country: normalized,
             google_play: item,
@@ -271,16 +397,19 @@
             if (payload.detected_country) profile.detected_country = payload.detected_country;
             if (window.App) window.App.googlePlayCountry = profile.google_play_country;
             clearStatsCache();
+            await new Promise(function (resolve) { setTimeout(resolve, 180); });
             closePicker();
-            if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
+            haptic('success');
             if (typeof showToast === 'function') showToast(tr('geoSavedToast'));
             await loadStats(true);
         } catch (error) {
             profile = previous;
             renderWidget();
+            renderPicker((document.getElementById('showcase-geo-search') || {}).value || '');
             if (typeof showToast === 'function') showToast(tr('geoSaveError'));
         } finally {
             saving = false;
+            if (sheet) sheet.classList.remove('is-busy');
         }
     }
 
@@ -323,7 +452,9 @@
             return;
         }
         root.setAttribute('data-ready', '1');
-        stats = readStatsCache();
+        scope = readSavedScope();
+        statsByScope.all = readStatsCache('all');
+        statsByScope.active = readStatsCache('active');
         renderWidget();
         loadProfile().catch(function () {});
         loadStats(false).catch(function () {});
@@ -331,6 +462,7 @@
 
     window.ShowcaseGeo = {
         mount: mount,
+        setScope: setScope,
         openPicker: openPicker,
         closePicker: closePicker,
         openCommunityList: openCommunityList,
@@ -342,6 +474,7 @@
         },
         filterPicker: function (value) { renderPicker(value); },
         _profile: function () { return profile; },
-        _stats: function () { return stats; },
+        _stats: function () { return currentStats(); },
+        _scope: function () { return scope; },
     };
 })();

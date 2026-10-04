@@ -2886,6 +2886,10 @@
 .coverage-mark-all-seen { display: block; margin: 6px 0 0 auto; padding: 7px 5px; border: 0; background: none; color: #98aec4; font: inherit; font-size: 11px; cursor: pointer; }
 .coverage-mark-all-seen:active { color: #c7d7e6; }
 .coverage-mark-all-seen[hidden] { display: none; }
+.coverage-country-pill { font: inherit; cursor: pointer; color: inherit; }
+.coverage-country-pill.is-new-country { border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.09); color: #a8ddca; }
+.coverage-country-pill small { font-size: 9px; font-weight: 600; letter-spacing: .04em; color: #79c4a8; margin-left: 5px; }
+.coverage-countries-help { color: #8e9bae; font-size: 11px; line-height: 1.5; }
 .coverage-tools .coverage-filter-pills { padding: 0; background: none; border: 0; }
 .coverage-tools .coverage-filter-pill { font-size: 11px; padding: 9px 10px; }
 .coverage-tools .coverage-brands-panel { background: none; border: 0; padding: 10px 0 0; margin: 8px 0 0; border-top: 1px solid rgba(255,255,255,.06); border-radius: 0; }
