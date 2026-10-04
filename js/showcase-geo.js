@@ -161,9 +161,12 @@
         }
         var play = selectedPlay();
         if (play) {
-            return '<button type="button" class="showcase-geo-me" onclick="ShowcaseGeo.openPicker()">' +
-                '<span class="showcase-geo-me__copy">📍 ' + esc(tr('geoPlayCountryLabel')) + ': <strong>' +
-                esc((play.flag ? play.flag + ' ' : '') + displayName(play)) + '</strong> ▾ (' + esc(tr('geoPlayCountryChange')) + ')</span>' +
+            return '<button type="button" class="showcase-geo-me is-set" onclick="ShowcaseGeo.openPicker()">' +
+                '<span class="showcase-geo-me__copy">' +
+                    '<span class="showcase-geo-me__label">' + esc(tr('geoPlayCountryLabel')) + '</span>' +
+                    '<strong class="showcase-geo-me__value">' + esc((play.flag ? play.flag + ' ' : '') + displayName(play)) + '</strong>' +
+                '</span>' +
+                '<span class="showcase-geo-me__action is-ghost">' + esc(tr('geoPlayCountryChange')) + '</span>' +
                 '</button>';
         }
         return '<button type="button" class="showcase-geo-me is-empty" onclick="ShowcaseGeo.openPicker()">' +
