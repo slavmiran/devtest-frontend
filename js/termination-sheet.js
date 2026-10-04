@@ -464,6 +464,9 @@
             ? _renderInviteGrantRow(mySkips, grantTotal)
             : '';
 
+        var isOwnerSafeKick = isSafeBreak || isDisciplinaryKick;
+        var ownerKarmaBurn = isOwnerSafeKick ? 0 : KARMA_ABANDONED_BURN;
+
         if (_termState) {
             _termState.justifiedAllowed = isDisciplinaryKick;
             _termState.isDisciplinaryKick = isDisciplinaryKick;
@@ -476,6 +479,8 @@
             _termState.mySkips = mySkips;
             _termState.reciprocalAppId = Number(ctx.reciprocalAppId || 0);
             _termState.reciprocalAppName = ctx.reciprocalAppName || '';
+            _termState.karmaBurnPreview = ownerKarmaBurn;
+            _termState.karmaOk = isOwnerSafeKick;
         }
 
         var testerLabel = ctx.testerUsername
@@ -591,9 +596,9 @@
                 mySideHtml +
             '</div>' +
             _renderImpactMeters({
-                karmaOk: true,
-                riOk: isSafeBreak || isDisciplinaryKick,
-                karmaBurn: 0,
+                karmaOk: isOwnerSafeKick,
+                riOk: isOwnerSafeKick,
+                karmaBurn: ownerKarmaBurn,
                 statusBanner: statusBanner,
                 extraHtml: detailsHtml,
                 blockClass: 'term-kick-impact',
@@ -1494,6 +1499,9 @@
                     karma: '3',
                 })) + '</li>');
             } else {
+                points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointKarma', {
+                    karma: _fmtAmount(KARMA_ABANDONED_BURN, 1),
+                })) + '</li>');
                 points.push('<li class="is-warn">' + _esc(_t('termConfirmPointKickOwnerPenalized', {
                     ri_penalty: String(kickOwnerRiPenalty),
                 })) + '</li>');

@@ -36,8 +36,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261002-blacklist-v1"></script>
-    <script src="./i18n/en.js?v=20261002-blacklist-v1"></script>
+    <script src="./i18n/ru.js?v=20261003-geo-v1"></script>
+    <script src="./i18n/en.js?v=20261003-geo-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20260917-action-processing-v1"></script>
@@ -45,6 +45,8 @@
     <script src="./ui/ui-projects.js?v=20261001-coverage-polish-v2"></script>
     <script src="./js/project-parameters.js?v=20260920-smart-ping-v2"></script>
     <script src="./ui/ui-market.js?v=20261002-blacklist-v1"></script>
+    <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
+    <script src="./js/showcase-geo.js?v=20261003-geo-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
@@ -69,7 +71,7 @@
 <script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
 <script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20261002-paypal-me-v1"></script>
-    <script src="./js/project-results.js?v=20261003-coverage-viewer-v2"></script>
+    <script src="./js/project-results.js?v=20261003-coverage-seen-v3"></script>
     <script src="./app.js?v=20260930-support-bugs-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
@@ -108,10 +110,11 @@
 <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
     <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v2">
+    <link rel="stylesheet" href="./css/showcase-geo.css?v=20261003-geo-v2">
 <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
-    <link rel="stylesheet" href="./css/project-results.css?v=20261003-coverage-viewer-v2">
+    <link rel="stylesheet" href="./css/project-results.css?v=20261003-coverage-seen-v3">
 </head>
 <body>
 
@@ -481,6 +484,7 @@
 
     <!-- TAB 3: Market (merged Mutual + Bounty) -->
     <div id="tab-market" class="container tab-content">
+        <section id="showcase-geo-widget" class="showcase-geo-widget" aria-labelledby="showcase-geo-title"></section>
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
             <div class="segmented-control" style="margin-bottom:0; flex:1;">
                 <button class="seg-btn active" onclick="switchMarketSubTab('seeking')" id="market-sub-seeking"><span data-i18n="marketSeekingTitle">🤝 Взаимка</span></button>
@@ -1644,6 +1648,27 @@
             <div class="dossier-sheet-handle" aria-hidden="true"></div>
             <div id="dossier-modal-title" class="dossier-modal-title" hidden></div>
             <div id="dossier-body" class="dossier-body"></div>
+        </div>
+    </div>
+
+    <div id="showcase-geo-list-modal" class="modal-overlay" onclick="ShowcaseGeo.closeCommunityList(event)">
+        <div class="modal-content showcase-geo-sheet showcase-geo-list-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h3 data-i18n="geoWidgetTitle">География тестировщиков</h3>
+            <div id="showcase-geo-list-body"></div>
+        </div>
+    </div>
+
+    <div id="showcase-geo-picker-modal" class="modal-overlay" onclick="ShowcaseGeo.closePicker(event)">
+        <div class="modal-content showcase-geo-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="showcase-geo-picker-title">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h3 id="showcase-geo-picker-title" data-i18n="geoPlayCountryLabel">Страна Google Play</h3>
+            <p class="showcase-geo-sheet__hint" data-i18n="geoSheetSubtitle">Укажите страну платёжного профиля Google Play. Это нужно разработчикам, чтобы знать, доступна ли сборка по ссылке в вашем регионе.</p>
+            <div id="showcase-geo-detected" class="showcase-geo-detected" hidden></div>
+            <input id="showcase-geo-search" class="form-input showcase-geo-search" type="search" data-i18n-placeholder="geoSearchPlaceholder" placeholder="Страна или код" oninput="ShowcaseGeo.filterPicker(this.value)">
+            <p class="showcase-geo-frequent-label" data-i18n="geoFrequent">Частые</p>
+            <div class="showcase-geo-frequent" id="showcase-geo-frequent"></div>
+            <div id="showcase-geo-options" class="showcase-geo-options"></div>
         </div>
     </div>
 
