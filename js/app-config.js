@@ -6,6 +6,7 @@ window.App.checkinProofMode = window.App.checkinProofMode || 'off';
 window.App.screenshotProofUploadEnabled = window.App.screenshotProofUploadEnabled === true;
 window.App.testingControlEnabled = window.App.testingControlEnabled === true;
 window.App.checkinProofGalleryEnabled = window.App.checkinProofGalleryEnabled === true;
+window.App.testerFeedbackTopicId = Number(window.App.testerFeedbackTopicId || 4000) || 4000;
 
 var tg = window.Telegram.WebApp;
 tg.expand();
@@ -224,6 +225,10 @@ async function loadRuntimeConfig() {
         var runtimeGroupId = String((payload && payload.frontend_group_id) || '').trim();
         if (runtimeGroupId) {
             window.App.frontendGroupId = runtimeGroupId;
+        }
+        var runtimeTesterTopic = Number((payload && payload.tester_feedback_topic_id) || 0);
+        if (runtimeTesterTopic > 0) {
+            window.App.testerFeedbackTopicId = runtimeTesterTopic;
         }
         window.App.checkinProofMode = String((payload && payload.checkin_proof_mode) || 'off').trim().toLowerCase();
         window.App.screenshotProofUploadEnabled = !!(payload && payload.screenshot_proof_upload_enabled === true);

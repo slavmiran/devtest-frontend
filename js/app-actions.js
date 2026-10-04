@@ -3744,12 +3744,24 @@ function syncFeedbackRewardQuickReplyState() {
 }
 
 function updateFeedbackRewardSummary() {
+    var contribEl = document.getElementById('feedback-reward-summary-contrib');
     var bustEl = document.getElementById('feedback-reward-summary-bust');
     var karmaEl = document.getElementById('feedback-reward-summary-karma');
     var karmaAmountEl = document.getElementById('feedback-reward-summary-karma-amount');
     var emptyEl = document.getElementById('feedback-reward-summary-empty');
+    var item = typeof getFeedbackRewardItem === 'function' ? getFeedbackRewardItem() : null;
+    var contribPoints = item ? getFeedbackRewardContributionPoints(item) : 0;
+    var hasContrib = contribPoints > 0;
     var hasBust = _feedbackRewardBust > 0;
     var hasKarma = _feedbackRewardKarma > 0;
+    if (contribEl) {
+        contribEl.hidden = !hasContrib;
+        if (hasContrib) {
+            contribEl.textContent = window.t('feedbackRewardSummaryContrib', {
+                points: contribPoints
+            }, lang);
+        }
+    }
     if (bustEl) {
         bustEl.hidden = !hasBust;
         if (hasBust) bustEl.textContent = formatFeedbackRewardBustLabel(_feedbackRewardBust);
@@ -3761,8 +3773,8 @@ function updateFeedbackRewardSummary() {
         }, lang);
     }
     if (emptyEl) {
-        emptyEl.hidden = hasBust || hasKarma;
-        if (!hasBust && !hasKarma) {
+        emptyEl.hidden = hasContrib || hasBust || hasKarma;
+        if (!hasContrib && !hasBust && !hasKarma) {
             emptyEl.textContent = window.t('feedbackRewardSummaryEmpty', {}, lang);
         }
     }
@@ -4402,7 +4414,16 @@ async function submitFeedbackReward() {
                 .then(function() { return loadProjects(true); })
                 .catch(function() { /* ignore */ });
         }
-        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
+        var contribPoints = fbItem ? getFeedbackRewardContributionPoints(fbItem) : 0;
+        var lifetimeScore = fbItem ? getFeedbackRewardLifetimeScore(fbItem) : null;
+        var nextScore = (lifetimeScore == null) ? null : (lifetimeScore + contribPoints);
+        showToast(window.t(
+            (contribPoints > 0 && nextScore != null)
+                ? 'feedbackRewardSuccessToastContrib'
+                : 'feedbackRewardSuccessToast',
+            { points: contribPoints, score: nextScore == null ? '' : nextScore },
+            lang
+        ));
     } catch (error) {
         console.error('Feedback reward error:', error);
         _setFeedbackRewardSubmitLoading(false);

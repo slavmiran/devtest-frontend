@@ -1067,7 +1067,12 @@
     font-size: 11px;
     color: var(--text-color, #e5e7eb);
     line-height: 1.2;
+    appearance: none;
+    font-family: inherit;
+    cursor: pointer;
 }
+.coverage-cockpit-chip.is-active { border-color: var(--chip-accent, #38bdf8); background: rgba(56,189,248,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); }
+.coverage-cockpit-chip:focus-visible { outline: 2px solid #7caed0; outline-offset: 2px; }
 .coverage-cockpit-chip__dot {
     width: 6px;
     height: 6px;
@@ -2910,6 +2915,7 @@
 .coverage-country-pill strong { font-size: inherit; font-weight: 550; }
 .coverage-country-pill .coverage-country-flag { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 6px; background: rgba(148,168,195,.07); color: #8398ad; font-size: 11px; font-weight: 600; }
 .coverage-country-pill.is-new-country { border-color: rgba(52,211,153,.3); background: rgba(52,211,153,.075); color: #a8ddca; }
+.coverage-country-pill.is-active { border-color: rgba(56,189,248,.55); background: rgba(56,189,248,.12); color: #e1f4ff; box-shadow: inset 0 0 0 1px rgba(56,189,248,.06); }
 .coverage-country-pill:active { background: rgba(148,168,195,.12); }
 .coverage-country-pill:focus-visible { outline: 2px solid #7caed0; outline-offset: 2px; }
 .coverage-cockpit-countries__list { gap: 8px; padding: 2px 0; }
@@ -2917,6 +2923,10 @@
 .coverage-cockpit-countries__badge { background: none; border: 0; color: #8093a7; font-weight: 500; padding: 2px 0 2px 8px; }
 .coverage-country-pill small { font-size: 9px; font-weight: 600; letter-spacing: .04em; color: #79c4a8; margin-left: 5px; }
 .coverage-countries-help { color: #8e9bae; font-size: 11px; line-height: 1.5; }
+.coverage-dimension-active { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 4px; padding: 8px 10px; border: 1px solid rgba(56,189,248,.17); border-radius: 10px; background: rgba(56,189,248,.055); color: #afc8d8; font-size: 11px; }
+.coverage-dimension-active button { display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: rgba(148,168,195,.1); color: #d3e3ee; font: inherit; font-size: 20px; cursor: pointer; }
+.coverage-dimension-empty { display: grid; justify-items: center; gap: 10px; padding: 38px 16px; text-align: center; color: #9baabb; font-size: 12px; }
+.coverage-dimension-empty button { border: 1px solid rgba(148,168,195,.2); border-radius: 9px; padding: 8px 12px; background: rgba(148,168,195,.08); color: #c2d4e3; font: inherit; cursor: pointer; }
 .coverage-tools .coverage-filter-pills { padding: 0; background: none; border: 0; }
 .coverage-tools .coverage-filter-pill { font-size: 11px; padding: 9px 10px; }
 .coverage-tools .coverage-brands-panel { background: none; border: 0; padding: 10px 0 0; margin: 8px 0 0; border-top: 1px solid rgba(255,255,255,.06); border-radius: 0; }

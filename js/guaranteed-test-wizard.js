@@ -3356,3 +3356,6 @@
     window.persistGuaranteedTestWizardDraft = persistGuaranteedTestWizardDraft;
     window.gtwWizardState = wizardState;
 })();
+
+    window.gtwWizardState = wizardState;
+})();
