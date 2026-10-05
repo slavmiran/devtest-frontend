@@ -7,7 +7,10 @@ function renderEditCreatedAtMeta() {
         return;
     }
     const project = myProjects.find((item) => item.id === projectToEdit);
-    metaEl.textContent = formatEditProjectCreatedAt(project);
+    const runChip = buildRunIterationChip(project, 'edit-created-at-run-chip', { ignoreSync: true });
+    metaEl.innerHTML = '<div class="edit-created-at-line">' + window.escapeHTML(formatEditProjectCreatedAt(project)) + '</div>' +
+        (runChip ? '<div class="edit-created-at-run">' + runChip + '</div>' : '');
+    metaEl.style.opacity = '1';
 }
 
 function getIssueRemovalDeadline(issueReportedAt) {
@@ -570,6 +573,27 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
         if (renderTimeline.length > realizedThrough) {
             renderTimeline = renderTimeline.slice(0, realizedThrough);
         }
+
+        // The local calendar can advance before the server-side maintenance job
+        // materializes yesterday's marker. The API counters are already
+        // canonical at that point, so project the missing trailing markers for
+        // display instead of painting an elapsed day as neutral gray.
+        var knownSkips = (renderTimeline.match(/[03]/g) || []).length;
+        var knownCheckins = (renderTimeline.match(/[12]/g) || []).length;
+        while (renderTimeline.length < realizedThrough) {
+            var projectedDay = renderTimeline.length + 1;
+            var isProjectedToday = hasCheckedToday && projectedDay === userTestingDay;
+            var shouldProjectSkip = !isProjectedToday && knownSkips < skipsCount;
+            var marker;
+            if (shouldProjectSkip) {
+                marker = projectedDay > 14 ? '3' : '0';
+                knownSkips++;
+            } else {
+                marker = projectedDay > 14 ? '2' : '1';
+                knownCheckins++;
+            }
+            renderTimeline += marker;
+        }
     }
 
     if (!hasCheckedToday && userTestingDay > 0 && renderTimeline.length >= userTestingDay) {
@@ -690,8 +714,8 @@ function buildGrantProgressSegments(test, userTestingDay, expectedTotalDays, opt
 
     const noteText = extraPaid > 0
         ? (lang === 'ru' 
-            ? 'Награда за чекин: +0.5 ☯️ Кармы и доля из фонда💎$BUST' 
-            : 'Reward for check-in: +0.5 ☯️ Karma and a share of the 💎$BUST pool')
+            ? 'Награда за чекин: +0.1 ☯️ Кармы и доля из фонда💎$BUST' 
+            : 'Reward for check-in: +0.1 ☯️ Karma and a share of the 💎$BUST pool')
         : window.t('timelineOvertimeRewardNote', {}, lang);
 
     var html = '<div class="timeline-compact">' +
@@ -737,9 +761,15 @@ function getUserTestingDay(startDate, explicitTestingDays) {
         return resolvedTestingDays;
     }
     if (!startDate) return null;
-    const startedAt = new Date(startDate);
-    if (Number.isNaN(startedAt.getTime())) return null;
-    const today = new Date(getLocalDate());
+    var startedAt = (typeof parseLocalDateOnly === 'function')
+        ? parseLocalDateOnly(startDate)
+        : new Date(startDate);
+    if (!startedAt || Number.isNaN(startedAt.getTime())) return null;
+    var todayRaw = (typeof getLocalDate === 'function') ? getLocalDate() : null;
+    var today = (typeof parseLocalDateOnly === 'function' && todayRaw)
+        ? parseLocalDateOnly(todayRaw)
+        : (todayRaw ? new Date(todayRaw) : null);
+    if (!today || Number.isNaN(today.getTime())) return null;
     return Math.floor((today - startedAt) / (1000 * 60 * 60 * 24)) + 1;
 }
 
@@ -936,7 +966,7 @@ function getProjectCurrentGoogleDay(test, fallbackDay) {
     // advances as syncDay + calendar days since last_sync.
     if (syncDay <= 1) {
         var platformDay = typeof getProjectPlatformDay === 'function'
-            ? getProjectPlatformDay(test && test.created_at)
+            ? getProjectPlatformDay(test)
             : Number(fallbackDay || 0);
         if (Number.isFinite(platformDay) && platformDay > 0) {
             return Math.max(1, platformDay);
@@ -1002,6 +1032,59 @@ function toggleCheckpointAccordion(element, event) {
     } catch (e) {}
 }
 
+function resolveProofsTopicUrl() {
+    var configured = String((window.App && window.App.proofsTopicUrl) || '').trim().replace(/\/+$/, '');
+    if (configured && configured.indexOf('/joinchat/') === -1 && configured.indexOf('t.me/+') === -1) {
+        return configured;
+    }
+    return String(
+        (window.App && window.App.publicGroupUrl)
+        || window.FEEDBACK_PUBLIC_LINK_BASE
+        || 'https://t.me/googleplay_console_12testers'
+    ).trim().replace(/\/+$/, '');
+}
+
+function openTelegramDeepLink(url) {
+    var target = String(url || '').trim();
+    if (!target) return false;
+    try {
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(target);
+            return true;
+        }
+        if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+            window.tg.openTelegramLink(target);
+            return true;
+        }
+    } catch (error) {}
+    window.open(target, '_blank', 'noopener');
+    return true;
+}
+
+async function openTodayCheckinReport(proofId, event) {
+    if (event) {
+        event.stopPropagation();
+        if (typeof event.preventDefault === 'function') event.preventDefault();
+    }
+    var id = Number(proofId || 0);
+    if (id > 0) {
+        try {
+            var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
+            var request = (typeof fetchWithRetry === 'function')
+                ? fetchWithRetry(API_BASE + '/checkin-proofs/' + id + '/details?init_data=' + encodeURIComponent(initData), { timeoutMs: 20000 }, 1)
+                : fetch(API_BASE + '/checkin-proofs/' + id + '/details?init_data=' + encodeURIComponent(initData));
+            var response = await request;
+            var payload = await response.json().catch(function () { return {}; });
+            var urls = payload && payload.proof && payload.proof.original_message_urls;
+            var target = Array.isArray(urls) ? String(urls[0] || '') : '';
+            if (/^https:\/\/t\.me\//i.test(target) && openTelegramDeepLink(target)) {
+                return;
+            }
+        } catch (error) {}
+    }
+    openTelegramDeepLink(resolveProofsTopicUrl());
+}
+
 function getScreenshotReminderHtml(test) {
     const testingDay = getResolvedTestingDay(test);
     if (!isMandatoryScreenshotDay(testingDay)) {
@@ -1010,16 +1093,45 @@ function getScreenshotReminderHtml(test) {
 
     const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
     const accTitle = (typeof window.t === 'function' ? window.t('checkpointAccordionTitle', {}, currentLang) : null) || 'Контрольный день';
+    const usesProofUpload = typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+        ? window.isInternalScreenshotProofUploadEnabled(test)
+        : false;
     const dayText = (typeof window.t === 'function' ? window.t('checkpointTestingDayText', { day: testingDay }, currentLang) : null) || `Вы тестируете это приложение ${testingDay}-й день из 14.`;
-    const schedText = (typeof window.t === 'function' ? window.t('checkpointScheduleText', {}, currentLang) : null) || 'Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).';
-    const doneTitle = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneTitle', {}, currentLang) : null) || 'Чекин уже выполнен';
-    const doneHint = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneHint', {}, currentLang) : null) || 'Если по какой-то причине скриншот ещё не отправляли, его необходимо отправить сейчас!';
+    const schedKey = usesProofUpload ? 'checkpointScheduleTextProof' : 'checkpointScheduleText';
+    const schedText = (typeof window.t === 'function' ? window.t(schedKey, {}, currentLang) : null)
+        || 'Контрольные дни: 1, 4, 7, 10 и 14.\nВ эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).';
+    const doneTitle = (typeof window.t === 'function' ? window.t('checkpointCheckinDoneTitle', {}, currentLang) : null) || 'Чекин засчитан';
+    const doneHintKey = usesProofUpload ? 'checkpointCheckinDoneHintProof' : 'checkpointCheckinDoneHint';
+    const doneHint = (typeof window.t === 'function' ? window.t(doneHintKey, {}, currentLang) : null)
+        || 'Если по какой-то причине скриншот ещё не отправляли, его необходимо отправить сейчас!';
     const btnLabel = (typeof window.t === 'function' ? window.t('screenshotReminderBtn', {}, currentLang) : null) || '💬 Отправить скриншот';
+    const reportBtnLabel = (typeof window.t === 'function' ? window.t('checkpointOpenReportBtn', {}, currentLang) : null) || 'Открыть отчёт';
+    const todayProofId = Number(test && test.today_proof_id || 0);
 
     const safeOwner = test && test.owner_username ? escapeInlineJsString(test.owner_username) : '';
-    const dmButton = safeOwner
-        ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openTelegramProfile('${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
-        : '';
+    const actionButton = usesProofUpload
+        ? `<button type="button" class="btn checkpoint-accordion__topic-btn" onclick="openTodayCheckinReport(${todayProofId}, event)"><span class="checkpoint-accordion__btn-icon" aria-hidden="true">↗</span> ${window.escapeHTML(reportBtnLabel)}</button>`
+        : (safeOwner
+            ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openTelegramProfile('${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
+            : '');
+
+    const bodyHtml = usesProofUpload
+        ? `<div class="checkpoint-accordion__status-box">
+                        <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
+                        <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
+                    </div>
+                    ${actionButton}`
+        : `<div class="checkpoint-accordion__progress">
+                        ${window.escapeHTML(dayText)}
+                    </div>
+                    <div class="checkpoint-accordion__rules">
+                        ${window.escapeHTML(schedText).replace(/\n/g, '<br>')}
+                    </div>
+                    <div class="checkpoint-accordion__status-box">
+                        <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
+                        <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
+                    </div>
+                    ${actionButton}`;
 
     return `
         <div class="checkpoint-accordion" onclick="event.stopPropagation()">
@@ -1041,17 +1153,7 @@ function getScreenshotReminderHtml(test) {
             </div>
             <div class="checkpoint-accordion__content">
                 <div class="checkpoint-accordion__body">
-                    <div class="checkpoint-accordion__progress">
-                        ${window.escapeHTML(dayText)}
-                    </div>
-                    <div class="checkpoint-accordion__rules">
-                        ${window.escapeHTML(schedText).replace(/\n/g, '<br>')}
-                    </div>
-                    <div class="checkpoint-accordion__status-box">
-                        <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
-                        <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
-                    </div>
-                    ${dmButton}
+                    ${bodyHtml}
                 </div>
             </div>
         </div>
@@ -1118,12 +1220,13 @@ function getTesterSourceMeta(joinType) {
     return { icon: '🔗', label: window.t('testerSourceInviteNoMutualFull', {}, lang) };
 }
 
-function buildRunIterationChip(item, className) {
+function buildRunIterationChip(item, className, opts) {
     const normalizedIteration = Number((item && item.run_iteration) || 1);
     if (!Number.isFinite(normalizedIteration) || normalizedIteration <= 1) {
         return '';
     }
-    if (!item || typeof isProjectSynced !== 'function' || !isProjectSynced(item)) {
+    const ignoreSync = !!(opts && opts.ignoreSync);
+    if (!ignoreSync && (!item || typeof isProjectSynced !== 'function' || !isProjectSynced(item))) {
         return '';
     }
     return `<span class="${className || 'meta-chip accent-blue'}">${window.escapeHTML(window.t('projectRunIterationChip', { count: normalizedIteration }, lang))}</span>`;
@@ -1177,6 +1280,13 @@ function canProposeMutualFromTest(test) {
     if (!targetOwnerId || targetOwnerId === Number(userId || 0)) {
         return false;
     }
+    // Guest/external tracking has no reciprocal owner on the platform.
+    if (test && (test.is_external || test.is_guest || String(test.flow || '').toLowerCase() === 'external')) {
+        return false;
+    }
+    if (typeof isGuestOriginTest === 'function' && isGuestOriginTest(test)) {
+        return false;
+    }
     // Contract/bounty tests are paid slots — no mutual-offer chip on those cards.
     if (joinType === 'mutual' || joinType === 'bounty' || appStatus === 'archived') {
         return false;
@@ -1196,29 +1306,73 @@ function buildProposeMutualChip(test) {
     return `<button class="meta-chip accent-blue" onclick="createMutualOffer(${Number(test.id || 0)}, ${Number(test.owner_id || 0)}, event)">${window.escapeHTML(window.t('proposeMutualBtn', {}, lang))}</button>`;
 }
 
+function formatOwnerSlaHoursLabel(hoursRaw) {
+    const hoursNum = Number(hoursRaw);
+    if (!Number.isFinite(hoursNum) || hoursNum <= 0) return '';
+    if (typeof formatFeedbackAvgResponseHours === 'function') {
+        return formatFeedbackAvgResponseHours(hoursNum * 3600 * 1000);
+    }
+    const totalMins = Math.max(1, Math.round(hoursNum * 60));
+    if (totalMins < 60) {
+        return lang === 'ru' ? (totalMins + ' мин') : (totalMins + 'm');
+    }
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    if (mins === 0) {
+        return lang === 'ru' ? (hours + ' ч') : (hours + 'h');
+    }
+    return lang === 'ru'
+        ? (hours + ' ч ' + mins + ' мин')
+        : (hours + 'h ' + mins + 'm');
+}
+
 function formatOwnerSlaDisplay(hoursRaw) {
     const hoursNum = Number(hoursRaw);
-    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(hoursNum) && hoursNum >= 0;
-    let label = window.t('feedbackSlaChipDash', {}, lang) || '—';
+    const hasValue = hoursRaw != null && hoursRaw !== '' && Number.isFinite(hoursNum) && hoursNum > 0;
+    const label = hasValue
+        ? (formatOwnerSlaHoursLabel(hoursNum) || (window.t('feedbackSlaChipDash', {}, lang) || '—'))
+        : (window.t('feedbackSlaChipDash', {}, lang) || '—');
     let tone = '';
     if (hasValue) {
-        const hours = hoursNum;
-        if (hours < 1) {
-            const minutes = Math.max(1, Math.round(hours * 60) || 1);
-            label = window.t('feedbackSlaChipMinutes', { minutes: minutes }, lang) || ('~' + minutes + (lang === 'ru' ? ' мин' : ' m'));
-        } else {
-            const rounded = hours >= 10 ? Math.round(hours) : (Math.round(hours * 10) / 10);
-            const hoursLabel = (Math.abs(rounded - Math.round(rounded)) < 0.05)
-                ? String(Math.round(rounded))
-                : String(rounded).replace(/\.0$/, '');
-            label = window.t('feedbackSlaChipHours', { hours: hoursLabel }, lang) || ('~' + hoursLabel + (lang === 'ru' ? ' ч.' : ' h'));
-        }
-        if (hours > 72) tone = 'slow';
-        else if (hours < 24) tone = 'fast';
+        if (hoursNum > 72) tone = 'slow';
+        else if (hoursNum < 24) tone = 'fast';
     }
     return { label: label, tone: tone, hasValue: hasValue, hours: hasValue ? hoursNum : null };
 }
 window.formatOwnerSlaDisplay = formatOwnerSlaDisplay;
+
+function formatProtectionBadgeLabel(extraPaid, poolAmount, lang) {
+    if (extraPaid <= 0) {
+        return window.t('ppcProtectedBadge', {}, lang) || (lang === 'en' ? '🛡 Protected' : '🛡 Защищён');
+    }
+    const formattedBust = typeof formatAmountValue === 'function' ? formatAmountValue(poolAmount, 1) : poolAmount;
+    if (poolAmount > 0) {
+        if (lang === 'en') {
+            const dayStr = extraPaid === 1 ? '1 day' : (extraPaid + ' days');
+            return '+' + dayStr + ' • ' + formattedBust + ' $BUST';
+        }
+        let dayWord = 'дней';
+        const lastDigit = extraPaid % 10;
+        const lastTwo = extraPaid % 100;
+        if (lastTwo < 11 || lastTwo > 14) {
+            if (lastDigit === 1) dayWord = 'день';
+            else if (lastDigit >= 2 && lastDigit <= 4) dayWord = 'дня';
+        }
+        return '+' + extraPaid + ' ' + dayWord + ' • ' + formattedBust + ' $BUST';
+    }
+    if (lang === 'en') {
+        return '+' + (extraPaid === 1 ? '1 day' : (extraPaid + ' days'));
+    }
+    let dayWord = 'дней';
+    const lastDigit = extraPaid % 10;
+    const lastTwo = extraPaid % 100;
+    if (lastTwo < 11 || lastTwo > 14) {
+        if (lastDigit === 1) dayWord = 'день';
+        else if (lastDigit >= 2 && lastDigit <= 4) dayWord = 'дня';
+    }
+    return '+' + extraPaid + ' ' + dayWord;
+}
+window.formatProtectionBadgeLabel = formatProtectionBadgeLabel;
 
 function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTestingDay, test, options) {
     options = options || {};
@@ -1255,12 +1409,21 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         // Only control days carry an icon; regular days stay plain to reduce visual noise.
         const dayText = (isScreenshot ? '📸 ' : '') + t.myTestDayShort.replace('{days}', userTestingDay);
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip';
-        parts.push(`<button type="button" class="${chipClass}" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showTestDayPopup(${userTestingDay}); return false;">${dayText}</button>`);
+        parts.push(`<button type="button" class="${chipClass}" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showTestDayPopup(${userTestingDay}, ${test && test.is_external ? 'true' : 'false'}); return false;">${dayText}</button>`);
     }
     if (isNew) {
         parts.unshift(`<button type="button" class="meta-chip accent-green">${t.newBadge}</button>`);
     }
     if (test) {
+        var screenshotBoostOffer = getScreenshotBoostOffer(test, userTestingDay);
+        if (screenshotBoostOffer) {
+            var screenshotBoostHint = window.t('screenshotBoostTesterChipHint', {
+                amount: formatScreenshotBoostAmount(screenshotBoostOffer.reward),
+            }, lang);
+            parts.push('<button type="button" class="meta-chip accent-purple" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast(\'' +
+                String(screenshotBoostHint || '').replace(/'/g, "\\'") +
+                '\'); return false;" title="' + window.escapeHTML(screenshotBoostHint) + '">+$BUST</button>');
+        }
         const reviewStatus = typeof window.getPlayReviewStatus === 'function'
             ? window.getPlayReviewStatus(test)
             : String(test.play_review_status || 'none').toLowerCase();
@@ -1286,6 +1449,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
+            const poolAmount = Number(test.protection_bust_pool || 0);
             const userTestingDayRaw = getResolvedTestingDay(test);
             const userTestingDay = typeof userTestingDayRaw === 'number' && userTestingDayRaw > 0 ? userTestingDayRaw : 1;
             const isPendingCompletion = !!test.is_pending_completion;
@@ -1293,9 +1457,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
 
             if (userTestingDay >= 15) {
                 if (!isInSafetyBuffer) {
-                    const protectedText = extraPaid > 0
-                        ? window.t('ppcProtectedBadgeDays', { days: extraPaid }, lang)
-                        : window.t('ppcProtectedBadge', {}, lang);
+                    const protectedText = formatProtectionBadgeLabel(extraPaid, poolAmount, lang);
                     parts.push(`<button type="button" class="meta-chip accent-protection" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast('${(t.syncDoneText || '').replace(/'/g, "\\'")}'); return false;">${window.escapeHTML(protectedText)}</button>`);
                 }
             }
@@ -1453,6 +1615,95 @@ function openTelegramProfile(username, event) {
     return true;
 }
 
+function contactIncomingAccessReporter(username, accessMode, currentLang) {
+    const clean = String(username || '').trim().replace(/^@+/, '');
+    if (!clean) return false;
+
+    const langCode = currentLang || (typeof getLang === 'function' ? getLang() : 'ru');
+    const isDefaultGoogleGroup = String(accessMode || '').trim().toLowerCase() === 'google_group';
+    if (isDefaultGoogleGroup) {
+        const groupMessage = '✅**Email Group for Console Add:**\ngoogle-play-dev-test@googlegroups.com';
+
+        // Request clipboard access before opening Telegram: it preserves the user gesture
+        // on mobile WebView while the native guide is displayed.
+        try {
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                navigator.clipboard.writeText(groupMessage).catch(function() {});
+            } else {
+                const field = document.createElement('textarea');
+                field.value = groupMessage;
+                field.setAttribute('readonly', '');
+                field.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+                document.body.appendChild(field);
+                field.select();
+                document.execCommand('copy');
+                field.remove();
+            }
+        } catch (error) {
+            console.warn('Could not copy the Google Group address:', error);
+        }
+    }
+
+    const openChat = function() {
+        if (typeof contactAccessTester === 'function') contactAccessTester(clean);
+    };
+    if (isDefaultGoogleGroup) {
+        if (typeof window.closeCustomAlert === 'function') window.closeCustomAlert();
+        const helperGuide = String(window.t('incomingAccessIssueHelperGuide', {}, langCode) || '').slice(0, 256);
+        const telegram = window.tg || (window.Telegram && window.Telegram.WebApp) || (typeof tg !== 'undefined' ? tg : null);
+        // Telegram keeps its native alert above the chat after openTelegramLink.
+        // This only works when the message stays within the strict 256-char limit.
+        openChat();
+        if (telegram && typeof telegram.showAlert === 'function') {
+            try {
+                telegram.showAlert(helperGuide);
+            } catch (error) {
+                console.warn('Could not show access helper alert:', error);
+            }
+        }
+    } else {
+        openChat();
+    }
+    return false;
+}
+
+function renderIncomingAccessIssue(item, currentLang) {
+    if (!item || !item.access_issue) return '';
+
+    const langCode = currentLang || (typeof getLang === 'function' ? getLang() : 'ru');
+    const modeKey = {
+        email_list: 'incomingAccessIssueModeEmailList',
+        custom_google_group: 'incomingAccessIssueModeCustomGroup',
+        google_group: 'incomingAccessIssueModeGoogleGroup',
+    }[String(item.access_issue_mode || '').toLowerCase()] || 'incomingAccessIssueModeGoogleGroup';
+    const issueContactUsername = String(item.access_issue_contact_username || item.access_issue_tester_username || item.access_issue_reporter_username || '').trim().replace(/^@+/, '');
+    const safeUsername = escapeInlineJsString(issueContactUsername);
+    const title = window.escapeHTML(window.t('incomingAccessIssueTitle', {}, langCode));
+    const mode = window.escapeHTML(window.t(modeKey, {}, langCode));
+    const description = window.escapeHTML(window.t('incomingAccessIssueDescription', {}, langCode));
+    const helpLabel = window.escapeHTML(window.t('incomingAccessIssueHelpLabel', {}, langCode));
+    const karmaIcon = typeof window.karmaIconHtml === 'function'
+        ? window.karmaIconHtml('incoming-access-issue__karma')
+        : '<span class="incoming-access-issue__karma" aria-hidden="true">☯</span>';
+    const contactHtml = issueContactUsername
+        ? '<button type="button" class="incoming-access-issue__contact notranslate" ' +
+            'aria-label="' + window.escapeHTML(window.t('incomingAccessIssueContactAria', { username: '@' + issueContactUsername }, langCode)) + '" ' +
+            'onclick="event.stopPropagation(); contactIncomingAccessReporter(\'' + safeUsername + '\', \'' + escapeInlineJsString(String(item.access_issue_mode || '')) + '\', \'' + escapeInlineJsString(langCode) + '\');">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.7 4.2 3.9 10.7c-1.15.46-1.14 1.1-.21 1.39l4.31 1.35 1.67 5.1c.2.56.1.78.7.78.46 0 .66-.2.92-.44l2.09-2.03 4.35 3.22c.8.44 1.38.21 1.58-.75l2.86-13.48c.29-1.18-.45-1.72-1.54-1.22ZM8.67 13.2l9.72-6.14c.49-.3.94-.14.57.19l-8.33 7.52-.33 3.5-1.63-5.07Z" fill="currentColor"/></svg>' +
+                '<span>@' + window.escapeHTML(issueContactUsername) + '</span>' +
+            '</button>'
+        : '';
+
+    return '<aside class="incoming-access-issue" role="status">' +
+        '<div class="incoming-access-issue__head">' +
+            '<span class="incoming-access-issue__title">' + karmaIcon + title + '</span>' +
+            '<span class="incoming-access-issue__mode notranslate">' + mode + '</span>' +
+        '</div>' +
+        '<p>' + description + '</p>' +
+        (contactHtml ? '<div class="incoming-access-issue__foot"><span>' + helpLabel + '</span>' + contactHtml + '</div>' : '') +
+    '</aside>';
+}
+
 function renderIncomingOffers() {
     if (!arguments[0] && !isTabVisible('tests')) {
         if (_offersTimerId) {
@@ -1608,6 +1859,7 @@ function renderIncomingOffers() {
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
                     '</button>' +
                 '</div>' +
+                renderIncomingAccessIssue(offer, lang) +
             '</div>';
     }).join('');
 
@@ -1635,7 +1887,8 @@ function renderIncomingOffers() {
             }
             if (expireEl) {
                 const leftTimeText = window.t('offerTimeLeftValue', { hours: remain.hours, minutes: remain.minutes }, lang);
-                expireEl.textContent = window.t('offerTimeLeft', { time: leftTimeText }, lang);
+                const nextExpireText = window.t('offerTimeLeft', { time: leftTimeText }, lang);
+                if (expireEl.textContent !== nextExpireText) expireEl.textContent = nextExpireText;
             }
         });
 
@@ -1643,7 +1896,7 @@ function renderIncomingOffers() {
             clearInterval(_offersTimerId);
             _offersTimerId = null;
         }
-    }, 1000);
+    }, 30000);
 }
 
 function formatKarmaValue(value) {
@@ -2038,8 +2291,557 @@ function renderExternalGuestTestsSection() {
     return externalTests.length;
 }
 
+function getPageScrollY() {
+    var se = document.scrollingElement || document.documentElement;
+    var y = 0;
+    if (typeof window.scrollY === 'number') y = window.scrollY;
+    else if (typeof window.pageYOffset === 'number') y = window.pageYOffset;
+    if (!y && se) y = Number(se.scrollTop || 0);
+    if (!y && document.body) y = Number(document.body.scrollTop || 0);
+    return y;
+}
+
+function setPageScrollY(y) {
+    var next = Math.max(0, Number(y || 0));
+    if (typeof window.scrollTo === 'function') {
+        try { window.scrollTo(0, next); } catch (e) {}
+    }
+    var se = document.scrollingElement || document.documentElement;
+    if (se) se.scrollTop = next;
+    if (document.body) document.body.scrollTop = next;
+}
+
+var _resumeTestsScrollClearTimer = null;
+
+function rememberTestsScrollForResume() {
+    window._resumeTestsScrollY = getPageScrollY();
+    if (_resumeTestsScrollClearTimer) {
+        clearTimeout(_resumeTestsScrollClearTimer);
+        _resumeTestsScrollClearTimer = null;
+    }
+}
+
+function restoreTestsScrollAfterResume() {
+    if (typeof window._resumeTestsScrollY !== 'number') return;
+    var y = window._resumeTestsScrollY;
+    setPageScrollY(y);
+    requestAnimationFrame(function() {
+        setPageScrollY(y);
+    });
+    if (_resumeTestsScrollClearTimer) clearTimeout(_resumeTestsScrollClearTimer);
+    _resumeTestsScrollClearTimer = setTimeout(function() {
+        window._resumeTestsScrollY = undefined;
+        _resumeTestsScrollClearTimer = null;
+    }, 1200);
+}
+
+function captureTestsViewportAnchor() {
+    if (!isTabVisible('tests')) return null;
+    if (typeof window._resumeTestsScrollY === 'number') {
+        return { scrollY: window._resumeTestsScrollY, id: null, top: 0, inDone: false, resume: true };
+    }
+    const scrollY = getPageScrollY();
+    const tab = document.getElementById('tab-tests');
+    if (!tab) return { scrollY: scrollY, id: null, top: 0, inDone: false };
+    const done = document.getElementById('done-list');
+    const cards = Array.from(tab.querySelectorAll('.card[id^="test-card-"]'));
+    const anchor = cards.find(function(card) {
+        const rect = card.getBoundingClientRect();
+        return rect.bottom > 80 && rect.top < ((window.innerHeight || 0) - 80);
+    });
+    if (!anchor) return { scrollY: scrollY, id: null, top: 0, inDone: false };
+    return {
+        scrollY: scrollY,
+        id: anchor.id,
+        top: anchor.getBoundingClientRect().top,
+        inDone: !!(done && done.contains(anchor)),
+    };
+}
+
+function restoreTestsViewportAnchor(anchor) {
+    if (!anchor || !isTabVisible('tests')) return;
+    if (anchor.resume && typeof anchor.scrollY === 'number') {
+        setPageScrollY(anchor.scrollY);
+        return;
+    }
+    const node = anchor.id ? document.getElementById(anchor.id) : null;
+    const done = document.getElementById('done-list');
+    const movedToDone = !anchor.inDone && node && done && done.contains(node);
+    if (node && !movedToDone && typeof anchor.top === 'number') {
+        const delta = node.getBoundingClientRect().top - anchor.top;
+        if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+        return;
+    }
+    if (typeof anchor.scrollY === 'number') setPageScrollY(anchor.scrollY);
+}
+window.getPageScrollY = getPageScrollY;
+window.setPageScrollY = setPageScrollY;
+window.rememberTestsScrollForResume = rememberTestsScrollForResume;
+window.restoreTestsScrollAfterResume = restoreTestsScrollAfterResume;
+
+function getOpenControlProofCatchups(test) {
+    return (Array.isArray(test && test.control_proof_catchups) ? test.control_proof_catchups : [])
+        .map(function(item) { return Number(item && item.missed_testing_day || 0); })
+        .filter(function(day) { return day > 0; })
+        .sort(function(a, b) { return a - b; });
+}
+
+function hasOpenControlProofCatchup(test) {
+    return getOpenControlProofCatchups(test).length > 0;
+}
+
+function renderControlProofCatchupChip(test, testingDay) {
+    const days = getOpenControlProofCatchups(test);
+    if (!days.length) return '';
+    const count = days.length;
+    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0));
+    const labelKey = count === 1 ? 'catchupTesterChipOne' : 'catchupTesterChipMany';
+    const label = window.t(labelKey, { count: count }, lang);
+    return '<button type="button" class="meta-chip control-proof-catchup-chip' + (isOfficialDay ? ' is-disabled' : '') + '"' +
+        ' onclick="event.stopPropagation(); openControlProofCatchupInfo(' + Number(test.id || 0) + ')">' +
+        window.escapeHTML(label) + '</button>';
+}
+
+function isBufferOnlyCatchupSubmission(test, testingDay) {
+    if (!test || String(test.app_status || '').toLowerCase() !== 'pending_completion') return false;
+    var paidDays = Math.max(0, Number(test.paid_protection_days || test.purchased_protection_days || 0));
+    return Number(testingDay || 0) > 14 + paidDays
+        && Number(test.protection_bust_pool || 0) <= 0;
+}
+
+function getScreenshotBoostOffer(test, testingDay) {
+    if (!test || test.is_external || test.is_kicked_soft || test.is_unlinked_soft) return null;
+    var campaign = test.screenshot_boost_campaign;
+    if (!campaign || campaign.enabled !== true) return null;
+    var reward = Math.max(0, Number(campaign.reward_bust || 0));
+    var pool = Math.max(0, Number(campaign.pool_remaining || 0));
+    var day = Math.max(0, Number(testingDay || getResolvedTestingDay(test) || 0));
+    var run = Math.max(1, Number(test.run_iteration || 1));
+    var protectionDays = Math.max(0, Number(test.paid_protection_days || test.purchased_protection_days || 0));
+    if (!reward || pool < reward || !day) return null;
+    if (Math.max(1, Number(campaign.run_iteration || 1)) !== run) return null;
+    if (String(test.progress_status || 'active').toLowerCase() !== 'active') return null;
+    if (day >= 15) {
+        if (day > 14 + protectionDays) return null;
+        if (campaign.reward_protection_days !== true) return null;
+    }
+    if (String(test.app_status || 'active').toLowerCase() === 'pending_completion'
+        && isBufferOnlyCatchupSubmission(test, day)) return null;
+    if (['completed', 'archived', 'blocked'].indexOf(String(test.app_status || '').toLowerCase()) !== -1) return null;
+    if (isTestedToday(test)) return null;
+
+    // A make-up control proof always owns the first eligible screenshot of the day.
+    // The database also records a zero-value day claim, so a retry cannot bypass it.
+    var catchups = Array.isArray(test.control_proof_catchups) ? test.control_proof_catchups : [];
+    if (catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
+
+    var isControlDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day);
+    // The first successful check-in always carries the mandatory first-launch
+    // proof, even when it is overdue and therefore lands on day 2+. Treat it
+    // exactly like a control-day report for screenshot reward eligibility.
+    var isFirstMandatoryProof = Number(test.checkins_count || 0) <= 0
+        && !String(test.last_check_date || '').trim();
+    var isControlEquivalent = isControlDay || isFirstMandatoryProof;
+    if (isControlEquivalent && campaign.reward_control_days !== true) return null;
+    return {
+        reward: reward,
+        pool: pool,
+        day: day,
+        isControlDay: isControlEquivalent,
+    };
+}
+
+function formatScreenshotBoostAmount(value) {
+    var number = Number(value || 0);
+    return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
+}
+
+function formatScreenshotBoostStickerAmount(value) {
+    var number = Number(value || 0);
+    if (!Number.isFinite(number)) number = 0;
+    return (Math.round(number * 100) / 100).toFixed(2);
+}
+
+function getScreenshotBoostPaperclipContent(appId) {
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
+    // The button itself already draws the canonical paperclip with ::before.
+    // Reward amount lives on a corner sticker so the clip stays centered.
+    var html = '';
+    if (offer) {
+        html += '<span class="split-btn-options__boost" aria-hidden="true">+$' +
+            window.escapeHTML(formatScreenshotBoostStickerAmount(offer.reward)) + '</span>';
+    }
+    if (hasOpenControlProofCatchup(test)) {
+        var catchupCount = getOpenControlProofCatchups(test).length;
+        html += '<span class="split-btn-options__catchup-cam" aria-hidden="true">' +
+            (catchupCount > 0
+                ? '<span class="split-btn-options__catchup-count">' + catchupCount + '</span>'
+                : '') +
+            '</span>';
+    }
+    return html;
+}
+
+function getScreenshotBoostConfirmStickerHtml(test, testingDay) {
+    if (!test) return '';
+    var day = testingDay || (typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : 0);
+    var offer = getScreenshotBoostOffer(test, day);
+    if (!offer) return '';
+    return '<span class="split-btn-options__boost checkin-confirm-btn__boost" aria-hidden="true">+$' +
+        window.escapeHTML(formatScreenshotBoostStickerAmount(offer.reward)) + '</span>';
+}
+
+function syncScreenshotBoostConfirmButton(btn, appId) {
+    if (!btn) return;
+    var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    if (!test && Array.isArray(myTests)) {
+        test = myTests.find(function(item) { return Number(item && item.id) === Number(appId); });
+    }
+    if (!test) return;
+    var testingDay = typeof window.getUserTestingDay === 'function'
+        ? window.getUserTestingDay(test.start_date, test.testing_days)
+        : (typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : Number(test.testing_days || 0));
+    var offer = typeof window.getScreenshotBoostOffer === 'function'
+        ? window.getScreenshotBoostOffer(test, testingDay)
+        : null;
+    var isControlDay = (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDay))
+        || (Number(test.checkins_count || 0) <= 0 && !String(test.last_check_date || '').trim());
+    var showSticker = !!(offer && (isControlDay || offer.isControlDay));
+
+    btn.classList.toggle('has-screenshot-boost', showSticker);
+    var existingSticker = btn.querySelector('.checkin-confirm-btn__boost');
+    if (showSticker) {
+        var stickerAmount = typeof formatScreenshotBoostStickerAmount === 'function'
+            ? formatScreenshotBoostStickerAmount(offer.reward)
+            : Number(offer.reward || 0).toFixed(2);
+        if (existingSticker) {
+            existingSticker.textContent = '+$' + stickerAmount;
+        } else {
+            var span = document.createElement('span');
+            span.className = 'split-btn-options__boost checkin-confirm-btn__boost';
+            span.setAttribute('aria-hidden', 'true');
+            span.textContent = '+$' + stickerAmount;
+            btn.appendChild(span);
+        }
+    } else if (existingSticker) {
+        existingSticker.remove();
+    }
+}
+
+function syncScreenshotBoostOfferUi(appId, options) {
+    options = options || {};
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    var offer = getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0);
+    var fillChooser = options.chooser !== false;
+    var fillReport = options.report !== false;
+    var targets = [];
+    if (fillChooser) targets.push('checkin-options-screenshot-boost');
+    if (fillReport) targets.push('report-screenshot-boost');
+    else {
+        var reportNode = document.getElementById('report-screenshot-boost');
+        if (reportNode) {
+            reportNode.hidden = true;
+            reportNode.textContent = '';
+        }
+    }
+    targets.forEach(function(id) {
+        var node = document.getElementById(id);
+        if (!node) return;
+        node.hidden = !offer;
+        if (!offer) {
+            node.textContent = '';
+            return;
+        }
+        var detailKey = offer.isControlDay
+            ? 'screenshotBoostControlOfferDetail'
+            : 'screenshotBoostOfferDetail';
+        node.innerHTML = '<span class="screenshot-boost-offer__gift" aria-hidden="true">🎁</span>' +
+            '<span class="screenshot-boost-offer__copy">' +
+                '<span class="screenshot-boost-offer__title">' +
+                    '<strong>+' + window.escapeHTML(formatScreenshotBoostAmount(offer.reward)) + ' $BUST</strong>' +
+                    '<span class="screenshot-boost-offer__chip">' +
+                        window.escapeHTML(window.t('screenshotBoostBonusChip', {}, lang) || (lang === 'en' ? 'Bonus' : 'Бонус')) +
+                    '</span>' +
+                '</span>' +
+                '<span class="screenshot-boost-offer__detail">' + window.escapeHTML(window.t(detailKey, {}, lang)) + '</span>' +
+            '</span>';
+    });
+    return offer;
+}
+
+var _screenshotBoostAdvertisedAppId = 0;
+
+function markScreenshotBoostAdvertisedInChooser(appId, advertised) {
+    _screenshotBoostAdvertisedAppId = advertised ? Number(appId || 0) : 0;
+}
+
+function wasScreenshotBoostAdvertisedInChooser(appId) {
+    var id = Number(appId || 0);
+    return id > 0 && Number(_screenshotBoostAdvertisedAppId || 0) === id;
+}
+
+function getCheckinDeveloperDisplayName(test, fallbackUsername) {
+    var fullName = String((test && test.owner_full_name) || '').trim();
+    var username = String(
+        (test && (test.owner_username || test.external_owner_username)) ||
+        fallbackUsername ||
+        ''
+    ).trim().replace(/^@+/, '');
+    if (fullName) return fullName;
+    if (username) return '@' + username;
+    return window.t('unknownLabel', {}, lang) || '—';
+}
+
+function formatCheckinDeveloperSpeedLabel(hoursRaw) {
+    var sla = typeof formatOwnerSlaDisplay === 'function'
+        ? formatOwnerSlaDisplay(hoursRaw)
+        : { hasValue: false, label: '—', hours: null };
+    if (!sla.hasValue) return window.t('feedbackSlaChipDash', {}, lang) || '—';
+    if (Number(sla.hours) >= 18 && Number(sla.hours) < 40) {
+        return window.t('checkinDevSpeedUpToDay', {}, lang);
+    }
+    return sla.label;
+}
+
+function formatCheckinDeveloperAcceptedLabel(count, rate) {
+    var n = Math.max(0, Number(count || 0) || 0);
+    var pct = (rate == null || rate === '') ? NaN : Number(rate);
+    if (Number.isFinite(pct)) {
+        var pctLabel = (Math.abs(pct - Math.round(pct)) < 0.05)
+            ? String(Math.round(pct))
+            : String(pct).replace(/\.0$/, '');
+        return window.t('checkinDevAcceptedValue', { count: n, pct: pctLabel }, lang);
+    }
+    return String(n);
+}
+
+function collapseCheckinDeveloperAccordion() {
+    var root = document.getElementById('checkin-options-developer');
+    var toggle = document.getElementById('checkin-options-developer-toggle');
+    if (root) root.classList.remove('is-open');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function toggleCheckinDeveloperAccordion(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var root = document.getElementById('checkin-options-developer');
+    var toggle = document.getElementById('checkin-options-developer-toggle');
+    if (!root) return;
+    var open = !root.classList.contains('is-open');
+    root.classList.toggle('is-open', open);
+    if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function syncCheckinDeveloperAccordion(appId, fallbackUsername) {
+    var root = document.getElementById('checkin-options-developer');
+    var summary = document.getElementById('checkin-options-developer-summary');
+    var body = document.getElementById('checkin-options-developer-body');
+    var toggle = document.getElementById('checkin-options-developer-toggle');
+    collapseCheckinDeveloperAccordion();
+    var test = typeof window.getMyTestById === 'function'
+        ? window.getMyTestById(appId)
+        : ((Array.isArray(myTests) ? myTests : []).find(function(item) {
+            return Number(item && item.id || 0) === Number(appId || 0);
+        }) || null);
+    var name = getCheckinDeveloperDisplayName(test, fallbackUsername);
+    if (summary) {
+        summary.textContent = window.t('checkinDevAccordionSummary', { name: name }, lang);
+    }
+    if (toggle) {
+        toggle.setAttribute('aria-label', window.t('checkinDevAccordionAria', {}, lang));
+    }
+    if (!body) return root;
+
+    var hoursRaw = test && (test.owner_avg_handle_hours != null && test.owner_avg_handle_hours !== '')
+        ? test.owner_avg_handle_hours
+        : null;
+    var pending = Math.max(0, Number(test && test.owner_pending_open || 0) || 0);
+    var accepted = Math.max(0, Number(test && test.owner_accepted_total || 0) || 0);
+    var rate = test && (test.owner_acceptance_rate_pct != null && test.owner_acceptance_rate_pct !== '')
+        ? Number(test.owner_acceptance_rate_pct)
+        : null;
+    var hasHours = hoursRaw != null && hoursRaw !== '' && Number.isFinite(Number(hoursRaw));
+    var isNew = !hasHours && pending <= 0 && accepted <= 0;
+
+    if (isNew) {
+        body.innerHTML = '<p class="checkin-dev-accordion__empty">' +
+            window.escapeHTML(window.t('checkinDevEmpty', {}, lang)) +
+            '</p>';
+        return root;
+    }
+
+    function row(labelKey, valueHtml) {
+        return '<div class="checkin-dev-accordion__row">' +
+            '<span>' + window.escapeHTML(window.t(labelKey, {}, lang)) + '</span>' +
+            '<strong>' + valueHtml + '</strong>' +
+            '</div>';
+    }
+
+    var infoIcon = (typeof window.getMaterialInfoIconSvg === 'function')
+        ? window.getMaterialInfoIconSvg('checkin-dev-accordion__hint-icon')
+        : '';
+    body.innerHTML =
+        row('checkinDevSpeedLabel', window.escapeHTML(formatCheckinDeveloperSpeedLabel(hoursRaw))) +
+        row('checkinDevAcceptedLabel', window.escapeHTML(formatCheckinDeveloperAcceptedLabel(accepted, rate))) +
+        row('checkinDevQueueLabel', window.escapeHTML(String(pending))) +
+        '<p class="checkin-dev-accordion__hint">' +
+            infoIcon +
+            '<span>' + window.escapeHTML(window.t('checkinDevHint', {}, lang)) + '</span>' +
+        '</p>';
+    return root;
+}
+
+function syncCheckinCatchupNoteUi(appId) {
+    var note = document.getElementById('checkin-options-catchup-note');
+    var modal = document.getElementById('checkin-options-modal');
+    var titleEl = document.getElementById('checkin-options-catchup-title');
+    var textEl = document.getElementById('checkin-options-catchup-text');
+    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    var days = getOpenControlProofCatchups(test);
+    var visible = days.length > 0;
+    if (note) note.hidden = !visible;
+    if (modal) modal.classList.toggle('has-catchup-note', visible);
+    if (!visible) return null;
+    if (titleEl) {
+        titleEl.textContent = days.length === 1
+            ? window.t('checkinOptionsCatchupTitleOne', { day: days[0] }, lang)
+            : window.t('checkinOptionsCatchupTitleMany', { days: days.join(', ') }, lang);
+    }
+    if (textEl) textEl.textContent = window.t('checkinOptionsCatchupText', {}, lang);
+    return days;
+}
+
+window.getOpenControlProofCatchups = getOpenControlProofCatchups;
+window.hasOpenControlProofCatchup = hasOpenControlProofCatchup;
+window.getScreenshotBoostOffer = getScreenshotBoostOffer;
+window.getScreenshotBoostPaperclipContent = getScreenshotBoostPaperclipContent;
+window.syncScreenshotBoostOfferUi = syncScreenshotBoostOfferUi;
+window.markScreenshotBoostAdvertisedInChooser = markScreenshotBoostAdvertisedInChooser;
+window.wasScreenshotBoostAdvertisedInChooser = wasScreenshotBoostAdvertisedInChooser;
+window.syncCheckinCatchupNoteUi = syncCheckinCatchupNoteUi;
+window.syncCheckinDeveloperAccordion = syncCheckinDeveloperAccordion;
+window.toggleCheckinDeveloperAccordion = toggleCheckinDeveloperAccordion;
+window.collapseCheckinDeveloperAccordion = collapseCheckinDeveloperAccordion;
+window.getScreenshotBoostConfirmStickerHtml = getScreenshotBoostConfirmStickerHtml;
+window.syncScreenshotBoostConfirmButton = syncScreenshotBoostConfirmButton;
+
+function removeControlProofCatchupInfoDialog() {
+    const dialog = document.getElementById('pc-catchup-tester-dialog');
+    if (dialog && dialog.parentNode) dialog.parentNode.removeChild(dialog);
+}
+
+window.closeControlProofCatchupInfo = function() {
+    const dialog = document.getElementById('pc-catchup-tester-dialog');
+    if (!dialog) return;
+    dialog.classList.remove('active');
+    window.setTimeout(removeControlProofCatchupInfoDialog, 220);
+};
+
+window.openControlProofCatchupInfo = function(appId) {
+    const test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    if (!test) return;
+    const days = getOpenControlProofCatchups(test);
+    if (!days.length) return;
+    const today = getResolvedTestingDay(test);
+    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(today || 0));
+    const bufferOnly = isBufferOnlyCatchupSubmission(test, today);
+    const lead = days.length === 1
+        ? window.t('catchupTesterLeadOne', { day: days[0] }, lang)
+        : window.t('catchupTesterLeadMany', { days: days.join(', ') }, lang);
+    const dayLabel = days.length === 1
+        ? window.t('pcCatchupRequestDay', { day: days[0] }, lang)
+        : window.t('pcCatchupRequestDay', { day: days.join(', ') }, lang);
+    removeControlProofCatchupInfoDialog();
+    const facts = [
+        window.t('catchupTesterFactAnyDay', {}, lang),
+        window.t('catchupTesterFactClose', {}, lang),
+    ];
+    if (!bufferOnly && !isOfficialDay) {
+        facts.push(window.t('catchupTesterFactBothWays', {}, lang));
+    }
+    facts.push(window.t('catchupTesterFactPenalty', {}, lang));
+    if (bufferOnly) facts.push(window.t('catchupTesterBufferNote', {}, lang));
+    if (isOfficialDay) facts.push(window.t('catchupTesterOfficialNote', {}, lang));
+    const actionsHtml = isOfficialDay
+        ? '<div class="pc-catchup-request-sheet__actions pc-catchup-request-sheet__actions--single">' +
+            '<button type="button" class="btn btn-primary" onclick="closeControlProofCatchupInfo()">' +
+                window.escapeHTML(window.t('catchupTesterGotIt', {}, lang)) + '</button>' +
+          '</div>'
+        : '<div class="pc-catchup-request-sheet__actions pc-catchup-request-sheet__actions--choice">' +
+            '<button type="button" class="btn btn-secondary" onclick="openControlProofCatchupApp(' + Number(appId || 0) + ')">' +
+                window.escapeHTML(window.t('catchupTesterOpenApp', {}, lang)) + '</button>' +
+            '<button type="button" class="btn btn-primary" onclick="openControlProofCatchupScreenshot(' + Number(appId || 0) + ')">' +
+                window.escapeHTML(window.t('catchupTesterAttachScreenshot', {}, lang)) + '</button>' +
+          '</div>';
+    const html = '<div id="pc-catchup-tester-dialog" class="modal-overlay pc-catchup-request-modal" role="presentation" onclick="if (event.target === this) closeControlProofCatchupInfo()">' +
+        '<section class="modal-content pc-catchup-request-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-catchup-tester-title">' +
+            '<div class="sheet-handle" aria-hidden="true"></div>' +
+            '<div class="pc-catchup-request-sheet__head">' +
+                '<div class="pc-catchup-request-sheet__icon" aria-hidden="true">📸</div>' +
+                '<div><h3 id="pc-catchup-tester-title">' + window.escapeHTML(window.t('catchupTesterTitle', {}, lang)) + '</h3>' +
+                '<p>' + window.escapeHTML(dayLabel) + '</p></div>' +
+            '</div>' +
+            '<p class="pc-catchup-request-sheet__lead">' + window.escapeHTML(lead) + '</p>' +
+            '<ul class="pc-catchup-request-sheet__facts">' +
+                facts.map(function(item) { return '<li>' + window.escapeHTML(item) + '</li>'; }).join('') +
+            '</ul>' +
+            actionsHtml +
+        '</section>' +
+    '</div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+    const dialog = document.getElementById('pc-catchup-tester-dialog');
+    window.requestAnimationFrame(function() {
+        if (dialog) dialog.classList.add('active');
+    });
+};
+
+window.openControlProofCatchupApp = function(appId) {
+    const test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    if (!test) return;
+    window.closeControlProofCatchupInfo();
+    const packageName = String(test.package || test.package_name || '').trim();
+    if (packageName && typeof window.startTimer === 'function') {
+        // Buffer cards do not contain a check-in button. startTimer therefore
+        // only opens Google Play there and does not create a daily task.
+        window.startTimer(Number(appId), packageName, false, '');
+    }
+};
+
+window.openControlProofCatchupScreenshot = function(appId) {
+    const test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id || 0) === Number(appId || 0);
+    });
+    if (!test) return;
+    const testingDay = getResolvedTestingDay(test);
+    if (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0))) {
+        if (typeof showToast === 'function') showToast(window.t('catchupTesterOfficialNote', {}, lang));
+        return;
+    }
+    window.closeControlProofCatchupInfo();
+    if (typeof window.openCheckinProofUploadModal !== 'function') return;
+    window.openCheckinProofUploadModal(Number(appId), {
+        submissionMode: isBufferOnlyCatchupSubmission(test, testingDay) ? 'buffer_catchup' : 'standard',
+        catchupRequested: true,
+    });
+};
+
 function renderTests(force) {
     if (!force && !isTabVisible('tests')) return;
+    const viewportAnchor = captureTestsViewportAnchor();
     syncExternalContinueModeState();
     if (typeof window.updateOwnerAccessIssueBanner === 'function') {
         window.updateOwnerAccessIssueBanner();
@@ -2132,6 +2934,13 @@ function renderTests(force) {
                 card.className += ' card-feedback-pending';
             }
         }
+        const isScreenshotProofUploadPending = !!(
+            typeof window.isScreenshotProofUploadPending === 'function'
+            && window.isScreenshotProofUploadPending(test.id)
+        ) && shouldShowInActiveList;
+        if (isScreenshotProofUploadPending) {
+            card.className += ' card-screenshot-proof-upload-pending';
+        }
         card.id = `test-card-${test.id}`;
         const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
         const safeOwnerUsername = escapeInlineJsString(test.owner_username || '');
@@ -2168,7 +2977,16 @@ function renderTests(force) {
             && isAccessProblemAccordionOpen(test.id);
         const accessAccordionExpanded = isAccessAccordionOpen ? 'true' : 'false';
         const accessAccordionOpenClass = isAccessAccordionOpen ? ' is-open' : '';
-        const showInlineWait = isCustomGroupForIssue && waitRemainingMs > 0 && !isAccessAccordionOpen;
+        const issueCountdownText = isIssueBlocked
+            ? getIssueRemovalCountdownText(test.issue_reported_at)
+            : '';
+        const showInlineIssueWait = !!issueCountdownText && !isAccessAccordionOpen;
+        const inlineIssueWaitHtml = isIssueBlocked
+            ? `<span class="access-problem-toggle__inline-wait" data-access-issue-wait-toggle="${test.id}"${showInlineIssueWait ? '' : ' hidden'}>`
+                + `• <span class="access-problem-toggle__inline-wait-clock" data-access-issue-wait-toggle-clock="${test.id}">${window.escapeHTML(issueCountdownText)}</span>`
+                + `</span>`
+            : '';
+        const showInlineWait = isCustomGroupForIssue && waitRemainingMs > 0 && !isAccessAccordionOpen && !isIssueBlocked;
         const inlineWaitHtml = isCustomGroupForIssue
             ? `<span class="access-problem-toggle__inline-wait" data-custom-group-wait-toggle="${test.id}"${showInlineWait ? '' : ' hidden'}>`
                 + `• <span class="access-problem-toggle__inline-wait-clock" data-custom-group-wait-toggle-clock="${test.id}">${waitClockText}</span>`
@@ -2177,7 +2995,7 @@ function renderTests(force) {
         const issueBtnHtml = `
             <div id="access-problem-wrap-${test.id}" class="access-problem-wrap" style="display:${issueBtnDisplay};">
                 <button type="button" id="access-problem-toggle-${test.id}" class="access-problem-toggle${accessAccordionOpenClass}" onclick="event.stopPropagation(); toggleAccessProblemAccordion(${test.id})" aria-expanded="${accessAccordionExpanded}">
-                    <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>${inlineWaitHtml}
+                    <span class="access-problem-toggle__label">${window.escapeHTML(issueToggleText)}</span>${inlineIssueWaitHtml}${inlineWaitHtml}
                 </button>
                 <div id="access-problem-panel-${test.id}" class="access-problem-panel${accessAccordionOpenClass}" aria-hidden="${isAccessAccordionOpen ? 'false' : 'true'}">
                     <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
@@ -2215,7 +3033,15 @@ function renderTests(force) {
         let actionsHtml = '';
         const isFeedbackCheckinPending = typeof isTestFeedbackCheckinPending === 'function' && isTestFeedbackCheckinPending(test.id);
         const feedbackPendingBtnLabel = (typeof getFeedbackCheckinPendingLabel === 'function' ? getFeedbackCheckinPendingLabel() : window.t('feedbackCheckinPendingBtn', {}, lang));
+        const feedbackPendingBtnInner = (typeof getFeedbackCheckinPendingLabelHtml === 'function')
+            ? getFeedbackCheckinPendingLabelHtml()
+            : window.escapeHTML(feedbackPendingBtnLabel);
         const feedbackPendingBtnStyle = 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;';
+        const feedbackPendingHintHtml = (isFeedbackCheckinPending
+            && typeof isFeedbackPendingHintVisible === 'function'
+            && isFeedbackPendingHintVisible(test.id))
+            ? `<div class="feedback-pending-hint">${window.escapeHTML(window.t('feedbackCheckinPendingHint', {}, lang))}</div>`
+            : '';
 
         if (test.is_kicked_soft || test.is_unlinked_soft || test.is_soft_tail) {
             const leaveReasonRaw = String(test.leave_reason || '').trim();
@@ -2318,7 +3144,7 @@ function renderTests(force) {
                 
                 if (isScreenshotDay) {
                     secondaryActions += `
-                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
+                        <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
                             ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.t('completeControlDayBtn', {}, lang)}
                         </button>
                     `;
@@ -2345,7 +3171,7 @@ function renderTests(force) {
             actionsHtml = pendingReleaseButtonHtml;
         } else if (test.isGrantAvailableTomorrow) {
             actionsHtml = `
-                <button id="btn-claim-${test.id}" class="btn btn-claim-grant" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant btn-grant-tomorrow" style="width: 100%; margin-bottom: 12px; font-size: 16px; padding: 14px 16px; gap: 8px;" onclick="handleGrantTomorrowClick(event, ${test.id})">
                     ${window.t('claimGrantTomorrowBtn', {}, lang)}
                 </button>
             `;
@@ -2403,11 +3229,12 @@ function renderTests(force) {
                 `;
             }
         }
-        // State B: status = 'new' OR status = 'daily'/'opened' without ready to claim
-        else if (test.status === 'new') {
+        // State B: status = 'new' OR Day 1 active test without ready to claim
+        else if (test.status === 'new' || (userTestingDay === 1 && !isArchivedOrCompleted && test.status !== 'done')) {
             const hintHtml = renderCheckinRewardHint(test, 1, lang);
             actionsHtml = `
                 ${renderFirstDaySteps(test, safePackage, safeOwnerUsername)}
+                ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                 ${issueBtnHtml}
                 ${hintHtml}
             `;
@@ -2415,20 +3242,28 @@ function renderTests(force) {
             const testingDay = userTestingDay || 999;
             if (testingDay >= 15) {
                 const hintHtml = renderCheckinRewardHint(test, testingDay, lang);
+                const extensionBoostOffer = getScreenshotBoostOffer(test, testingDay);
                 // Do NOT show the karma-only hint when pool is empty — it promises a "Protection Bonus" that doesn't exist
 
-
-                actionsHtml = `
-                    <div class="action-row">
-                        <div class="split-btn-group" style="width: 100%; flex: 1;">
+                const extensionConfirmHtml = `
+                    <div class="action-row${extensionBoostOffer ? ' extension-boost-confirm-row' : ''}">
+                        <div class="split-btn-group${isFeedbackCheckinPending ? ' is-feedback-pending' : ''}" style="width: 100%; flex: 1;">
                             <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
-                                ${window.escapeHTML(isFeedbackCheckinPending ? feedbackPendingBtnLabel : (window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed'))}
+                                ${isFeedbackCheckinPending ? feedbackPendingBtnInner : window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed')}
                             </button>
-                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang))}">
-                                📎
+                            ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${extensionBoostOffer ? ' has-screenshot-boost' : ''}${hasOpenControlProofCatchup(test) ? ' has-catchup-proof' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang) + (hasOpenControlProofCatchup(test) ? ' · ' + window.t('checkinOptionsCatchupAria', {}, lang) : ''))}">
+                                ${getScreenshotBoostPaperclipContent(test.id)}
                             </button>`}
                         </div>
-                    </div>
+                    </div>`;
+                actionsHtml = `
+                    ${extensionBoostOffer ? `<div class="checkin-actions checkin-actions--stacked extension-boost-actions">
+                        <button type="button" class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="openProtectionBoostApp(${test.id}, '${safePackage}')">
+                            ${t.openBtn}
+                        </button>
+                        ${extensionConfirmHtml}
+                    </div>` : extensionConfirmHtml}
+                    ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                     ${hintHtml}
                 `;
             } else {
@@ -2441,19 +3276,20 @@ function renderTests(force) {
 
                 if (isScreenshotDay) {
                     const confirmLabel = isFeedbackCheckinPending
-                        ? feedbackPendingBtnLabel
-                        : (isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
+                        ? feedbackPendingBtnInner
+                        : window.escapeHTML(isIssueBlocked ? getIssueAwaitingFixLabel(test) : screenshotBtnText);
                     actionsHtml = `
                         <div class="checkin-actions checkin-actions--stacked">
                             <button class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="startTimer(${test.id}, '${safePackage}', true, '${safeOwnerUsername}')">
                                 ${t.openBtn}
                             </button>
                             <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="width: 100%; ${feedbackPendingBtnStyle}" disabled ${isFeedbackCheckinPending ? 'data-feedback-pending="1"' : ''}>
-                                ${window.escapeHTML(confirmLabel)}
+                                ${confirmLabel}
                             </button>
                             ${screenshotWarningText ? `<div style="color: #c98f8a; font-size: 12px; text-align: center; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${window.escapeHTML(screenshotWarningText)}
                             </div>` : ''}
+                            ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                         </div>
                     `;
                 } else if (isFeedbackCheckinPending) {
@@ -2463,9 +3299,10 @@ function renderTests(force) {
                                 ${t.openBtn}
                             </button>
                             <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 2; ${feedbackPendingBtnStyle}" disabled data-feedback-pending="1">
-                                ${window.escapeHTML(feedbackPendingBtnLabel)}
+                                ${feedbackPendingBtnInner}
                             </button>
                         </div>
+                        ${feedbackPendingHintHtml}
                     `;
                 } else {
                     actionsHtml = `
@@ -2511,6 +3348,9 @@ function renderTests(force) {
         if (showGuestOriginChip) {
             externalMetaChips.push(renderGuestOriginChip(test.external_source));
         }
+        const controlProofCatchupChipHtml = !isExternal && !isSoftTailCard
+            ? renderControlProofCatchupChip(test, userTestingDay)
+            : '';
         const cardHeaderMainHtml = `
             <div class="card-header-main">
                 ${renderTestAvatarWithPhaseBadge(test, lang)}
@@ -2520,14 +3360,32 @@ function renderTests(force) {
                 </div>
             </div>`;
 
-        let cardContent = `
+        const screenshotProofUploadPendingHtml = `
+            <div class="card-header card-screenshot-proof-upload-pending__header">
+                <div class="card-header-main">
+                    ${renderTestAvatarWithPhaseBadge(test, lang)}
+                    <div class="card-info">
+                        <div class="card-title notranslate">${safeName}</div>
+                        <div class="card-subtitle notranslate">${safeOwnerSubtitle}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="screenshot-proof-upload-pending__status" role="status" aria-live="polite">
+                <span class="screenshot-proof-upload-pending__spinner" aria-hidden="true"></span>
+                <span>${window.escapeHTML(window.t('checkinProofCardUploading', {}, lang))}</span>
+            </div>
+            <div class="screenshot-proof-upload-pending__hint">
+                ${window.escapeHTML(window.t('checkinProofCanTestNextApp', {}, lang))}
+            </div>
+        `;
+        let cardContent = isScreenshotProofUploadPending ? screenshotProofUploadPendingHtml : `
             ${doneBadgeHtml}
             <div class="card-header" onclick="openProjectDetailsModal(${test.id})" style="cursor: pointer; user-select: none;">
                 ${cardHeaderMainHtml}
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;" onclick="event.stopPropagation()">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips })}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips.concat(controlProofCatchupChipHtml ? [controlProofCatchupChipHtml] : []) })}
             <div id="actions-${test.id}">
                 ${actionsHtml}
             </div>
@@ -2616,7 +3474,10 @@ function renderTests(force) {
     if (window._restoreActiveTimer) window._restoreActiveTimer();
     if (typeof reapplyAllFeedbackCheckinPendingUi === 'function') reapplyAllFeedbackCheckinPendingUi();
     if (typeof restoreAccessProblemAccordions === 'function') restoreAccessProblemAccordions();
+    if (typeof window.updateTestsRefreshUi === 'function') window.updateTestsRefreshUi();
     refreshMyTestsSectionHandoffs();
+    if (typeof window.markTestsViewClean === 'function') window.markTestsViewClean();
+    restoreTestsViewportAnchor(viewportAnchor);
 }
 
 function _isMyTestsSectionVisible(el) {
@@ -2902,6 +3763,7 @@ Object.assign(window, {
     getActiveContractPossibleTotal,
     getContractPossibleTotalReward,
     getScreenshotReminderHtml,
+    openTodayCheckinReport,
     dismissProjectUpdateTip,
     renderCompactMeta,
     openTelegramProfile,
@@ -2922,7 +3784,7 @@ Object.assign(window, {
 function renderCheckinRewardHint(test, testingDay, lang) {
     const isBounty = test.join_type === 'bounty';
     const isOvertime = testingDay >= 15;
-    const karmaVal = isOvertime ? '0.5' : '0';
+    const karmaVal = isOvertime ? '0.1' : '0';
     const holdAmount = isBounty && Number(test.bounty_per_tester || 0) > 0
         ? Math.round(Number(test.bounty_per_tester) * 0.35)
         : 0;
@@ -3163,7 +4025,7 @@ function openPhaseInfoModal(testId, event) {
         // Karma bonus label
         const karmaBonusLabelEl = document.querySelector('#ppc-phase-info-modal .karma-boost .ppc-reward-split-label');
         if (karmaBonusLabelEl) {
-            karmaBonusLabelEl.innerText = window.t('ppcModalKarmaBonus', {}, lang) || (lang === 'ru' ? 'Повышенная карма + 0,5' : 'Increased karma +0.5');
+            karmaBonusLabelEl.innerText = window.t('ppcModalKarmaBonus', {}, lang) || (lang === 'ru' ? 'Повышенная карма + 0,1' : 'Increased karma +0.1');
         }
     } else {
         // Active phase (days 1-14)
@@ -3413,6 +4275,130 @@ function showKickPenaltyDetailsModal(testId, role) {
     }
 }
 
+// ── Easter Egg: Grant Tomorrow Triple-Click ──
+let _grantTomorrowClickState = {
+    count: 0,
+    lastClickTime: 0,
+    inFlight: false,
+};
+
+async function handleGrantTomorrowClick(event, testId) {
+    if (event) {
+        event.stopPropagation();
+        if (event.preventDefault) event.preventDefault();
+    }
+
+    const btn = (event && event.currentTarget) || (testId ? document.getElementById(`btn-claim-${testId}`) : null);
+    const now = Date.now();
+    const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+
+    // 1000ms window between consecutive clicks
+    if (now - _grantTomorrowClickState.lastClickTime > 1000) {
+        _grantTomorrowClickState.count = 1;
+    } else {
+        _grantTomorrowClickState.count += 1;
+    }
+    _grantTomorrowClickState.lastClickTime = now;
+
+    const clickNum = _grantTomorrowClickState.count;
+
+    if (clickNum === 1) {
+        // 1st click: light haptic feedback + calm toast
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('light');
+        }
+        const normalMsg = (typeof window.t === 'function' ? window.t('grantTomorrowNormalToast', {}, currentLang) : null)
+            || 'Грант уже заслужен. Забрать его можно действительно завтра ☕';
+        if (typeof showToast === 'function') {
+            showToast(normalMsg, 3000);
+        }
+    } else if (clickNum === 2) {
+        // 2nd click: medium haptic feedback + micro-animation (shake/nudge), no new toast
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('medium');
+        }
+        if (btn) {
+            btn.classList.remove('is-shaking', 'is-sparkling');
+            void btn.offsetWidth; // trigger reflow
+            btn.classList.add('is-shaking');
+            setTimeout(() => {
+                btn.classList.remove('is-shaking');
+            }, 360);
+        }
+    } else if (clickNum >= 3) {
+        // 3rd click: success haptic feedback + golden sparkle flash + Easter egg claim
+        _grantTomorrowClickState.count = 0; // reset sequence counter
+
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.notificationOccurred === 'function') {
+            window.tg.HapticFeedback.notificationOccurred('success');
+        }
+        if (btn) {
+            btn.classList.remove('is-shaking', 'is-sparkling');
+            void btn.offsetWidth; // trigger reflow
+            btn.classList.add('is-sparkling');
+            setTimeout(() => {
+                btn.classList.remove('is-sparkling');
+            }, 720);
+        }
+
+        if (_grantTomorrowClickState.inFlight) return;
+        _grantTomorrowClickState.inFlight = true;
+
+        try {
+            const initData = (window.tg && window.tg.initData) || '';
+            const userId = (window.App && window.App.userId) || window.userId || 0;
+
+            const res = await fetch(API_BASE + '/api/easter-egg/claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    easter_egg_code: 'grant_tomorrow_triple_tap',
+                    user_id: userId,
+                    init_data: initData,
+                }),
+            });
+
+            const data = await res.json();
+            if (data && data.already_claimed) {
+                const alreadyMsg = (typeof window.t === 'function' ? window.t('grantTomorrowEasterEggAlreadyClaimedToast', {}, currentLang) : null)
+                    || 'Эту пасхалку вы уже нашли ✨';
+                if (typeof showToast === 'function') {
+                    showToast(alreadyMsg, 3500);
+                }
+            } else if (data && data.success) {
+                const rewardMsg = (typeof window.t === 'function' ? window.t('grantTomorrowEasterEggRewardToast', {}, currentLang) : null)
+                    || 'Да, мы проверили — завтра всё ещё завтра 🙂\nНо за вашу дисциплину и упорство — заслуженно +1 к Карме ✨';
+                if (typeof showToast === 'function') {
+                    showToast(rewardMsg, 5500);
+                }
+
+                // Update local karma state if available
+                if (typeof window.userKarma === 'number') {
+                    window.userKarma = Math.round((window.userKarma + 1.0) * 10) / 10;
+                }
+                if (window.App && typeof window.App.updateKarmaDisplay === 'function') {
+                    window.App.updateKarmaDisplay();
+                }
+            } else {
+                const fallbackMsg = (typeof window.t === 'function' ? window.t('grantTomorrowNormalToast', {}, currentLang) : null)
+                    || 'Грант уже заслужен. Забрать его можно действительно завтра ☕';
+                if (typeof showToast === 'function') {
+                    showToast(fallbackMsg, 3000);
+                }
+            }
+        } catch (e) {
+            console.error('Easter egg claim request failed:', e);
+            const fallbackMsg = (typeof window.t === 'function' ? window.t('grantTomorrowNormalToast', {}, currentLang) : null)
+                || 'Грант уже заслужен. Забрать его можно действительно завтра ☕';
+            if (typeof showToast === 'function') {
+                showToast(fallbackMsg, 3000);
+            }
+        } finally {
+            _grantTomorrowClickState.inFlight = false;
+        }
+    }
+}
+
 // Expose functions globally
 window.showKickPenaltyDetailsModal = showKickPenaltyDetailsModal;
 window.openPhaseInfoModal = openPhaseInfoModal;
@@ -3428,3 +4414,25 @@ window.renderTestAvatarWithPhaseBadge = renderTestAvatarWithPhaseBadge;
 window.openBountyInfoModal = openBountyInfoModal;
 window.closeBountyInfoModal = closeBountyInfoModal;
 window.toggleCheckpointAccordion = toggleCheckpointAccordion;
+window.handleGrantTomorrowClick = handleGrantTomorrowClick;
+
+(function initTestsScrollPerf() {
+    var scrollEndTimer = null;
+    var isTestsScrolling = false;
+
+    function markTestsScrolling() {
+        if (!isTabVisible('tests')) return;
+        if (!isTestsScrolling) {
+            isTestsScrolling = true;
+            document.documentElement.classList.add('tests-scrolling');
+        }
+        clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(function() {
+            isTestsScrolling = false;
+            document.documentElement.classList.remove('tests-scrolling');
+        }, 160);
+    }
+
+    window.addEventListener('scroll', markTestsScrolling, { passive: true });
+})();
+

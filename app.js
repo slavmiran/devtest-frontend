@@ -33,55 +33,112 @@ document.addEventListener('DOMContentLoaded', () => {
 
         syncUserTimezone(false).catch(() => {});
 
+        function _restoreTestsScrollWhenSettled(promise) {
+            var restore = function() {
+                if (typeof window.restoreTestsScrollAfterResume === 'function') {
+                    window.restoreTestsScrollAfterResume();
+                }
+            };
+            if (promise && typeof promise.then === 'function') {
+                promise.then(restore, restore);
+            } else {
+                restore();
+            }
+        }
+
+        function _resumeMassInviteSafely() {
+            if (typeof resumeMassInviteIfNeeded === 'function') {
+                resumeMassInviteIfNeeded().catch(function () {});
+            }
+        }
+
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && _pendingScreenshotReminderUsername !== null) {
+            if (document.hidden) {
+                if (typeof window.rememberTestsScrollForResume === 'function') {
+                    window.rememberTestsScrollForResume();
+                }
+                return;
+            }
+            _resumeMassInviteSafely();
+            if (_pendingScreenshotReminderUsername !== null) {
                 const username = _pendingScreenshotReminderUsername;
                 _pendingScreenshotReminderUsername = null;
                 setTimeout(() => showScreenshotCompleteModal(username), 300);
             }
-            if (!document.hidden) {
-                _syncActiveTimerState();
-                // Drop stale Confirm-ready state when local calendar day rolls over.
-                if (typeof _loadTimerReadyState === 'function') {
-                    _loadTimerReadyState();
-                }
-                if (typeof _applyPersistedReadyTimerButtons === 'function') {
-                    _applyPersistedReadyTimerButtons();
-                }
-                if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
-                    _lastFetchTimes.tests = 0;
-                    if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
-                        syncPendingFeedbackCheckinsFromServer().catch(function() {});
-                    }
-                }
-                if (typeof refreshHomeScreenStatus === 'function') {
-                    refreshHomeScreenStatus({ force: true });
-                }
-                renderTests(true);
-                loadTasks(true).catch(() => {});
-                loadIncomingOffers({ background: true }).catch(() => {});
-                if (typeof loadBountyApplications === 'function') {
-                    loadBountyApplications({ background: true }).catch(() => {});
-                }
-                loadReliabilitySummary(true).catch(() => {});
-            }
-        });
-
-        window.addEventListener('focus', function() {
             _syncActiveTimerState();
-            if (typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins()) {
+            var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
+            if (hasPendingFeedback && typeof revealAllFeedbackPendingHints === 'function') {
+                revealAllFeedbackPendingHints();
+            }
+            // Drop stale Confirm-ready state when local calendar day rolls over.
+            if (typeof _loadTimerReadyState === 'function') {
+                _loadTimerReadyState();
+            }
+            if (typeof _applyPersistedReadyTimerButtons === 'function') {
+                _applyPersistedReadyTimerButtons();
+            }
+            if (hasPendingFeedback) {
                 _lastFetchTimes.tests = 0;
                 if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
                     syncPendingFeedbackCheckinsFromServer().catch(function() {});
                 }
-                loadTasks(true).catch(function() {});
             }
-            if (window.renderTests) window.renderTests(true);
+            if (typeof refreshHomeScreenStatus === 'function') {
+                refreshHomeScreenStatus({ force: true });
+            }
+            if (typeof window.refreshVisibleTests === 'function') {
+                _restoreTestsScrollWhenSettled(window.refreshVisibleTests());
+            } else if (hasPendingFeedback) {
+                _restoreTestsScrollWhenSettled(loadTasks(true).catch(function() {}));
+            } else {
+                _restoreTestsScrollWhenSettled();
+            }
+            if (typeof window.refreshVisibleProjects === 'function') {
+                window.refreshVisibleProjects(true).catch(function() {});
+            }
+        });
+
+        window.addEventListener('focus', function() {
+            _resumeMassInviteSafely();
+            _syncActiveTimerState();
+            var hasPendingFeedback = typeof hasPendingFeedbackCheckins === 'function' && hasPendingFeedbackCheckins();
+            if (hasPendingFeedback && typeof revealAllFeedbackPendingHints === 'function') {
+                revealAllFeedbackPendingHints();
+            }
+            if (hasPendingFeedback) {
+                _lastFetchTimes.tests = 0;
+                if (typeof syncPendingFeedbackCheckinsFromServer === 'function') {
+                    syncPendingFeedbackCheckinsFromServer().catch(function() {});
+                }
+            }
+            if (typeof window.refreshVisibleTests === 'function') {
+                _restoreTestsScrollWhenSettled(window.refreshVisibleTests());
+            } else if (hasPendingFeedback) {
+                _restoreTestsScrollWhenSettled(loadTasks(true).catch(function() {}));
+            } else {
+                _restoreTestsScrollWhenSettled();
+            }
+            if (typeof window.refreshVisibleProjects === 'function') {
+                window.refreshVisibleProjects(false).catch(function() {});
+            }
         });
 
         window.addEventListener('pageshow', function() {
+            _resumeMassInviteSafely();
             _syncActiveTimerState();
-            if (window.renderTests) window.renderTests(true);
+            if (typeof hasPendingFeedbackCheckins === 'function'
+                && hasPendingFeedbackCheckins()
+                && typeof revealAllFeedbackPendingHints === 'function') {
+                revealAllFeedbackPendingHints();
+            }
+            if (typeof window.refreshVisibleTests === 'function') {
+                _restoreTestsScrollWhenSettled(window.refreshVisibleTests());
+            } else {
+                _restoreTestsScrollWhenSettled();
+            }
+            if (typeof window.refreshVisibleProjects === 'function') {
+                window.refreshVisibleProjects(false).catch(function() {});
+            }
         });
 
         document.addEventListener('pointerdown', (event) => {
@@ -100,6 +157,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof initTelegramBackButton === 'function') {
             initTelegramBackButton();
         }
+        try {
+            var webApp = (window.Telegram && window.Telegram.WebApp) || window.tg;
+            if (webApp && typeof webApp.onEvent === 'function') {
+                webApp.onEvent('activated', function() {
+                    _resumeMassInviteSafely();
+                    if (typeof hasPendingFeedbackCheckins === 'function'
+                        && hasPendingFeedbackCheckins()
+                        && typeof revealAllFeedbackPendingHints === 'function') {
+                        revealAllFeedbackPendingHints();
+                    }
+                });
+            }
+        } catch (e) {}
 
         console.log('[DEBUG] bootstrap IIFE started');
         var profileSyncResult = await bootstrapProfileSyncPromise;
@@ -143,6 +213,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try { scheduleDeferredBootstrap(); } catch (e) { console.error('Bootstrap deferred error:', e); }
         console.log('[DEBUG] bootstrap: all fire-and-forget launched, calling _handleInitialRoute');
         await _handleInitialRoute();
+        _resumeMassInviteSafely();
+        if (typeof initBrowserBackFallback === 'function') {
+            initBrowserBackFallback();
+        }
         console.log('[DEBUG] bootstrap IIFE completed successfully');
     })().catch(function(error) {
         console.error('Initial bootstrap failed:', error);
@@ -212,6 +286,7 @@ Object.assign(window, {
     loadBountyFeed,
     loadEvents,
     loadProjects,
+    persistProjectsCacheSnapshot,
     forceRefreshMarket,
     getLocalDate,
     getRuDaysWord,
@@ -267,7 +342,8 @@ Object.assign(window, {
     submitExternalDailyCheckin,
     cancelExternalTracking,
     unlinkGuestRelationship,
-    getDefaultCheckpointReportLanguage,
+    buildCheckpointTestLink,
+    buildTesterReminderDeepLink,
     getDefaultCheckpointReportLanguage,
     buildCheckpointReportPrefill,
     sendCheckpointScreenshotAndConfirm,
@@ -290,6 +366,8 @@ Object.assign(window, {
     getPlayReviewUrl,
     setPlayReviewSubmittedPending,
     setFeedbackRewardBust,
+    nudgeFeedbackRewardBust,
+    applyFeedbackRewardQuickReply,
     setFeedbackRewardKarma,
     submitFeedbackReward,
     sendFeedback,
@@ -331,6 +409,7 @@ Object.assign(window, {
     setProjectTargetLang,
     getApiErrorMessage,
     startMassInvite,
+    resumeMassInviteIfNeeded,
     resetMassInviteCooldown,
     getReliabilityState,
     rerenderDynamicUi,
@@ -411,6 +490,7 @@ Object.assign(window.App, {
     generateProjectTransferLink,
     publishProjectToMarket,
     startMassInvite,
+    resumeMassInviteIfNeeded,
     resetMassInviteCooldown,
     loadExternalCounts,
     getExternalCounts,

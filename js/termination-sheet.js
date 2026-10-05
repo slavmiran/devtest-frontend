@@ -8,6 +8,9 @@
 
     var KARMA_ABANDONED_BURN = 3.0;
     var _termState = null;
+    // Compatibility bridge for clients that still have an older cached
+    // app-features.js which reads the historical global identifier directly.
+    window._termState = window._termState || null;
 
     function _lang() {
         return (typeof lang !== 'undefined' && lang) ? String(lang) : 'ru';
@@ -32,6 +35,11 @@
 
     function _isMutualJoin(joinType) {
         return _normalizeJoinType(joinType) === 'mutual';
+    }
+
+    function _isBrokenProgressStatus(value) {
+        return ['abandoned', 'justified_exit', 'kicked_by_owner', 'canceled_neutral', 'dropped']
+            .includes(String(value || '').trim().toLowerCase());
     }
 
     function _fmtAmount(value, digits) {
@@ -241,7 +249,7 @@
                 : _t('termUnlinkLeaveHint');
         }
 
-        var forceUnlink = options.forceUnlink === true || options.unlinkReciprocal === true;
+        var forceUnlink = options.forceUnlink === true;
         if (reciprocal) {
             reciprocal.checked = options.unlinkReciprocal === false ? false : true;
             if (forceUnlink) reciprocal.checked = true;
@@ -283,6 +291,7 @@
         var myCheckins = Number(data.my_checkins != null ? data.my_checkins : 0);
         var karmaBurn = KARMA_ABANDONED_BURN;
         var mySkips = Number(data.my_skips || 0);
+        var myConsecutive = Number(data.my_consecutive_skips || 0);
         var waitCount = Math.max(0, 3 - partnerConsecutive);
         var grantStillAvailable = mySkips <= 3;
         var grantTotal = grantStillAvailable
@@ -379,8 +388,8 @@
                     '</div>' +
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), data.partner_testing_days || 0, false) +
-                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(partnerConsecutive) + '/3', partnerConsecutive > 0) +
-                        _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(partnerSkips), false) +
+                        _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(partnerConsecutive) + '/3', partnerConsecutive > 0) +
+                        _metricRow('📉', _t('leaveMetricTotalSkips'), String(partnerSkips), false) +
                         _metricRow('✅', _t('leaveMetricCheckins'), partnerCheckins, false) +
                     '</div>' +
                     (partnerMetaParts.length
@@ -403,7 +412,8 @@
                         '<div class="leave-my-drawer-inner">' +
                             '<div class="leave-metric-list">' +
                                 _metricRow('📅', _t('leaveMetricDays'), data.my_testing_days || 0, false) +
-                                _metricRow('⚠️', _t('leaveMetricSkips'), String(mySkips) + '/3', mySkips >= 3) +
+                                _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(myConsecutive) + '/3', myConsecutive > 0) +
+                                _metricRow('📉', _t('leaveMetricTotalSkips'), String(mySkips), false) +
                                 _metricRow('✅', _t('leaveMetricCheckins'), myCheckins, false) +
                             '</div>' +
                             grantRow +
@@ -443,6 +453,7 @@
         var dailyBurn = ctx.dailyBurn;
         var myDays = Number(ctx.myTestingDays || 0);
         var mySkips = Number(ctx.mySkips || 0);
+        var myConsecutive = Number(ctx.myConsecutive || 0);
         var myCheckins = Number(ctx.myCheckins || 0);
         var showMySide = (isMutualJoin || Number(ctx.reciprocalAppId || 0) > 0) && ctx.isReciprocalActive !== false;
         var grantStillAvailable = showMySide && mySkips <= 3;
@@ -452,6 +463,9 @@
         var grantRow = (grantStillAvailable && grantTotal > 0)
             ? _renderInviteGrantRow(mySkips, grantTotal)
             : '';
+
+        var isOwnerSafeKick = isSafeBreak || isDisciplinaryKick;
+        var ownerKarmaBurn = isOwnerSafeKick ? 0 : KARMA_ABANDONED_BURN;
 
         if (_termState) {
             _termState.justifiedAllowed = isDisciplinaryKick;
@@ -465,6 +479,8 @@
             _termState.mySkips = mySkips;
             _termState.reciprocalAppId = Number(ctx.reciprocalAppId || 0);
             _termState.reciprocalAppName = ctx.reciprocalAppName || '';
+            _termState.karmaBurnPreview = ownerKarmaBurn;
+            _termState.karmaOk = isOwnerSafeKick;
         }
 
         var testerLabel = ctx.testerUsername
@@ -535,7 +551,8 @@
                         '<div class="leave-my-drawer-inner">' +
                             '<div class="leave-metric-list">' +
                                 _metricRow('📅', _t('leaveMetricDays'), myDays, false) +
-                                _metricRow('⚠️', _t('leaveMetricSkips'), String(mySkips) + '/3', mySkips >= 3) +
+                                _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(myConsecutive) + '/3', myConsecutive > 0) +
+                                _metricRow('📉', _t('leaveMetricTotalSkips'), String(mySkips), false) +
                                 _metricRow('✅', _t('leaveMetricCheckins'), myCheckins, false) +
                             '</div>' +
                             grantRow +
@@ -570,8 +587,8 @@
                     '</div>' +
                     '<div class="leave-metric-list">' +
                         _metricRow('📅', _t('leaveMetricDays'), testingDays, false) +
-                        _metricRow('🔁', _t('leaveMetricConsecutiveSkips'), String(consecutiveSkips) + '/3', consecutiveSkips > 0) +
-                        _metricRow('⚠️', _t('leaveMetricTotalSkips'), String(skipsCount), false) +
+                        _metricRow('⚠️', _t('leaveMetricConsecutiveSkips'), String(consecutiveSkips) + '/3', consecutiveSkips > 0) +
+                        _metricRow('📉', _t('leaveMetricTotalSkips'), String(skipsCount), false) +
                         _metricRow('✅', _t('leaveMetricCheckins'), checkinCount, false) +
                     '</div>' +
                     joinNote +
@@ -579,9 +596,9 @@
                 mySideHtml +
             '</div>' +
             _renderImpactMeters({
-                karmaOk: true,
-                riOk: isSafeBreak || isDisciplinaryKick,
-                karmaBurn: 0,
+                karmaOk: isOwnerSafeKick,
+                riOk: isOwnerSafeKick,
+                karmaBurn: ownerKarmaBurn,
                 statusBanner: statusBanner,
                 extraHtml: detailsHtml,
                 blockClass: 'term-kick-impact',
@@ -1017,6 +1034,7 @@
 
         _setPreserveSlot('');
         window._terminationState = _termState;
+        window._termState = _termState;
 
         // Write into the same lexical vars that confirmDropTest / confirmLeaveMutual read.
         if (mode === 'leave') {
@@ -1191,20 +1209,15 @@
             return;
         }
 
-        var testingDays = tester.start_date && typeof getUserTestingDay === 'function'
-            ? getUserTestingDay(tester.start_date)
-            : Number(tester.testing_days || 0);
-        var checkinCount = Number(tester.checkins_count || 0);
-        var lastCheck = String(tester.last_check_date || '').trim();
-        var todayIso = (typeof getLocalDateIso === 'function')
-            ? getLocalDateIso()
-            : new Date().toISOString().slice(0, 10);
-        var checkedToday = !!lastCheck && lastCheck === todayIso;
-        var realizedDays = checkedToday ? testingDays : Math.max(0, testingDays - 1);
-        var skipsCount = Math.max(0, Math.min(14, realizedDays) - Math.min(14, checkinCount));
-        var consecutiveSkips = (typeof calculateConsecutiveSkips === 'function')
-            ? calculateConsecutiveSkips(tester)
-            : Math.max(0, Number(tester.consecutive_skips || 0));
+        var exchangeState = tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+            ? tester.exchange_state
+            : null;
+        var testerMetrics = exchangeState && exchangeState.left && exchangeState.left.metrics;
+        var ownerMetrics = exchangeState && exchangeState.right && exchangeState.right.metrics;
+        var testingDays = Number(testerMetrics ? testerMetrics.testing_days : tester.testing_days || 0);
+        var checkinCount = Number(testerMetrics ? testerMetrics.checkins : tester.checkins_count || 0);
+        var skipsCount = Number(testerMetrics ? testerMetrics.skips : tester.skips_count || 0);
+        var consecutiveSkips = Number(testerMetrics ? testerMetrics.consecutive_skips : tester.consecutive_skips || 0);
         var joinType = _normalizeJoinType(tester.join_type || options.joinType || 'invite');
         var bountyPerTester = Number(project.bounty_per_tester || 0);
         var holdBonus = bountyPerTester > 0 ? bountyPerTester * 0.35 : 0;
@@ -1218,7 +1231,14 @@
         var reciprocalAppName = '';
         var myTestingDays = 0;
         var mySkips = 0;
+        var myConsecutive = 0;
         var myCheckins = reciprocalOwnerCheckins;
+        if (ownerMetrics) {
+            myTestingDays = Number(ownerMetrics.testing_days || 0);
+            mySkips = Number(ownerMetrics.skips || 0);
+            myConsecutive = Number(ownerMetrics.consecutive_skips || 0);
+            myCheckins = Number(ownerMetrics.checkins || 0);
+        }
         var reciprocalTest = null;
         if (reciprocalAppId > 0 && Array.isArray(myTests)) {
             reciprocalTest = myTests.find(function (item) {
@@ -1226,24 +1246,24 @@
             });
             if (reciprocalTest) {
                 reciprocalAppName = reciprocalTest.name || reciprocalTest.app_name || '';
-                myTestingDays = reciprocalTest.start_date && typeof getUserTestingDay === 'function'
-                    ? getUserTestingDay(reciprocalTest.start_date)
-                    : Number(reciprocalTest.testing_days || 0);
-                mySkips = Number(reciprocalTest.skips_count || 0);
-                if (reciprocalTest.checkins_count != null && reciprocalTest.checkins_count !== '') {
-                    myCheckins = Number(reciprocalTest.checkins_count || 0);
+                if (!ownerMetrics) {
+                    myTestingDays = Number(reciprocalTest.testing_days || 0);
+                    mySkips = Number(reciprocalTest.skips_count || 0);
+                    myConsecutive = Number(reciprocalTest.consecutive_skips || 0);
+                    if (reciprocalTest.checkins_count != null && reciprocalTest.checkins_count !== '') {
+                        myCheckins = Number(reciprocalTest.checkins_count || 0);
+                    }
                 }
             }
         }
         var isReciprocalActive = false;
-        if (reciprocalTest) {
+        if (exchangeState) {
+            var ownerLegStatus = String(exchangeState.right && exchangeState.right.leg_status || '').toLowerCase();
+            isReciprocalActive = !exchangeState.is_broken && ownerLegStatus === 'active';
+        } else if (reciprocalTest) {
             var rStatus = String(reciprocalTest.status || 'active').toLowerCase();
             var partnerProgressStatus = String(tester.reciprocal_partner_progress_status || '').toLowerCase();
-            var isPartnerLeft = partnerProgressStatus === 'abandoned'
-                || partnerProgressStatus === 'justified_exit'
-                || partnerProgressStatus === 'kicked_by_owner'
-                || partnerProgressStatus === 'canceled_neutral'
-                || partnerProgressStatus === 'dropped';
+            var isPartnerLeft = _isBrokenProgressStatus(partnerProgressStatus);
             if (rStatus === 'active' && !tester.is_broken_reciprocal && !isPartnerLeft) {
                 isReciprocalActive = true;
             }
@@ -1287,6 +1307,7 @@
             isReciprocalActive: isReciprocalActive,
             myTestingDays: myTestingDays,
             mySkips: mySkips,
+            myConsecutive: myConsecutive,
             myCheckins: myCheckins,
             grantStillAvailable: grantStillAvailable,
             grantTotal: grantTotal,
@@ -1308,6 +1329,7 @@
         _setPreserveSlot('');
         _termState = null;
         window._terminationState = null;
+        window._termState = null;
         if (typeof window.setLeaveMutualAppId === 'function') {
             window.setLeaveMutualAppId(0);
         } else {
@@ -1477,6 +1499,9 @@
                     karma: '3',
                 })) + '</li>');
             } else {
+                points.push('<li class="is-warn">' + _esc(_t('leaveConfirmPointKarma', {
+                    karma: _fmtAmount(KARMA_ABANDONED_BURN, 1),
+                })) + '</li>');
                 points.push('<li class="is-warn">' + _esc(_t('termConfirmPointKickOwnerPenalized', {
                     ri_penalty: String(kickOwnerRiPenalty),
                 })) + '</li>');
@@ -1615,7 +1640,9 @@
             var reciprocalIconUrl = (reciprocalTest && (reciprocalTest.icon_url || '')) ||
                 (_termState && _termState.reciprocalIconUrl) || '';
             var reciprocalPkg = (reciprocalTest && (reciprocalTest.package_name || '')) ||
-                (_termState && _termState.reciprocalPackageName) || '';
+                data.reciprocal_package_name || (_termState && _termState.reciprocalPackageName) || '';
+            var reciprocalPlayStoreUrl = (reciprocalTest && (reciprocalTest.play_store_url || '')) ||
+                data.reciprocal_play_store_url || '';
 
             // Tester info from _termState (saved during _fillKickFromLocal)
             var testerUsername = (_termState && _termState.testerUsername) || '';
@@ -1663,6 +1690,7 @@
                         name: reciprocalAppName,
                         iconUrl: reciprocalIconUrl,
                         packageName: reciprocalPkg,
+                        playStoreUrl: reciprocalPlayStoreUrl,
                         isSoftTail: true,
                     });
                 }
@@ -1839,6 +1867,7 @@
         _setPreserveSlot('');
         _termState = null;
         window._terminationState = null;
+        window._termState = null;
 
         if (typeof window.setLeaveMutualAppId === 'function') {
             window.setLeaveMutualAppId(0);

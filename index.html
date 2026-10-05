@@ -21,8 +21,9 @@
             var isFeedback = /(?:^|[_\-=.])(?:project_feedback|feedback|owner_feedback|feedback_project)(?:$|[_\-=.:]|\d)/.test(startParam)
                 || startParam === 'feedback'
                 || params.get('feedback') === '1';
-            if (!isContribution && !isFeedback) return;
-            window.__tgDeeplinkLoaderKind = isContribution ? 'contribution' : 'feedback';
+            var isControl = /^control[_:]\d+(?:[_:]\d+)?$/.test(startParam);
+            if (!isContribution && !isFeedback && !isControl) return;
+            window.__tgDeeplinkLoaderKind = isContribution ? 'contribution' : (isControl ? 'control' : 'feedback');
             document.documentElement.classList.add('tg-deeplink-loading');
             function reveal() {
                 var el = document.getElementById('tg-deeplink-loader');
@@ -36,66 +37,89 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20260827-dossier-layout-v15"></script>
-    <script src="./i18n/en.js?v=20260827-dossier-layout-v15"></script>
+    <script src="./i18n/ru.js?v=20261005-model-catalog-v2"></script>
+    <script src="./i18n/en.js?v=20261005-model-catalog-v2"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
-    <script src="./js/app-state.js?v=20260817-group-wait-v1"></script>
-    <script src="./ui/ui-helpers.js?v=20260820-report-modal-v1"></script>
-    <script src="./ui/ui-tests.js?v=20260827-dossier-layout-v16"></script>
-    <script src="./ui/ui-projects.js?v=20260827-dossier-layout-v16"></script>
+    <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
+    <script src="./ui/ui-helpers.js?v=20261004-feedback-topic-link-v1"></script>
+    <script src="./ui/ui-tests.js?v=20261001-access-issue-inline-v1"></script>
+    <script src="./ui/ui-projects.js?v=20261005-phase2-merge-v1"></script>
     <script src="./ui/ui-projects-moderation.js?v=20260709-pipeline-header"></script>
     <script src="./ui/ui-projects-pipeline-header.js?v=20260709-pipeline-alerts"></script>
-    <script src="./ui/ui-market.js?v=20260827-dossier-layout-v16"></script>
-    <script src="./ui/ui-mass-invite.js?v=20260722-mi-wow-p5"></script>
+    <script src="./js/project-parameters.js?v=20260920-smart-ping-v2"></script>
+    <script src="./ui/ui-market.js?v=20261004-feedback-topic-link-v1"></script>
+    <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
+    <script src="./js/showcase-geo.js?v=20261004-geo-share-v1"></script>
+    <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
     <script src="./ui.js?v=20260602-phase44"></script>
-    <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
-    <script src="./js/app-config.js?v=20260822-recip-highlight-v1"></script>
-    <script src="./js/app-api.js?v=20260827-dossier-layout-v15"></script>
-    <script src="./js/app-device-info.js?v=20260713-feedback-inbox-ux5"></script>
+    <script src="./js/env-config.js?v=20261005-phase2-merge-v1"></script>
+    <script src="./js/app-config.js?v=20261005-phase2-merge-v1"></script>
+    <script src="./js/app-navigation.js?v=20261005-phase2-merge-v1"></script>
+    <script src="./js/app-api.js?v=20261005-phase2-merge-v1"></script>
+    <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20260827-dossier-layout-v15"></script>
-    <script src="./js/mass-invite-session.js?v=20260722-mi-wow-p5"></script>
-<script src="./js/app-features.js?v=20260827-dossier-layout-v15"></script>
-<script src="./js/mutual-exchange-ui.js?v=20260827-dossier-layout-v15"></script>
-<script src="./js/termination-sheet.js?v=20260824-kick-confirm-v8"></script>
-<script src="./js/bounty-applications.js?v=20260825-fresh-v1"></script>
-<script src="./js/guaranteed-test-offer.js?v=20260809-gt-deeplink-v1"></script>
-    <script src="./js/guaranteed-test-wizard.js?v=20260809-gt-deeplink-v1"></script>
-    <script src="./app.js?v=20260827-dossier-layout-v15"></script>
+    <script src="./js/app-actions.js?v=20261004-contrib-summary-v1"></script>
+    <script src="./js/checkin-proof-upload.js?v=20260911-screenshot-boost-v1"></script>
+    <script src="./js/testing-control.js?v=20261005-model-catalog-v2"></script>
+    <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
+    <script src="./js/project-activity-attention.js?v=20260920-not-opened-v1"></script>
+    <script src="./js/project-today.js?v=20261002-control-proof-attention-v1"></script>
+    <script src="./js/smart-ping.js?v=20260921-smart-ping-catchup-v1"></script>
+    <script src="./js/proof-ping.js?v=20260910-quick-ping-explain-v1"></script>
+    <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
+    <script src="./js/mass-invite-session.js?v=20260917-mi-run-context-v1"></script>
+<script src="./js/app-features.js?v=20261003-kick-actor-day-v1"></script>
+<script src="./js/mutual-exchange-ui.js?v=20260827-balance-actions-v17"></script>
+<script src="./js/termination-sheet.js?v=20261003-kick-actor-day-v1"></script>
+<script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
+<script src="./js/guaranteed-test-offer.js?v=20261004-cta-parse-v1"></script>
+    <script src="./js/guaranteed-test-wizard.js?v=20261004-cta-instant-v1"></script>
+    <script src="./js/project-results.js?v=20261005-series-defects-v3"></script>
+    <script src="./app.js?v=20260930-support-bugs-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260822-recip-highlight-v1">
-    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260806-ui-polish-v2">
-    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260802-grants-3cols">
+    <link rel="stylesheet" href="./css/system-drop-menu.css?v=20260909-device-sheet-v1">
+    <link rel="stylesheet" href="./css/reliability-modal.css?v=20260914-page-no-grabber-v1">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
-    <link rel="stylesheet" href="./css/wizard.css?v=20260821-edit-modal-v1">
+    <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20260910-proof-bonus-chip-v1">
+    <link rel="stylesheet" href="./css/testing-control.css?v=20261001-fast-media-viewer-v1">
+    <link rel="stylesheet" href="./css/wizard.css?v=20260917-attract-flicker-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/kick-tester-modal.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20260827-dossier-layout-v15">
-    <link rel="stylesheet" href="./css/feedback-center.css?v=20260716-feedback-toolbar-v1">
-    <link rel="stylesheet" href="./css/ppc.css?v=20260725-ppc-footer-tone">
-    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260821-karma-v4">
-    <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260823-safe-kick-v2">
-    <link rel="stylesheet" href="./css/tests-offers.css?v=20260823-incoming-offers-v1">
+    <link rel="stylesheet" href="./css/feedback-center.css?v=20261004-contrib-summary-v1">
+    <link rel="stylesheet" href="./css/ppc.css?v=20260915-ppc-tight-buffer-v1">
+    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260918-karma-limit-v2">
+    <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260916-done-proof-topic-v1">
+    <link rel="stylesheet" href="./css/tests-offers.css?v=20260921-incoming-access-polish-v3">
     <link rel="stylesheet" href="./css/task-card.css?v=20260718-task-card-fix">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
     <link rel="stylesheet" href="./css/ban-screen.css?v=20260822-ban-screen">
-    <link rel="stylesheet" href="./css/dossier-modal.css?v=20260805-dossier-v9">
+<link rel="stylesheet" href="./css/dossier-modal.css?v=20260831-app-block-v1">
     <link rel="stylesheet" href="./css/project-detail-modal.css?v=20260716-owner-dossier">
     <link rel="stylesheet" href="./css/transfer-modal.css?v=20260706-phase3">
-    <link rel="stylesheet" href="./css/mass-invite.css?v=20260722-mi-wow-p5">
-    <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260706-phase3">
+    <link rel="stylesheet" href="./css/mass-invite.css?v=20260918-hud-bottom-v1">
+    <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260917-accordion-round-v1">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
     <link rel="stylesheet" href="./css/pipeline-moderation.css?v=20260707-sprint2">
     <link rel="stylesheet" href="./css/pipeline-header.css?v=20260709-pipeline-alerts">
-    <link rel="stylesheet" href="./css/access-issue.css?v=20260722-access-timer-v1">
+    <link rel="stylesheet" href="./css/access-issue.css?v=20260917-issue-proof-v2">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
-    <link rel="stylesheet" href="./styles.css?v=20260826-btn-style-v1">
-    <link rel="stylesheet" href="./css/projects-scroll.css?v=20260719-access-panel-pulse">
+    <link rel="stylesheet" href="./styles.css?v=20260921-access-owner-help-v2">
+    <link rel="stylesheet" href="./css/projects-scroll.css?v=20260917-scroll-smooth-v2">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
-    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20260821-chooser-v6">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260826-btn-style-v1">
+    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20261002-paypal-me-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260920-report-tab-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
+<link rel="stylesheet" href="./css/project-card-dashboard.css?v=20261001-coverage-polish-v2">
+    <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
+    <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v2">
+    <link rel="stylesheet" href="./css/showcase-geo.css?v=20261004-geo-layer-v2">
+<link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261001-coverage-polish-v2">
+    <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
+    <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
+    <link rel="stylesheet" href="./css/project-results.css?v=20261005-series-defects-v3">
 </head>
 <body>
 
@@ -226,6 +250,32 @@
                     </div>
                 </div>
             </div>
+            <div class="system-setting-row system-setting-row--proof-ping" id="proof-ping-settings-row">
+                <div class="system-setting-copy-wrap">
+                    <button type="button" class="system-setting-copy" id="settings-proof-ping-label" onclick="openProofPingSettingsSheet(event)">
+                        <svg class="setting-heading-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 17px; height: 17px; vertical-align: -3px; margin-right: 6px; display: inline-block;">
+                            <path d="M11 4H7.8C6.11984 4 5.27976 4 4.63803 4.32698C4.07354 4.6146 3.6146 5.07354 3.32698 5.63803C3 6.27976 3 7.11984 3 8.8V14C3 14.93 3 15.395 3.10222 15.7765C3.37962 16.8117 4.18827 17.6204 5.22354 17.8978C5.60504 18 6.07003 18 7 18V20.3355C7 20.8684 7 21.1348 7.10923 21.2716C7.20422 21.3906 7.34827 21.4599 7.50054 21.4597C7.67563 21.4595 7.88367 21.2931 8.29976 20.9602L10.6852 19.0518C11.1725 18.662 11.4162 18.4671 11.6875 18.3285C11.9282 18.2055 12.1844 18.1156 12.4492 18.0613C12.7477 18 13.0597 18 13.6837 18H15.2C16.8802 18 17.7202 18 18.362 17.673C18.9265 17.3854 19.3854 16.9265 19.673 16.362C20 15.7202 20 14.8802 20 13.2V13M20.1213 3.87868C21.2929 5.05025 21.2929 6.94975 20.1213 8.12132C18.9497 9.29289 17.0503 9.29289 15.8787 8.12132C14.7071 6.94975 14.7071 5.05025 15.8787 3.87868C17.0503 2.70711 18.9497 2.70711 20.1213 3.87868Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span id="settings-proof-ping-label-text" data-i18n="settingsProofPingLabel">Уведомления</span>
+                    </button>
+                    <div class="system-setting-meta" id="settings-proof-ping-meta">Упоминание @nickname в топике Testing Proofs</div>
+                    <button type="button" class="proof-ping-setting-chat" id="settings-proof-ping-chat" onclick="pcProofPingOpenCommunity(event)">
+                        <svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+                        <span id="settings-proof-ping-chat-label" data-i18n="settingsProofPingCommunity">Community Chat</span>
+                    </button>
+                </div>
+                <div class="proof-ping-setting-controls">
+                    <button type="button" class="proof-ping-setting-open" onclick="openProofPingSettingsSheet(event)" aria-label="Per-project notifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                        </svg>
+                    </button>
+                    <label class="toggle-switch" aria-label="Notifications master">
+                        <input type="checkbox" id="settings-proof-ping-toggle" checked onchange="pcProofPingMasterToggle(this)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
             <div class="system-setting-row" id="default-group-joined-row">
                 <div class="system-setting-copy-wrap">
                     <div class="system-setting-copy" id="settings-default-group-label" data-i18n="settingsDefaultGroupLabel">👥 Community Google Group:</div>
@@ -252,6 +302,13 @@
                         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                     </svg>
                 </button>
+            </div>
+            <div class="system-setting-row system-setting-row--blacklist" id="blacklist-settings-row">
+                <div class="system-setting-copy-wrap">
+                    <button type="button" class="system-setting-copy" onclick="openBlacklistModal()" data-i18n="settingsBlacklistLabel">Чёрный список</button>
+                    <div class="system-setting-meta" id="settings-blacklist-meta" data-i18n="settingsBlacklistMeta">Заблокированные участники</div>
+                </div>
+                <button type="button" class="settings-email-edit-btn" onclick="openBlacklistModal()" aria-label="Open blacklist">›</button>
             </div>
             <div class="system-feedback-buttons">
                 <button class="btn btn-secondary system-btn" onclick="sendFeedback('bug')" data-i18n="feedbackBug">🐛 Сообщить о баге</button>
@@ -432,6 +489,7 @@
 
     <!-- TAB 3: Market (merged Mutual + Bounty) -->
     <div id="tab-market" class="container tab-content">
+        <section id="showcase-geo-widget" class="showcase-geo-widget" aria-labelledby="showcase-geo-title"></section>
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
             <div class="segmented-control" style="margin-bottom:0; flex:1;">
                 <button class="seg-btn active" onclick="switchMarketSubTab('seeking')" id="market-sub-seeking"><span data-i18n="marketSeekingTitle">🤝 Взаимка</span></button>
@@ -794,7 +852,16 @@
                         <button type="button" class="seg-btn active" id="add-target-lang-all" onclick="setProjectTargetLang('add', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group wizard-android-field">
+                    <label class="form-label" data-i18n="projectMinAndroidLabel">Минимальная версия Android</label>
+                    <div class="form-hint" data-i18n="projectMinAndroidHint">Тестеры с версией ниже указанной не получат массовую рассылку.</div>
+                    <input type="hidden" id="app-min-android-version" value="0">
+                    <button type="button" class="form-input android-version-trigger" id="app-min-android-trigger" onclick="openAndroidVersionPicker('add')">
+                        <span id="app-min-android-label" data-i18n="androidVerAny">Любая</span>
+                        <span class="android-version-trigger__chev" aria-hidden="true">▾</span>
+                    </button>
+                </div>
+                <div class="form-group wizard-reviews-field">
                     <label class="review-checkbox-row project-setting-checkbox">
                         <input type="checkbox" id="app-request-reviews">
                         <span>
@@ -810,7 +877,8 @@
                 </div>
                 </div>
             </div>
-            <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="add-email-testers-box">
+            <!-- Email-test consent is account-wide and is configured in Settings / the project parameters sheet. -->
+            <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="add-email-testers-box" hidden>
                 <label class="review-checkbox-row add-email-testers-box__toggle">
                     <input type="checkbox" id="app-accepts-email-testers" onchange="onAcceptsEmailTestersChange()">
                     <span>
@@ -863,6 +931,52 @@
                 <input type="url" id="icon-picker-link-input" class="form-input" placeholder="" data-i18n-placeholder="iconPlaceholder">
                 <button type="button" class="btn btn-primary" style="margin-top: 12px;" onclick="iconPickerApplyLink()" data-i18n="iconPickerApplyBtn">Применить</button>
                 <button type="button" class="btn btn-secondary" style="margin-top: 8px;" onclick="iconPickerShowMenu()" data-i18n="iconPickerBackBtn">Назад</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Android version picker (dark sheet instead of native white select) -->
+    <div id="android-version-picker-overlay" class="android-version-picker-overlay modal-overlay" onclick="closeAndroidVersionPicker(event)">
+        <div class="android-version-picker-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="android-version-picker-title">
+            <div class="android-version-picker-sheet__handle" aria-hidden="true"></div>
+            <div class="android-version-picker-sheet__title" id="android-version-picker-title" data-i18n="androidVersionPickerTitle">Минимальная версия Android</div>
+            <div class="android-version-picker-list" id="android-version-picker-list"></div>
+        </div>
+    </div>
+
+    <!-- Project communication language: focused picker from the metrics footer. -->
+    <div id="project-language-modal" class="android-version-picker-overlay modal-overlay" onclick="ProjectParameters.closeLanguage(event)">
+        <div class="android-version-picker-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="project-language-title" aria-describedby="project-language-hint">
+            <div class="android-version-picker-sheet__handle" aria-hidden="true"></div>
+            <div class="android-version-picker-sheet__title" id="project-language-title"></div>
+            <p class="project-language-hint" id="project-language-hint"></p>
+            <div class="android-version-picker-list" id="project-language-options" role="group" aria-labelledby="project-language-title"></div>
+        </div>
+    </div>
+
+    <!-- Project card: lifecycle / safety buffer guide -->
+    <div id="project-lifecycle-modal" class="modal-overlay pc-lc-modal-overlay" onclick="closeProjectLifecycleModal(event)">
+        <div class="modal-content pc-lc-sheet" onclick="event.stopPropagation()">
+            <div class="pc-lc-sheet__header">
+                <h3 id="project-lifecycle-title" class="pc-lc-sheet__title"></h3>
+            </div>
+            <div class="pc-lc-sheet__body" id="project-lifecycle-body"></div>
+            <div class="pc-lc-sheet__actions" id="project-lifecycle-actions-wrap">
+                <div class="pc-lc-action-card">
+                    <button type="button" class="btn btn-primary pc-lc-main-cta" id="project-lifecycle-action"></button>
+                    <p class="pc-lc-action-desc" id="project-lifecycle-action-desc"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project card: daily progress details bottom-sheet -->
+    <div id="daily-progress-modal" class="modal-overlay" onclick="closeDailyProgressDetailsModal(event)">
+        <div class="modal-content pc-lc-sheet" onclick="event.stopPropagation()">
+            <h3 id="daily-progress-modal-title" class="pc-lc-sheet__title">🎯 Суточный план чекинов</h3>
+            <div id="daily-progress-modal-body"></div>
+            <div class="pc-lc-sheet__actions" id="daily-progress-modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeDailyProgressDetailsModal()">Закрыть</button>
             </div>
         </div>
     </div>
@@ -933,9 +1047,25 @@
         <div class="modal-content device-info-modal-content" onclick="event.stopPropagation()">
             <h3 data-i18n="deviceProfileModalTitle">Профиль тестового устройства</h3>
             <p class="device-info-modal-hint" data-i18n="deviceProfileModalHint">Укажите версию Android, бренд и модель устройства. Эти данные будут прикрепляться к баг-репортам.</p>
+            <div id="device-info-detected-root"></div>
             <div id="device-info-fields-root" class="device-info-fields-root"></div>
-            <div class="action-row device-info-modal-actions">
-                <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn">Сохранить</button>
+            <div id="device-info-status-hint" class="device-info-status-hint"></div>
+            <div class="action-row device-info-modal-actions" style="display: flex; gap: 10px; margin-top: 16px;">
+                <button type="button" class="btn btn-secondary" onclick="clearDeviceInfoFromModal()" data-i18n="deviceInfoClearBtn" style="flex: 1;">Очистить</button>
+                <button type="button" class="btn btn-primary" onclick="saveDeviceInfoFromModal()" data-i18n="deviceInfoSaveBtn" style="flex: 1.3;">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Profile Required Modal (Native Dark Theme) -->
+    <div id="device-profile-required-modal" class="modal-overlay" onclick="closeDeviceProfileRequiredModal(event)">
+        <div class="modal-content device-profile-required-modal-content" onclick="event.stopPropagation()">
+            <div style="font-size: 36px; margin-bottom: 8px;">📱</div>
+            <h3 id="device-profile-required-title" data-i18n="massInviteDeviceProfileRequiredTitle" style="margin-bottom: 8px;">Профиль тестировщика</h3>
+            <p id="device-profile-required-text" data-i18n="massInviteDeviceProfileRequiredAlert" style="font-size: 13px; line-height: 1.45; color: var(--hint-color, #8e8e93); margin-bottom: 20px;">Для запуска массовой рассылки заполните профиль тестировщика.</p>
+            <div class="action-row" style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary" id="device-profile-required-secondary" onclick="closeDeviceProfileRequiredModal()" data-i18n="btnCancel" style="flex: 1;">Отмена</button>
+                <button type="button" class="btn btn-primary" id="device-profile-required-primary" onclick="proceedToDeviceProfileFromRequiredModal()" data-i18n="massInviteDeviceProfileRequiredBtn" style="flex: 1.3;">Заполнить профиль</button>
             </div>
         </div>
     </div>
@@ -1009,8 +1139,9 @@
     </div>
 
     <!-- Mass Invite Processing Overlay -->
-    <div id="mass-invite-progress-overlay" class="mi-progress-overlay" aria-live="polite" aria-busy="true" data-phase="collecting">
-        <div class="mi-progress-card">
+    <div id="mass-invite-progress-overlay" class="mi-progress-overlay" aria-live="polite" aria-busy="true" data-phase="collecting" onclick="MassInviteProgressOverlay.onBackdrop(event)">
+        <div class="mi-progress-card" onclick="event.stopPropagation()">
+            <button type="button" class="mi-progress-minimize-btn" id="mi-progress-minimize-btn" onclick="MassInviteProgressOverlay.minimize()" aria-label="Minimize">Свернуть</button>
             <div class="mi-phase-dots" aria-hidden="true">
                 <span class="mi-phase-dot" data-phase-dot="collecting"></span>
                 <span class="mi-phase-dot" data-phase-dot="sending"></span>
@@ -1040,6 +1171,25 @@
             <button id="mi-progress-close-btn" class="btn btn-secondary mi-progress-close-btn" type="button" style="display: none;" onclick="MassInviteProgressOverlay.finishAndReturn()">Close</button>
         </div>
     </div>
+
+    <button type="button" id="mi-blast-hud" class="mi-blast-hud" hidden data-hud="collecting" onclick="MassInviteProgressOverlay.onHudClick()">
+        <span class="mi-blast-hud-bar" aria-hidden="true"><span class="mi-blast-hud-bar-fill"></span></span>
+        <span class="mi-blast-hud-row">
+            <span class="mi-blast-hud-stage" aria-hidden="true">
+                <span class="mi-blast-hud-letter">
+                    <svg viewBox="0 0 24 24"><rect x="3.2" y="6" width="17.6" height="12" rx="2.2"></rect><path d="M4.2 7.4 L12 13.2 L19.8 7.4"></path></svg>
+                </span>
+                <span class="mi-blast-hud-sand"><span class="mi-hourglass" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.4 2.2h9.2v1.65L9.2 8l3.4 4.15v1.65H3.4v-1.65L6.8 8 3.4 3.85z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"></path><path d="M5.15 3.45h5.7M5.15 12.55h5.7" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"></path><path d="M6.45 11.2h3.1L8 9z" fill="currentColor" opacity="0.55"></path></svg></span></span>
+                <span class="mi-blast-hud-search">…</span>
+                <span class="mi-blast-hud-check">✓</span>
+            </span>
+            <span class="mi-blast-hud-copy">
+                <span class="mi-blast-hud-title" id="mi-blast-hud-title">Mass invite</span>
+                <span class="mi-blast-hud-meta" id="mi-blast-hud-meta"></span>
+            </span>
+            <span class="mi-blast-hud-count" id="mi-blast-hud-count">0/0</span>
+        </span>
+    </button>
 
     <div id="visibility-mode-modal" class="modal-overlay" onclick="closeVisibilityModeModal(event)">
         <div class="modal-content visibility-mode-modal-content" onclick="event.stopPropagation()">
@@ -1340,7 +1490,7 @@
                 </div>
 
                 <!-- Card 3: Project Mode & Quotas -->
-                <div class="wizard-section-card wizard-mode-card">
+                <div class="wizard-section-card wizard-mode-card" id="edit-recruitment-card">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label" id="t-editModeLabel" data-i18n="modeLabel">Режим проекта</label>
                         <div class="form-hint" id="t-editModeHint" data-i18n="editModeHint">Можно менять режим и квоты, а при росте бюджета система спишет только разницу.</div>
@@ -1389,43 +1539,55 @@
                     </div>
                 </div>
 
-                <!-- Card 4: Optional Settings -->
-                <div class="wizard-optional-card is-expanded" id="edit-wizard-optional-card">
-                    <div class="wizard-optional-card__head" style="cursor: default;">
-                        <span data-i18n="optionalSettings">⚙️ Дополнительные настройки</span>
+                <!-- Card 4: Google Play reviews -->
+                <div class="wizard-section-card edit-play-reviews-card">
+                    <label class="review-checkbox-row edit-play-reviews-row">
+                        <input type="checkbox" id="edit-request-reviews" checked>
+                        <span>
+                            <strong data-i18n="requestReviewsLabel">Запрашивать Google Play отзывы</strong>
+                            <small data-i18n="requestReviewsHint">После 7 дней теста покажем тестеру мягкий запрос оставить отзыв в Google Play.</small>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Card 5: Filters & Requirements -->
+                <div class="wizard-section-card" id="edit-filters-card">
+                    <div class="wizard-section-head">
+                        <h3 class="wizard-section-title" id="t-editFiltersTitle" data-i18n="editFiltersSectionTitle">🌐 Фильтры и требования</h3>
+                        <p class="wizard-section-desc" id="t-editFiltersDesc" data-i18n="editFiltersSectionDesc">Настройки языка и требований к устройствам тестировщиков.</p>
                     </div>
-                    <div class="wizard-optional-card__body" style="display: block;">
-                        <div class="form-group">
-                            <label class="form-label" data-i18n="projectLanguageLabel">Язык коммуникации</label>
-                            <div class="form-hint" data-i18n="projectLanguageHint">Укажите, на каком языке вы готовы общаться с тестерами.</div>
-                            <input type="hidden" id="edit-target-lang" value="ALL">
-                            <div class="seg-control">
-                                <button type="button" class="seg-btn" id="edit-target-lang-ru" onclick="setProjectTargetLang('edit', 'RU')" data-i18n="projectLanguageRu">🇷🇺 RU</button>
-                                <button type="button" class="seg-btn" id="edit-target-lang-en" onclick="setProjectTargetLang('edit', 'EN')" data-i18n="projectLanguageEn">🇬🇧 EN</button>
-                                <button type="button" class="seg-btn active" id="edit-target-lang-all" onclick="setProjectTargetLang('edit', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
-                            </div>
-                        </div>
 
-                        <div class="form-group">
-                            <label class="review-checkbox-row project-setting-checkbox">
-                                <input type="checkbox" id="edit-request-reviews" checked>
-                                <span>
-                                    <strong data-i18n="requestReviewsLabel">Запрашивать Google Play отзывы</strong>
-                                    <small data-i18n="requestReviewsHint">После 7 дней теста покажем тестеру мягкий запрос оставить отзыв в Google Play.</small>
-                                </span>
-                            </label>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="projectLanguageLabel">Язык коммуникации</label>
+                        <div class="form-hint" data-i18n="projectLanguageHint">Укажите, на каком языке вы готовы общаться с тестерами.</div>
+                        <input type="hidden" id="edit-target-lang" value="ALL">
+                        <div class="seg-control">
+                            <button type="button" class="seg-btn" id="edit-target-lang-ru" onclick="setProjectTargetLang('edit', 'RU')" data-i18n="projectLanguageRu">🇷🇺 RU</button>
+                            <button type="button" class="seg-btn" id="edit-target-lang-en" onclick="setProjectTargetLang('edit', 'EN')" data-i18n="projectLanguageEn">🇬🇧 EN</button>
+                            <button type="button" class="seg-btn active" id="edit-target-lang-all" onclick="setProjectTargetLang('edit', 'ALL')" data-i18n="projectLanguageAll">🌐 ALL</button>
                         </div>
+                    </div>
 
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции для тестеров</label>
-                            <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
-                            <div id="chips-edit-instructions" class="chip-scroll"></div>
-                        </div>
+                    <div class="form-group wizard-android-field">
+                        <label class="form-label" data-i18n="projectMinAndroidLabel">Минимальная версия Android</label>
+                        <div class="form-hint" data-i18n="projectMinAndroidHint">Тестеры с версией ниже указанной не получат массовую рассылку.</div>
+                        <input type="hidden" id="edit-min-android-version" value="0">
+                        <button type="button" class="form-input android-version-trigger" id="edit-min-android-trigger" onclick="openAndroidVersionPicker('edit')">
+                            <span id="edit-min-android-label" data-i18n="androidVerAny">Любая</span>
+                            <span class="android-version-trigger__chev" aria-hidden="true">▾</span>
+                        </button>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции для тестеров</label>
+                        <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
+                        <div id="chips-edit-instructions" class="chip-scroll"></div>
                     </div>
                 </div>
 
-                <!-- Card 5: Email Testers Outreach -->
-                <div class="wizard-outreach-card project-setting-checkbox add-email-testers-box" id="edit-add-email-testers-box">
+                <!-- Card 6: Email Testers Outreach -->
+                <!-- Kept structurally for legacy form readers; the visible control is now global. -->
+                <div class="wizard-outreach-card add-email-testers-box" id="edit-add-email-testers-box" hidden>
                     <label class="review-checkbox-row add-email-testers-box__toggle">
                         <input type="checkbox" id="edit-app-accepts-email-testers" onchange="onEditAcceptsEmailTestersChange()">
                         <span>
@@ -1443,7 +1605,7 @@
                     </div>
                 </div>
 
-                <!-- Card 6: Project Meta & Management -->
+                <!-- Card 7: Project Meta & Management -->
                 <div class="edit-project-meta-card">
                     <div class="edit-project-meta-info">
                         <div id="edit-created-at"></div>
@@ -1508,6 +1670,54 @@
         </div>
     </div>
 
+    <div id="showcase-geo-list-modal" class="modal-overlay" onclick="ShowcaseGeo.closeCommunityList(event)">
+        <div class="modal-content showcase-geo-sheet showcase-geo-list-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h3 data-i18n="geoWidgetTitle">География тестировщиков</h3>
+            <div id="showcase-geo-list-body"></div>
+        </div>
+    </div>
+
+    <div id="showcase-geo-picker-modal" class="modal-overlay" onclick="ShowcaseGeo.closePicker(event)">
+        <div class="modal-content showcase-geo-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="showcase-geo-picker-title">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h3 id="showcase-geo-picker-title" data-i18n="geoPlayCountryLabel">Страна Google Play</h3>
+            <p class="showcase-geo-sheet__hint" data-i18n="geoSheetSubtitle">Укажите страну платёжного профиля Google Play. Это нужно разработчикам, чтобы знать, доступна ли сборка по ссылке в вашем регионе.</p>
+            <div id="showcase-geo-current" class="showcase-geo-current" hidden></div>
+            <div id="showcase-geo-detected" class="showcase-geo-detected" hidden></div>
+            <input id="showcase-geo-search" class="form-input showcase-geo-search" type="search" data-i18n-placeholder="geoSearchPlaceholder" placeholder="Страна или код" oninput="ShowcaseGeo.filterPicker(this.value)">
+            <p class="showcase-geo-frequent-label" data-i18n="geoFrequent">Частые</p>
+            <div class="showcase-geo-frequent" id="showcase-geo-frequent"></div>
+            <div id="showcase-geo-options" class="showcase-geo-options"></div>
+        </div>
+    </div>
+
+    <div id="blacklist-modal" class="modal-overlay" onclick="closeBlacklistModal(event)">
+        <div class="modal-content blacklist-sheet" onclick="event.stopPropagation()">
+            <h3 class="blacklist-sheet__title" data-i18n="blacklistModalTitle">Чёрный список</h3>
+            <p class="blacklist-sheet__hint" data-i18n="blacklistModalHint">Заблокированные участники не смогут тестировать ваши проекты и предлагать взаимный обмен.</p>
+            <div class="blacklist-pref">
+                <div class="blacklist-pref__copy">
+                    <div class="blacklist-pref__label" data-i18n="blacklistShowProjectsLabel">Показывать их проекты в витрине</div>
+                    <div class="blacklist-pref__meta" data-i18n="blacklistShowProjectsHint">Карточка будет с пометкой, вступить или предложить взаимный тест всё равно нельзя.</div>
+                </div>
+                <label class="toggle-switch" aria-label="Show blocked projects">
+                    <input type="checkbox" id="blacklist-show-projects-toggle" onchange="setBlacklistShowProjects(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div id="blacklist-body" class="blacklist-sheet__body"></div>
+        </div>
+    </div>
+
+    <!-- Contributor Dossier Modal (Bottom Sheet) -->
+    <div id="contributor-dossier-modal" class="modal-overlay pc-dossier-modal" onclick="closeContributorDossierModal(event)" role="presentation">
+        <div class="modal-content pc-dossier-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="pc-dossier-tester-name">
+            <div class="pc-dossier-sheet__handle" aria-hidden="true"></div>
+            <div id="contributor-dossier-body" class="pc-dossier-body"></div>
+        </div>
+    </div>
+
     <!-- Admin Ban Confirm Modal -->
     <div id="ban-confirm-modal" class="modal-overlay" onclick="closeBanUserModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 420px;">
@@ -1537,12 +1747,39 @@
         </div>
     </div>
 
-    <!-- Report Modal -->
+    <!-- Report Modal / Check-in Proof Modal -->
     <div id="report-modal" class="modal-overlay" onclick="closeReportModal(event)">
         <div class="modal-content report-modal-sheet" onclick="event.stopPropagation()">
             <h3 id="t-reportModalTitle" data-i18n="reportModalTitle">📸 Отправка отчёта</h3>
             <p id="t-reportModalHint" data-i18n="reportModalHint">Подтвердите, что приложение скачано и запущено — любым из трёх способов.</p>
-            <div class="report-standard-block report-screenshot-card">
+
+            <!-- Check-in Proof Screenshot Upload Block (shown when proof upload is active) -->
+            <div class="report-proof-upload-block" id="report-proof-upload-block">
+                <div id="report-screenshot-boost" class="screenshot-boost-offer" hidden></div>
+                <p class="checkin-proof-visibility-note" id="t-checkinProofVisibilityNote" data-i18n="checkinProofVisibilityNote">Скриншот публикуется в теме Testing Proofs. Убедитесь, что на нём нет личных данных.</p>
+
+                <input id="checkin-proof-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onchange="handleCheckinProofFileSelected(event)">
+                <button type="button" id="checkin-proof-picker" class="checkin-proof-picker" onclick="chooseCheckinProofFile()">
+                    <span class="checkin-proof-picker__icon" aria-hidden="true">＋</span>
+                    <strong id="t-checkinProofChoose" data-i18n="checkinProofChoose">Выбрать изображения</strong>
+                    <span id="t-checkinProofLimits" data-i18n="checkinProofLimits">1–5 · JPEG, PNG или WebP · до 5 МБ каждый</span>
+                </button>
+
+                <div id="checkin-proof-preview-wrap" class="checkin-proof-preview" hidden>
+                    <div id="checkin-proof-preview-grid" class="checkin-proof-preview-grid"></div>
+                </div>
+
+                <div id="checkin-proof-upload-alert" class="checkin-proof-upload-alert" role="alert" hidden></div>
+                <div id="checkin-proof-upload-status" class="checkin-proof-upload-status" role="status" aria-live="polite" hidden></div>
+                <div class="checkin-proof-upload-actions">
+                    <button type="button" class="btn btn-primary" id="checkin-proof-submit" onclick="submitCheckinProofScreenshot()" disabled>
+                        <span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">Подтвердить тестирование</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Legacy Standard Block (shown when proof upload is disabled) -->
+            <div class="report-standard-block report-screenshot-card" id="report-legacy-block">
                 <div class="report-owner-row" id="report-owner-row">
                     <div class="report-owner-meta">
                         <span class="report-owner-line notranslate" id="report-owner-line"></span>
@@ -1559,6 +1796,8 @@
                 </div>
                 <button class="btn btn-primary" id="t-reportBtnSend" onclick="sendReport()" data-i18n="reportBtnSend">📸 Отправить скриншот</button>
             </div>
+
+            <!-- Feedback Alternative Block (preserved) -->
             <div class="report-feedback-block">
                 <div class="report-path-label report-path-label--alt" id="t-reportAltLabel" data-i18n="reportAltLabel">или отправить как отзыв</div>
                 <div class="report-feedback-actions">
@@ -1570,22 +1809,19 @@
         </div>
     </div>
 
-    <!-- Screenshot Guard Modal -->
-    <div id="screenshot-guard-modal" class="modal-overlay" onclick="closeScreenshotGuardModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="t-screenshotGuardTitle" data-i18n="screenshotGuardTitle">Вы уже подготовили скриншоты для подтверждения?</h3>
-            <div class="action-row">
-                <button class="btn btn-primary" id="t-screenshotGuardYes" onclick="confirmScreenshotGuard()" data-i18n="screenshotGuardYes">✅ Да, отправить</button>
-                <button class="btn btn-secondary" id="t-screenshotGuardCancel" onclick="closeScreenshotGuardModal()" data-i18n="screenshotGuardCancel">❌ Отмена</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Checkin Options Modal -->
     <div id="checkin-options-modal" class="modal-overlay" onclick="closeCheckinOptionsModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-checkinOptionsTitle"></h3>
             <p id="t-checkinOptionsSubtitle" style="color: var(--hint-color); font-size: 14px; line-height: 1.5; margin: 8px 0 20px;"></p>
+            <div id="checkin-options-catchup-note" class="checkin-catchup-note" hidden>
+                <span class="checkin-catchup-note__icon" aria-hidden="true"></span>
+                <div class="checkin-catchup-note__copy">
+                    <strong id="checkin-options-catchup-title"></strong>
+                    <p id="checkin-options-catchup-text"></p>
+                </div>
+            </div>
+            <div id="checkin-options-screenshot-boost" class="screenshot-boost-offer" hidden></div>
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button class="btn btn-secondary" id="t-checkinOptionsSendScreenshot" style="width: 100%; justify-content: center;" onclick="checkinOptionsScreenshot()"></button>
                 <div style="display: flex; gap: 10px;">
@@ -1596,6 +1832,23 @@
                 <button class="btn btn-success" id="t-checkinOptionsJustConfirm" style="width: 100%; font-weight: 600; justify-content: center;" onclick="checkinOptionsConfirm()"></button>
             </div>
             <div id="checkin-review-options" style="display:none; margin-top: 14px;"></div>
+            <div class="checkin-dev-accordion" id="checkin-options-developer">
+                <button type="button" class="checkin-dev-accordion__summary" id="checkin-options-developer-toggle" aria-expanded="false" aria-controls="checkin-options-developer-panel" onclick="toggleCheckinDeveloperAccordion(event)">
+                    <span class="checkin-dev-accordion__summary-text" id="checkin-options-developer-summary"></span>
+                    <span class="checkin-dev-accordion__chevron" aria-hidden="true"></span>
+                </button>
+                <div class="checkin-dev-accordion__panel" id="checkin-options-developer-panel">
+                    <div class="checkin-dev-accordion__panel-inner">
+                        <div class="checkin-dev-accordion__card" id="checkin-options-developer-body"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screenshot-boost-modal" class="modal-overlay screenshot-boost-modal" onclick="closeScreenshotBoostModal(event)">
+        <div class="modal-content screenshot-boost-sheet" onclick="event.stopPropagation()">
+            <div id="screenshot-boost-modal-body"></div>
         </div>
     </div>
 
@@ -1698,10 +1951,25 @@
                             <input type="checkbox" id="issue-check-match" onchange="syncIssueReportPauseState()">
                             <span id="t-issueCheckMatch" data-i18n="reportIssueCheckMatch">Один аккаунт используется в Group и Play</span>
                         </label>
-                        <label class="issue-check-item issue-check-item--strong">
-                            <input type="checkbox" id="issue-check-still" onchange="syncIssueReportPauseState()">
-                            <span id="t-issueCheckStill" data-i18n="reportIssueCheckStill">Приложение всё ещё недоступно</span>
-                        </label>
+                        <div class="issue-still-proof">
+                            <div class="issue-still-proof__title" id="t-issueCheckStill" data-i18n="reportIssueCheckStill">После проверки приложение всё ещё нельзя установить</div>
+                            <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenAppPlay" onclick="openIssueChecklistAppPlay()" data-i18n="reportIssueOpenAppPlayBtn">Открыть приложение в Google Play</button>
+                            <input type="file" id="issue-report-file" accept="image/*" hidden onchange="handleIssueScreenshotUpload(this)">
+                            <button type="button" class="issue-screenshot-zone" id="issue-screenshot-zone" onclick="document.getElementById('issue-report-file').click()">
+                                <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                <span id="t-issueScreenshotUpload" data-i18n="reportIssueScreenshotUpload">Прикрепить скриншот ошибки</span>
+                            </button>
+                            <div class="issue-screenshot-preview" id="issue-screenshot-preview" hidden>
+                                <div class="preview-success-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <div class="preview-info">
+                                    <div class="preview-title" id="t-issueScreenshotReady" data-i18n="reportIssueScreenshotReady">Скриншот прикреплён</div>
+                                    <div class="preview-subtitle" id="t-issueScreenshotReplace" data-i18n="reportIssueScreenshotReplace">Нажмите ✕ чтобы заменить</div>
+                                </div>
+                                <button type="button" class="preview-remove-btn" onclick="clearIssueScreenshot(event)" aria-label="Remove screenshot">✕</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="issue-report-comment">
                         <label class="issue-report-label" for="issue-report-text">
@@ -1746,6 +2014,21 @@
         </div>
     </div>
 
+    <!-- Active Timer Switch Bottom Sheet (Educational Tip) -->
+    <div id="active-timer-switch-modal" class="modal-overlay" onclick="closeActiveTimerSwitchModal(event)">
+        <div class="modal-content active-timer-switch-modal-content" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div class="active-timer-switch-modal-header" style="text-align: center; margin-bottom: 16px;">
+                <div style="font-size: 34px; margin-bottom: 8px;">🏎️</div>
+                <h3 style="font-size: 19px; font-weight: 700; margin: 0;" id="active-timer-switch-title">Слишком быстро</h3>
+            </div>
+            <div id="active-timer-switch-body" style="font-size: 14px; line-height: 1.55; color: var(--text-color); display: flex; flex-direction: column; gap: 12px;"></div>
+            <button id="btn-return-to-active-timer" class="btn btn-primary" style="width: 100%; margin-top: 18px; font-size: 15px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleReturnToActiveTimerClick()">
+                ↗ Вернуться к тесту
+            </button>
+        </div>
+    </div>
+
     <div id="reliability-info-modal" class="modal-overlay" onclick="closeReliabilityInfo(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-reliabilityInfoTitle"></h3>
@@ -1762,7 +2045,7 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <div style="text-align:center; margin-bottom: 12px;">
                 <div class="dashboard-title" data-i18n="karmaInfoModalTitle">ТВОЙ БАЛАНС КАРМЫ</div>
-                <div id="karma-balance-value" style="font-size: 36px; font-weight: 800; margin-top: 8px; letter-spacing: 0.5px;">☯️ 0.0</div>
+                <div id="karma-balance-value" style="font-size: 36px; font-weight: 800; margin-top: 8px; letter-spacing: 0.5px;">0.0</div>
             </div>
 
             <div class="card" id="karma-stats-container" style="margin-bottom: 12px; display: none;">
@@ -1788,7 +2071,7 @@
                     <span style="font-size: 18px;">⚙️</span>
                     <span style="font-weight: 700; font-size: 15px;" data-i18n="karmaInfoHowTitle">Как получить и потерять?</span>
                 </div>
-                <div style="font-size: 13px; color: var(--hint-color); line-height: 1.55; white-space: pre-line;" data-i18n="karmaInfoHowText"></div>
+                <div id="karma-how-list" class="karma-how-list"></div>
             </div>
 
             <button class="btn btn-secondary" style="width: 100%;" onclick="closeKarmaInfoModal()" data-i18n="karmaInfoCloseBtn">Закрыть</button>
@@ -1965,7 +2248,7 @@
             <p id="t-overtimeModalText" style="color: var(--text-color); font-size: 14px; line-height: 1.5; white-space: pre-line; margin-bottom: 18px;"></p>
             <div class="action-row" style="margin-top: 0;">
                 <button class="btn btn-secondary" style="flex: 1;" id="t-overtimeContactBtn" onclick="overtimeContactOwner()" data-i18n="overtimeContactBtn">💬 Написать разработчику</button>
-                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" id="t-overtimeLeaveBtn" onclick="confirmOvertimeLeave()" data-i18n="overtimeLeaveConfirmBtn">🚪 Покинуть проект</button>
+                <button class="btn" style="flex: 1; background-color: rgba(255,59,48,0.1); color: #ff3b30;" id="t-overtimeLeaveBtn" onclick="confirmOvertimeLeave()" data-i18n="overtimeLeaveConfirmBtn">Покинуть проект</button>
             </div>
             <button class="btn btn-secondary" style="width:100%; margin-top: 8px;" onclick="closeOvertimeModal()" id="t-overtimeCancelBtn" data-i18n="btnCancel">Отмена</button>
         </div>
@@ -1986,10 +2269,10 @@
                     </div>
                 </div>
                 <div class="ppc-reward-split-card karma-boost">
-                    <span class="ppc-reward-split-emoji">☯️</span>
+                    <span class="ppc-reward-split-emoji" data-karma-icon></span>
                     <div class="ppc-reward-split-info">
-                        <span id="ppc-phase-modal-karma-bonus" class="ppc-reward-split-value" style="color: var(--reward);">+0.5</span>
-                        <span class="ppc-reward-split-label" data-i18n="ppcModalKarmaBonus">Повышенная карма + 0,5</span>
+                        <span id="ppc-phase-modal-karma-bonus" class="ppc-reward-split-value" style="color: var(--reward);">+0.1</span>
+                        <span class="ppc-reward-split-label" data-i18n="ppcModalKarmaBonus">Повышенная карма + 0,1</span>
                     </div>
                 </div>
             </div>
@@ -2214,21 +2497,32 @@
         </div>
     </div>
 
-    <div id="bell-remind-overlay" class="modal-overlay leave-confirm-overlay" onclick="closeBellRemindOverlay(event)">
-        <div class="modal-content leave-confirm-sheet" onclick="event.stopPropagation()">
+    <!-- Bell Remind Modal -->
+    <div id="bell-remind-overlay" class="modal-overlay" onclick="closeBellRemindOverlay(event)">
+        <div class="modal-content report-modal-sheet" onclick="event.stopPropagation()">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h3 data-i18n="bellRemindTitle">🔔 Напомнить в Telegram</h3>
-            <div id="bell-remind-person" class="link-status-person bell-remind-person"></div>
-            <div class="bell-remind-lang-row" role="group" aria-label="Language">
-                <button type="button" id="bell-remind-lang-ru" class="reason-chip is-selected" onclick="setBellRemindLang('ru')">RU</button>
-                <button type="button" id="bell-remind-lang-en" class="reason-chip" onclick="setBellRemindLang('en')">EN</button>
+            <h3 id="t-bellRemindTitle" data-i18n="bellRemindTitle">🔔 Напоминание тестеру</h3>
+            <p id="t-bellRemindHint" data-i18n="bellRemindHint">Отправьте вежливое напоминание в личные сообщения или в общий топик чата.</p>
+            <div class="report-standard-block report-screenshot-card">
+                <div class="report-owner-row" id="bell-remind-owner-row">
+                    <div class="report-owner-meta">
+                        <span class="report-owner-line notranslate" id="bell-remind-owner-line"></span>
+                    </div>
+                </div>
+                <div id="bell-remind-language-toggle"></div>
+                <div class="form-group report-text-wrap">
+                    <textarea id="bell-remind-text" class="form-input report-modal-text is-collapsed" rows="5"></textarea>
+                    <button type="button" class="report-text-expand-btn" id="bell-remind-text-expand-btn" onclick="toggleBellRemindTextExpand()" aria-expanded="false" title="Expand">
+                        <svg class="report-text-expand-icon report-text-expand-icon--more" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5.83L15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/></svg>
+                        <svg class="report-text-expand-icon report-text-expand-icon--less" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.41 18.59L8.83 20 12 16.83 15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4 12 7.17 8.83 4 7.41 5.41 12 10l4.59-4.59z"/></svg>
+                    </button>
+                </div>
+                <div class="bell-remind-actions">
+                    <button type="button" class="btn btn-primary bell-remind-btn-dm" id="t-bellRemindBtnDm" onclick="confirmBellRemindSend('dm')" data-i18n="bellRemindBtnDm">💬 Отправить в ЛС</button>
+                    <button type="button" class="btn btn-secondary bell-remind-btn-topic" id="t-bellRemindBtnTopic" onclick="confirmBellRemindSend('topic')" data-i18n="bellRemindBtnTopic">📢 Отправить в топик</button>
+                </div>
             </div>
-            <label id="bell-remind-lang-label" class="form-label" data-i18n="bellRemindPreviewLabel">Текст сообщения</label>
-            <textarea id="bell-remind-text" class="form-input bell-remind-text" rows="5" readonly></textarea>
-            <div class="leave-modal-actions" style="margin-top: 12px;">
-                <button type="button" class="btn leave-cta leave-cta--safe" onclick="confirmBellRemindSend()" data-i18n="bellRemindSendBtn">Далее — открыть ЛС</button>
-                <button type="button" class="btn btn-secondary" onclick="closeBellRemindOverlay()" data-i18n="leaveConfirmBackBtn">Назад</button>
-            </div>
+            <button type="button" class="btn btn-ghost bell-remind-cancel-btn" onclick="closeBellRemindOverlay()" data-i18n="btnCancel">Отмена</button>
         </div>
     </div>
 
@@ -2296,11 +2590,11 @@
 
             <div class="card" style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-size: 20px;">🐞</span>
-                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnFeedbackTitle">Баг-репорты и Рекомендации</span>
+                    <span style="font-size: 20px;">🙌</span>
+                    <span style="font-weight: 700; font-size: 15px;" data-i18n="earnDeveloperRewardsTitle">Награды от разработчиков</span>
                 </div>
-                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnFeedbackDesc">Отправляйте полезный фидбэк разработчикам. После благодарности вы получаете $BUST и иногда Карму.</p>
-                <div id="earn-feedback-status" class="earn-chip-row"></div>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnDeveloperRewardsDesc">Когда разработчик закрывает ваш баг, рекомендацию или идею, он может начислить $BUST. Отдельная выплата приходит за дополнительные отчёты со скриншотом, если в проекте включены бонусы за скриншоты.</p>
+                <div id="earn-developer-rewards-status" class="earn-chip-row"></div>
             </div>
 
             <div class="card" style="margin-bottom: 12px;">
@@ -2339,8 +2633,8 @@
                 </div>
                 <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 10px;" data-i18n="earnSprintDesc">Участвуйте в 10-дневных спринтах: баги, идеи и Play-отзывы дают баллы. Топ-10 делят призовой пул ~2000 $BUST.</p>
                 <div id="earn-sprint-status" class="earn-chip-row">
-                    <span class="meta-chip accent-blue" id="earn-sprint-joined">🏁 Участий: 0</span>
-                    <span class="meta-chip accent-green" id="earn-sprint-bust">💎 Заработано: 0.0 $BUST</span>
+                    <span class="meta-chip accent-green" id="earn-sprint-joined">🏁 Участий: 0</span>
+                    <span class="meta-chip accent-purple" id="earn-sprint-bust">💎 0.0 $BUST</span>
                 </div>
                 <button type="button" class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="closeEarnBustModal(); showContributionInfo();" data-i18n="earnSprintOpenBtn">Открыть спринт</button>
             </div>
@@ -2394,51 +2688,178 @@
         </div>
     </div>
 
-    <div id="feedback-reward-modal" class="modal-overlay" onclick="closeFeedbackRewardModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 data-i18n="feedbackRewardModalTitle">🎁 Поблагодарить / Закрыть</h3>
-            <p class="feedback-reward-subtitle" data-i18n="feedbackRewardModalDesc">Выберите награду тестеру за полезный фидбэк и закройте тикет.</p>
+    <div id="pc-activity-sheet" class="modal-overlay pc-activity-overlay" onclick="pcCloseActivitySheet(event)">
+        <div class="modal-content pc-activity-sheet-card" onclick="event.stopPropagation()">
+            <header class="pc-activity-sheet__head">
+                <button type="button" class="pc-activity-sheet__back" onclick="pcCloseActivitySheet()" aria-label="Back">‹</button>
+                <h3 id="pc-activity-sheet-title"></h3>
+            </header>
+            <div id="pc-activity-sheet-tabs" class="pc-activity-tabs" hidden>
+                <button type="button" id="pc-activity-tab-state" class="pc-activity-tab is-active" onclick="pcSetAllTestersTab('state')"></button>
+                <button type="button" id="pc-activity-tab-history" class="pc-activity-tab" onclick="pcSetAllTestersTab('history')"></button>
+            </div>
+            <div id="pc-activity-sheet-body" class="pc-activity-sheet__body"></div>
+        </div>
+    </div>
 
-            <div class="feedback-reward-target-card">
-                <div class="feedback-reward-target-title" id="feedback-reward-target-name">—</div>
-                <div class="feedback-reward-target-subtitle" id="feedback-reward-target-meta">—</div>
+    <div id="proof-ping-sheet" class="modal-overlay proof-ping-overlay" onclick="closeProofPingSettingsSheet(event)">
+        <div class="modal-content proof-ping-sheet-card" onclick="event.stopPropagation()">
+            <header class="proof-ping-sheet__head">
+                <h3 id="proof-ping-sheet-title">Уведомления</h3>
+                <p class="proof-ping-sheet__hint" id="proof-ping-sheet-hint"></p>
+                <button type="button" class="proof-ping-sheet__chat" onclick="pcProofPingOpenCommunity(event)">
+                    <svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+                    <span id="proof-ping-sheet-chat-label">Community Chat</span>
+                </button>
+            </header>
+            <div class="proof-ping-sheet__master">
+                <span id="proof-ping-master-label">Общий поток</span>
+                <label class="toggle-switch" aria-label="All notifications">
+                    <input type="checkbox" id="proof-ping-master-toggle" checked onchange="pcProofPingMasterToggle(this)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="proof-ping-sheet__banner" id="proof-ping-sheet-banner" hidden>Общий поток выключен: @упоминания не отправляются.</p>
+            <div id="proof-ping-sheet-body" class="proof-ping-sheet__body"></div>
+        </div>
+    </div>
+
+    <div id="proof-ping-explain" class="modal-overlay centered-popup-overlay proof-ping-explain-overlay" onclick="closeProofPingExplain(event)" aria-hidden="true">
+        <div class="modal-content centered-popup proof-ping-explain-card" role="dialog" aria-modal="true" aria-labelledby="proof-ping-explain-title" onclick="event.stopPropagation()">
+            <div id="proof-ping-explain-body"></div>
+        </div>
+    </div>
+
+    <div id="testing-control-modal" class="modal-overlay" onclick="closeTestingControl(event)">
+        <div class="modal-content testing-control-modal-content" onclick="event.stopPropagation()">
+            <div id="testing-control-body"></div>
+        </div>
+    </div>
+
+    <div id="checkin-proof-preview-modal" class="modal-overlay" onclick="closeCheckinProofPreview(event)">
+        <div class="checkin-proof-preview-shell" onclick="event.stopPropagation()">
+            <div class="checkin-proof-preview-header">
+                <button type="button" class="testing-control-back" onclick="closeCheckinProofPreview()" aria-label="Close">‹</button>
+                <div class="testing-control-heading">
+                    <div id="checkin-proof-preview-title" class="testing-control-title"></div>
+                    <div id="checkin-proof-preview-subtitle" class="testing-control-subtitle"></div>
+                </div>
+            </div>
+            <div id="checkin-proof-preview-body" class="checkin-proof-preview-body"></div>
+        </div>
+    </div>
+
+    <div id="feedback-reward-modal" class="modal-overlay" onclick="closeFeedbackRewardModal(event)">
+        <div class="feedback-reward-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div class="feedback-reward-head">
+                <div class="feedback-reward-head-copy">
+                    <h3 data-i18n="feedbackRewardModalTitle">🎁 Поблагодарить / Закрыть</h3>
+                    <p class="feedback-reward-subtitle" data-i18n="feedbackRewardModalDesc">Выберите вознаграждение тестеру за фидбэк и завершите тикет.</p>
+                </div>
+                <button type="button" class="feedback-reward-close" onclick="closeFeedbackRewardModal()" aria-label="Close">×</button>
             </div>
 
-            <div class="feedback-reward-block">
+            <div class="feedback-reward-card feedback-reward-author">
+                <div class="feedback-reward-avatar" id="feedback-reward-avatar" aria-hidden="true">
+                    <span id="feedback-reward-avatar-initials">?</span>
+                    <span class="feedback-reward-type-badge" id="feedback-reward-type-badge">🐞</span>
+                </div>
+                <div class="feedback-reward-author-main">
+                    <div class="feedback-reward-author-row">
+                        <span class="feedback-reward-target-title" id="feedback-reward-target-name">—</span>
+                        <span class="feedback-reward-role-badge" data-i18n="feedbackRewardAuthorBadge">АВТОР</span>
+                    </div>
+                    <div class="feedback-reward-target-subtitle" id="feedback-reward-target-meta">—</div>
+                </div>
+                <div class="feedback-reward-contrib" id="feedback-reward-contrib">
+                    <div class="feedback-reward-contrib-label" id="feedback-reward-contrib-label" data-i18n="feedbackRewardContribLabel">ВКЛАД</div>
+                    <div class="feedback-reward-contrib-chip" id="feedback-reward-contrib-chip">⚡ +5</div>
+                </div>
+            </div>
+
+            <div class="feedback-reward-card feedback-reward-block">
                 <div class="feedback-reward-block-head">
-                    <div class="feedback-reward-label" data-i18n="feedbackRewardBustLabel">$BUST</div>
+                    <div class="feedback-reward-label">
+                        <span data-i18n="feedbackRewardBustLabel">$BUST</span>
+                        <span class="feedback-reward-label-hint" data-i18n="feedbackRewardBustHint">токены проекта</span>
+                    </div>
                     <span class="feedback-reward-status-item" id="feedback-owner-balance">💎 0 $BUST</span>
                 </div>
                 <div class="chip-scroll feedback-reward-chips">
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-5" onclick="setFeedbackRewardBust(5)">5</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-10" onclick="setFeedbackRewardBust(10)">10</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-25" onclick="setFeedbackRewardBust(25)">25</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-50" onclick="setFeedbackRewardBust(50)">50</button>
-                    <button class="chip feedback-reward-chip" id="feedback-bust-chip-100" onclick="setFeedbackRewardBust(100)">100</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-5" onclick="setFeedbackRewardBust(5)">5</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-10" onclick="setFeedbackRewardBust(10)">10</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-25" onclick="setFeedbackRewardBust(25)">25</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-50" onclick="setFeedbackRewardBust(50)">50</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-100" onclick="setFeedbackRewardBust(100)">100</button>
+                    <button type="button" class="chip feedback-reward-chip feedback-reward-bust-chip" id="feedback-bust-chip-500" onclick="setFeedbackRewardBust(500)">500</button>
                 </div>
-                <input type="number" id="feedback-reward-bust-input" class="form-input" min="0" step="0.1" data-i18n-placeholder="feedbackRewardBustPlaceholder" style="margin-top: 10px;">
+                <div class="feedback-reward-stepper">
+                    <button type="button" class="feedback-reward-stepper-btn" id="feedback-reward-bust-minus" onclick="nudgeFeedbackRewardBust(-5)" aria-label="-5">−</button>
+                    <div class="feedback-reward-stepper-value">
+                        <span id="feedback-reward-bust-display">0</span>
+                        <span class="feedback-reward-stepper-unit">$BUST</span>
+                    </div>
+                    <button type="button" class="feedback-reward-stepper-btn" id="feedback-reward-bust-plus" onclick="nudgeFeedbackRewardBust(5)" aria-label="+5">+</button>
+                </div>
+                <input type="number" id="feedback-reward-bust-input" class="form-input visually-hidden" min="0" step="0.1" tabindex="-1" aria-hidden="true">
+                <div id="feedback-reward-pool-boost-container" class="feedback-reward-pool-line" style="display: none;"></div>
             </div>
 
-            <div class="feedback-reward-block">
+            <div class="feedback-reward-card feedback-reward-block">
                 <div class="feedback-reward-block-head">
-                    <div class="feedback-reward-label" data-i18n="feedbackRewardKarmaLabel">Карма</div>
-                    <button type="button" class="feedback-reward-status-item feedback-reward-status-button" id="feedback-karma-status" onclick="showFeedbackRewardKarmaInfo()">☯️ 0/0</button>
+                    <div class="feedback-reward-label">
+                        <span data-i18n="feedbackRewardKarmaLabel">Карма</span>
+                        <span class="feedback-reward-label-hint" data-i18n="feedbackRewardKarmaHint">репутация в хабе</span>
+                    </div>
+                    <button type="button" class="feedback-reward-status-item feedback-reward-status-button" id="feedback-karma-status" onclick="showFeedbackRewardKarmaInfo()">0/0</button>
                 </div>
-                <div class="chip-scroll feedback-reward-chips">
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-0" onclick="setFeedbackRewardKarma(0)">0</button>
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-15" onclick="setFeedbackRewardKarma(1.5)">+1.5 ☯️</button>
-                    <button class="chip feedback-reward-chip" id="feedback-karma-chip-30" onclick="setFeedbackRewardKarma(3.0)">+3.0 ☯️</button>
+                <div class="feedback-reward-karma-grid">
+                    <button type="button" class="feedback-reward-karma-choice" id="feedback-karma-chip-0" onclick="setFeedbackRewardKarma(0)">
+                        <span class="feedback-reward-karma-amount">0</span>
+                        <span class="feedback-reward-karma-caption" data-i18n="feedbackRewardKarmaNone">Без кармы</span>
+                    </button>
+                    <button type="button" class="feedback-reward-karma-choice" id="feedback-karma-chip-15" onclick="setFeedbackRewardKarma(1.5)">
+                        <span class="feedback-reward-karma-amount">+1.5</span>
+                        <span class="feedback-reward-karma-caption" data-i18n="feedbackRewardKarmaGood">Хороший тест</span>
+                    </button>
+                    <button type="button" class="feedback-reward-karma-choice" id="feedback-karma-chip-30" onclick="setFeedbackRewardKarma(3.0)">
+                        <span class="feedback-reward-karma-amount">+3.0</span>
+                        <span class="feedback-reward-karma-caption" data-i18n="feedbackRewardKarmaSpecial">Ценный вклад</span>
+                    </button>
                 </div>
                 <div id="feedback-reward-karma-warning" class="feedback-warning-banner" style="display: none;"></div>
             </div>
 
-            <div class="feedback-reward-block">
-                <div class="feedback-reward-label" data-i18n="feedbackRewardReplyLabel">Сообщение тестеру</div>
-                <textarea id="feedback-reward-reply" class="form-input" rows="4" style="resize: vertical;" data-i18n-placeholder="feedbackRewardReplyPlaceholder"></textarea>
+            <div class="feedback-reward-card feedback-reward-block">
+                <div class="feedback-reward-block-head">
+                    <div class="feedback-reward-label" data-i18n="feedbackRewardReplyLabel">Сообщение тестеру</div>
+                    <span class="feedback-reward-label-hint" data-i18n="feedbackRewardReplyOptional">Опционально</span>
+                </div>
+                <textarea id="feedback-reward-reply" class="form-input feedback-reward-reply" rows="4" data-i18n-placeholder="feedbackRewardReplyPlaceholder"></textarea>
+                <div class="feedback-reward-quick-row" role="group">
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="thanks" onclick="applyFeedbackRewardQuickReply('thanks')" data-i18n="feedbackRewardQuickThanks">👍 Спасибо за отчёт!</button>
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="bug" onclick="applyFeedbackRewardQuickReply('bug')" data-i18n="feedbackRewardQuickBug">🔧 Баг взят в работу</button>
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="idea" onclick="applyFeedbackRewardQuickReply('idea')" data-i18n="feedbackRewardQuickIdea">💡 Отличная идея</button>
+                    <button type="button" class="feedback-reward-quick-chip" data-quick="noted" onclick="applyFeedbackRewardQuickReply('noted')" data-i18n="feedbackRewardQuickNoted">📌 Зафиксировали</button>
+                </div>
             </div>
 
-            <button class="btn btn-primary" id="feedback-reward-submit-btn" style="width: 100%; margin-top: 14px;" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет</button>
-            <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRewardModal()" data-i18n="feedbackRewardCancelBtn">Отмена</button>
+            <div class="feedback-reward-summary" id="feedback-reward-summary">
+                <span class="feedback-reward-summary-label" data-i18n="feedbackRewardSummaryLabel">К отправке</span>
+                <span class="feedback-reward-summary-badges" id="feedback-reward-summary-badges">
+                    <span class="feedback-reward-summary-contrib" id="feedback-reward-summary-contrib" hidden></span>
+                    <span class="feedback-reward-summary-bust" id="feedback-reward-summary-bust" hidden></span>
+                    <span class="feedback-reward-summary-karma" id="feedback-reward-summary-karma" hidden>
+                        <span id="feedback-reward-summary-karma-amount"></span>
+                        <span data-karma-icon data-karma-class="karma-yin-icon--inline"></span>
+                    </span>
+                    <span class="feedback-reward-summary-empty" id="feedback-reward-summary-empty"></span>
+                </span>
+            </div>
+
+            <button class="btn btn-primary feedback-reward-submit" id="feedback-reward-submit-btn" onclick="submitFeedbackReward()" data-i18n="feedbackRewardSubmitBtn">Выдать награду и закрыть тикет →</button>
+            <button type="button" class="feedback-reward-cancel-link" onclick="closeFeedbackRewardModal()" data-i18n="feedbackRewardCancelKeepOpen">Отмена (оставить тикет открытым)</button>
         </div>
     </div>
 
@@ -2477,6 +2898,41 @@
             </div>
             <button class="btn btn-warning" id="feedback-reject-submit-btn" style="width: 100%; margin-top: 14px;" onclick="confirmFeedbackReject()" data-i18n="feedbackRejectConfirmBtn" disabled>Подтвердить отклонение</button>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="closeFeedbackRejectModal()" data-i18n="feedbackRejectCancelBtn">Отмена</button>
+        </div>
+    </div>
+    <div id="project-coverage-modal" class="modal-overlay project-coverage-overlay" onclick="closeProjectCoverageModal(event)">
+        <div class="modal-content project-coverage-modal-content" onclick="event.stopPropagation()">
+            <div id="project-coverage-body"></div>
+        </div>
+    </div>
+    <div id="coverage-screenshot-modal" class="modal-overlay coverage-screenshot-modal" onclick="closeCoverageScreenshotModal(event)">
+        <div class="modal-content coverage-screenshot-shell" onclick="event.stopPropagation()">
+            <div class="coverage-screenshot-header">
+                <div class="coverage-screenshot-heading">
+                <button type="button" class="coverage-screenshot-btn" onclick="closeCoverageScreenshotModal()" aria-label="Back">←</button>
+                <div class="coverage-screenshot-meta">
+                    <div id="coverage-screenshot-title" class="coverage-screenshot-title"></div>
+                    <div id="coverage-screenshot-subtitle" class="coverage-screenshot-subtitle"></div>
+                </div>
+                </div>
+                <div class="coverage-screenshot-actions">
+                    <button type="button" id="coverage-screenshot-archive-btn" class="coverage-screenshot-archive-btn" onclick="toggleCurrentCoverageArchive(event)"></button>
+                    <button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)">
+                        ⚠️ <span></span>
+                    </button>
+                    <span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>
+                </div>
+            </div>
+            <div class="coverage-screenshot-stage" id="coverage-screenshot-stage">
+                <button type="button" id="coverage-screenshot-prev" class="coverage-screenshot-nav coverage-screenshot-nav--prev" onclick="stepCoverageScreenshot(-1)" aria-label="Previous" style="display:none;">‹</button>
+                <div class="coverage-screenshot-img-wrap" onclick="toggleCoverageScreenshotZoom()">
+                    <img id="coverage-screenshot-img" class="coverage-screenshot-img" src="" alt="" loading="eager" draggable="false">
+                    <div id="coverage-screenshot-defect-badge" class="coverage-screenshot-defect-badge" style="display:none;"></div>
+                    <div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>
+                </div>
+                <button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>
+                <div id="coverage-screenshot-dots" class="coverage-screenshot-dots" style="display:none;"></div>
+            </div>
         </div>
     </div>
     <div id="project-details-modal" class="modal-overlay" onclick="closeProjectDetailsModal(event)"><div class="modal-content" onclick="event.stopPropagation()" id="project-details-body"></div></div>
@@ -2586,9 +3042,9 @@
     <div id="karma-select-popup" class="modal-overlay centered-popup-overlay" onclick="closeKarmaSelectPopup(event)">
         <div class="modal-content centered-popup karma-select-popup-content" onclick="event.stopPropagation()">
             <div class="karma-select-header">
-                <div class="karma-select-icon-badge">☯️</div>
+                <div class="karma-select-icon-badge" id="karma-select-icon-badge"></div>
                 <div class="karma-select-header-text">
-                    <h3 id="karma-select-title" data-i18n="karmaSelectTitle">Награда тестеру</h3>
+                    <h3 id="karma-select-title" data-i18n="karmaSelectTitle">Благодарность Тестировщику</h3>
                     <div id="karma-select-tester-meta" class="karma-select-tester-meta"></div>
                 </div>
                 <button type="button" class="karma-select-close" onclick="closeKarmaSelectPopup()" aria-label="Close">✕</button>
@@ -2609,7 +3065,7 @@
 
                 <!-- Option 2: Особый вклад -->
                 <button type="button" class="karma-option-card bug popup-btn bug" id="karma-btn-bug" onclick="confirmKarmaSelect('bug')">
-                    <div class="karma-option-icon">💡</div>
+                    <div class="karma-option-icon">❤️‍🔥</div>
                     <div class="karma-option-body">
                         <div class="karma-option-head">
                             <span class="karma-option-title" data-i18n="karmaSelectBug">Особый вклад</span>
@@ -2620,8 +3076,10 @@
                 </button>
             </div>
 
+            <div id="karma-select-tester-limit" class="karma-select-tester-limit" hidden></div>
+
             <div class="karma-select-note" data-i18n="karmaSelectNote">
-                Один тестер может получить оба типа наград. Карма повышает репутацию тестера и увеличивает его гранты.
+                Один тестер может получить оба типа наград. Карма повышает репутацию тестера и увеличивает выплату $BUST по грантам.
             </div>
 
             <button type="button" class="btn btn-secondary karma-select-cancel-btn popup-btn cancel" onclick="closeKarmaSelectPopup()" data-i18n="karmaSelectCancel">Отмена</button>
@@ -2632,7 +3090,6 @@
         <div class="attract-sheet" onclick="event.stopPropagation()">
             <div class="attract-sheet-header">
                 <span class="attract-sheet-title" data-i18n="attractTestersTitle">Привлечь тестеров</span>
-                <button type="button" class="attract-sheet-close" onclick="closeAttractTestersSheet()">✕</button>
             </div>
             <div class="attract-sheet-content" id="attract-testers-sheet-content"></div>
         </div>

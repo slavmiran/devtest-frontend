@@ -191,6 +191,19 @@
     border-radius: 24px 24px 0 0;
 }
 
+#device-profile-required-modal.modal-overlay {
+    z-index: 10050;
+    align-items: flex-end;
+}
+
+#device-profile-required-modal .device-profile-required-modal-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 24px 24px 0 0;
+    text-align: center;
+}
+
 .device-info-modal-hint {
     margin: 0 0 14px;
     font-size: 13px;

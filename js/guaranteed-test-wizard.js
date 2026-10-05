@@ -1,4 +1,4 @@
-﻿/* =========================================================
+/* =========================================================
    GUARANTEED CLOSED TEST WIZARD - 3-SCREEN MODULE
    Step 1 of 2: App Details
    Step 2 of 2: Testing Link
@@ -20,14 +20,15 @@
     var TESTER_GROUP_EMAIL = "google-play-dev-test@googlegroups.com";
     var PAYPAL_EMAIL = "pay.hubstation@gmail.com";
     var TELEGRAM_SUPPORT = "garantxchange";
+    var PAYPAL_PAY_URL = "https://paypal.me/devtesthub/23USD";
     var PAYPAL_OPEN_URL = "https://www.paypal.com/myaccount/transfer/homepage/pay";
 
     var CRYPTO_EXCHANGES = [
-        { id: 'binance', name: 'Binance', label: 'ID', value: '967321648', initials: 'BN', logo: './images/Binance.webp' },
-        { id: 'bybit', name: 'ByBit', label: 'UID', value: '30291060', initials: 'BY', logo: './images/Bybit.webp' },
-        { id: 'okx', name: 'OKX', label: 'UID', value: '323906492761830368', initials: 'OK', logo: './images/OKX.webp' },
-        { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT', logo: './images/HTX.webp' },
-        { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT', logo: './images/Gate.webp' }
+        { id: 'binance', name: 'Binance', label: 'ID', value: '967321648', initials: 'BN', logo: './images/Binance.webp', website: 'https://www.binance.com' },
+        { id: 'bybit', name: 'ByBit', label: 'UID', value: '30291060', initials: 'BY', logo: './images/Bybit.webp', website: 'https://www.bybit.com' },
+        { id: 'okx', name: 'OKX', label: 'UID', value: '323906492761830368', initials: 'OK', logo: './images/OKX.webp', website: 'https://www.okx.com' },
+        { id: 'htx', name: 'HTX', label: 'UID', value: '442101593', initials: 'HT', logo: './images/HTX.webp', website: 'https://www.htx.com' },
+        { id: 'gate', name: 'Gate', label: 'UID', value: '8536355', initials: 'GT', logo: './images/Gate.webp', website: 'https://www.gate.io' }
     ];
     var FIAT_CURRENCIES = [
         { code: 'TRY', en: 'Turkey (Lira)', ru: 'Турция (Лира)' },
@@ -193,11 +194,17 @@
         ],
         flowPaypalTitle: ['PayPal transfer', 'Перевод через PayPal'],
         flowPaypalSubtitle: [
-            'Service $20 + $3 fee. Send $23 to our PayPal account.',
-            'Услуга $20 + комиссия $3. Отправьте $23 на наш PayPal.'
+            'Service $20 + $3 fee. Pay $23 in PayPal, then attach the screenshot.',
+            'Услуга $20 + комиссия $3. Оплатите $23 в PayPal, затем приложите скриншот.'
         ],
-        flowPaypalStep: ['Copy the address and pay', 'Скопируйте адрес и оплатите'],
+        flowPaypalStep: ['Pay in PayPal', 'Оплатите в PayPal'],
         flowPaypalDesc: [
+            'Tap the button — PayPal opens with $23 already filled in. After the transfer, come back and attach the screenshot.',
+            'Нажмите кнопку — откроется PayPal с уже указанной суммой $23. После перевода вернитесь и приложите скриншот.'
+        ],
+        payPaypal: ['Pay $23', 'Оплатить $23'],
+        paypalManual: ['Pay manually', 'оплатить вручную'],
+        paypalManualHint: [
             'Copy the email, open PayPal and complete the transfer of $23 ($20 + $3 fee).',
             'Скопируйте почту, откройте PayPal и переведите $23 ($20 + комиссия $3).'
         ],
@@ -284,12 +291,14 @@
             'Скопировано. Сделайте перевод в {name}, затем вернитесь и загрузите скриншот.'
         ],
         cryptoPopupTitle: ['Transfer in {name}', 'Перевод в {name}'],
+        cryptoPopupLead: ['The ID is copied.', 'ID скопирован.'],
         cryptoPopupText: [
-            'The ID is copied. Complete the transfer inside {name} and come back to upload the payment screenshot.',
-            'ID скопирован. Завершите перевод в {name} и вернитесь, чтобы загрузить скриншот оплаты.'
+            'Complete the transfer inside {name} and come back to upload the payment screenshot.',
+            'Завершите перевод в {name} и вернитесь, чтобы загрузить скриншот оплаты.'
         ],
         cryptoPopupStay: ['Stay here', 'Остаться'],
-        cryptoPopupGo: ['Go to Telegram', 'В Telegram'],
+        cryptoPopupGo: ['Continue', 'Перейти'],
+        cryptoPopupOpenSite: ['Open website', 'Открыть сайт'],
         selectedExchange: ['the selected exchange', 'выбранной бирже'],
 
         guidePageTitle: ['License Testing, step by step', 'License Testing: пошаговая настройка'],
@@ -370,6 +379,7 @@
 
     var GT_DRAFT_STORAGE_KEY = 'dt_gt_wizard_draft';
     var GT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+    var paypalManualExpanded = false;
 
     function readGuaranteedTestWizardDraft() {
         try {
@@ -1897,6 +1907,7 @@
         if (method === 'crypto') {
             wizardState.paymentExchange = exchangeId || wizardState.paymentExchange;
         }
+        if (method !== 'paypal') paypalManualExpanded = false;
         var switched =
             prevMethod !== method ||
             (method === 'crypto' && prevExchange !== wizardState.paymentExchange);
@@ -1975,18 +1986,32 @@
             step1Title = L('flowPaypalStep');
             step1Desc = L('flowPaypalDesc');
             step1Actions = `
-                <div class="gtw-credential-box">
-                    <span class="gtw-credential-value">${PAYPAL_EMAIL}</span>
-                    <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">${L('copy')}</button>
-                </div>
-                <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-paypal-btn">
-                    <span>${L('openPaypal')}</span>
+                <button type="button" class="gtw-paypal-pay-btn" id="gtw-flow-pay-paypal-btn">
+                    <span>${L('payPaypal')}</span>
                     <svg class="gtw-external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                         <polyline points="15 3 21 3 21 9"></polyline>
                         <line x1="10" y1="14" x2="21" y2="3"></line>
                     </svg>
                 </button>
+                <button type="button" class="gtw-paypal-manual-toggle" id="gtw-paypal-manual-toggle" aria-expanded="${paypalManualExpanded ? 'true' : 'false'}">
+                    ${L('paypalManual')}
+                </button>
+                <div class="gtw-paypal-manual-panel${paypalManualExpanded ? ' is-open' : ''}" id="gtw-paypal-manual-panel"${paypalManualExpanded ? '' : ' hidden'}>
+                    <p class="gtw-paypal-manual-hint">${L('paypalManualHint')}</p>
+                    <div class="gtw-credential-box">
+                        <span class="gtw-credential-value">${PAYPAL_EMAIL}</span>
+                        <button type="button" class="gtw-copy-action-btn" id="gtw-flow-copy-btn">${L('copy')}</button>
+                    </div>
+                    <button type="button" class="gtw-open-external-btn" id="gtw-flow-open-paypal-btn">
+                        <span>${L('openPaypal')}</span>
+                        <svg class="gtw-external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </button>
+                </div>
             `;
         } else if (method === 'rub') {
             title = L('flowFiatTitle');
@@ -2093,7 +2118,7 @@
 
             <div class="gtw-payment-flow-footer">
                 <button type="button" class="gtw-continue-btn" id="gtw-flow-submit-btn" ${canSubmit ? '' : 'disabled'}>
-                    ${L('submitOrder', { amount: amount })}
+                    ${method === 'paypal' ? L('submitFallback') : L('submitOrder', { amount: amount })}
                 </button>
                 <button type="button" class="gtw-payment-flow-cancel" id="gtw-flow-cancel-btn">${L('cancel')}</button>
             </div>
@@ -2115,7 +2140,28 @@
                 if (wizardState.paymentMethod === 'crypto') {
                     markPaymentStep1Done();
                     handleCryptoCopyExitHint();
+                } else if (wizardState.paymentMethod === 'paypal') {
+                    markPaymentStep1Done();
                 }
+            });
+        }
+
+        var payPaypalBtn = document.getElementById('gtw-flow-pay-paypal-btn');
+        if (payPaypalBtn) {
+            payPaypalBtn.addEventListener('click', function () {
+                openExternalUrl(PAYPAL_PAY_URL);
+                markPaymentStep1Done();
+            });
+        }
+
+        var paypalManualToggle = document.getElementById('gtw-paypal-manual-toggle');
+        var paypalManualPanel = document.getElementById('gtw-paypal-manual-panel');
+        if (paypalManualToggle && paypalManualPanel) {
+            paypalManualToggle.addEventListener('click', function () {
+                paypalManualExpanded = !paypalManualExpanded;
+                paypalManualPanel.hidden = !paypalManualExpanded;
+                paypalManualPanel.classList.toggle('is-open', paypalManualExpanded);
+                paypalManualToggle.setAttribute('aria-expanded', paypalManualExpanded ? 'true' : 'false');
             });
         }
 
@@ -2739,34 +2785,85 @@
         }
     }
 
+    function collapseGuaranteedMiniApp() {
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg && typeof tg.minimize === 'function') {
+            try { tg.minimize(); } catch (_) {}
+        }
+    }
+
+    function hideCryptoExitHint() {
+        var overlay = document.getElementById('gtw-crypto-exit-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.style.display = 'none';
+    }
+
     function handleCryptoCopyExitHint() {
         var exchange = getExchangeById(wizardState.paymentExchange);
         var exName = exchange ? exchange.name : L('selectedExchange');
+        var website = exchange && exchange.website ? exchange.website : '';
         if (typeof showToast === 'function') {
             showToast(L('cryptoCopiedToast', { name: exName }));
         }
-        try {
-            var tg = window.Telegram && window.Telegram.WebApp;
-            if (tg && typeof tg.showPopup === 'function') {
-                tg.showPopup({
-                    title: L('cryptoPopupTitle', { name: exName }),
-                    message: L('cryptoPopupText', { name: exName }),
-                    buttons: [
-                        { id: 'later', type: 'cancel', text: L('cryptoPopupStay') },
-                        { id: 'close', type: 'default', text: L('cryptoPopupGo') }
-                    ]
-                }, function (buttonId) {
-                    if (buttonId === 'close' && typeof tg.close === 'function') {
-                        if (typeof tg.openTelegramLink === 'function') {
-                            try { tg.openTelegramLink('https://t.me/saved'); } catch (_) {}
-                        }
-                        tg.close();
-                    }
-                });
-            } else if (tg && typeof tg.close === 'function') {
-                tg.close();
-            }
-        } catch (_) {}
+
+        var overlay = document.getElementById('gtw-crypto-exit-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'gtw-crypto-exit-overlay';
+            overlay.className = 'gtw-crypto-exit-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            document.body.appendChild(overlay);
+        }
+
+        overlay.innerHTML =
+            '<div class="gtw-crypto-exit-card">' +
+                '<h3 class="gtw-crypto-exit-title">' + escapeHtml(L('cryptoPopupTitle', { name: exName })) + '</h3>' +
+                '<p class="gtw-crypto-exit-desc">' +
+                    '<strong>' + escapeHtml(L('cryptoPopupLead')) + '</strong> ' +
+                    escapeHtml(L('cryptoPopupText', { name: exName })) +
+                '</p>' +
+                '<div class="gtw-crypto-exit-actions">' +
+                    '<button type="button" class="gtw-crypto-exit-close" id="gtw-crypto-exit-close">' +
+                        escapeHtml(L('cryptoPopupGo')) +
+                    '</button>' +
+                    '<button type="button" class="gtw-crypto-exit-stay" id="gtw-crypto-exit-stay">' +
+                        escapeHtml(L('cryptoPopupStay')) +
+                    '</button>' +
+                    (website
+                        ? '<button type="button" class="gtw-crypto-exit-site" id="gtw-crypto-exit-site">' +
+                            escapeHtml(L('cryptoPopupOpenSite')) +
+                          '</button>'
+                        : '') +
+                '</div>' +
+            '</div>';
+
+        overlay.style.display = 'flex';
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function () { overlay.classList.add('is-open'); });
+
+        overlay.onclick = function (event) {
+            if (event.target === overlay) hideCryptoExitHint();
+        };
+
+        var closeBtn = overlay.querySelector('#gtw-crypto-exit-close');
+        var stayBtn = overlay.querySelector('#gtw-crypto-exit-stay');
+        var siteBtn = overlay.querySelector('#gtw-crypto-exit-site');
+        if (closeBtn) {
+            closeBtn.onclick = function () {
+                hideCryptoExitHint();
+                collapseGuaranteedMiniApp();
+            };
+        }
+        if (stayBtn) stayBtn.onclick = hideCryptoExitHint;
+        if (siteBtn && website) {
+            siteBtn.onclick = function () {
+                hideCryptoExitHint();
+                openExternalUrl(website);
+            };
+        }
     }
 
     function resolveProjectById(projectId) {
@@ -2847,6 +2944,56 @@
         closePaymentFlow();
         var overlayPay = document.getElementById('guaranteed-test-wizard-payment-overlay');
         if (overlayPay) overlayPay.style.display = 'none';
+    }
+
+    function _gtwOverlayIsOpen(id, openClass) {
+        var overlay = document.getElementById(id);
+        if (!overlay || overlay.hidden || overlay.getAttribute('aria-hidden') === 'true') return false;
+        if (openClass && !overlay.classList.contains(openClass)) return false;
+        return overlay.style.display !== 'none';
+    }
+
+    // Shared by the native Telegram BackButton and the browser popstate fallback.
+    // It mirrors the existing visible Back controls and preserves the wizard draft.
+    function handleGuaranteedTestWizardBack() {
+        if (_gtwOverlayIsOpen('gtw-crypto-exit-overlay', 'is-open')) {
+            hideCryptoExitHint();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-start-gate-overlay', 'is-open')) {
+            hideGuaranteedStartGate();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-license-modal-overlay')) {
+            closeLicenseTestingModal();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-license-guide-overlay')) {
+            closeLicenseGuideModal();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('gtw-payment-flow-overlay', 'is-open')) {
+            closePaymentFlow();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('guaranteed-test-wizard-payment-overlay')) {
+            hideGuaranteedTestWizardPayment();
+            showGuaranteedTestWizardStep2();
+            return true;
+        }
+        if (_gtwOverlayIsOpen('guaranteed-test-wizard-step2-overlay')) {
+            hideGuaranteedTestWizardStep2();
+            showGuaranteedTestWizardStep1({ keepState: true });
+            return true;
+        }
+        if (_gtwOverlayIsOpen('guaranteed-test-wizard-step1-overlay')) {
+            hideGuaranteedTestWizardStep1();
+            if (typeof window.showGuaranteedTestOfferModal === 'function') {
+                window.showGuaranteedTestOfferModal();
+            }
+            return true;
+        }
+        return false;
     }
 
     async function fetchIncompleteGuaranteedOrders() {
@@ -3088,19 +3235,66 @@
         });
     }
 
-    async function guardGuaranteedPrivateTestStart(onProceed) {
+    function localDraftConflict(draft) {
+        return [{
+            kind: 'draft',
+            key: 'draft',
+            appName: String(draft.app_name || '').trim(),
+            step: Number(draft.step || 1),
+            fiatOrderId: draft.fiat_order_id || null
+        }];
+    }
+
+    function awaitingOrderConflicts(orders) {
+        return (orders || []).map(function (order) {
+            return {
+                kind: 'awaiting_payment',
+                key: 'order-' + String(order && order.id),
+                orderId: Number(order && order.id) || 0,
+                order: order,
+                appName: String((order && order.app_name) || '').trim(),
+                publicCode: getOrderPublicCode(order, order && order.id)
+            };
+        });
+    }
+
+    function isGuaranteedStartGateOpen() {
+        var gate = document.getElementById('gtw-start-gate-overlay');
+        return !!(gate && gate.getAttribute('aria-hidden') !== 'true' && gate.style.display !== 'none');
+    }
+
+    function guardGuaranteedPrivateTestStart(onProceed) {
         if (typeof onProceed !== 'function') return;
-        try {
-            var conflicts = await detectGuaranteedStartConflicts();
-            if (!conflicts.length) {
-                onProceed();
-                return;
-            }
-            showGuaranteedStartGate(conflicts, onProceed);
-        } catch (error) {
-            console.warn('Guaranteed start gate failed, proceeding:', error);
+
+        var draft = null;
+        try { draft = readGuaranteedTestWizardDraft(); } catch (_) { draft = null; }
+        var hasDraft = !!(draft && String(draft.app_name || '').trim());
+
+        if (hasDraft) {
+            showGuaranteedStartGate(localDraftConflict(draft), onProceed);
+        } else {
             onProceed();
         }
+
+        // Server lookup must not sit in front of Step 1. It only adds an
+        // unpaid order to the gate when that order actually exists.
+        fetchIncompleteGuaranteedOrders().then(function (orders) {
+            var unpaid = awaitingOrderConflicts(orders);
+            if (!unpaid.length) return;
+            if (hasDraft) {
+                if (!isGuaranteedStartGateOpen()) return;
+                detectGuaranteedStartConflicts().then(function (conflicts) {
+                    if (!isGuaranteedStartGateOpen() || !conflicts.length) return;
+                    showGuaranteedStartGate(conflicts, onProceed);
+                }).catch(function () {});
+                return;
+            }
+            var step1 = document.getElementById('guaranteed-test-wizard-step1-overlay');
+            if (!step1 || step1.style.display === 'none') return;
+            showGuaranteedStartGate(unpaid, function () {});
+        }).catch(function (error) {
+            console.warn('Guaranteed start gate failed, proceeding:', error);
+        });
     }
 
     function parseGuaranteedOrderNotesMap(notes) {
@@ -3200,6 +3394,7 @@
     window.hideGuaranteedTestWizardStep2 = hideGuaranteedTestWizardStep2;
     window.showGuaranteedTestWizardPayment = showGuaranteedTestWizardPayment;
     window.hideGuaranteedTestWizardPayment = hideGuaranteedTestWizardPayment;
+    window.handleGuaranteedTestWizardBack = handleGuaranteedTestWizardBack;
     window.openGuaranteedFiatUploadFromOrder = openGuaranteedFiatUploadFromOrder;
     window.guardGuaranteedPrivateTestStart = guardGuaranteedPrivateTestStart;
     window.getGuaranteedTestWizardDraft = readGuaranteedTestWizardDraft;

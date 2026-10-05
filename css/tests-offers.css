@@ -581,6 +581,125 @@
     border: 1px solid rgba(142, 142, 147, 0.35) !important;
 }
 
+/* An application stays actionable even while the owner's project has an open
+   access incident. This compact context block tells the owner exactly what is
+   blocked and offers the one useful next step: write to the reporter. */
+.incoming-access-issue {
+    margin-top: 10px;
+    padding: 12px 14px 13px;
+    border: 1px solid rgba(235, 117, 117, 0.12);
+    border-radius: 13px;
+    background: rgba(5, 8, 14, 0.22);
+    color: var(--hint-color);
+}
+
+.incoming-access-issue__head,
+.incoming-access-issue__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.incoming-access-issue__title {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 7px;
+    color: #e99a9a;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.incoming-access-issue__karma {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+    opacity: 0.9;
+}
+
+.incoming-access-issue__karma circle[fill="#000000"] {
+    fill: #ce8585;
+}
+
+.incoming-access-issue__mode,
+.incoming-access-issue__foot > span {
+    flex: 0 0 auto;
+    color: rgba(174, 191, 214, 0.82);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.incoming-access-issue p {
+    margin: 10px 0 12px;
+    color: rgba(181, 195, 214, 0.72);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.42;
+}
+
+.incoming-access-issue__foot {
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.incoming-access-issue__contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    margin-left: 0;
+    padding: 7px 10px;
+    border: 1px solid rgba(142, 164, 197, 0.18);
+    border-radius: 999px;
+    background: rgba(99, 119, 151, 0.12);
+    color: rgba(182, 201, 227, 0.84);
+    font: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.incoming-access-issue__contact:active {
+    transform: scale(0.97);
+    border-color: rgba(164, 185, 220, 0.30);
+    background: rgba(112, 136, 172, 0.20);
+}
+
+.incoming-access-issue__contact svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 360px) {
+    .incoming-access-issue {
+        padding: 11px 12px 12px;
+    }
+
+    .incoming-access-issue__title {
+        font-size: 10px;
+    }
+
+    .incoming-access-issue__mode,
+    .incoming-access-issue__foot > span {
+        font-size: 9px;
+    }
+}
+
 .dossier-bounty-app-block {
     padding: 10px 12px;
     background: var(--reward-surface);
@@ -646,4 +765,10 @@
 
 .mutual-offer-card .bounty-app-accept-btn:active {
     background: #2b7ecf !important;
+}
+
+.bounty-app-accept-btn.is-processing,
+.bounty-app-reject-btn.is-processing,
+.mutual-offer-card .bounty-app-accept-btn.is-processing {
+    opacity: 1 !important;
 }

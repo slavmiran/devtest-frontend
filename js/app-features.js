@@ -160,6 +160,10 @@ function _showProjectPackageError(messageKey, options) {
 
 function _handleProjectCreateConflict(code) {
     var normalizedCode = String(code || '').trim();
+    if (normalizedCode === 'APP_BLOCKED') {
+        _showProjectPackageError('appRemovedFromPublication');
+        return true;
+    }
     if (normalizedCode === 'ALREADY_OWNED' || normalizedCode === 'ALREADY_ACTIVE' || normalizedCode === 'NEEDS_RESTART') {
         openPackageConflictModal(normalizedCode, _getCurrentAddPackageName());
         // Keep a short field hint so the form still shows why Continue is blocked.
@@ -559,7 +563,8 @@ function scheduleDeferredBootstrap() {
 }
 
 function resetGuestProjectsPagination() {
-    _guestProjectsVisibleCount = GUEST_PROJECTS_PAGE_SIZE;
+    var pageSize = typeof GUEST_PROJECTS_PAGE_SIZE !== 'undefined' ? GUEST_PROJECTS_PAGE_SIZE : 5;
+    _guestProjectsVisibleCount = pageSize;
 }
 
 function isGuestProjectAlreadyTracked(guest) {
@@ -598,7 +603,8 @@ function getVisibleGuestProjects() {
     if (!filteredGuestProjects.length) {
         return [];
     }
-    return filteredGuestProjects.slice(0, Math.max(GUEST_PROJECTS_PAGE_SIZE, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE)));
+    var pageSize = typeof GUEST_PROJECTS_PAGE_SIZE !== 'undefined' ? GUEST_PROJECTS_PAGE_SIZE : 5;
+    return filteredGuestProjects.slice(0, Math.max(pageSize, Number(_guestProjectsVisibleCount || pageSize)));
 }
 
 function canShowMoreGuestProjects() {
@@ -607,10 +613,11 @@ function canShowMoreGuestProjects() {
 
 function showMoreGuestProjects() {
     var filteredGuestProjects = getFilteredGuestProjects();
+    var pageSize = typeof GUEST_PROJECTS_PAGE_SIZE !== 'undefined' ? GUEST_PROJECTS_PAGE_SIZE : 5;
     if (!filteredGuestProjects.length || filteredGuestProjects.length <= _guestProjectsVisibleCount) {
         return;
     }
-    _guestProjectsVisibleCount = Math.min(filteredGuestProjects.length, Number(_guestProjectsVisibleCount || GUEST_PROJECTS_PAGE_SIZE) + GUEST_PROJECTS_PAGE_SIZE);
+    _guestProjectsVisibleCount = Math.min(filteredGuestProjects.length, Number(_guestProjectsVisibleCount || pageSize) + pageSize);
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     if (window.renderGuestProjectsSection) {
         window.renderGuestProjectsSection(true);
@@ -1128,6 +1135,9 @@ async function unlinkGuestRelationship(progressId, options) {
             }
             return Object.assign({}, project, { testers: nextTesters });
         });
+        if (typeof persistProjectsCacheSnapshot === 'function') {
+            persistProjectsCacheSnapshot();
+        }
     }
 
     const refreshPromises = [];
@@ -1593,6 +1603,9 @@ function refreshLanguageUi() {
     };
     renderChips('chips-instructions', 'app-instructions');
     renderChips('chips-edit-instructions', 'edit-description');
+    if (window.ProjectParameters && typeof window.ProjectParameters.renderInstructionChips === 'function') {
+        window.ProjectParameters.renderInstructionChips();
+    }
 
 
 
@@ -1655,6 +1668,13 @@ async function loadUserProfilePreferences() {
         window.App.autoAcceptMutual = _autoAcceptMutualEnabled;
         window.App.autoAcceptBounty = !!window._autoAcceptBountyEnabled;
         window.App.defaultGroupJoined = _defaultGroupJoined;
+        if (window.ProofPing && typeof window.ProofPing.applyMasterFromProfile === 'function') {
+            window.ProofPing.applyMasterFromProfile(
+                typeof profile.proof_ping_master_enabled === 'undefined'
+                    ? true
+                    : profile.proof_ping_master_enabled
+            );
+        }
         if ((!wasReady || previousJoined !== _defaultGroupJoined) && typeof window.renderTests === 'function') {
             window.renderTests(true);
         }
@@ -1936,6 +1956,12 @@ function populateSettingsEmail() {
 }
 
 function openSettingsEmailModal() {
+    // Email projects are an account-level choice.  Reuse the focused sheet so
+    // the address and consent are managed together instead of in two places.
+    if (window.ProjectParameters && typeof window.ProjectParameters.openEmailSettings === 'function') {
+        window.ProjectParameters.openEmailSettings(0, null);
+        return;
+    }
     var modal = document.getElementById('settings-email-modal');
     if (!modal) return;
     populateSettingsEmail();
@@ -2136,10 +2162,20 @@ var MassInviteProgressOverlay = (function () {
     var _longTimer = null;
     var _returnTimer = null;
     var _autoCloseInterval = null;
+    var _waitTickInterval = null;
     var _autoCloseEndsAt = 0;
     var _currentIndex = 0;
     var _phase = 'collecting';
     var _sourceAppId = 0;
+    var _minimized = false;
+    var _done = false;
+    var _beatGen = 0;
+    var _sendCurrent = 0;
+    var _sendTotal = 0;
+    var _successCount = 0;
+    var _hudWaitCreatedAt = '';
+    var RING_FILL_MS = 720;
+    var LETTER_MS = 620;
     var RESULT_AUTO_CLOSE_MS = 120000;
     var COLLECT_STATUS_KEYS = [
         'massInviteProgressStatus1',
@@ -2150,6 +2186,207 @@ var MassInviteProgressOverlay = (function () {
     function _t(key, params, currentLang) {
         if (window.t) return window.t(key, params || {}, currentLang || lang);
         return key;
+    }
+
+    function _sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+
+    function _hudEl() {
+        return document.getElementById('mi-blast-hud');
+    }
+
+    function _restartHudBar() {
+        var hud = _hudEl();
+        if (!hud) return;
+        var fill = hud.querySelector('.mi-blast-hud-bar-fill');
+        if (!fill) return;
+        fill.style.animation = 'none';
+        void fill.offsetWidth;
+        fill.style.animation = '';
+    }
+
+    function _setHudWaitMeta(createdAt) {
+        var metaEl = document.getElementById('mi-blast-hud-meta');
+        if (!metaEl) return;
+        _hudWaitCreatedAt = createdAt || _hudWaitCreatedAt || '';
+        if (!_hudWaitCreatedAt || typeof MassInviteCards === 'undefined' || !MassInviteCards.waitClockHtml) {
+            metaEl.textContent = '';
+            return;
+        }
+        metaEl.innerHTML = MassInviteCards.waitClockHtml(_hudWaitCreatedAt);
+    }
+
+    function _tickHudWait() {
+        var digitsEl = document.querySelector('#mi-blast-hud-meta .mi-wait-digits');
+        if (!digitsEl || !_hudWaitCreatedAt) return;
+        var remaining = (typeof MassInviteSession !== 'undefined' && MassInviteSession.getOfferRemaining)
+            ? MassInviteSession.getOfferRemaining(_hudWaitCreatedAt)
+            : null;
+        var nextText = remaining && remaining.text ? remaining.text : '0:00:00';
+        if (digitsEl.textContent !== nextText) {
+            digitsEl.textContent = nextText;
+        }
+    }
+
+    function updateHud(mode, extra) {
+        var hud = _hudEl();
+        if (!hud) return;
+        var info = extra || {};
+        var currentLang = info.lang || lang;
+        var prev = hud.getAttribute('data-hud');
+        hud.setAttribute('data-hud', mode);
+        if (info.restartBar || prev !== mode) _restartHudBar();
+
+        var titleEl = document.getElementById('mi-blast-hud-title');
+        var metaEl = document.getElementById('mi-blast-hud-meta');
+        var countEl = document.getElementById('mi-blast-hud-count');
+        var sent = info.successCount != null ? info.successCount : _successCount;
+        var total = info.total != null ? info.total : _sendTotal;
+        var current = info.current != null ? info.current : _sendCurrent;
+
+        if (countEl) {
+            countEl.textContent = total > 0
+                ? (sent + '/' + total)
+                : String(sent || 0);
+        }
+
+        if (mode === 'collecting') {
+            if (titleEl) titleEl.textContent = _t('massInvitePhaseCollectTitle', {}, currentLang);
+            if (metaEl) metaEl.textContent = _t('massInviteHudCollectingMeta', {}, currentLang);
+        } else if (mode === 'sending') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudSending', {}, currentLang);
+            if (metaEl) {
+                metaEl.textContent = _t('massInviteProgressSending', {
+                    current: current || 1,
+                    total: total || current || 1,
+                }, currentLang);
+            }
+        } else if (mode === 'delivered') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudDelivered', {}, currentLang);
+            if (metaEl) metaEl.textContent = _t('massInviteHudDeliveredMeta', {}, currentLang);
+        } else if (mode === 'waiting') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudWaiting', {}, currentLang);
+            _setHudWaitMeta(info.createdAt);
+        } else if (mode === 'done') {
+            if (titleEl) titleEl.textContent = _t('massInviteHudDone', {}, currentLang);
+            if (metaEl) metaEl.textContent = _t('massInviteHudDoneHint', {}, currentLang);
+        }
+        hud.setAttribute('aria-label', (titleEl && titleEl.textContent) || '');
+    }
+
+    function _showHud() {
+        var hud = _hudEl();
+        if (!hud) return;
+        hud.hidden = false;
+        if (_done) updateHud('done');
+        else if (_phase === 'collecting') updateHud('collecting');
+        else if (_phase === 'result') updateHud('done');
+        else updateHud(hud.getAttribute('data-hud') || 'sending');
+    }
+
+    function _hideHud() {
+        var hud = _hudEl();
+        if (hud) hud.hidden = true;
+    }
+
+    function _closeMassInviteSheet() {
+        if (typeof closeMassInviteModal === 'function') {
+            try { closeMassInviteModal(); } catch (e) { /* ignore */ }
+        }
+    }
+
+    function _ensureWaitTick() {
+        if (_waitTickInterval !== null) return;
+        _waitTickInterval = setInterval(function () {
+            var strip = document.getElementById('mi-candidates-strip');
+            if (typeof MassInviteCards !== 'undefined' && MassInviteCards.tickWaitClocks) {
+                MassInviteCards.tickWaitClocks(strip);
+            }
+            _tickHudWait();
+        }, 1000);
+    }
+
+    function _clearWaitTick() {
+        if (_waitTickInterval !== null) {
+            clearInterval(_waitTickInterval);
+            _waitTickInterval = null;
+        }
+    }
+
+    function isMinimized() {
+        return !!_minimized;
+    }
+
+    function minimize() {
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (!overlay) return;
+        _minimized = true;
+        overlay.classList.remove('active');
+        overlay.classList.add('is-docked');
+        overlay.setAttribute('aria-hidden', 'true');
+        _clearAutoClose();
+        _closeMassInviteSheet();
+        _showHud();
+        if (_done || _phase === 'result') updateHud('done');
+        try {
+            if (window.tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        } catch (e) { /* ignore */ }
+    }
+
+    function expand() {
+        var overlay = document.getElementById('mass-invite-progress-overlay');
+        if (!overlay) return;
+        if (_done || _phase === 'result') {
+            finishAndReturn();
+            return;
+        }
+        _minimized = false;
+        overlay.classList.add('active');
+        overlay.classList.remove('is-docked');
+        overlay.removeAttribute('aria-hidden');
+        _hideHud();
+        try {
+            if (window.tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        } catch (e) { /* ignore */ }
+    }
+
+    function onHudClick() {
+        if (_done || _phase === 'result') {
+            finishAndReturn();
+            return;
+        }
+        expand();
+    }
+
+    function onBackdrop(event) {
+        if (!event || event.target !== event.currentTarget) return;
+        if (!_done && _phase !== 'result') {
+            minimize();
+        }
+    }
+
+    function playDeliveredBeat(ownerId, meta) {
+        var gen = _beatGen;
+        var info = meta || {};
+        if (info.successCount != null) _successCount = Number(info.successCount);
+        if (info.total != null) _sendTotal = Number(info.total);
+        if (info.current != null) _sendCurrent = Number(info.current);
+        setCandidateStatus(ownerId, 'delivered', info);
+        updateHud('delivered', info);
+        return _sleep(RING_FILL_MS).then(function () {
+            if (gen !== _beatGen) return;
+            var strip = document.getElementById('mi-candidates-strip');
+            if (typeof MassInviteCards !== 'undefined' && MassInviteCards.flyLetter) {
+                MassInviteCards.flyLetter(strip, ownerId);
+            }
+            return _sleep(LETTER_MS);
+        }).then(function () {
+            if (gen !== _beatGen) return;
+            setCandidateStatus(ownerId, 'sent', info);
+            updateHud('waiting', info);
+            _ensureWaitTick();
+        });
     }
 
     function _formatAutoClose(ms) {
@@ -2202,6 +2439,7 @@ var MassInviteProgressOverlay = (function () {
         if (_longTimer !== null) { clearTimeout(_longTimer); _longTimer = null; }
         if (_returnTimer !== null) { clearTimeout(_returnTimer); _returnTimer = null; }
         _clearAutoClose();
+        _clearWaitTick();
     }
 
     function _setStatus(text, fade) {
@@ -2296,8 +2534,16 @@ var MassInviteProgressOverlay = (function () {
         var overlay = document.getElementById('mass-invite-progress-overlay');
         if (!overlay) return;
         _clearTimers();
+        _beatGen += 1;
         _currentIndex = 0;
         _sourceAppId = 0;
+        _minimized = false;
+        _done = false;
+        _sendCurrent = 0;
+        _sendTotal = 0;
+        _successCount = 0;
+        _hudWaitCreatedAt = '';
+        _hideHud();
 
         var noticeEl = document.getElementById('t-miProgressLongNotice');
         var noticeDetailEl = document.getElementById('t-miProgressLongNoticeDetail');
@@ -2307,11 +2553,20 @@ var MassInviteProgressOverlay = (function () {
         var longNotice = document.getElementById('mi-progress-long-notice');
         if (longNotice) longNotice.classList.remove('mi-progress-long-notice--visible');
 
+        var minBtn = document.getElementById('mi-progress-minimize-btn');
+        if (minBtn) {
+            minBtn.setAttribute('aria-label', _t('massInviteMinimize', {}, currentLang));
+            minBtn.textContent = _t('massInviteMinimize', {}, currentLang);
+        }
+
         clearCandidates();
         setPhase('collecting', currentLang);
         _setStatus(_t(COLLECT_STATUS_KEYS[0], {}, currentLang), false);
+        updateHud('collecting', { lang: currentLang });
 
         overlay.classList.add('active');
+        overlay.classList.remove('is-docked');
+        overlay.removeAttribute('aria-hidden');
         overlay.setAttribute('aria-busy', 'true');
 
         _rotateInterval = setInterval(function () {
@@ -2327,10 +2582,13 @@ var MassInviteProgressOverlay = (function () {
     }
 
     function hide() {
+        _beatGen += 1;
         _clearTimers();
+        _hideHud();
         var overlay = document.getElementById('mass-invite-progress-overlay');
         if (overlay) {
-            overlay.classList.remove('active');
+            overlay.classList.remove('active', 'is-docked');
+            overlay.removeAttribute('aria-hidden');
             overlay.setAttribute('aria-busy', 'true');
             overlay.setAttribute('data-phase', 'collecting');
         }
@@ -2341,6 +2599,12 @@ var MassInviteProgressOverlay = (function () {
         _currentIndex = 0;
         _phase = 'collecting';
         _sourceAppId = 0;
+        _minimized = false;
+        _done = false;
+        _sendCurrent = 0;
+        _sendTotal = 0;
+        _successCount = 0;
+        _hudWaitCreatedAt = '';
     }
 
     function scrollToOwner(ownerId) {
@@ -2361,16 +2625,33 @@ var MassInviteProgressOverlay = (function () {
 
     function updateProgress(current, total, currentLang) {
         if (_phase !== 'sending') setPhase('sending', currentLang);
+        _sendCurrent = Number(current || 0);
+        _sendTotal = Number(total || 0);
         var text = _t('massInviteProgressSending', {
             current: current,
             total: total,
         }, currentLang);
         _setStatus(text, false);
+        updateHud('sending', { current: current, total: total, lang: currentLang, restartBar: true });
     }
 
     function showFinalState(statusText, currentLang, details) {
         var info = details || {};
         if (info.sourceAppId) _sourceAppId = Number(info.sourceAppId) || _sourceAppId;
+        _done = true;
+        _successCount = Number(info.sentCount != null ? info.sentCount : _successCount);
+        updateHud('done', {
+            successCount: _successCount,
+            total: _sendTotal,
+            lang: currentLang,
+        });
+
+        if (_minimized) {
+            _clearAutoClose();
+            enableCandidateInteraction(true);
+            return;
+        }
+
         setPhase('result', currentLang);
         _setResultHero(true, {
             sentCount: info.sentCount != null ? info.sentCount : 0,
@@ -2402,7 +2683,6 @@ var MassInviteProgressOverlay = (function () {
         _clearAutoClose();
         var projectId = _sourceAppId;
         hide();
-        // Prefer refreshing the mass-invite modal if it is still open.
         var modal = document.getElementById('mass-invite-modal');
         if (modal && modal.classList.contains('active') && typeof renderMassInviteModalContent === 'function') {
             renderMassInviteModalContent();
@@ -2442,12 +2722,64 @@ var MassInviteProgressOverlay = (function () {
         });
     }
 
-    function setCandidateStatus(ownerId, status) {
+    function setCandidateStatus(ownerId, status, meta) {
         var strip = document.getElementById('mi-candidates-strip');
         if (!strip || typeof MassInviteCards === 'undefined') return false;
-        var ok = MassInviteCards.updateCardStatus(strip, ownerId, status);
+        var ok = MassInviteCards.updateCardStatus(strip, ownerId, status, meta);
         if (String(status) === 'sending') scrollToOwner(ownerId);
         return ok;
+    }
+
+    function applyRunSnapshot(snapshot, options) {
+        var snap = snapshot || {};
+        var opts = options || {};
+        var currentLang = opts.lang || lang;
+        var candidates = snap.candidates || [];
+        var total = Number(snap.total || candidates.length || 0);
+        var current = Number(snap.current || 0);
+        var sentCount = Number(snap.sent_count || 0);
+        var runStatus = String(snap.run_status || '');
+        _sourceAppId = Number(snap.app_id || opts.sourceAppId || _sourceAppId || 0);
+        _sendTotal = total;
+        _sendCurrent = current;
+        _successCount = sentCount;
+
+        if (candidates.length) {
+            var strip = document.getElementById('mi-candidates-strip');
+            var mounted = strip && strip.querySelectorAll('.mi-candidate-card').length;
+            if (!mounted) {
+                setCandidates(candidates, _sourceAppId, { lang: currentLang, interactive: false });
+            }
+            candidates.forEach(function (item) {
+                var status = String(item.ui_status || 'selected');
+                if (status === 'pending') status = 'sent';
+                if (status === 'skipped' || status === 'failed') status = 'error';
+                setCandidateStatus(item.owner_id, status, {
+                    offer_id: item.offer_id,
+                    outcome: item.outcome,
+                    created_at: item.created_at,
+                    successCount: sentCount,
+                    total: total,
+                    current: current,
+                });
+            });
+        }
+
+        if (runStatus === 'empty' || (runStatus === 'done' && total <= 0 && sentCount <= 0)) {
+            return;
+        }
+        if (runStatus === 'done') {
+            _done = true;
+            updateHud('done', {
+                successCount: sentCount,
+                total: total,
+                lang: currentLang,
+            });
+            return;
+        }
+        if (runStatus === 'running' || current > 0) {
+            updateProgress(Math.max(1, current), Math.max(1, total), currentLang);
+        }
     }
 
     function enableCandidateInteraction(enabled) {
@@ -2466,21 +2798,243 @@ var MassInviteProgressOverlay = (function () {
         showFinalState: showFinalState,
         setCandidates: setCandidates,
         setCandidateStatus: setCandidateStatus,
+        applyRunSnapshot: applyRunSnapshot,
         clearCandidates: clearCandidates,
         enableCandidateInteraction: enableCandidateInteraction,
         finishAndReturn: finishAndReturn,
         scrollToOwner: scrollToOwner,
+        minimize: minimize,
+        expand: expand,
+        onHudClick: onHudClick,
+        onBackdrop: onBackdrop,
+        playDeliveredBeat: playDeliveredBeat,
+        isMinimized: isMinimized,
+        updateHud: updateHud,
     };
 }());
+
+var _massInvitePollers = {};
+
+function _massInviteActiveStorageKey() {
+    return 'mi_active_run_v1_' + String(typeof userId !== 'undefined' ? userId : 0);
+}
+
+function _readActiveMassInviteAppIds() {
+    try {
+        var raw = localStorage.getItem(_massInviteActiveStorageKey());
+        var parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.map(Number).filter(Boolean) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function _writeActiveMassInviteAppIds(ids) {
+    try {
+        localStorage.setItem(_massInviteActiveStorageKey(), JSON.stringify(ids || []));
+    } catch (e) { /* ignore */ }
+}
+
+function _trackActiveMassInviteRun(appId, isActive) {
+    var id = Number(appId || 0);
+    if (!id) return;
+    var ids = _readActiveMassInviteAppIds();
+    var has = ids.indexOf(id) !== -1;
+    if (isActive && !has) ids.push(id);
+    if (!isActive && has) ids = ids.filter(function (item) { return item !== id; });
+    _writeActiveMassInviteAppIds(ids);
+}
+
+function _parseMassInviteTimestamp(value) {
+    if (value == null || value === '') return NaN;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+    if (value instanceof Date) return value.getTime();
+    var raw = String(value).trim();
+    if (!raw) return NaN;
+    if (/^\d+$/.test(raw)) {
+        var numeric = Number(raw);
+        return Number.isFinite(numeric) ? numeric : NaN;
+    }
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(raw) && !/[zZ]|[+\-]\d{2}:?\d{2}$/.test(raw)) {
+        raw = raw.replace(' ', 'T') + 'Z';
+    }
+    return Date.parse(raw);
+}
+
+async function _fetchMassInviteRunStatus(projectId) {
+    var response = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(withInitData({ owner_id: Number(userId) }))
+    });
+    var data = await response.json();
+    if (!response.ok || data.status !== 'success') {
+        throw new Error(getBackendErrorCode(data) || 'database_error');
+    }
+    return data;
+}
+
+function _applyMassInviteRunSnapshot(projectId, snapshot, options) {
+    var snap = snapshot || {};
+    var opts = options || {};
+    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.applyRunSnapshot) {
+        MassInviteProgressOverlay.applyRunSnapshot(snap, {
+            lang: opts.lang || lang,
+            sourceAppId: projectId,
+        });
+    }
+    if (typeof MassInviteSession !== 'undefined' && Array.isArray(snap.candidates)) {
+        snap.candidates.forEach(function (item) {
+            var status = String(item.ui_status || '');
+            if (status === 'sending') {
+                MassInviteSession.markSending(projectId, item.owner_id);
+            } else if (status === 'sent' || status === 'accepted' || status === 'pending') {
+                MassInviteSession.markSent(projectId, item.owner_id, {
+                    offer_id: item.offer_id,
+                    outcome: item.outcome || (status === 'accepted' ? 'auto_accepted' : 'pending'),
+                    created_at: item.created_at,
+                });
+            } else if (status === 'access_issue' && MassInviteSession.markAccessIssue) {
+                MassInviteSession.markAccessIssue(projectId, item.owner_id, item.code || 'access_issue');
+            } else if (status === 'error' || status === 'skipped' || status === 'failed') {
+                MassInviteSession.markFailed(projectId, item.owner_id, item.code || 'error');
+            }
+        });
+    }
+    if (snap.last_mass_invite_at) {
+        var project = (typeof myProjects !== 'undefined' && myProjects)
+            ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
+            : null;
+        if (project) {
+            project.last_mass_invite_at = snap.last_mass_invite_at;
+            project.last_mass_invite_sent_count = Number(snap.sent_count || project.last_mass_invite_sent_count || 0);
+        }
+    }
+}
+
+async function _pollMassInviteUntilDone(projectId, options) {
+    var id = Number(projectId || 0);
+    if (!id) return null;
+    if (_massInvitePollers[id]) return _massInvitePollers[id];
+
+    _massInvitePollers[id] = (async function () {
+        var idleTries = 0;
+        try {
+            while (true) {
+                var snap = null;
+                try {
+                    snap = await _fetchMassInviteRunStatus(id);
+                    idleTries = 0;
+                } catch (err) {
+                    idleTries += 1;
+                    if (idleTries > 8) throw err;
+                    await new Promise(function (resolve) { setTimeout(resolve, document.hidden ? 2500 : 1200); });
+                    continue;
+                }
+
+                var runStatus = String((snap && snap.run_status) || 'idle');
+                if (runStatus === 'idle') {
+                    idleTries += 1;
+                    if (idleTries >= 3) return snap;
+                } else {
+                    _applyMassInviteRunSnapshot(id, snap, options);
+                    if (runStatus === 'done' || runStatus === 'empty') return snap;
+                }
+                await new Promise(function (resolve) { setTimeout(resolve, document.hidden ? 2200 : 700); });
+            }
+        } finally {
+            delete _massInvitePollers[id];
+        }
+    })();
+    return _massInvitePollers[id];
+}
+
+function _finishMassInviteFromSnapshot(projectId, snapshot) {
+    var snap = snapshot || {};
+    var successCount = Number(snap.sent_count || 0);
+    var failedCount = Number(snap.failed_count || 0) + Number(snap.skipped_count || 0);
+    var runStatus = String(snap.run_status || '');
+    _trackActiveMassInviteRun(projectId, false);
+
+    if (typeof MassInviteSession !== 'undefined' && successCount > 0) {
+        MassInviteSession.finalize(projectId, {
+            sent_at: snap.last_mass_invite_at || new Date().toISOString(),
+            sent_count: successCount,
+        });
+    }
+
+    var project = (typeof myProjects !== 'undefined' && myProjects)
+        ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
+        : null;
+    if (project && successCount > 0) {
+        project.last_mass_invite_at = snap.last_mass_invite_at || project.last_mass_invite_at || new Date().toISOString();
+        project.last_mass_invite_sent_count = successCount;
+    }
+
+    if (runStatus === 'empty' || (successCount <= 0 && Number(snap.total || 0) <= 0)) {
+        var noCandidatesText = (window.t ? window.t('massInviteNoCandidates', {}, lang) : 'No candidates found');
+        MassInviteProgressOverlay.showFinalState(noCandidatesText, lang, {
+            empty: true,
+            sentCount: 0,
+            failedCount: 0,
+            sourceAppId: projectId,
+        });
+        return;
+    }
+
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    var finalStatusText = window.t
+        ? window.t('massInviteLaunchSuccess', { count: successCount }, lang)
+        : ('Sent: ' + successCount);
+    if (failedCount > 0 && window.t) {
+        finalStatusText += ' · ' + window.t('massInviteResultFailedMeta', { count: failedCount }, lang);
+    }
+    MassInviteProgressOverlay.showFinalState(finalStatusText, lang, {
+        sentCount: successCount,
+        failedCount: failedCount,
+        empty: successCount <= 0,
+        autoReturn: true,
+        sourceAppId: projectId,
+    });
+}
 
 async function startMassInvite(projectId) {
     if (!projectId) return null;
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
         return null;
     }
+    if (typeof isDeviceProfileComplete === 'function' && !isDeviceProfileComplete()) {
+        if (typeof openDeviceProfileRequiredModal === 'function') {
+            openDeviceProfileRequiredModal({
+                skippable: false,
+                title: window.t('massInviteDeviceProfileRequiredTitle', {}, lang),
+                text: window.t('massInviteDeviceProfileRequiredAlert', {}, lang),
+                primaryLabel: window.t('massInviteDeviceProfileRequiredBtn', {}, lang),
+            });
+        }
+        return null;
+    }
+
+    var sourceProject = (typeof myProjects !== 'undefined' && myProjects)
+        ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
+        : null;
+    var sourceStatus = String((sourceProject && (sourceProject.status || sourceProject.app_status)) || '').toLowerCase();
+    if (sourceStatus === 'pending_completion') {
+        if (typeof showToast === 'function') {
+            showToast(window.t('massInviteSafetyBufferAlert', {}, lang));
+        }
+        return null;
+    }
 
     var actionKey = 'mass_invite_start_' + projectId;
-    if (_pendingActions.has(actionKey)) return null;
+    if (_pendingActions.has(actionKey) || _massInvitePollers[Number(projectId)]) {
+        MassInviteProgressOverlay.show(lang);
+        if (MassInviteProgressOverlay.minimize) MassInviteProgressOverlay.minimize();
+        _pollMassInviteUntilDone(projectId).then(function (snap) {
+            if (snap) _finishMassInviteFromSnapshot(projectId, snap);
+        }).catch(function () {});
+        return null;
+    }
     _pendingActions.add(actionKey);
 
     var btn = document.getElementById('mass-invite-btn');
@@ -2494,178 +3048,47 @@ async function startMassInvite(projectId) {
     var shouldKeepOverlay = false;
     _apiStart();
     try {
-        var planResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/plan`, {
+        var startResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(withInitData({ owner_id: Number(userId) }))
         });
-        var planData = await planResponse.json();
-        if (!planResponse.ok || planData.status !== 'success') {
-            handleApiError(getBackendErrorCode(planData), planData && planData.details ? planData.details : {});
+        var startData = await startResponse.json();
+        if (!startResponse.ok || startData.status !== 'success') {
+            handleApiError(getBackendErrorCode(startData), startData && startData.details ? startData.details : {});
             return null;
         }
 
         shouldKeepOverlay = true;
-
-        var candidates = planData.candidates || [];
-        var totalCount = candidates.length;
+        var candidates = startData.candidates || [];
+        var runStatus = String(startData.run_status || '');
 
         if (typeof MassInviteSession !== 'undefined') {
-            MassInviteSession.createFromPlan(projectId, candidates);
+            MassInviteSession.createFromPlan(projectId, candidates, {
+                run_iteration: Number(startData.run_iteration || 1),
+            });
         }
 
-        if (totalCount === 0) {
-            var noCandidatesText = (window.t ? window.t('massInviteNoCandidates', {}, lang) : 'No candidates found');
-            MassInviteProgressOverlay.showFinalState(noCandidatesText, lang, { empty: true, sentCount: 0, failedCount: 0, sourceAppId: projectId });
+        if (runStatus === 'empty' || candidates.length === 0) {
+            _trackActiveMassInviteRun(projectId, false);
+            _finishMassInviteFromSnapshot(projectId, startData);
             await loadProjects(true);
-            return planData;
+            return startData;
         }
 
+        _trackActiveMassInviteRun(projectId, true);
         if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidates) {
             MassInviteProgressOverlay.setCandidates(candidates, projectId, { interactive: false, lang: lang });
         }
         if (typeof MassInviteProgressOverlay.setPhase === 'function') {
             MassInviteProgressOverlay.setPhase('sending', lang);
         }
+        _applyMassInviteRunSnapshot(projectId, startData);
 
-        var successCount = 0;
-        var failedCount = 0;
+        var snap = await _pollMassInviteUntilDone(projectId);
+        _finishMassInviteFromSnapshot(projectId, snap || startData);
 
-        for (var i = 0; i < totalCount; i++) {
-            var candidate = candidates[i];
-            MassInviteProgressOverlay.updateProgress(i + 1, totalCount, lang);
-            if (typeof MassInviteSession !== 'undefined') {
-                MassInviteSession.markSending(projectId, candidate.owner_id);
-            }
-            if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'sending');
-            }
-            await new Promise(function(resolve) { setTimeout(resolve, 150); });
-
-            try {
-                var sendResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/send_one`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(withInitData({
-                        owner_id: Number(userId),
-                        target_app_id: Number(candidate.app_id),
-                        target_owner_id: Number(candidate.owner_id)
-                    }))
-                });
-                var sendData = await sendResponse.json();
-                if (sendResponse.ok && sendData.status === 'success' && sendData.sent) {
-                    successCount++;
-                    if (typeof MassInviteSession !== 'undefined') {
-                        MassInviteSession.markSent(projectId, candidate.owner_id, {
-                            offer_id: sendData.offer_id,
-                            outcome: sendData.outcome || 'pending'
-                        });
-                    }
-                    if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                        if (sendData.outcome === 'auto_accepted') {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'accepted');
-                        } else {
-                            // Brief green "delivered" flash, then yellow waiting ring.
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'delivered');
-                            (function (ownerId) {
-                                setTimeout(function () {
-                                    MassInviteProgressOverlay.setCandidateStatus(ownerId, 'sent');
-                                }, 700);
-                            })(candidate.owner_id);
-                        }
-                    }
-                } else {
-                    var skipCode = String((sendData && sendData.code) || (sendData && sendData.outcome) || '');
-                    var isAccessIssue = skipCode === 'owner_has_access_issue'
-                        || skipCode === 'target_owner_has_access_issue'
-                        || skipCode === 'access_issue'
-                        || (sendData && sendData.outcome === 'access_issue');
-                    if (isAccessIssue) {
-                        // Soft skip: warn in UI, keep blast running.
-                        if (typeof MassInviteSession !== 'undefined') {
-                            if (MassInviteSession.markAccessIssue) {
-                                MassInviteSession.markAccessIssue(projectId, candidate.owner_id, skipCode || 'access_issue');
-                            } else {
-                                MassInviteSession.markFailed(projectId, candidate.owner_id, skipCode || 'access_issue');
-                            }
-                        }
-                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'access_issue');
-                        }
-                    } else {
-                        failedCount++;
-                        if (typeof MassInviteSession !== 'undefined') {
-                            MassInviteSession.markFailed(projectId, candidate.owner_id, sendData && sendData.code);
-                        }
-                        if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                            MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error('Failed sending single mass invite:', err);
-                failedCount++;
-                if (typeof MassInviteSession !== 'undefined') {
-                    MassInviteSession.markFailed(projectId, candidate.owner_id, 'network_error');
-                }
-                if (typeof MassInviteProgressOverlay !== 'undefined' && MassInviteProgressOverlay.setCandidateStatus) {
-                    MassInviteProgressOverlay.setCandidateStatus(candidate.owner_id, 'error');
-                }
-            }
-        }
-
-        var lastMassInviteAt = null;
-
-        if (successCount > 0) {
-            try {
-                var finResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/finalize`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(withInitData({
-                        owner_id: Number(userId),
-                        sent_count: Number(successCount)
-                    }))
-                });
-                var finData = await finResponse.json();
-                if (finResponse.ok && finData.status === 'success') {
-                    lastMassInviteAt = finData.last_mass_invite_at;
-                }
-            } catch (err) {
-                console.error('Failed finalising mass invite stats:', err);
-            }
-            if (typeof MassInviteSession !== 'undefined') {
-                MassInviteSession.finalize(projectId, {
-                    sent_at: lastMassInviteAt || new Date().toISOString(),
-                    sent_count: successCount
-                });
-            }
-        }
-
-        var project = (myProjects || []).find(function(item) {
-            return Number(item.id) === Number(projectId);
-        });
-        if (project && successCount > 0) {
-            project.last_mass_invite_at = lastMassInviteAt || new Date().toISOString();
-            project.last_mass_invite_sent_count = successCount;
-        }
-
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
-        var finalStatusText = window.t
-            ? window.t('massInviteLaunchSuccess', { count: successCount }, lang)
-            : ('Sent: ' + successCount);
-        if (failedCount > 0 && window.t) {
-            finalStatusText += ' · ' + window.t('massInviteResultFailedMeta', { count: failedCount }, lang);
-        }
-        MassInviteProgressOverlay.showFinalState(finalStatusText, lang, {
-            sentCount: successCount,
-            failedCount: failedCount,
-            empty: successCount <= 0,
-            autoReturn: true,
-            sourceAppId: projectId
-        });
-
-        if (successCount > 0) {
+        if (Number((snap && snap.sent_count) || startData.sent_count || 0) > 0) {
             renderProjects(true);
             refreshOpenModals();
             await loadProjects(true, true);
@@ -2677,12 +3100,14 @@ async function startMassInvite(projectId) {
 
         return {
             status: 'success',
-            sent_count: successCount,
-            failed_count: failedCount
+            sent_count: Number((snap && snap.sent_count) || 0),
+            failed_count: Number((snap && snap.failed_count) || 0)
         };
     } catch (error) {
         console.error('Mass invite launch error:', error);
-        handleApiError('network_error');
+        if (!shouldKeepOverlay) {
+            handleApiError('network_error');
+        }
         return null;
     } finally {
         if (!shouldKeepOverlay) {
@@ -2695,6 +3120,49 @@ async function startMassInvite(projectId) {
         }
         _apiEnd();
         _pendingActions.delete(actionKey);
+    }
+}
+
+var _massInviteResumeInFlight = false;
+
+async function resumeMassInviteIfNeeded(options) {
+    if (_massInviteResumeInFlight) return;
+    var opts = options || {};
+    var ids = _readActiveMassInviteAppIds();
+    if (!ids.length) return;
+    _massInviteResumeInFlight = true;
+    try {
+        for (var i = 0; i < ids.length; i++) {
+        var projectId = ids[i];
+        try {
+            var snap = await _fetchMassInviteRunStatus(projectId);
+            var runStatus = String((snap && snap.run_status) || 'idle');
+            if (runStatus === 'idle') {
+                _trackActiveMassInviteRun(projectId, false);
+                continue;
+            }
+            MassInviteProgressOverlay.show(lang);
+            if (typeof MassInviteProgressOverlay.setCandidates === 'function') {
+                MassInviteProgressOverlay.setCandidates(snap.candidates || [], projectId, { interactive: false, lang: lang });
+            }
+            _applyMassInviteRunSnapshot(projectId, snap, opts);
+            if (runStatus === 'running' && MassInviteProgressOverlay.minimize) {
+                MassInviteProgressOverlay.minimize();
+            }
+            if (runStatus === 'done' || runStatus === 'empty') {
+                _finishMassInviteFromSnapshot(projectId, snap);
+                continue;
+            }
+            _pollMassInviteUntilDone(projectId, opts).then(function (doneSnap) {
+                if (doneSnap) _finishMassInviteFromSnapshot(projectId, doneSnap);
+                loadProjects(true, true).catch(function () {});
+            }).catch(function () {});
+        } catch (e) {
+            console.warn('Mass invite resume failed', e);
+        }
+    }
+    } finally {
+        _massInviteResumeInFlight = false;
     }
 }
 
@@ -3644,7 +4112,7 @@ async function confirmKickTester(explicitAppId, explicitTesterId) {
                 appId: target.appId,
                 testerId: target.testerId,
                 unlinkReciprocal: unlinkReciprocal,
-                isReciprocalActive: !!(_termState && _termState.isReciprocalActive),
+                isReciprocalActive: !!(window._terminationState && window._terminationState.isReciprocalActive),
                 data: data,
                 reciprocalTest: reciprocalTest,
             });
@@ -3712,7 +4180,7 @@ async function submitSocialLink() {
             _socialBonusStatus = 'pending';
             renderEarnBustDynamic();
             closeSocialModal();
-            showToast(t.earnSocialSubmitted || 'Ссылка отправлена!');
+            showToast(t.earnSocialSubmitted || 'Link submitted for review!');
         } else {
             showToast(getApiErrorMessage(data, 'socialSubmitError'));
         }
@@ -4305,6 +4773,9 @@ function _markProjectAccessIssueResolved(projectId, progressId) {
         });
     });
     _recomputeProjectAccessErrorState(project);
+    if (updated && typeof persistProjectsCacheSnapshot === 'function') {
+        persistProjectsCacheSnapshot();
+    }
     return updated;
 }
 
@@ -4326,6 +4797,9 @@ function _markAllProjectAccessIssuesResolved(projectId) {
         });
     });
     _recomputeProjectAccessErrorState(project);
+    if (updated && typeof persistProjectsCacheSnapshot === 'function') {
+        persistProjectsCacheSnapshot();
+    }
     return updated;
 }
 
@@ -4341,6 +4815,9 @@ function _removeProjectAccessTester(projectId, progressId) {
     });
     var updated = project.testers.length !== beforeCount;
     _recomputeProjectAccessErrorState(project);
+    if (updated && typeof persistProjectsCacheSnapshot === 'function') {
+        persistProjectsCacheSnapshot();
+    }
     return updated;
 }
 
@@ -4496,7 +4973,7 @@ async function submitBanAppeal() {
     } catch (err) {
         console.error('Failed to submit ban appeal:', err);
         if (typeof showToast === 'function') {
-            showToast('❌ Ошибка отправки апелляции');
+            showToast(window.t ? window.t('banScreenAppealSendErrorToast', {}, lang) : "Couldn't submit the appeal");
         }
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -4583,7 +5060,7 @@ async function submitBanUser() {
     } catch (err) {
         console.error('Failed to ban user:', err);
         if (typeof showToast === 'function') {
-            showToast('❌ Ошибка выполнения блокировки');
+            showToast(window.t ? window.t('banActionFailedToast', {}, lang) : "Couldn't complete the ban");
         }
     } finally {
         if (confirmBtn) {
@@ -4603,4 +5080,3 @@ window.submitBanAppeal = submitBanAppeal;
 window.openBanUserModal = openBanUserModal;
 window.closeBanUserModal = closeBanUserModal;
 window.submitBanUser = submitBanUser;
-

@@ -803,18 +803,59 @@ function getBountyAlreadyTestingBtnLabel(appId) {
     return window.t('bountyAlreadyTestingBtn', {}, lang);
 }
 
+const ANDROID_CHIP_LOGO_SVG = '<svg class="meta-chip-android-svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="display:inline-block; vertical-align:-1.5px; margin-right:3px;"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1568-.2716.064-.6185-.2076-.7753-.2712-.1564-.618-.064-.7752.2076l-2.0236 3.505C15.3902 8.163 13.7388 7.8 12 7.8s-3.3902.363-4.8711 1.0015L5.1053 5.2965c-.1572-.2716-.504-.364-.7752-.2076-.2716.1568-.3644.5037-.2076.7753l1.996 3.4572C2.6813 11.233.3644 14.869.0004 19.2h23.9992c-.364-4.331-2.6809-7.967-6.1181-9.8786"/></svg>';
+
+function openMarketAccessIssue(appId, isOwnProject, ownerUsername, accessMode, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const normalizedAppId = Number(appId || 0);
+    if (normalizedAppId <= 0) return false;
+
+    if (isOwnProject) {
+        if (typeof openOwnerAccessIssueProject === 'function') {
+            openOwnerAccessIssueProject(normalizedAppId);
+        }
+        return false;
+    }
+
+    const issueContext = {
+        access_issue: true,
+        access_issue_contact_username: String(ownerUsername || '').replace(/^@+/, ''),
+        access_issue_mode: String(accessMode || 'google_group'),
+    };
+    const issueHtml = typeof renderIncomingAccessIssue === 'function'
+        ? renderIncomingAccessIssue(issueContext, lang)
+        : '';
+    if (issueHtml && typeof window.showCustomAlert === 'function') {
+        window.showCustomAlert(issueHtml, { html: true, variant: 'market-access' });
+        return false;
+    }
+
+    const message = window.t('accessIssueBadgeHint', {}, lang);
+    const telegram = window.tg || (window.Telegram && window.Telegram.WebApp) || (typeof tg !== 'undefined' ? tg : null);
+    if (telegram && typeof telegram.showAlert === 'function') telegram.showAlert(message);
+    else if (typeof showToast === 'function') showToast(message);
+    return false;
+}
+
 function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
+    const minAndroidVer = Number(item.min_android_version || 0);
+    const androidChip = minAndroidVer > 0
+        ? `<span class="meta-chip meta-chip--android" title="Android ${minAndroidVer}+">${ANDROID_CHIP_LOGO_SVG}${minAndroidVer}+</span>`
+        : '';
     const syncChip = isProjectSynced(item)
-        ? `<span class="meta-chip accent-green">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
+        ? `<span class="meta-chip">${window.escapeHTML(formatCompactSyncLabel(item))}</span>`
         : '';
     const emailChip = (
         (typeof _isDossierEmailTestProject === 'function' && _isDossierEmailTestProject(item))
         || String(item.test_mode || 'google_group') === 'email_list'
     )
-        ? `<span class="meta-chip accent-orange">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
+        ? `<span class="meta-chip">📧 ${window.escapeHTML(window.t('emailTestBadge', {}, lang))}</span>`
         : '';
     const bountyChip = (function() {
         if (kind !== 'bounty') return '';
@@ -824,10 +865,10 @@ function renderFeedCard(item, kind) {
         const amountLabel = typeof formatAmountValue === 'function'
             ? formatAmountValue(possible.total, 1)
             : String(Number(possible.total || 0));
-        return `<span class="meta-chip accent-purple notranslate" title="${window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang))}">💎~${amountLabel} $BUST</span>`;
+        return `<span class="meta-chip notranslate" title="${window.escapeHTML(window.t('bountyPossibleTotalChipHint', {}, lang))}">💎~${amountLabel} $BUST</span>`;
     })();
     const kindChip = kind === 'mutual-prelaunch'
-        ? `<span class="meta-chip accent-blue">${window.t('tabPreLaunch', {}, lang)}</span>`
+        ? `<span class="meta-chip">${window.t('tabPreLaunch', {}, lang)}</span>`
         : '';
     const testerChipCount = kind === 'bounty'
         ? Number(item.bounty_testers_count || 0)
@@ -842,8 +883,27 @@ function renderFeedCard(item, kind) {
     let buttonDisabledAttr = '';
     let buttonExtraAttrs = `data-offer-target-app="${item.app_id}" data-offer-target-owner="${item.owner_id}"`;
     const isOwnProject = !!item.is_own_project;
+    const hasAccessIssue = !!item.has_access_issue;
+    const issueOwnerUsername = String(item.owner_username || '').trim().replace(/^@+/, '');
+    const accessIssueMode = String(item.access_issue_mode || (
+        String(item.test_mode || '').toLowerCase() === 'email_list'
+            ? 'email_list'
+            : (String(item.google_group_url || '').trim().replace(/\/$/, '') && String(item.google_group_url || '').trim().replace(/\/$/, '') !== 'https://groups.google.com/g/google-play-dev-test'
+                ? 'custom_google_group'
+                : 'google_group')
+    ));
+    const accessIssueChip = hasAccessIssue
+        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
+        : '';
+    const blockedByMe = !!item.blocked_by_me;
+    const blockedChip = blockedByMe
+        ? `<span class="meta-chip accent-red">${window.escapeHTML(window.t('blacklistMarketChip', {}, lang))}</span>`
+        : '';
+    const botContactChip = item.owner_bot_unreachable === true
+        ? `<button type="button" class="market-bot-contact-dot" aria-label="${window.escapeHTML(window.t('marketBotUnreachableHint', {}, lang))}" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('marketBotUnreachableHint', {}, lang))}', 6000)"><span aria-hidden="true"></span></button>`
+        : '';
 
-    if (kind === 'mutual-seeking' && !isOwnProject) {
+    if (kind === 'mutual-seeking' && !isOwnProject && !hasAccessIssue) {
         const hasAvailableMutual = typeof window.getAvailableMutualProjectsForOwner === 'function'
             ? window.getAvailableMutualProjectsForOwner(item.owner_id).length > 0
             : true;
@@ -918,6 +978,20 @@ function renderFeedCard(item, kind) {
             }
         }
     }
+    if (hasAccessIssue && !isOwnProject) {
+        buttonText = window.t('accessIssueCta', {}, lang);
+        clickAction = 'void(0)';
+        buttonClass = 'btn btn-secondary disabled';
+        buttonDisabledAttr = 'disabled';
+        buttonExtraAttrs = '';
+    }
+    if (blockedByMe && !isOwnProject) {
+        buttonText = window.t('blacklistBlockedCta', {}, lang);
+        clickAction = 'void(0)';
+        buttonClass = 'btn btn-secondary disabled';
+        buttonDisabledAttr = 'disabled';
+        buttonExtraAttrs = '';
+    }
     if (isOwnProject) {
         buttonText = window.t('ownProjectCta', {}, lang);
         clickAction = 'void(0)';
@@ -926,24 +1000,31 @@ function renderFeedCard(item, kind) {
         buttonExtraAttrs = '';
     }
 
+    const cardClasses = ['market-card'];
+    if (isOwnProject) cardClasses.push('market-card-own');
+    if (hasAccessIssue) cardClasses.push('market-card-access-issue');
+
     return `
-        <div class="market-card${isOwnProject ? ' market-card-own' : ''}" data-app-id="${item.app_id}">
+        <div class="${cardClasses.join(' ')}" data-app-id="${item.app_id}">
             <div class="market-top">
                 <div>
                     <div class="card-title notranslate">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
-                    <div class="market-owner notranslate" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>
+                    <div class="market-owner-line"><div class="market-owner notranslate" onclick="openTesterDossier('${safeOwner}', ${item.owner_id}, ${item.app_id}); event.stopPropagation();">${ownerDisplay}</div>${botContactChip}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                     ${langBadge}
-                    <span class="meta-chip accent-yellow">☯️ ${item.owner_karma || 0}</span>
+                    <span class="meta-chip accent-yellow">${typeof window.withKarmaIcon === 'function' ? window.withKarmaIcon(String(item.owner_karma || 0)) : ('☯️ ' + (item.owner_karma || 0))}</span>
                 </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
                 <span class="meta-chip">👥 ${testerChipCount}/${testerChipLimit || 12}</span>
+                ${androidChip}
                 ${kindChip}
                 ${emailChip}
                 ${bountyChip}
                 ${syncChip}
+                ${accessIssueChip}
+                ${blockedChip}
             </div>
             <button class="${buttonClass}" ${buttonDisabledAttr} ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
             ${(kind === 'mutual-seeking' && pendingOfferMeta) ? `<div class="market-offer-note">${window.escapeHTML(pendingOfferMeta)}</div>` : ''}
@@ -1127,7 +1208,11 @@ function renderGuestProjectsSection(force) {
         : rawGuestProjects;
 
     if (countBadge) {
-        countBadge.textContent = String(availableItems.length);
+        var countVal = availableItems.length;
+        if (!_guestProjectsLoadedOnce && !rawGuestProjects.length && typeof _externalCounts !== 'undefined' && Number(_externalCounts.guest_projects_count || 0) > 0) {
+            countVal = Number(_externalCounts.guest_projects_count);
+        }
+        countBadge.textContent = String(countVal);
     }
 
     if (langLabel) langLabel.textContent = window.t('guestFilterLangLabel', {}, lang);
@@ -1395,8 +1480,11 @@ function openTelegramPrefilledMessage(username, text) {
         try {
             tg.openLink(url);
         } catch (fallbackError) {
-            window.open(url, '_blank', 'noopener');
+            window.location.href = url;
         }
+    }
+    if (typeof _pendingScreenshotReminderUsername !== 'undefined') {
+        _pendingScreenshotReminderUsername = cleanUsername;
     }
     return true;
 }
@@ -2366,23 +2454,23 @@ async function sendExternalTrackingProofFromUi(testId, ownerUsername, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+    var test = getExternalProjectTest(testId) || (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item.id) === Number(testId || 0);
     }) || null;
     if (!test) return;
 
-    var cleanUsername = String(ownerUsername || test.owner_username || '').trim().replace(/^@+/, '');
+    var cleanUsername = String(ownerUsername || test.owner_username || test.external_owner_username || '').trim().replace(/^@+/, '');
     if (!cleanUsername) {
         showToast(window.t('playReviewMissingOwnerLink', {}, lang));
         return;
     }
 
-    var result = await window.submitExternalTrackingProof(test.progress_id, test.id);
-    if (!result) return;
-
+    var testingDay = typeof getExternalCurrentTestingDay === 'function'
+        ? getExternalCurrentTestingDay(test)
+        : Number(test.testing_days || 0);
     var proofText = window.t('externalTrackProofMessageTemplate', {
         app_name: test.name || window.t('unknownLabel', {}, lang),
-        day: Number(result.testing_day || test.testing_days || 0),
+        day: Number(testingDay || 0),
         claim_link: typeof window.buildExternalClaimStartLink === 'function'
             ? window.buildExternalClaimStartLink(test.external_package_name || test.package || '', test.external_guest_app_id)
             : '',
@@ -2390,11 +2478,23 @@ async function sendExternalTrackingProofFromUi(testId, ownerUsername, event) {
     copyTextWithToast(proofText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     openTelegramPrefilledMessage(cleanUsername, proofText);
+
+    if (typeof window.submitExternalTrackingProof === 'function') {
+        window.submitExternalTrackingProof(test.progress_id, test.id).then(function(result) {
+            if (result && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            var modal = document.getElementById('project-details-modal');
+            if (modal && modal.classList.contains('active') && String(modal.dataset.appId || '') === String(test.id)) {
+                openProjectDetailsModal(test.id);
+            }
+        }).catch(function(err) {
+            console.error('External tracking proof background error:', err);
+        });
+    }
 }
 
 function getExternalProjectTest(testId) {
     return (Array.isArray(myTests) ? myTests : []).find(function(item) {
-        return Number(item.id) === Number(testId || 0) && !!item.is_external;
+        return Number(item.id) === Number(testId || 0) && !!(item.is_external || item.is_guest || String(item.flow || '') === 'external');
     }) || null;
 }
 
@@ -2421,7 +2521,11 @@ async function submitExternalGuestActivityFromUi(testId) {
     var test = getExternalProjectTest(testId);
     if (!test) return null;
 
-    if (!isExternalControlDayDue(test)) {
+    var isControlDay = typeof isExternalControlDayDue === 'function'
+        ? isExternalControlDayDue(test)
+        : (typeof isMandatoryScreenshotDay === 'function' ? isMandatoryScreenshotDay(Number(test.testing_days || 0)) : false);
+
+    if (!isControlDay) {
         return sendExternalDailyCheckinFromUi(testId);
     }
     if (typeof window.submitExternalTrackingProof !== 'function') return null;
@@ -2442,22 +2546,25 @@ async function sendExternalScreenshotAndConfirmFromUi(testId, ownerUsername, eve
         event.preventDefault();
         event.stopPropagation();
     }
-    var test = getExternalProjectTest(testId);
+    var test = getExternalProjectTest(testId) || (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(testId || 0);
+    }) || null;
     if (!test) return;
 
-    var cleanOwnerUsername = String(ownerUsername || test.owner_username || '').trim().replace(/^@+/, '');
+    var cleanOwnerUsername = String(ownerUsername || test.owner_username || test.external_owner_username || '').trim().replace(/^@+/, '');
     if (!cleanOwnerUsername) {
         showToast(window.t('externalProjectOwnerMissing', {}, lang));
         return;
     }
 
-    var result = await submitExternalGuestActivityFromUi(testId);
-    if (!result) return;
-
     var messageText = window.t('externalProjectScreenshotMessageTemplate', getExternalProjectOwnerMessageParams(test), lang);
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
+
+    submitExternalGuestActivityFromUi(testId).catch(function(err) {
+        console.error('External guest activity background error:', err);
+    });
 }
 
 function getExternalProjectOwnerMessageParams(test) {
@@ -2472,12 +2579,16 @@ function getExternalProjectOwnerMessageParams(test) {
         appNameDisplay = packageName;
     }
 
+    var day = typeof getExternalCurrentTestingDay === 'function'
+        ? getExternalCurrentTestingDay(test)
+        : Number(test && test.testing_days || 1);
+
     return {
         app_name_display: appNameDisplay,
         package_name: packageName || appNameDisplay,
-        day: getExternalCurrentTestingDay(test),
+        day: day,
         claim_link: typeof window.buildExternalClaimStartLink === 'function'
-            ? window.buildExternalClaimStartLink(packageName, test.external_guest_app_id)
+            ? window.buildExternalClaimStartLink(packageName, test && test.external_guest_app_id)
             : '',
     };
 }
@@ -2488,17 +2599,16 @@ async function sendExternalBugReportFromUi(testId, event, feedbackType) {
         event.stopPropagation();
     }
     var normalizedType = String(feedbackType || 'bug').toLowerCase() === 'idea' ? 'idea' : 'bug';
-    var test = getExternalProjectTest(testId);
+    var test = getExternalProjectTest(testId) || (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item.id) === Number(testId || 0);
+    }) || null;
     if (!test) return;
 
-    var cleanOwnerUsername = String(test.owner_username || '').trim().replace(/^@+/, '');
+    var cleanOwnerUsername = String(test.owner_username || test.external_owner_username || '').trim().replace(/^@+/, '');
     if (!cleanOwnerUsername) {
         showToast(window.t('externalProjectOwnerMissing', {}, lang));
         return;
     }
-
-    var result = await submitExternalGuestActivityFromUi(testId);
-    if (!result) return;
 
     var templateKey = normalizedType === 'idea'
         ? 'externalProjectIdeaReportMessageTemplate'
@@ -2507,6 +2617,10 @@ async function sendExternalBugReportFromUi(testId, event, feedbackType) {
     copyTextWithToast(messageText, 'externalTrackCopied');
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     openTelegramPrefilledMessage(cleanOwnerUsername, messageText);
+
+    submitExternalGuestActivityFromUi(testId).catch(function(err) {
+        console.error('External feedback background error:', err);
+    });
 }
 
 function inviteExternalProjectOwnerToPlatform(testId, event) {
@@ -2820,9 +2934,13 @@ function formatCompactSyncLabel(project) {
 }
 
 function buildTesterReminderDeepLink(appId) {
+    if (typeof buildCheckpointTestLink === 'function') {
+        var checkpointLink = buildCheckpointTestLink(appId);
+        if (checkpointLink) return checkpointLink;
+    }
     var botUsername = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || 'Android12TestersBot').trim().replace(/^@+/, '');
     var webappShortname = String((window.App && window.App.webappShortname) || 'app').trim().replace(/^\/+|\/+$/g, '');
-    return 'https://t.me/' + botUsername + '/' + webappShortname + '?startapp=test_' + Number(appId || 0);
+    return 'https://t.me/' + botUsername + '/' + webappShortname + '?startapp=app_focus_' + Number(appId || 0);
 }
 
 function showScreenshotCompleteModal(ownerUsername) {
@@ -2833,14 +2951,29 @@ function showScreenshotCompleteModal(ownerUsername) {
     if (titleEl) {
         titleEl.innerText = t.screenshotCompleteTitle || t.screenshotReminderTitle;
     }
+    var cleanUsername = String(ownerUsername || '').trim().replace(/^@+/, '');
+    var isExternal = false;
+    if (Array.isArray(myTests)) {
+        var matched = myTests.find(function(item) {
+            return String(item.owner_username || item.external_owner_username || '').trim().replace(/^@+/, '') === cleanUsername;
+        });
+        if (matched && (matched.is_external || matched.is_guest || String(matched.flow || '') === 'external')) {
+            isExternal = true;
+        }
+    }
     if (textEl) {
-        textEl.innerText = t.screenshotCompleteText || t.screenshotReminderText;
+        textEl.innerText = (!isExternal && typeof window.tInternalCheckinCopy === 'function'
+            ? window.tInternalCheckinCopy('screenshotCompleteText', 'screenshotCompleteTextProof')
+            : (t.screenshotCompleteText || t.screenshotReminderText));
     }
     if (closeEl) {
         closeEl.innerText = t.screenshotCompleteClose || t.btnClose;
     }
-    if (ownerUsername) {
-        const safe = escapeInlineJsString(ownerUsername || '');
+    var hideOwnerDm = !isExternal
+        && typeof window.isScreenshotProofUploadEnabled === 'function'
+        && window.isScreenshotProofUploadEnabled();
+    if (cleanUsername && !hideOwnerDm) {
+        const safe = escapeInlineJsString(cleanUsername);
         actionEl.innerHTML = `<button class="btn" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none; margin-bottom: 8px;" onclick="openTelegramProfile('${safe}', event); closeScreenshotCompleteModal();">${t.screenshotReminderBtn}</button>`;
     } else {
         actionEl.innerHTML = '';
@@ -2957,10 +3090,10 @@ function renderPlayReviewModal() {
     if (isApproved) {
         // Render a beautiful, premium confirmation screen!
         var rewardsSummary = (test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
-        // Platform confirm for Play review is +0.3 (see PLAY_REVIEW_PLATFORM_KARMA / KARMA_PLATFORM_CONFIRM).
+        // Platform confirm for Play review is +0.5 (see PLAY_REVIEW_PLATFORM_KARMA / KARMA_PLATFORM_CONFIRM).
         // Do not fall back to legacy +1.0 when summary is empty.
         var reviewPlatformKarma = Number(rewardsSummary.review_platform_karma || 0);
-        if (!(reviewPlatformKarma > 0)) reviewPlatformKarma = 0.3;
+        if (!(reviewPlatformKarma > 0)) reviewPlatformKarma = 0.5;
         var reviewOwnerBoostBust = Number(rewardsSummary.review_owner_boost_bust || 0);
         var reviewOwnerBoostKarma = Number(rewardsSummary.review_owner_boost_karma || 0);
         var developerReply = rewardsSummary.review_developer_reply || '';
@@ -2982,7 +3115,7 @@ function renderPlayReviewModal() {
                 ownerRewardText = `+${reviewOwnerBoostKarma.toFixed(1)} ☯️ Karma`;
             }
             rewardsHtml += `<div class="confirmed-reward-item" style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-                <span style="color:var(--text-secondary); font-size:13px;">${window.escapeHTML(lang === 'ru' ? 'Буст от разработчика' : 'Developer boost')}</span>
+                <span style="color:var(--text-secondary); font-size:13px;">${window.escapeHTML(lang === 'ru' ? 'Награда от разработчика' : 'Developer reward')}</span>
                 <span style="font-weight:700; color:#ffcc00; font-size:14px;">${ownerRewardText}</span>
             </div>`;
         }
@@ -3069,24 +3202,25 @@ function renderPlayReviewModal() {
            </div>`
         : '';
 
-    // Step 1 done state.
-    // Screenshot upload also counts as step1: openLink often kills WebApp before in-memory flag is set.
+    // Open-in-Play is optional here. Daily check-in already required Open + timer
+    // before this modal, so do not gate screenshot upload on clicking Open again.
+    var alreadyOpenedFromCard = _playReviewModalSource === 'checkin'
+        || (typeof window.isCheckinTimerActiveForApp === 'function'
+            && window.isCheckinTimerActiveForApp(_playReviewModalAppId));
     var step1Done = isReadOnly
         || !!window._playReviewStep1Done
         || !!session.step1Done
-        || !!screenshotUrl;
-    
-    // Step 2 done state
+        || !!screenshotUrl
+        || alreadyOpenedFromCard;
+
     var step2Done = !!screenshotUrl;
 
-    // Step 1 Number and status
     var step1StatusClass = step1Done ? 'is-done' : 'is-active';
     var step1NumHtml = step1Done 
         ? `<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
         : '1';
 
-    // Step 2 Number and status
-    var step2StatusClass = step2Done ? 'is-done' : (step1Done ? 'is-active' : 'is-locked');
+    var step2StatusClass = step2Done ? 'is-done' : 'is-active';
     var step2NumHtml = step2Done 
         ? `<svg class="step-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
         : '2';
@@ -3109,9 +3243,9 @@ function renderPlayReviewModal() {
             </div>
         `;
     } else {
-        var uploadLockedClass = !step1Done ? ' is-locked' : '';
+        var uploadLockedClass = isReadOnly ? ' is-locked' : '';
         uploadOrPreviewHtml = `
-            <div class="play-review-upload-zone${uploadLockedClass}" id="play-review-upload-zone" onclick="${(step1Done && !isReadOnly) ? "document.getElementById('play-review-file').click()" : ""}">
+            <div class="play-review-upload-zone${uploadLockedClass}" id="play-review-upload-zone" onclick="${!isReadOnly ? "document.getElementById('play-review-file').click()" : ""}">
                 <input type="file" id="play-review-file" accept="image/*" style="display: none;" onchange="handleReviewScreenshotUpload(this, ${test.id})">
                 <div class="upload-zone-content">
                     <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -3122,7 +3256,7 @@ function renderPlayReviewModal() {
     }
 
     // Submit button state
-    var isSubmitEnabled = step1Done && step2Done && !isReadOnly;
+    var isSubmitEnabled = step2Done && !isReadOnly;
     var submitDisabledAttr = isSubmitEnabled ? '' : ' disabled';
     var submitButtonClass = isSubmitEnabled ? 'btn-primary' : 'btn-disabled';
 
@@ -3148,7 +3282,7 @@ function renderPlayReviewModal() {
                         </div>
                         <div class="review-step-content">
                             <div class="review-step-title">${window.escapeHTML(lang === 'ru' ? 'Открыть страницу приложения' : 'Open app page')}</div>
-                            <div class="review-step-desc">${window.escapeHTML(lang === 'ru' ? 'Перейдите в Google Play и опубликуйте отзыв.' : 'Go to Google Play and publish your review.')}</div>
+                            <div class="review-step-desc">${window.escapeHTML(lang === 'ru' ? 'Если страница ещё не открыта — перейдите в Google Play и опубликуйте отзыв.' : 'If the page is not open yet, go to Google Play and publish your review.')}</div>
                             <button type="button" class="btn play-review-store-btn" onclick="handlePlayReviewOpenStoreClick(event)" ${reviewUrl ? '' : 'disabled'}>
                                 <svg class="store-btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                                 ${window.escapeHTML(window.t('playReviewOpenStoreBtn', {}, lang))}
@@ -3218,14 +3352,55 @@ function handleRemoveReviewScreenshot(event) {
 }
 window.handleRemoveReviewScreenshot = handleRemoveReviewScreenshot;
 
+function setScreenshotBoostActionButton(button, label, offer) {
+    if (!button) return;
+    var safeLabel = String(label || '');
+    button.dataset.screenshotBoostBaseLabel = safeLabel;
+    var eligible = !!offer;
+    button.classList.toggle('screenshot-boost-eligible', eligible);
+    var labelId = button.id === 'checkin-proof-submit' ? ' id="t-checkinProofSubmit"' : '';
+    if (!eligible) {
+        if (button.id === 'checkin-proof-submit') {
+            button.innerHTML = '<span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">' + window.escapeHTML(safeLabel) + '</span>';
+        } else {
+            button.textContent = safeLabel;
+        }
+        return;
+    }
+    var emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji}|[\u2000-\u32ff\ud83c-\ud83e\udd00-\udfff])\s*([\s\S]+)$/u;
+    var match = null;
+    try {
+        match = emojiRegex.exec(safeLabel);
+    } catch (e) {
+        var fallbackParts = /^(\S+)\s+([\s\S]+)$/.exec(safeLabel);
+        if (fallbackParts && /^[^a-zA-Z0-9\u0400-\u04FF]+$/.test(fallbackParts[1])) {
+            match = fallbackParts;
+        }
+    }
+    if (match && match[1] && match[2]) {
+        button.innerHTML = '<span class="screenshot-boost-action__icon" aria-hidden="true">' + window.escapeHTML(match[1]) + '</span>' +
+            '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(match[2]) + '</span>';
+    } else {
+        button.innerHTML = '<span' + labelId + ' class="screenshot-boost-action__label">' + window.escapeHTML(safeLabel) + '</span>';
+    }
+}
+
 function openCheckinOptionsModal(appId, ownerUsername) {
+    var test = typeof window.getMyTestById === 'function'
+        ? window.getMyTestById(appId)
+        : ((typeof myTests !== 'undefined' && Array.isArray(myTests)) ? myTests.find(function(item) { return Number(item.id) === Number(appId); }) : null);
+    if (test && (test.is_external || test.is_guest || String(test.flow || '') === 'external')) {
+        return openExternalCheckinOptionsModal(appId, ownerUsername);
+    }
     _checkinOptionsAppId = appId;
     _checkinOptionsOwner = ownerUsername || '';
     _checkinOptionsFlow = 'regular';
-    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
     var testingDay = test ? getResolvedTestingDay(test) : null;
     _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
     if (_checkinOptionsIsControlDay && isScreenshotOnlyControlDay(testingDay)) {
+        if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
+            window.markScreenshotBoostAdvertisedInChooser(appId, false);
+        }
         handleScreenshotAndConfirm(appId, ownerUsername || '');
         return;
     }
@@ -3238,10 +3413,20 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
     if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
-    if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
-    if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
-    if (bugBtn) bugBtn.innerText = window.t('checkinOptionsSendBug', {}, lang);
-    if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
+    if (subtitleEl) subtitleEl.innerText = window.tInternalCheckinCopy
+        ? window.tInternalCheckinCopy(
+            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle',
+            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitleProof' : 'checkinOptionsSubtitle'
+        )
+        : window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
+    var screenshotBoostOffer = test && typeof window.getScreenshotBoostOffer === 'function'
+        ? window.getScreenshotBoostOffer(test, testingDay)
+        : null;
+    // Screenshot, bug and idea all result in screenshot-proof. A Google Play
+    // review deliberately remains neutral: it does not qualify for this pool.
+    setScreenshotBoostActionButton(screenshotBtn, window.t('checkinOptionsSendScreenshot', {}, lang), screenshotBoostOffer);
+    setScreenshotBoostActionButton(bugBtn, window.t('checkinOptionsSendBug', {}, lang), screenshotBoostOffer);
+    setScreenshotBoostActionButton(ideaBtn, window.t('checkinOptionsSendIdea', {}, lang), screenshotBoostOffer);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
         if (_checkinOptionsIsControlDay) {
@@ -3269,7 +3454,6 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     }
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
-        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_checkinOptionsAppId) : null;
         var testingDay = test ? getResolvedTestingDay(test) : null;
         var reviewStatus = typeof window.getPlayReviewStatus === 'function' ? window.getPlayReviewStatus(test) : String(test && test.play_review_status || 'none').toLowerCase();
         var canReview = !!(test && test.request_reviews && testingDay && testingDay >= 7);
@@ -3277,13 +3461,25 @@ function openCheckinOptionsModal(appId, ownerUsername) {
         if (reviewStatus === 'pending') reviewLabel = '⏳ ' + window.t('playReviewDetailsPendingChip', {}, lang);
         else if (reviewStatus === 'approved') reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
         else if (reviewStatus === 'rejected') reviewLabel = '❌ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
-        reviewBtn.innerText = reviewLabel;
+        setScreenshotBoostActionButton(reviewBtn, reviewLabel, null);
         reviewBtn.classList.toggle('is-review-pending', reviewStatus === 'pending');
         reviewBtn.classList.toggle('is-review-approved', reviewStatus === 'approved');
         reviewBtn.classList.toggle('is-review-rejected', reviewStatus === 'rejected');
         reviewBtn.style.display = canReview ? 'block' : 'none';
     }
     renderCheckinReviewOptions();
+    if (typeof window.syncScreenshotBoostOfferUi === 'function') {
+        window.syncScreenshotBoostOfferUi(appId, { report: false });
+    }
+    if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
+        window.markScreenshotBoostAdvertisedInChooser(appId, !!screenshotBoostOffer);
+    }
+    if (typeof window.syncCheckinCatchupNoteUi === 'function') {
+        window.syncCheckinCatchupNoteUi(appId);
+    }
+    if (typeof window.syncCheckinDeveloperAccordion === 'function') {
+        window.syncCheckinDeveloperAccordion(appId, ownerUsername || (test && test.owner_username) || '');
+    }
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -3295,8 +3491,8 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     }
     var test = getExternalProjectTest(appId);
     _checkinOptionsAppId = appId;
-    _checkinOptionsOwner = ownerUsername || '';
-    _checkinOptionsIsControlDay = !!(test && isExternalControlDayDue(test));
+    _checkinOptionsOwner = ownerUsername || (test && (test.owner_username || test.external_owner_username)) || '';
+    _checkinOptionsIsControlDay = !!(test && (typeof isExternalControlDayDue === 'function' ? isExternalControlDayDue(test) : false));
     _checkinOptionsFlow = 'external';
     const modal = document.getElementById('checkin-options-modal');
     if (!modal) return;
@@ -3308,20 +3504,36 @@ function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
     const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
     if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
     if (subtitleEl) subtitleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
-    if (screenshotBtn) screenshotBtn.innerText = window.t('checkinOptionsSendScreenshot', {}, lang);
-    if (bugBtn) bugBtn.innerText = window.t('checkinOptionsSendBug', {}, lang);
-    if (ideaBtn) ideaBtn.innerText = window.t('checkinOptionsSendIdea', {}, lang);
+    setScreenshotBoostActionButton(screenshotBtn, window.t('checkinOptionsSendScreenshot', {}, lang), null);
+    setScreenshotBoostActionButton(bugBtn, window.t('checkinOptionsSendBug', {}, lang), null);
+    setScreenshotBoostActionButton(ideaBtn, window.t('checkinOptionsSendIdea', {}, lang), null);
     if (confirmBtn) {
         confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
         confirmBtn.style.display = _checkinOptionsIsControlDay ? 'none' : 'block';
     }
     var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
     if (reviewBtn) {
-        reviewBtn.innerText = window.t('checkinOptionsSendReview', {}, lang);
+        setScreenshotBoostActionButton(reviewBtn, window.t('checkinOptionsSendReview', {}, lang), null);
         reviewBtn.classList.remove('is-review-pending', 'is-review-approved', 'is-review-rejected');
         reviewBtn.style.display = 'none';
     }
     renderCheckinReviewOptions();
+    if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
+        window.markScreenshotBoostAdvertisedInChooser(appId, false);
+    }
+    ['checkin-options-screenshot-boost', 'report-screenshot-boost'].forEach(function(id) {
+        var node = document.getElementById(id);
+        if (node) {
+            node.hidden = true;
+            node.textContent = '';
+        }
+    });
+    var catchupNote = document.getElementById('checkin-options-catchup-note');
+    if (catchupNote) catchupNote.hidden = true;
+    modal.classList.remove('has-catchup-note');
+    if (typeof window.syncCheckinDeveloperAccordion === 'function') {
+        window.syncCheckinDeveloperAccordion(appId, _checkinOptionsOwner);
+    }
     modal.classList.add('active');
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
 }
@@ -3507,7 +3719,7 @@ async function submitPlayReview() {
                         var sourceType = String(checkin.source_type || '').toLowerCase();
                         var rewardBust = Number(checkin.reward_bust ?? checkin.earned_bust ?? checkin.bust_earned ?? 0);
                         if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-                            var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                            var karmaVal = formatAmountValue(earnedKarma || 0.1, 1);
                             var bustVal = formatAmountValue(rewardBust, 1);
                             if (lang === 'ru') {
                                 showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
@@ -3691,6 +3903,12 @@ function openPlayReviewModal(appId, event, options) {
         : String(test && test.play_review_status || 'none').toLowerCase();
     var session = _loadPlayReviewSession(appId);
 
+    if (_playReviewModalSource === 'checkin') {
+        window._playReviewStep1Done = true;
+        _savePlayReviewSession(appId, { step1Done: true });
+        session = _loadPlayReviewSession(appId);
+    }
+
     if (reviewStatus === 'rejected' && test) {
         // Drop stale rejected screenshot from the test row, but keep a fresh
         // session upload if the user already attached one in this retry.
@@ -3718,7 +3936,7 @@ function openPlayReviewModal(appId, event, options) {
 
 function openPlayReviewModalFromCheckinOptions(event) {
     if (_checkinOptionsAppId == null) return;
-    openPlayReviewModal(_checkinOptionsAppId, event);
+    openPlayReviewModal(_checkinOptionsAppId, event, { source: 'checkin' });
 }
 
 function closePlayReviewModal(event) {
@@ -3774,14 +3992,90 @@ function openPlayReviewStoreByAppId(appId, event) {
 
 const ISSUE_CHECKLIST_PLAY_STORE_HOME = 'https://play.google.com/store';
 const ISSUE_PROJECT_VERIFICATION_WINDOW_MS = 30 * 60 * 1000;
+var _issueReportAppId = null;
 let _issueReportStep = 1;
 let _issueReportVerificationTimerId = null;
+var _issueReportScreenshotFileId = '';
+var _issueReportScreenshotUrl = '';
 
 function _getIssueReportTest(appId) {
     const tests = (typeof myTests !== 'undefined' && Array.isArray(myTests))
         ? myTests
         : ((window.App && Array.isArray(window.App.myTests)) ? window.App.myTests : []);
     return tests.find(function(item) { return Number(item.id) === Number(appId); }) || null;
+}
+
+function _telegramFileIdFromMediaUrl(value) {
+    var raw = String(value || '').trim();
+    var marker = '/telegram-media/';
+    var idx = raw.indexOf(marker);
+    if (idx >= 0) raw = raw.slice(idx + marker.length);
+    raw = raw.replace(/^\/+/, '');
+    return /^[A-Za-z0-9_\-:]{20,256}$/.test(raw) ? raw : '';
+}
+
+function _formatIssueWaitClock(remainingMs) {
+    var totalSeconds = Math.max(0, Math.ceil(Number(remainingMs || 0) / 1000));
+    var minutes = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function getIssueAccessWaitState(appId) {
+    var test = _getIssueReportTest(appId);
+    var projectMs = 0;
+    var createdAt = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
+    if (Number.isFinite(createdAt)) {
+        projectMs = Math.max(0, ISSUE_PROJECT_VERIFICATION_WINDOW_MS - Math.max(0, Date.now() - createdAt));
+    }
+    var groupMs = 0;
+    if (typeof getCustomGroupAccessWaitRemainingMs === 'function') {
+        groupMs = Math.max(0, Number(getCustomGroupAccessWaitRemainingMs(appId) || 0));
+    }
+    var remainingMs = Math.max(projectMs, groupMs);
+    var reason = '';
+    if (remainingMs > 0) {
+        reason = groupMs > projectMs ? 'group' : 'project';
+    }
+    return {
+        remainingMs: remainingMs,
+        reason: reason,
+        timeLabel: _formatIssueWaitClock(remainingMs),
+    };
+}
+
+function _hasIssueReportScreenshot() {
+    return !!_telegramFileIdFromMediaUrl(
+        _issueReportScreenshotFileId
+        || _issueReportScreenshotUrl
+        || window._issueReportScreenshotFileId
+        || window._issueReportScreenshotUrl
+    );
+}
+
+function _renderIssueScreenshotUi() {
+    var zone = document.getElementById('issue-screenshot-zone');
+    var preview = document.getElementById('issue-screenshot-preview');
+    var has = _hasIssueReportScreenshot();
+    if (zone) zone.hidden = has;
+    if (preview) preview.hidden = !has;
+}
+
+function _resetIssueReportScreenshot() {
+    _issueReportScreenshotFileId = '';
+    _issueReportScreenshotUrl = '';
+    window._issueReportScreenshotFileId = '';
+    window._issueReportScreenshotUrl = '';
+    _renderIssueScreenshotUi();
+}
+
+function clearIssueScreenshot(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    _resetIssueReportScreenshot();
+    syncIssueReportPauseState();
 }
 
 function _clearIssueReportVerificationTimer() {
@@ -3798,13 +4092,8 @@ function _renderIssueReportVerificationTimer() {
     const timerText = document.getElementById('issue-report-verification-timer-text');
     if (!timer || !countdownEl || !timerText) return false;
 
-    const test = _getIssueReportTest(_issueReportAppId);
-    const createdAt = test && test.created_at ? new Date(test.created_at).getTime() : NaN;
-    const remainingMs = Number.isFinite(createdAt)
-        ? ISSUE_PROJECT_VERIFICATION_WINDOW_MS - Math.max(0, Date.now() - createdAt)
-        : 0;
-
-    if (remainingMs <= 0) {
+    const wait = getIssueAccessWaitState(_issueReportAppId);
+    if (!wait.remainingMs) {
         timer.hidden = true;
         countdownEl.textContent = '';
         if (titleEl) titleEl.textContent = '';
@@ -3812,26 +4101,30 @@ function _renderIssueReportVerificationTimer() {
         return false;
     }
 
-    const totalSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const timeLabel = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-    countdownEl.textContent = timeLabel;
-    if (titleEl) {
-        titleEl.textContent = window.t('reportIssueVerificationTitle', {}, lang);
+    countdownEl.textContent = wait.timeLabel;
+    if (wait.reason === 'group') {
+        if (titleEl) titleEl.textContent = window.t('accessProblemWaitTitle', {}, lang);
+        timerText.textContent = window.t('accessProblemWaitText', {}, lang);
+    } else {
+        if (titleEl) titleEl.textContent = window.t('reportIssueVerificationTitle', {}, lang);
+        timerText.textContent = window.t('reportIssueVerificationTimer', { time: wait.timeLabel }, lang);
     }
-    timerText.textContent = window.t('reportIssueVerificationTimer', { time: timeLabel }, lang);
     timer.hidden = false;
     return true;
 }
 
 function _startIssueReportVerificationTimer() {
     _clearIssueReportVerificationTimer();
-    if (!_renderIssueReportVerificationTimer()) return;
+    _renderIssueReportVerificationTimer();
+    syncIssueReportPauseState();
     _issueReportVerificationTimerId = setInterval(function() {
-        if (!_renderIssueReportVerificationTimer()) {
+        var modal = document.getElementById('issue-report-modal');
+        if (!modal || !modal.classList.contains('active')) {
             _clearIssueReportVerificationTimer();
+            return;
         }
+        _renderIssueReportVerificationTimer();
+        syncIssueReportPauseState();
     }, 1000);
 }
 
@@ -3869,17 +4162,18 @@ function _renderIssueReportAccountCopy() {
 }
 
 function _setIssueChecklistChecked(checked) {
-    ['issue-check-group', 'issue-check-play', 'issue-check-match', 'issue-check-still'].forEach(function(id) {
+    ['issue-check-group', 'issue-check-play', 'issue-check-match'].forEach(function(id) {
         const el = document.getElementById(id);
         if (el) el.checked = !!checked;
     });
 }
 
 function isIssueReportChecklistComplete() {
-    return ['issue-check-group', 'issue-check-play', 'issue-check-match', 'issue-check-still'].every(function(id) {
+    var boxesOk = ['issue-check-group', 'issue-check-play', 'issue-check-match'].every(function(id) {
         const el = document.getElementById(id);
         return !!(el && el.checked);
     });
+    return boxesOk && _hasIssueReportScreenshot();
 }
 
 function syncIssueReportPauseState() {
@@ -3890,8 +4184,25 @@ function syncIssueReportPauseState() {
     const emailOk = !!(email && typeof isValidEmail === 'function' ? isValidEmail(email) : email.includes('@'));
     const groupChecked = !!(document.getElementById('issue-check-group') || {}).checked;
     const playChecked = !!(document.getElementById('issue-check-play') || {}).checked;
-    const ready = emailOk && isIssueReportChecklistComplete();
-    if (sendBtn) sendBtn.disabled = !ready;
+    const wait = getIssueAccessWaitState(_issueReportAppId);
+    const checklistReady = emailOk && isIssueReportChecklistComplete();
+    const ready = checklistReady && wait.remainingMs <= 0;
+    if (sendBtn) {
+        sendBtn.disabled = !ready;
+        sendBtn.classList.toggle('is-waiting', wait.remainingMs > 0);
+        sendBtn.classList.toggle('is-need-proof', wait.remainingMs <= 0 && !checklistReady);
+        if (wait.remainingMs > 0) {
+            sendBtn.innerText = window.t(
+                wait.reason === 'group' ? 'reportIssueSendWaitGroupBtn' : 'reportIssueSendWaitBtn',
+                { time: wait.timeLabel },
+                lang
+            );
+        } else if (!_hasIssueReportScreenshot()) {
+            sendBtn.innerText = window.t('reportIssueSendNeedScreenshotBtn', {}, lang);
+        } else {
+            sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
+        }
+    }
     if (nextBtn) {
         nextBtn.disabled = _issueReportStep === 1
             ? !emailOk
@@ -3956,6 +4267,19 @@ function openIssueChecklistGooglePlay() {
     _openIssueChecklistLink(ISSUE_CHECKLIST_PLAY_STORE_HOME);
 }
 
+function openIssueChecklistAppPlay() {
+    var url = '';
+    if (typeof getPlayReviewUrl === 'function') {
+        url = String(getPlayReviewUrl(_issueReportAppId) || '').trim();
+    }
+    if (!url) {
+        var test = _getIssueReportTest(_issueReportAppId);
+        var pkg = String(test && (test.package || test.package_name) || '').trim();
+        if (pkg) url = 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(pkg);
+    }
+    _openIssueChecklistLink(url || ISSUE_CHECKLIST_PLAY_STORE_HOME);
+}
+
 function openIssueReportModal(appId) {
     _issueReportAppId = appId;
     const modal = document.getElementById('issue-report-modal');
@@ -3989,24 +4313,30 @@ function openIssueReportModal(appId) {
     setText('t-issueReportPauseEffect', 'reportIssuePauseEffect');
     setText('t-issueReportBack', 'reportIssueBackBtn');
     setText('t-issueReportNext', 'reportIssueNextBtn');
+    setText('t-issueScreenshotUpload', 'reportIssueScreenshotUpload');
+    setText('t-issueScreenshotReady', 'reportIssueScreenshotReady');
+    setText('t-issueScreenshotReplace', 'reportIssueScreenshotReplace');
 
     const openGroupBtn = document.getElementById('t-issueOpenGroup');
     const openPlayBtn = document.getElementById('t-issueOpenPlay');
+    const openAppPlayBtn = document.getElementById('t-issueOpenAppPlay');
     const checkGroup = document.getElementById('t-issueCheckGroup');
     const checkPlay = document.getElementById('t-issueCheckPlay');
     const checkMatch = document.getElementById('t-issueCheckMatch');
     const checkStill = document.getElementById('t-issueCheckStill');
     if (openGroupBtn) openGroupBtn.innerText = window.t('reportIssueOpenGroupBtn', {}, lang);
     if (openPlayBtn) openPlayBtn.innerText = window.t('reportIssueOpenPlayBtn', {}, lang);
+    if (openAppPlayBtn) openAppPlayBtn.innerText = window.t('reportIssueOpenAppPlayBtn', {}, lang);
     if (checkGroup) checkGroup.innerText = window.t('reportIssueCheckGroup', {}, lang);
     if (checkPlay) checkPlay.innerText = window.t('reportIssueCheckPlay', {}, lang);
     if (checkMatch) checkMatch.innerText = window.t('reportIssueCheckMatch', {}, lang);
     if (checkStill) checkStill.innerText = window.t('reportIssueCheckStill', {}, lang);
 
     _setIssueChecklistChecked(false);
+    _resetIssueReportScreenshot();
     if (emailInput) {
         const appState = window.App && typeof window.App.getState === 'function' ? window.App.getState() : {};
-        emailInput.value = String(appState && appState.userEmail || window.App.userEmail || '').trim();
+        emailInput.value = String((appState && appState.userEmail) || (window.App && window.App.userEmail) || '').trim();
         emailInput.placeholder = window.t('reportIssueEmailPlaceholder', {}, lang);
     }
     const textarea = document.getElementById('issue-report-text');
@@ -4029,11 +4359,21 @@ function closeIssueReportModal(event) {
     _issueReportAppId = null;
     _issueReportStep = 1;
     _setIssueChecklistChecked(false);
+    _resetIssueReportScreenshot();
 }
 
 function submitIssueReportFromModal() {
     if (!_issueReportAppId) return;
     if (!syncIssueReportPauseState()) {
+        const wait = getIssueAccessWaitState(_issueReportAppId);
+        if (wait.remainingMs > 0) {
+            showToast(window.t(
+                wait.reason === 'group' ? 'reportIssueWaitGroupActive' : 'reportIssueWaitActive',
+                { time: wait.timeLabel },
+                lang
+            ));
+            return;
+        }
         const emailInput = document.getElementById('issue-report-email');
         const email = emailInput ? String(emailInput.value || '').trim() : '';
         if (!email || (typeof isValidEmail === 'function' && !isValidEmail(email))) {
@@ -4041,11 +4381,16 @@ function submitIssueReportFromModal() {
             if (emailInput && typeof emailInput.focus === 'function') emailInput.focus();
             return;
         }
+        if (!_hasIssueReportScreenshot()) {
+            showToast(window.t('reportIssueScreenshotRequired', {}, lang));
+            return;
+        }
         showToast(window.t('reportIssueChecklistIncomplete', {}, lang));
         return;
     }
     submitIssueReport(_issueReportAppId);
 }
+
 
 function renderReportLanguageToggle() {
     const toggle = document.getElementById('report-language-toggle');
@@ -4172,19 +4517,112 @@ function setReportMessageLanguage(nextLang) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function openReportModal(appId, ownerUsername) {
+function openReportModal(appId, ownerUsername, options) {
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
     _reportTextExpanded = false;
     _reportMessageLang = typeof window.getDefaultCheckpointReportLanguage === 'function'
         ? window.getDefaultCheckpointReportLanguage(appId)
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
-    renderReportOwnerHeader(appId, ownerUsername);
-    renderReportLanguageToggle();
-    updateReportModalPrefill();
-    document.getElementById('t-reportModalTitle').innerText = t.reportModalTitle;
-    document.getElementById('t-reportModalHint').innerText = t.reportModalHint;
-    document.getElementById('t-reportBtnSend').innerText = t.reportBtnSend;
+    var safeAppId = Number(appId || 0);
+    var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
+    var usesProofUpload = typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+        ? window.isInternalScreenshotProofUploadEnabled(test)
+        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled());
+    var reportModal = document.getElementById('report-modal');
+    if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
+    if (usesProofUpload) {
+        var proofOptions = options && typeof options === 'object' ? options : {};
+        var isBufferCatchup = proofOptions.submissionMode === 'buffer_catchup';
+        var isCatchupSubmission = isBufferCatchup || proofOptions.catchupRequested === true;
+        var progressId = Number(test && test.progress_id || 0);
+        if (progressId > 0 && typeof _loadOrCreateCheckinProofKey === 'function') {
+            if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
+            _checkinProofUploadState.appId = safeAppId;
+            _checkinProofUploadState.progressId = progressId;
+            _checkinProofUploadState.idempotencyKey = _loadOrCreateCheckinProofKey(progressId);
+            _checkinProofUploadState.submissionMode = isBufferCatchup ? 'buffer_catchup' : 'standard';
+            _checkinProofUploadState.catchupRequested = isCatchupSubmission;
+            if (typeof _setCheckinProofStatus === 'function') _setCheckinProofStatus('', '');
+        }
+        var visibilityNote = document.getElementById('t-checkinProofVisibilityNote');
+        if (visibilityNote) visibilityNote.textContent = window.t('checkinProofVisibilityNote', {}, lang);
+        var chooseLabel = document.getElementById('t-checkinProofChoose');
+        if (chooseLabel) chooseLabel.textContent = window.t('checkinProofChoose', {}, lang);
+        var limitsLabel = document.getElementById('t-checkinProofLimits');
+        if (limitsLabel) limitsLabel.textContent = window.t('checkinProofLimits', {}, lang);
+        var submitLabel = document.getElementById('t-checkinProofSubmit');
+        if (submitLabel) submitLabel.textContent = window.t('checkinProofSubmit', {}, lang);
+        var cancelLabel = document.getElementById('t-checkinProofCancel');
+        if (cancelLabel) cancelLabel.textContent = window.t('checkinProofCancel', {}, lang);
+        if (typeof window.syncScreenshotBoostOfferUi === 'function') {
+            var hideDuplicateBoost = typeof window.wasScreenshotBoostAdvertisedInChooser === 'function'
+                && window.wasScreenshotBoostAdvertisedInChooser(appId);
+            window.syncScreenshotBoostOfferUi(appId, {
+                chooser: false,
+                report: !hideDuplicateBoost && !isCatchupSubmission
+            });
+        }
+        var reportBoostOffer = !isCatchupSubmission && typeof window.getScreenshotBoostOffer === 'function'
+            ? window.getScreenshotBoostOffer(test, test ? getResolvedTestingDay(test) : 0)
+            : null;
+        var proofSubmit = document.getElementById('checkin-proof-submit');
+        if (proofSubmit) {
+            setScreenshotBoostActionButton(
+                proofSubmit,
+                window.t('checkinProofSubmit', {}, lang),
+                reportBoostOffer
+            );
+        }
+        ['t-reportBtnBug', 't-reportBtnIdea'].forEach(function(id) {
+            var button = document.getElementById(id);
+            if (button) setScreenshotBoostActionButton(button, button.dataset.screenshotBoostBaseLabel || button.textContent, reportBoostOffer);
+        });
+        if (isCatchupSubmission) {
+            var catchupBoost = document.getElementById('report-screenshot-boost');
+            if (catchupBoost) {
+                catchupBoost.hidden = true;
+                catchupBoost.textContent = '';
+            }
+        }
+    } else {
+        renderReportOwnerHeader(appId, ownerUsername);
+        renderReportLanguageToggle();
+        updateReportModalPrefill();
+        var legacyBoost = document.getElementById('report-screenshot-boost');
+        if (legacyBoost) {
+            legacyBoost.hidden = true;
+            legacyBoost.textContent = '';
+        }
+        ['t-reportBtnBug', 't-reportBtnIdea', 'checkin-proof-submit'].forEach(function(id) {
+            var button = document.getElementById(id);
+            if (button) setScreenshotBoostActionButton(button, button.dataset.screenshotBoostBaseLabel || button.textContent, null);
+        });
+    }
+    document.getElementById('t-reportModalTitle').innerText = window.t(
+        usesProofUpload
+            ? (isCatchupSubmission ? 'catchupTesterUploadTitle' : 'reportProofModalTitle')
+            : 'reportModalTitle',
+        {},
+        lang
+    );
+    document.getElementById('t-reportModalHint').innerText = window.t(
+        usesProofUpload
+            ? (isBufferCatchup ? 'catchupTesterBufferUploadHint' : (isCatchupSubmission ? 'catchupTesterUploadHint' : 'checkinProofUploadHint'))
+            : 'reportModalHint',
+        {},
+        lang
+    );
+    var sendBtn = document.getElementById('t-reportBtnSend');
+    if (sendBtn) {
+        sendBtn.innerText = window.t(
+            usesProofUpload
+                ? (isCatchupSubmission ? 'catchupTesterUploadSubmit' : 'reportProofBtnUpload')
+                : 'reportBtnSend',
+            {},
+            lang
+        );
+    }
     var altLabel = document.getElementById('t-reportAltLabel');
     if (altLabel) altLabel.textContent = window.t('reportAltLabel', {}, lang);
 
@@ -4199,12 +4637,23 @@ function openReportModal(appId, ownerUsername) {
     if (bugBtn) bugBtn.textContent = window.t('reportBtnSendBug', {}, lang);
     if (ideaBtn) ideaBtn.textContent = window.t('reportBtnSendIdea', {}, lang);
 
+    var currentTest = typeof _checkinProofTest === 'function'
+        ? _checkinProofTest(appId)
+        : (typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null);
+    var testingDay = currentTest && typeof window.getUserTestingDay === 'function'
+        ? Number(window.getUserTestingDay(currentTest.start_date, currentTest.testing_days) || 0)
+        : 0;
+    var isFirstDay = !currentTest || currentTest.status === 'new' || Number(currentTest.checkins_count || 0) === 0 || testingDay <= 1;
+
+    var feedbackBlock = document.querySelector('.report-feedback-block');
+    if (feedbackBlock) {
+        // Feedback alternative block (bug/recommendation) is ONLY shown on Day 1.
+        // On subsequent days, the user already made their choice on the checkin-options modal.
+        feedbackBlock.style.display = isFirstDay ? '' : 'none';
+    }
+
     const noteEl = document.getElementById('t-reportFeedbackScreenshotNote');
     if (noteEl) {
-        var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
-        var testingDay = test && typeof window.getUserTestingDay === 'function'
-            ? Number(window.getUserTestingDay(test.start_date) || 0)
-            : 0;
         var controlDays = (typeof window.CONTROL_DAYS !== 'undefined' && Array.isArray(window.CONTROL_DAYS))
             ? window.CONTROL_DAYS
             : [1, 4, 7, 10, 14];
@@ -4215,19 +4664,25 @@ function openReportModal(appId, ownerUsername) {
         noteEl.textContent = window.t(noteKey, {}, lang);
     }
 
-    document.getElementById('report-modal').classList.add('active');
-    setTimeout(_syncReportTextareaLayout, 40);
+    reportModal.classList.add('active');
+    if (!usesProofUpload) setTimeout(_syncReportTextareaLayout, 40);
 }
 
 function closeReportModal(event) {
     if (event && event.target !== document.getElementById('report-modal')) return;
-    document.getElementById('report-modal').classList.remove('active');
+    var modal = document.getElementById('report-modal');
+    if (modal) modal.classList.remove('active');
+    if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
+    if (typeof _resetCheckinProofSubmissionMode === 'function') _resetCheckinProofSubmissionMode();
     setTimeout(() => {
         _reportAppId = null;
         _reportOwnerUsername = null;
         _reportMessageLang = null;
         _reportTextExpanded = false;
+        var feedbackBlock = document.querySelector('.report-feedback-block');
+        if (feedbackBlock) feedbackBlock.style.display = '';
     }, 300);
+    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
 }
 
 function insertReportChip(chipText) {
@@ -4481,6 +4936,7 @@ function formatFeedbackAvgResponseHours(avgMs) {
         ? (hours + ' ч ' + mins + ' мин')
         : (hours + 'h ' + mins + 'm');
 }
+window.formatFeedbackAvgResponseHours = formatFeedbackAvgResponseHours;
 
 function getFeedbackSlaToneClass(avgMs) {
     if (!avgMs || avgMs <= 0 || Number.isNaN(avgMs)) return '';
@@ -4498,6 +4954,15 @@ function getMaterialAcuteIconSvg(extraClass) {
         '</svg>';
 }
 window.getMaterialAcuteIconSvg = getMaterialAcuteIconSvg;
+
+function getMaterialInfoIconSvg(extraClass) {
+    // Material Symbols Outlined "info".
+    const cls = extraClass ? (' class="' + extraClass + '"') : '';
+    return '<svg' + cls + ' xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="16" height="16" aria-hidden="true" focusable="false">' +
+        '<path fill="currentColor" d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>' +
+        '</svg>';
+}
+window.getMaterialInfoIconSvg = getMaterialInfoIconSvg;
 
 function getFeedbackAvgResponseMs(items) {
     let processedCount = 0;
@@ -4568,12 +5033,19 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
         '<span class="fb-micro-meta"> <span class="fb-micro-sep">·</span> ' + when + rewardHtml + '</span>';
 }
 
+function isFeedbackScreenshotPlaceholder(text) {
+    var value = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!value) return true;
+    return /приложен скриншот приложения/i.test(value)
+        || /app screenshot attached/i.test(value);
+}
+
 function getFeedbackPreviewText(item, isReviewTicket) {
     if (isReviewTicket) {
         return window.t('projectFeedbackReviewTicketText', {}, lang) || 'Google Play review';
     }
     const text = String((item && item.message_text) || '').replace(/\s+/g, ' ').trim();
-    if (text) return text;
+    if (text && !isFeedbackScreenshotPlaceholder(text)) return text;
     return window.t('projectFeedbackNoText', {}, lang) || 'No text';
 }
 
@@ -4586,33 +5058,78 @@ function getFeedbackTypePillLabel(item) {
     return window.t('feedbackChipBug', {}, lang) || 'Bug';
 }
 
-function groupFeedbackByDate(items) {
-    const groups = {
-        today: [],
-        yesterday: [],
-        thisWeek: [],
-        earlier: []
+var FEEDBACK_DATE_WINDOW_DAYS = 14;
+var MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function feedbackDateGroupKey(dayOffset) {
+    if (dayOffset === 0) return 'today';
+    if (dayOffset === 1) return 'yesterday';
+    return 'day' + dayOffset;
+}
+
+function feedbackDateGroupOrder() {
+    var keys = [];
+    for (var i = 0; i < FEEDBACK_DATE_WINDOW_DAYS; i++) {
+        keys.push(feedbackDateGroupKey(i));
+    }
+    keys.push('earlier');
+    return keys;
+}
+
+function feedbackDateGroupTitle(groupKey) {
+    var tr = function(key, params, fallback) {
+        var value = (typeof window.t === 'function') ? window.t(key, params || {}, lang) : '';
+        if (!value || value === key) return fallback;
+        return value;
     };
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
-    const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+    if (groupKey === 'earlier') {
+        return tr('feedbackSectionEarlier', {}, lang === 'ru' ? 'Ранее' : 'Earlier');
+    }
+    if (groupKey === 'today') {
+        return tr('feedbackSectionToday', {}, lang === 'ru' ? 'Сегодня' : 'Today');
+    }
+    if (groupKey === 'yesterday') {
+        return tr('feedbackSectionYesterday', {}, lang === 'ru' ? 'Вчера' : 'Yesterday');
+    }
+    var days = parseInt(String(groupKey).replace('day', ''), 10);
+    if (!days) days = 0;
+    return tr(
+        'feedbackSectionDaysAgo',
+        { days: days },
+        lang === 'ru' ? (days + ' д. назад') : (days + ' days ago')
+    );
+}
+
+function groupFeedbackByDate(items) {
+    var groups = { earlier: [] };
+    var i;
+    for (i = 0; i < FEEDBACK_DATE_WINDOW_DAYS; i++) {
+        groups[feedbackDateGroupKey(i)] = [];
+    }
+    var now = new Date();
+    var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     (items || []).forEach(function(item) {
         if (!item.created_at) {
             groups.earlier.push(item);
             return;
         }
-        const date = new Date(item.created_at);
-        if (date >= startOfToday) {
-            groups.today.push(item);
-        } else if (date >= startOfYesterday) {
-            groups.yesterday.push(item);
-        } else if (date >= startOfWeek) {
-            groups.thisWeek.push(item);
-        } else {
+        var date = new Date(item.created_at);
+        if (isNaN(date.getTime())) {
             groups.earlier.push(item);
+            return;
         }
+        var startOfItem = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        var offset = Math.round((startOfToday.getTime() - startOfItem.getTime()) / MS_PER_DAY);
+        if (offset < 0) {
+            groups.today.push(item);
+            return;
+        }
+        if (offset < FEEDBACK_DATE_WINDOW_DAYS) {
+            groups[feedbackDateGroupKey(offset)].push(item);
+            return;
+        }
+        groups.earlier.push(item);
     });
     return groups;
 }
@@ -4650,9 +5167,12 @@ function getFeedbackTypeChip(item) {
     return `<span class="fb-type-chip type-bug">${window.escapeHTML(window.t('feedbackChipBug', {}, lang))}</span>`;
 }
 
-function getProjectFeedbackHeader(project, items) {
+function getProjectFeedbackHeader(project, items, meta) {
+    meta = meta || {};
     const safeName = window.escapeHTML((project && (project.name || project.package_name)) || window.t('unknownLabel', {}, lang));
     const newCount = Number(project && project.feedback_new_count || 0);
+    const totalReported = Number(project && project.feedback_total_count || 0);
+    const partialLoad = !!(meta.partialLoad || (typeof _activeProjectFeedbackPartial !== 'undefined' && _activeProjectFeedbackPartial));
 
     let googlePlayCount = 0;
     let bugCount = 0;
@@ -4676,10 +5196,20 @@ function getProjectFeedbackHeader(project, items) {
         });
     }
 
+    // While only open tickets are loaded, keep dashboard totals from project counters.
+    if (partialLoad) {
+        openCount = Math.max(openCount, newCount);
+        if (totalReported > 0) {
+            processedCount = Math.max(0, totalReported - openCount);
+        }
+    }
+
     const totalCount = openCount + processedCount;
     const donePct = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
-    const avgResponseMs = getFeedbackAvgResponseMs(items);
-    const avgResponseText = formatFeedbackAvgResponseHours(avgResponseMs);
+    const avgResponseMs = partialLoad ? null : getFeedbackAvgResponseMs(items);
+    const avgResponseText = partialLoad
+        ? '…'
+        : formatFeedbackAvgResponseHours(avgResponseMs);
     const typeFilter = _projectFeedbackTypeFilter || 'all';
     const statusFilter = _projectFeedbackStatusFilter || 'all';
     const onlyUnprocessed = statusFilter === 'new' || statusFilter === 'pending' || statusFilter === 'open';
@@ -4688,7 +5218,7 @@ function getProjectFeedbackHeader(project, items) {
     const speedLabel = window.t('feedbackResponseSpeedLabel', {}, lang) || (lang === 'ru' ? 'Скорость обработки' : 'Processing speed');
     const unprocessedLabel = window.t('feedbackOnlyUnprocessedLabel', {}, lang) || (lang === 'ru' ? 'Только необработанные' : 'Unprocessed only');
     const allClearLabel = lang === 'ru' ? 'Очередь пуста 🎉' : 'Inbox zero 🎉';
-    const slaToneClass = getFeedbackSlaToneClass(avgResponseMs);
+    const slaToneClass = partialLoad ? '' : getFeedbackSlaToneClass(avgResponseMs);
     const slaIconHtml = getMaterialAcuteIconSvg('feedback-sla-icon');
 
     return `
@@ -4773,18 +5303,97 @@ var _projectFeedbackTypeFilter = 'all';
 var _projectFeedbackStatusFilter = 'all';
 var _projectFeedbackCardNodes = null;
 
-function resetProjectFeedbackFilters() {
-    _projectFeedbackTypeFilter = 'all';
-    _projectFeedbackStatusFilter = 'all';
+function resetProjectFeedbackFilters(preferUnprocessed, typeFilter) {
+    _projectFeedbackTypeFilter = ['all', 'google_play', 'bug', 'idea'].includes(typeFilter) ? typeFilter : 'all';
+    _projectFeedbackStatusFilter = preferUnprocessed ? 'new' : 'all';
     _projectFeedbackCardNodes = null;
+}
+
+function resolveActiveFeedbackProject() {
+    var appId = Number(typeof _activeProjectFeedbackAppId !== 'undefined' ? _activeProjectFeedbackAppId : window._activeProjectFeedbackAppId || 0);
+    var project = typeof getFeedbackRewardProject === 'function' ? getFeedbackRewardProject() : null;
+    if (project) return project;
+    if (appId <= 0) return null;
+    function match(item) {
+        return Number(item && (item.app_id || item.id) || 0) === appId;
+    }
+    return ((typeof myProjects !== 'undefined' && myProjects) || []).find(match)
+        || ((typeof archivedProjects !== 'undefined' && archivedProjects) || []).find(match)
+        || null;
+}
+
+function activeFeedbackItems() {
+    if (typeof _activeProjectFeedbackItems !== 'undefined' && Array.isArray(_activeProjectFeedbackItems)) {
+        return _activeProjectFeedbackItems;
+    }
+    return Array.isArray(window._activeProjectFeedbackItems) ? window._activeProjectFeedbackItems : [];
+}
+
+function feedbackItemsIncludeProcessed(items) {
+    return (items || []).some(function(item) {
+        return item && !isOpenFeedbackStatus(item.status);
+    });
+}
+
+function rerenderActiveFeedbackList(preferUnprocessed, items, partialLoad) {
+    var project = resolveActiveFeedbackProject();
+    _projectFeedbackCardNodes = null;
+    if (typeof window.showProjectFeedbackModal === 'function' && project) {
+        window.showProjectFeedbackModal(project, items || activeFeedbackItems(), {
+            preferUnprocessed: !!preferUnprocessed,
+            typeFilter: _projectFeedbackTypeFilter,
+            partialLoad: !!partialLoad
+        });
+        return true;
+    }
+    applyProjectFeedbackFilters();
+    return false;
 }
 
 function toggleFeedbackUnprocessedOnly(checked) {
     _projectFeedbackStatusFilter = checked ? 'new' : 'all';
-    applyProjectFeedbackFilters();
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    if (checked) {
+        applyProjectFeedbackFilters();
+        return;
+    }
+
+    var items = activeFeedbackItems();
+    var fullLoaded = typeof _activeProjectFeedbackFullLoaded !== 'undefined'
+        ? !!_activeProjectFeedbackFullLoaded
+        : !!window._activeProjectFeedbackFullLoaded;
+    var needsFetch = !fullLoaded || !feedbackItemsIncludeProcessed(items);
+    if (!needsFetch) {
+        rerenderActiveFeedbackList(false, items, false);
+        return;
+    }
+
+    var toggleEl = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
+    if (toggleEl) toggleEl.disabled = true;
+    var loadPromise = (typeof ensureFullProjectFeedbackLoaded === 'function')
+        ? ensureFullProjectFeedbackLoaded({ force: !!fullLoaded })
+        : Promise.resolve(items);
+    loadPromise.then(function(loaded) {
+        if (toggleEl) toggleEl.disabled = false;
+        if (!_isProjectFeedbackModalOpenSafe()) return;
+        rerenderActiveFeedbackList(false, loaded || activeFeedbackItems(), false);
+    }).catch(function(error) {
+        if (toggleEl) toggleEl.disabled = false;
+        console.error('Full feedback load on uncheck failed:', error);
+        _projectFeedbackStatusFilter = 'new';
+        if (toggleEl) toggleEl.checked = true;
+        applyProjectFeedbackFilters();
+        if (typeof showToast === 'function') {
+            showToast(window.t('networkError', {}, lang) || 'Network error');
+        }
+    });
 }
 window.toggleFeedbackUnprocessedOnly = toggleFeedbackUnprocessedOnly;
+
+function _isProjectFeedbackModalOpenSafe() {
+    var modal = document.getElementById('project-feedback-modal');
+    return !!(modal && modal.classList.contains('active'));
+}
 
 function normalizeFeedbackStatus(status) {
     return String(status || '').trim().toLowerCase();
@@ -4970,20 +5579,14 @@ function renderProjectFeedbackCards(project, items) {
     const projectId = Number(project && (project.id || project.app_id) || 0);
 
     const groups = groupFeedbackByDate(items);
-    const groupTitles = {
-        today: lang === 'ru' ? 'Сегодня' : 'Today',
-        yesterday: lang === 'ru' ? 'Вчера' : 'Yesterday',
-        thisWeek: lang === 'ru' ? 'На этой неделе' : 'This week',
-        earlier: lang === 'ru' ? 'Ранее' : 'Earlier'
-    };
 
     let html = '<div class="feedback-list">';
 
-    ['today', 'yesterday', 'thisWeek', 'earlier'].forEach(function(groupKey) {
+    feedbackDateGroupOrder().forEach(function(groupKey) {
         const groupItems = groups[groupKey];
         if (!groupItems || !groupItems.length) return;
 
-        html += `<div class="feedback-section-header">${groupTitles[groupKey]} <span class="feedback-section-count">${groupItems.length}</span></div>`;
+        html += `<div class="feedback-section-header">${window.escapeHTML(feedbackDateGroupTitle(groupKey))} <span class="feedback-section-count">${groupItems.length}</span></div>`;
 
         html += groupItems.map(function(item) {
             const feedbackType = String(item.type || 'bug').toLowerCase();
@@ -5032,7 +5635,7 @@ function renderProjectFeedbackCards(project, items) {
             var textBodyHtml = '';
             if (isReviewTicket) {
                 textBodyHtml = `<div class="fb-text">${window.escapeHTML(window.t('projectFeedbackReviewTicketText', {}, lang))}</div>`;
-            } else if (item.message_text) {
+            } else if (item.message_text && !isFeedbackScreenshotPlaceholder(item.message_text)) {
                 const escapedText = escapeHtmlWithBreaks(item.message_text);
                 const showAllLabel = window.escapeHTML(window.t('feedbackShowAllBtn', {}, lang));
                 textBodyHtml = `<div class="fb-text fb-text--clamped" id="fbt-${item.id}" data-feedback-clamp="1" data-feedback-id="${item.id}">${escapedText}</div><a href="javascript:void(0);" class="fb-show-all" id="fbtl-${item.id}" style="display:none;" onclick="feedbackExpandText(${item.id})">${showAllLabel}</a>`;
@@ -5080,7 +5683,7 @@ function renderProjectFeedbackCards(project, items) {
                 rewardHtml = `
                     <div class="fb-reward-block">
                         ${rewardBust > 0 ? `<span class="fb-reward-chip reward-bust"><span class="reward-icon">💎</span> ${formatBustAmount(rewardBust)}</span>` : ''}
-                        ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">☯️</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
+                        ${rewardKarma > 0 ? `<span class="fb-reward-chip reward-karma"><span class="reward-icon">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️'}</span> ${rewardKarma.toFixed(1)} Karma</span>` : ''}
                     </div>`;
             }
 
@@ -5119,31 +5722,15 @@ function renderProjectFeedbackCards(project, items) {
             if (isOpen && isReviewTicket) {
                 decideButtonsHtml = `
                     <button class="fb-action-btn fb-action-btn--reject" onclick="openPlayReviewRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
-                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--reward fb-btn-accept-wrapper"
-                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
-                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
-                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            ontouchmove="handleFeedbackAcceptTouchMove(this, event)"
-                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
-                        <span class="fb-btn-accept-progress"></span>
+                    <button type="button" class="fb-action-btn fb-action-btn--primary fb-action-btn--reward"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)">
                         <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             } else if (isOpen) {
                 decideButtonsHtml = `
                     <button class="fb-action-btn fb-action-btn--reject" onclick="openFeedbackRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
-                    <button class="fb-action-btn fb-action-btn--primary fb-action-btn--accept fb-btn-accept-wrapper"
-                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)"
-                            onmousedown="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            onmouseup="cancelFeedbackAcceptLongPress(this, event)"
-                            onmouseleave="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchstart="startFeedbackAcceptLongPress(this, ${item.id}, ${projectId}, event)"
-                            ontouchmove="handleFeedbackAcceptTouchMove(this, event)"
-                            ontouchend="cancelFeedbackAcceptLongPress(this, event)"
-                            ontouchcancel="cancelFeedbackAcceptLongPress(this, event)">
-                        <span class="fb-btn-accept-progress"></span>
+                    <button type="button" class="fb-action-btn fb-action-btn--primary fb-action-btn--accept"
+                            onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)">
                         <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
             }
@@ -5445,14 +6032,10 @@ function openFeedbackTopicLink(telegramMessageId, username) {
         username: cleanUsername || 'user',
     }, lang);
     var openLink = function() {
-        var groupId = (window.App && window.App.frontendGroupId) || '';
-        var url;
-        if (groupId) {
-            url = 'https://t.me/c/' + groupId + '/' + telegramMessageId;
-        } else {
-            var base = (window.FEEDBACK_PUBLIC_LINK_BASE || (window.App && window.App.publicGroupUrl) || 'https://t.me/googleplay_console_12testers').replace(/\/+$/, '');
-            url = base + '/' + telegramMessageId;
-        }
+        var url = (typeof window.buildTesterFeedbackMessageUrl === 'function')
+            ? window.buildTesterFeedbackMessageUrl(telegramMessageId)
+            : '';
+        if (!url) return;
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
             window.Telegram.WebApp.openTelegramLink(url);
         } else {
@@ -5595,26 +6178,20 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
     }
 
     if (Array.isArray(window._activeProjectFeedbackItems)) {
-        if (statusFilter === 'all') {
-            window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
-                if (Number(item && item.id) === safeId) {
-                    item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
-                    item.replied_at = new Date().toISOString();
-                    if (nextStatus === 'rejected' && rejectionReason) {
-                        item.rejection_reason = rejectionReason;
-                    }
-                    if (rewardBust > 0) item.reward_bust = rewardBust;
-                    if (rewardKarma > 0) item.reward_karma = rewardKarma;
-                    item.processed_at = new Date().toISOString();
-                    item.replied_at = item.processed_at;
+        window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
+            if (Number(item && item.id) === safeId) {
+                item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
+                item.replied_at = new Date().toISOString();
+                if (nextStatus === 'rejected' && rejectionReason) {
+                    item.rejection_reason = rejectionReason;
                 }
-                return item;
-            });
-        } else {
-            window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.filter(function(item) {
-                return Number(item && item.id) !== safeId;
-            });
-        }
+                if (rewardBust > 0) item.reward_bust = rewardBust;
+                if (rewardKarma > 0) item.reward_karma = rewardKarma;
+                item.processed_at = new Date().toISOString();
+                item.replied_at = item.processed_at;
+            }
+            return item;
+        });
     }
 
     if (Array.isArray(window._projectFeedbackCardNodes) && statusFilter !== 'all') {
@@ -5654,6 +6231,13 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
         Promise.resolve()
             .then(function() { return loadProjects(true); })
             .catch(function() { /* ignore */ });
+    }
+    if (typeof window.rememberProjectFeedbackSession === 'function') {
+        window.rememberProjectFeedbackSession();
+    }
+    var activeAppId = Number(typeof _activeProjectFeedbackAppId !== 'undefined' ? _activeProjectFeedbackAppId : window._activeProjectFeedbackAppId || 0);
+    if (window.ProjectToday && typeof window.ProjectToday.recordFeedbackReward === 'function') {
+        window.ProjectToday.recordFeedbackReward(activeAppId, safeId, extra);
     }
 }
 
@@ -5746,21 +6330,62 @@ function showProjectFeedbackModalError(project) {
     }
 }
 
-function showProjectFeedbackModal(project, items) {
-    resetProjectFeedbackFilters();
+function showProjectFeedbackModal(project, items, options) {
+    options = options || {};
+    var focusId = Number(options.focusFeedbackId || 0);
+    if (focusId > 0 && Array.isArray(items)) {
+        var focusItem = items.find(function(it) { return Number(it && it.id) === focusId; });
+        if (focusItem) {
+            var fSt = String(focusItem.status || '').toLowerCase();
+            if (fSt === 'rejected' || fSt === 'resolved' || fSt === 'closed' || focusItem.processed) {
+                options.preferUnprocessed = false;
+            }
+        }
+    }
+    if (options.preserveFilters) {
+        _projectFeedbackCardNodes = null;
+    } else {
+        resetProjectFeedbackFilters(!!options.preferUnprocessed, options.typeFilter);
+    }
     const body = document.getElementById('project-feedback-body');
     if (!body) return;
-    body.innerHTML = getProjectFeedbackHeader(project, items) + renderProjectFeedbackCards(project, items);
+    body.innerHTML = getProjectFeedbackHeader(project, items, {
+        partialLoad: !!options.partialLoad
+    }) + renderProjectFeedbackCards(project, items);
     document.getElementById('project-feedback-modal').classList.add('active');
     cacheProjectFeedbackCards();
+    applyProjectFeedbackFilters();
     feedbackScheduleClampMeasure();
+    if (focusId > 0) {
+        var focusCard = body.querySelector('.fb-card[data-feedback-id="' + focusId + '"]');
+        if (focusCard) {
+            focusCard.classList.remove('fb-card--collapsed');
+            focusCard.classList.add('fb-card--expanded');
+            var expandBtn = focusCard.querySelector('.fb-card__expand-btn, [data-action="expand-feedback"]');
+            if (expandBtn) expandBtn.setAttribute('aria-expanded', 'true');
+        }
+    }
     if (typeof window.hideTgDeeplinkLoader === 'function') {
         window.hideTgDeeplinkLoader('feedback');
     }
 }
 
+function refreshProjectFeedbackHeader(project, items, meta) {
+    const headerContainer = document.querySelector('#project-feedback-body .feedback-sticky-header') ||
+        document.querySelector('.feedback-sticky-header');
+    if (!headerContainer || typeof getProjectFeedbackHeader !== 'function') return;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = getProjectFeedbackHeader(project, items, meta || {});
+    const newHeader = tempDiv.querySelector('.feedback-sticky-header');
+    if (newHeader) headerContainer.replaceWith(newHeader);
+}
+window.refreshProjectFeedbackHeader = refreshProjectFeedbackHeader;
+
 function closeProjectFeedbackModal(event) {
     if (event && event.target !== document.getElementById('project-feedback-modal')) return;
+    if (typeof window.rememberProjectFeedbackSession === 'function') {
+        window.rememberProjectFeedbackSession();
+    }
     document.getElementById('project-feedback-modal').classList.remove('active');
 }
 
@@ -5790,6 +6415,8 @@ function getKarmaSourceLabel(sourceType) {
         karma_burn: 'karmaSrc_karma_burn',
         checkin_reset: 'karmaSrc_checkin_reset',
         penalty: 'karmaSrc_penalty',
+        screenshot_bonus: 'karmaSrc_screenshot_bonus',
+        extra_screenshot: 'karmaSrc_screenshot_bonus',
         other: 'karmaSrc_other',
         good: 'karmaSrc_good_test',
         bug: 'karmaSrc_bug_report',
@@ -5802,7 +6429,85 @@ function getKarmaSourceLabel(sourceType) {
 function formatKarmaAmount(amount) {
     const num = Number(amount || 0);
     const sign = num >= 0 ? '+' : '';
-    return `${sign}${num.toFixed(1)} ☯️`;
+    const value = `${sign}${num.toFixed(1)}`;
+    const safeValue = typeof window.escapeHTML === 'function' ? window.escapeHTML(value) : value;
+    if (typeof window.withKarmaIcon === 'function') {
+        return window.withKarmaIcon(safeValue, 'karma-yin-icon--inline', { after: true });
+    }
+    return `${safeValue} ☯️`;
+}
+
+function karmaHowValueHtml(value) {
+    const safeValue = typeof window.escapeHTML === 'function'
+        ? window.escapeHTML(String(value == null ? '' : value))
+        : String(value == null ? '' : value);
+    if (typeof window.withKarmaIcon === 'function') {
+        return window.withKarmaIcon(safeValue, 'karma-yin-icon--inline', { after: true });
+    }
+    return safeValue;
+}
+
+function renderKarmaHowList() {
+    const root = document.getElementById('karma-how-list');
+    if (!root) return;
+    const currentLang = (typeof lang !== 'undefined' && lang) || window.currentLang || 'ru';
+    const label = function (key, fallback) {
+        return window.t(key, {}, currentLang) || fallback;
+    };
+    const groups = [
+        {
+            title: label('karmaHowPlatformTitle', '🟢 От Платформы'),
+            rows: [
+                { label: label('karmaHowOvertimeCheckin', 'Чекин в овертайме'), value: '+0.1' },
+                { label: label('karmaHowScreenshots', '3+ скриншота за день'), value: '+0.3' },
+                { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.5' },
+                { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.5' },
+                { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.5' },
+                { label: label('karmaHowOwnerFinish', 'Завершение проекта владельцем'), value: '+1.0' },
+                { label: label('karmaHowPlatformFeedback', 'Фидбэк саппорту / Платформе'), value: label('karmaHowValueUpTo30', 'до +3.0') },
+                { label: label('karmaHowAdmin', 'Награда от администратора'), value: label('karmaHowValueCustom', 'индивидуально') },
+            ],
+        },
+        {
+            title: label('karmaHowDevTitle', '🤝 От Разработчиков'),
+            rows: [
+                { label: label('karmaHowThanks', 'Спасибо'), note: label('karmaHowThanksNote', '2 в первую неделю, ещё 2 со второй'), value: '+1.5' },
+                { label: label('karmaHowSpecial', 'Особый вклад'), note: label('karmaHowSpecialNote', '1 в первую неделю, ещё 1 со второй'), value: '+3.0' },
+                { label: label('karmaHowOvertimeReward', 'Овертайм-награда (одному тестеру)'), value: '+2.0' },
+                { label: label('karmaHowPlayReviewReward', 'Награда за отзыв в Google Play'), value: '+1.5 / +3.0' },
+            ],
+        },
+        {
+            title: label('karmaHowLoseTitle', '🔴 Как потерять'),
+            rows: [
+                { label: label('karmaHowAbandon', 'Покинуть проект досрочно (abandoned)'), value: '−3.0' },
+                {
+                    label: label('karmaHowCatchupMiss', 'Незакрытый дозапрос контрольного дня'),
+                    note: label('karmaHowCatchupMissNote', 'за каждый, если проект завершён без отчёта'),
+                    value: '−1.0',
+                },
+            ],
+        },
+    ];
+    root.innerHTML = groups.map(function (group) {
+        return '<div class="karma-how-group">' + window.escapeHTML(group.title) + '</div>' +
+            group.rows.map(function (row) {
+                const text = row.note ? (row.label + ' (' + row.note + ')') : row.label;
+                return '<div class="karma-how-row">' +
+                    '<span class="karma-how-row__label">' + window.escapeHTML(text) + '</span>' +
+                    '<span class="karma-how-row__value">' + karmaHowValueHtml(row.value) + '</span>' +
+                    '</div>';
+            }).join('');
+    }).join('');
+}
+window.renderKarmaHowList = renderKarmaHowList;
+if (typeof window.updateTranslations === 'function' && !window._karmaHowTranslationsHooked) {
+    window._karmaHowTranslationsHooked = true;
+    const originalUpdateTranslations = window.updateTranslations;
+    window.updateTranslations = function (nextLang) {
+        originalUpdateTranslations(nextLang);
+        renderKarmaHowList();
+    };
 }
 
 function closeKarmaInfoModal(event) {
@@ -5821,11 +6526,16 @@ async function showKarmaInfo() {
     if (!modal || !totalEl || !breakdownSection || !breakdownEl) return;
 
     const fallbackTotal = Number((visibilityStats && visibilityStats.ownerKarma) || 0);
-    totalEl.textContent = window.t('karmaInfoBalanceValue', {
-        amount: fallbackTotal.toFixed(1),
-    });
+    totalEl.innerHTML = (typeof window.withKarmaIcon === 'function')
+        ? window.withKarmaIcon(window.t('karmaInfoBalanceValue', {
+            amount: fallbackTotal.toFixed(1),
+        }))
+        : window.t('karmaInfoBalanceValue', {
+            amount: fallbackTotal.toFixed(1),
+        });
     breakdownEl.innerHTML = '';
     breakdownSection.style.display = 'none';
+    renderKarmaHowList();
 
     let result = {
         status: 'error',
@@ -5841,21 +6551,28 @@ async function showKarmaInfo() {
     const safeTotal = Number.isFinite(Number(result && result.total))
         ? Number(result.total)
         : fallbackTotal;
-    totalEl.textContent = window.t('karmaInfoBalanceValue', {
-        amount: safeTotal.toFixed(1),
-    });
-
-    const rows = (Array.isArray(result && result.breakdown) ? result.breakdown : [])
-        .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0)
-        .map((item) => {
-            const sourceLabel = window.escapeHTML(getKarmaSourceLabel(item.source_type));
-            const amount = Number(item && item.amount) || 0;
-            const amountText = window.escapeHTML(formatKarmaAmount(amount));
-            return `<div class="dashboard-row"><span class="dashboard-label">${sourceLabel}</span><span class="dashboard-label" style="font-weight:700;">${amountText}</span></div>`;
+    totalEl.innerHTML = (typeof window.withKarmaIcon === 'function')
+        ? window.withKarmaIcon(window.t('karmaInfoBalanceValue', {
+            amount: safeTotal.toFixed(1),
+        }))
+        : window.t('karmaInfoBalanceValue', {
+            amount: safeTotal.toFixed(1),
         });
 
-    if (rows.length > 0) {
-        breakdownEl.innerHTML = rows.join('');
+    const rows = (Array.isArray(result && result.breakdown) ? result.breakdown : [])
+        .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0);
+    if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'screenshot_bonus')) {
+        rows.push({ source_type: 'screenshot_bonus', amount: 0, count: 0 });
+    }
+    const rowHtml = rows.map((item) => {
+            const sourceLabel = window.escapeHTML(getKarmaSourceLabel(item.source_type));
+            const amount = Number(item && item.amount) || 0;
+            const amountHtml = formatKarmaAmount(amount);
+            return `<div class="dashboard-row"><span class="dashboard-label">${sourceLabel}</span><span class="dashboard-label" style="font-weight:700;">${amountHtml}</span></div>`;
+        });
+
+    if (rowHtml.length > 0) {
+        breakdownEl.innerHTML = rowHtml.join('');
         breakdownSection.style.display = '';
     } else {
         breakdownEl.innerHTML = '';
@@ -6880,7 +7597,7 @@ function showRankPopup() {
     else alert(msg);
 }
 
-function showTestDayPopup(day) {
+function showTestDayPopup(day, isExternal) {
     if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
         window.tg.HapticFeedback.selectionChanged();
     }
@@ -6935,9 +7652,13 @@ function showTestDayPopup(day) {
     const icon = isControl ? '📸' : '📅';
     const dayProgress = window.t('testDayModalTestingProgress', { day: numDay }, currentLang)
         || `Вы тестируете это приложение <b>${numDay}-й день из 14</b>.`;
+    const useProofCopy = !isExternal && typeof window.isScreenshotProofUploadEnabled === 'function'
+        && window.isScreenshotProofUploadEnabled();
     const scheduleDesc = isControl
-        ? (window.t('testDayModalControlSchedule', {}, currentLang) || 'Контрольные дни: <b>1, 4, 7, 10 и 14</b>.<br>В эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).')
-        : (window.t('testDayModalRegularSchedule', {}, currentLang) || 'Сегодня обычный день тестирования. Достаточно открыть приложение и выполнить ежедневный чекин.<br><br>Контрольные дни со скриншотом в ЛС: <b>1, 4, 7, 10 и 14</b>.');
+        ? (window.t(useProofCopy ? 'testDayModalControlScheduleProof' : 'testDayModalControlSchedule', {}, currentLang)
+            || 'Контрольные дни: <b>1, 4, 7, 10 и 14</b>.<br>В эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).')
+        : (window.t(useProofCopy ? 'testDayModalRegularScheduleProof' : 'testDayModalRegularSchedule', {}, currentLang)
+            || 'Сегодня обычный день тестирования. Достаточно открыть приложение и выполнить ежедневный чекин.<br><br>Контрольные дни со скриншотом в ЛС: <b>1, 4, 7, 10 и 14</b>.');
     const tipText = isControl
         ? (window.t('testDayModalControlTip', {}, currentLang) || '💡 Своевременная отправка подтверждений гарантирует сохранение наград и защиту от блокировок за неактивность.')
         : '';
@@ -6962,10 +7683,10 @@ function showTestDayPopup(day) {
             modal.classList.add('active');
         });
     } else if (typeof showCustomAlert === 'function') {
-        const fallbackMsg = window.t('testDayExplain', { days: numDay }, currentLang);
+        const fallbackMsg = window.t(useProofCopy ? 'testDayExplainProof' : 'testDayExplain', { days: numDay }, currentLang);
         showCustomAlert(fallbackMsg);
     } else {
-        const fallbackMsg = window.t('testDayExplain', { days: numDay }, currentLang);
+        const fallbackMsg = window.t(useProofCopy ? 'testDayExplainProof' : 'testDayExplain', { days: numDay }, currentLang);
         alert(fallbackMsg);
     }
 }
@@ -7000,7 +7721,11 @@ function getProjectKarmaPools(project, testerId) {
     const thanksUsed = Math.max(0, Number(payload.thanks_used || 0) || 0);
     const specialUsed = Math.max(0, Number(payload.special_used || 0) || 0);
     const likes = Array.isArray(payload.likes) ? payload.likes : [];
+    const rewardedTodayTesterIds = Array.isArray(payload.rewarded_today_tester_ids)
+        ? payload.rewarded_today_tester_ids.map(id => Number(id || 0))
+        : [];
     const safeTesterId = Number(testerId || 0);
+    const rewardedToday = safeTesterId > 0 && rewardedTodayTesterIds.includes(safeTesterId);
     const hasThanks = safeTesterId > 0 && likes.some(function(like) {
         return Number(like.tester_id) === safeTesterId && String(like.type || '').toLowerCase() === 'good';
     });
@@ -7018,10 +7743,21 @@ function getProjectKarmaPools(project, testerId) {
         specialAvailable: specialAvailable,
         hasThanks: hasThanks,
         hasSpecial: hasSpecial,
-        canGiveThanks: thanksAvailable > 0 && !hasThanks,
-        canGiveSpecial: specialAvailable > 0 && !hasSpecial,
-        canReward: (thanksAvailable > 0 && !hasThanks) || (specialAvailable > 0 && !hasSpecial),
+        rewardedToday: rewardedToday,
+        canGiveThanks: thanksAvailable > 0 && !rewardedToday,
+        canGiveSpecial: specialAvailable > 0 && !rewardedToday,
+        canReward: (thanksAvailable > 0 && !rewardedToday) || (specialAvailable > 0 && !rewardedToday),
     };
+}
+
+function getKarmaDistributionFeedbackCount(tester, feedbackCountByTester) {
+    const counts = feedbackCountByTester || {};
+    const ids = [tester && tester.tester_id, tester && tester.id, tester && tester.user_id];
+    for (const id of ids) {
+        const count = Number(counts[Number(id)] || 0);
+        if (count > 0) return count;
+    }
+    return 0;
 }
 
 function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
@@ -7032,8 +7768,10 @@ function buildKarmaDistributionTesterStats(tester, feedbackCountByTester) {
         checkins: tester.checkins_count || 0,
         skips: actualSkips,
     }, lang);
-    const feedbackCount = Number(feedbackCountByTester[Number(tester.tester_id)] || 0);
-    stats += window.t('karmaDistributionTesterFeedback', { count: feedbackCount }, lang);
+    const feedbackCount = getKarmaDistributionFeedbackCount(tester, feedbackCountByTester);
+    if (feedbackCount > 0) {
+        stats += ' | ' + window.t('karmaDistributionTesterFeedback', { count: feedbackCount }, lang);
+    }
     return window.escapeHTML(stats);
 }
 
@@ -7073,25 +7811,26 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
 
         const testerDay = tester.start_date ? (getDayDiffFromToday(tester.start_date) + 1) : 0;
         const actualSkips = Math.max(0, (testerDay - 1) - (tester.checkins_count || 0));
-        const feedbackCount = Number((feedbackCountByTester && feedbackCountByTester[Number(tester.tester_id)]) || 0);
+        const feedbackCount = getKarmaDistributionFeedbackCount(tester, feedbackCountByTester);
 
         const statsParts = [];
         if (testerDay > 0) statsParts.push(lang === 'ru' ? `День ${testerDay}` : `Day ${testerDay}`);
         if (actualSkips > 0) statsParts.push(lang === 'ru' ? `Пропуски: ${actualSkips}` : `Skips: ${actualSkips}`);
-        if (feedbackCount > 0) statsParts.push(lang === 'ru' ? `Фидбэки: ${feedbackCount}` : `Feedback: ${feedbackCount}`);
+        if (feedbackCount > 0) statsParts.push(window.t('karmaDistributionTesterFeedback', { count: feedbackCount }, lang));
         const metaStr = statsParts.length ? statsParts.join(' · ') : (lang === 'ru' ? `День ${testerDay || 1}` : `Day ${testerDay || 1}`);
 
-        const usedBadges = [];
-        if (testerPools.hasThanks) usedBadges.push(`<span class="karma-awarded-pill">👍 +1.5</span>`);
-        if (testerPools.hasSpecial) usedBadges.push(`<span class="karma-awarded-pill">💡 +3.0</span>`);
+        const issuedRewards = [];
+        if (testerPools.hasThanks) issuedRewards.push('👍 +1.5');
+        if (testerPools.hasSpecial) issuedRewards.push('❤️‍🔥 +3.0');
+        const usedBadges = issuedRewards.map((reward) => `<span class="karma-awarded-pill">${reward}</span>`);
 
         let actionBtnHtml = '';
         if (testerPools.canReward) {
-            actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Наградить')}</button>`;
-        } else if (usedBadges.length >= 2) {
-            actionBtnHtml = `<span class="karma-done-badge">${window.escapeHTML(window.t('karmaAllRewarded', {}, lang) || '✓ Награждён')}</span>`;
+            actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
+        } else if (testerPools.rewardedToday) {
+            actionBtnHtml = `<span class="karma-awarded-summary"><span class="karma-awarded-summary__label">${window.escapeHTML(window.t('karmaAwardIssuedLabel', {}, lang) || 'Награда')}</span><span class="karma-awarded-summary__value">${window.escapeHTML(window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today')}</span></span>`;
         } else {
-            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>+ Наградить</button>`;
+            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         }
 
         return `<div class="karma-dist-row">
@@ -7100,7 +7839,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
                 <div class="karma-dist-tester-meta">${window.escapeHTML(metaStr)}</div>
             </div>
             <div class="karma-dist-row-actions">
-                ${usedBadges.join('')}
+                ${testerPools.canReward ? usedBadges.join('') : ''}
                 ${actionBtnHtml}
             </div>
         </div>`;
@@ -7108,9 +7847,9 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
 
     body.innerHTML = `
         <div class="karma-dist-header">
-            <div class="karma-dist-icon-badge">☯️</div>
+            <div class="karma-dist-icon-badge">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--lg') : '☯️'}</div>
             <div class="karma-dist-header-main">
-                <h3 class="karma-dist-title">${window.escapeHTML(window.t('karmaDistributionTitle', {}, lang) || 'Раздача Кармы')}</h3>
+                <h3 class="karma-dist-title">${window.escapeHTML(window.t('karmaDistributionTitle', {}, lang) || 'Благодарность Тестировщику')}</h3>
                 <div class="karma-dist-subtitle">${window.escapeHTML(subtitleText)}</div>
             </div>
         </div>
@@ -7119,7 +7858,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
             <button type="button" class="karma-dist-limits-toggle" onclick="toggleKarmaLimitsAccordion()">
                 <div class="karma-dist-limits-label">
                     <span>${window.escapeHTML(window.t('karmaDistLimitsTitle', {}, lang) || 'Доступный лимит')}</span>
-                    <span class="karma-limit-badge">${totalAvailable} из ${totalMax} наград</span>
+                    <span class="karma-limit-badge">${window.escapeHTML(window.t('karmaDistLimitsCount', { available: totalAvailable, max: totalMax }, lang) || (totalAvailable + ' из ' + totalMax))}</span>
                 </div>
                 <svg class="karma-chevron-icon" id="karma-dist-limits-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -7132,7 +7871,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
                         <span class="karma-dist-pool-val">${pools.thanksAvailable} из ${pools.thanksMax} доступно</span>
                     </div>
                     <div class="karma-dist-pool-item">
-                        <span class="karma-dist-pool-title">💡 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особый вклад')} (+3.0)</span>
+                        <span class="karma-dist-pool-title">❤️‍🔥 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особый вклад')} (+3.0)</span>
                         <span class="karma-dist-pool-val">${pools.specialAvailable} из ${pools.specialMax} доступно</span>
                     </div>
                 </div>
@@ -7184,34 +7923,26 @@ async function openKarmaDistribution(projectId) {
             const feedbackCountByTester = {};
             const testerMap = {};
             (project.testers || []).forEach(function(t) {
-                const tid = Number(t.tester_id || 0);
-                if (tid > 0) testerMap[tid] = t;
+                [t.tester_id, t.id, t.user_id].forEach(function(id) {
+                    const tid = Number(id || 0);
+                    if (tid > 0) testerMap[tid] = t;
+                });
             });
 
             data.feedback.forEach(function(item) {
-                const testerId = Number(item.tester_id || 0);
-                if (testerId <= 0) return;
-                const tester = testerMap[testerId];
+                const feedbackTesterId = Number(item.tester_id || item.user_id || (item.tester && item.tester.id) || 0);
+                if (feedbackTesterId <= 0) return;
+                const tester = testerMap[feedbackTesterId];
                 if (!tester) return; // Only count active testers belonging to this project
 
-                const status = String(item.status || '').trim().lower();
-                if (status === 'rejected' || status === 'spam' || status === 'google_play_review_rejected') {
-                    return; // Ignore rejected or spam tickets
-                }
+                const status = String(item.status || '').trim().toLowerCase();
+                if (status === 'spam') return;
 
-                // Check timeframe: only count feedback left during tester's current run
-                if (tester.start_date && item.created_at) {
-                    try {
-                        const testerStart = new Date(tester.start_date).getTime();
-                        const feedbackDate = new Date(item.created_at).getTime();
-                        // 1 hour grace buffer for clock skew on test start day
-                        if (feedbackDate < testerStart - 3600000) {
-                            return; // Belongs to an earlier cycle / previous run
-                        }
-                    } catch (e) {}
-                }
-
-                feedbackCountByTester[testerId] = (feedbackCountByTester[testerId] || 0) + 1;
+                // Show the total feedback actually sent in this project. We intentionally
+                // keep processed and rejected records: they are still useful context for
+                // the owner when distributing karma.
+                const canonicalTesterId = Number(tester.tester_id || tester.id || tester.user_id || feedbackTesterId);
+                feedbackCountByTester[canonicalTesterId] = (feedbackCountByTester[canonicalTesterId] || 0) + 1;
             });
             if (window._karmaDistributionProjectId === projectId) {
                 renderKarmaDistributionModal(project, feedbackCountByTester);
@@ -7237,6 +7968,7 @@ function showCustomAlert(text, options) {
     const textNode = document.getElementById('custom-alert-text');
     const allowHtml = !!(options && options.html);
     if (!overlay || !textNode) return;
+    overlay.classList.toggle('custom-alert-overlay--market-access', !!(options && options.variant === 'market-access'));
     textNode.classList.toggle('custom-alert-text--html', allowHtml);
     if (allowHtml) {
         textNode.innerHTML = text;
@@ -7347,6 +8079,7 @@ function closeCustomAlert(event) {
     }
     if (overlay) {
         overlay.classList.remove('active');
+        overlay.classList.remove('custom-alert-overlay--market-access');
     }
 }
 
@@ -7741,12 +8474,13 @@ function handleGuestClaimWelcomeGoToDashboard() {
     }
 }
 
-function showToast(message) {
+function showToast(message, duration) {
+    if (!message || typeof message !== 'string' || !message.trim()) return;
     let toast = document.getElementById('custom-toast');
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'custom-toast';
-        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 10px 20px; border-radius: 12px; font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; text-align: center; max-width: 85%;';
+        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 100000; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; text-align: center; max-width: 85%; white-space: pre-line; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
         document.body.appendChild(toast);
     }
     toast.innerText = message;
@@ -7754,7 +8488,7 @@ function showToast(message) {
     clearTimeout(toast._timeout);
     toast._timeout = setTimeout(() => {
         toast.style.opacity = '0';
-    }, 3000);
+    }, duration || 3000);
 }
 
 function switchTab(tabId, navElement) {
@@ -7786,13 +8520,14 @@ function switchTab(tabId, navElement) {
         renderEvents(true);
         renderIncomingOffers(true);
         if (typeof renderBountyApplications === 'function') renderBountyApplications(true);
-        renderTests(true);
-        if (typeof loadTasks === 'function') {
-            loadTasks(true).catch(function() {});
-        }
+        if (typeof window.reconcileTestsView === 'function') window.reconcileTestsView();
+        else renderTests(true);
     }
 
     if (finalTab === 'market') {
+        if (window.ShowcaseGeo && typeof window.ShowcaseGeo.mount === 'function') {
+            window.ShowcaseGeo.mount();
+        }
         if (window.hydrateMarketFromCache) {
             window.hydrateMarketFromCache();
         }
@@ -7805,11 +8540,10 @@ function switchTab(tabId, navElement) {
         if (typeof window.syncHomeScreenUi === 'function') {
             window.syncHomeScreenUi();
         }
-        var projectsList = document.getElementById('projects-list');
-        var hasRenderedProjects = projectsList && projectsList.querySelector('.card, .developer-widget, .empty-state');
-        if (!hasRenderedProjects) {
+        if (typeof window.reconcileProjectsView === 'function') window.reconcileProjectsView();
+        else {
             renderProjects(true);
-            renderArchivedProjects(true);
+            renderArchivedProjects();
         }
         if (typeof initPipelineHeader === 'function') initPipelineHeader();
         if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
@@ -7835,32 +8569,30 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'tests') {
-        if (window.loadTasks) {
-            window.loadTasks(true).catch(function() {});
-        }
         if (window.loadEvents) {
             window.loadEvents().catch(function() {});
         }
-        if (window.loadIncomingOffers) {
-            window.loadIncomingOffers({ background: true }).catch(function() {});
-        }
-        if (window.loadBountyApplications) {
-            window.loadBountyApplications({ background: true }).catch(function() {});
-        }
-        if (window.loadReliabilitySummary) {
-            window.loadReliabilitySummary(true).catch(function() {});
-        }
-        if (window.loadReliabilityBreakdown) {
-            window.loadReliabilityBreakdown(true).catch(function() {});
+        if (typeof window.refreshVisibleTests === 'function') {
+            window.refreshVisibleTests().catch(function() {});
+        } else {
+            if (window.loadTasks) window.loadTasks(true).catch(function() {});
+            if (window.loadIncomingOffers) window.loadIncomingOffers({ background: true }).catch(function() {});
+            if (window.loadBountyApplications) window.loadBountyApplications({ background: true }).catch(function() {});
+            if (window.loadReliabilitySummary) window.loadReliabilitySummary(true).catch(function() {});
+            if (window.loadReliabilityBreakdown) window.loadReliabilityBreakdown(true).catch(function() {});
         }
     }
 
     if (finalTab === 'projects') {
-        if (window.loadProjects) {
-            window.loadProjects(true).catch(function() {});
-        }
-        if (window.loadArchivedProjects) {
-            window.loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+        if (typeof window.refreshVisibleProjects === 'function') {
+            window.refreshVisibleProjects(false).catch(function() {});
+        } else {
+            if (window.loadProjects) {
+                window.loadProjects(true).catch(function() {});
+            }
+            if (window.loadArchivedProjects) {
+                window.loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+            }
         }
     }
 
@@ -8212,6 +8944,11 @@ function joinTesterOwnedProjectFromDossier(testerId, project, event) {
         });
         return;
     }
+    if (typeof window.gateTesterProfileForMinAndroid === 'function' && window.gateTesterProfileForMinAndroid(project, {
+        onSavedComplete: function() { joinTesterOwnedProjectFromDossier(testerId, project); },
+    })) {
+        return;
+    }
 
     closeDossierModal();
     setTimeout(function() {
@@ -8316,7 +9053,9 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
     var reliabilityLine = reliabilityState.expected >= 42
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
-    var joinBlocked = _isDossierProjectJoinBlocked(project);
+    var joinBlocked = _isDossierProjectJoinBlocked(project)
+        || !!project.blocked_by_me
+        || (typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId || project.owner_id));
     var projectMode = String(project.mode || 'mutual').toLowerCase();
     var isBountyProject = projectMode === 'bounty';
     var isHybridProject = projectMode === 'hybrid';
@@ -8420,7 +9159,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
             contactButtonHtml +
             '<button class="btn" style="background:rgba(52,199,89,0.14);color:#34c759;" onclick="tg.openLink(\'' + escapeInlineJsString(project.package_name || '') + '\')">' + window.escapeHTML(window.t('openGooglePlay', {}, lang)) + '</button>' +
             (joinBlocked
-                ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t('dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
+                ? '<button class="btn disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(window.t(project.has_access_issue ? 'accessIssueCta' : 'dossierBtnTakeTestBlocked', {}, lang)) + '</button>'
                 : ((hasPendingBountyApp || alreadyTestingThisProject)
                     ? '<button class="btn pending disabled" style="background:rgba(142,142,147,0.18);color:var(--hint-color);" disabled>' + window.escapeHTML(takeBtnLabel) + '</button>'
                     : '<button class="btn" style="background:rgba(0,122,255,0.16);color:var(--button-color);" onclick="' + takeAction + '">' + window.escapeHTML(takeBtnLabel) + '</button>')) +
@@ -8473,6 +9212,7 @@ function _buildDossierProjectMetaChips(ownedProject) {
     if (!ownedProject) return '';
     const status = String(ownedProject.status || '').toLowerCase();
     const isArchivedLike = status === 'completed' || status === 'archived';
+    const isBlocked = !!(ownedProject.is_blocked || ownedProject.blocked_at);
     
     const visibilitySnapshot = _normalizeDossierVisibilityProject(ownedProject);
     const chips = [];
@@ -8480,7 +9220,9 @@ function _buildDossierProjectMetaChips(ownedProject) {
     const recruitChip = _buildDossierRecruitModeChip(ownedProject);
     if (recruitChip) chips.push(recruitChip);
     
-    if (isArchivedLike) {
+    if (isBlocked) {
+        chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-blocked">' + window.escapeHTML(window.t('dossierOwnedProjectBlocked', {}, lang)) + '</span>');
+    } else if (isArchivedLike) {
         chips.push('<span class="dossier-project-meta-chip dossier-project-meta-chip-completed" style="background: rgba(52, 199, 89, 0.14); color: #30d158;">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</span>');
     }
     if (visibilitySnapshot.visibility_mode === 'hidden_from_showcase') {
@@ -8496,7 +9238,8 @@ function _buildDossierProjectMetaChips(ownedProject) {
 }
 
 function _isDossierProjectJoinBlocked(ownedProject) {
-    return _normalizeDossierVisibilityProject(ownedProject).visibility_mode === 'full_isolation';
+    return !!(ownedProject && (ownedProject.is_blocked || ownedProject.blocked_at || ownedProject.has_access_issue))
+        || _normalizeDossierVisibilityProject(ownedProject).visibility_mode === 'full_isolation';
 }
 
 function _normalizeDossierOwnedProjectRow(raw) {
@@ -8517,6 +9260,8 @@ function _normalizeDossierOwnedProjectRow(raw) {
         icon_url: raw.icon_url || '',
         instructions: raw.instructions || '',
         status: status,
+        blocked_at: raw.blocked_at || null,
+        is_blocked: !!(raw.is_blocked || raw.blocked_at),
         mode: String(raw.mode || 'mutual').toLowerCase() || 'mutual',
         created_at: raw.created_at || null,
         finished_at: raw.finished_at || null,
@@ -8563,6 +9308,7 @@ function _buildDossierProjectLinkSubtitle(ownedProject, options) {
     ).trim();
 
     const isArchivedLike = status === 'completed' || status === 'archived';
+    const isBlocked = !!(ownedProject.is_blocked || ownedProject.blocked_at);
 
     if (linkType === 'mutual') {
         if (linkedName) {
@@ -8787,15 +9533,36 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const safeMy = window.escapeHTML(pair.myName);
     const safeTheir = window.escapeHTML(pair.theirName);
 
-    const myStatus = String(rel && rel.my_app_status || '').trim().toLowerCase();
-    const theirStatus = String(rel && rel.their_app_status || '').trim().toLowerCase();
-    const viewerLeg = String(rel && rel.viewer_leg_status || '').trim().toLowerCase();
-    const testerLeg = String(rel && rel.tester_leg_status || '').trim().toLowerCase();
+    // Backend exchange_state is the sole calculator. Flat fields remain only
+    // as a compatibility projection for an older backend during deployment.
+    const exchangeState = rel && rel.exchange_state && Number(rel.exchange_state.version || 0) >= 1
+        ? rel.exchange_state
+        : null;
+    const viewerSide = exchangeState && exchangeState.left || null;
+    const testerSide = exchangeState && exchangeState.right || null;
+    const myStatus = String(viewerSide && viewerSide.app_status || rel && rel.my_app_status || '').trim().toLowerCase();
+    const theirStatus = String(testerSide && testerSide.app_status || rel && rel.their_app_status || '').trim().toLowerCase();
+    const viewerLeg = String(viewerSide && viewerSide.leg_status || rel && rel.viewer_leg_status || '').trim().toLowerCase();
+    const testerLeg = String(testerSide && testerSide.leg_status || rel && rel.tester_leg_status || '').trim().toLowerCase();
 
-    const myDone = myStatus === 'completed' || myStatus === 'archived' || testerLeg === 'completed';
-    const theirDone = theirStatus === 'completed' || theirStatus === 'archived' || viewerLeg === 'completed';
-    const isBroken = !!(rel && rel.is_broken);
-    const isMutualDebt = !isBroken && (!!(rel && rel.is_mutual_debt) || (myDone && !theirDone) || (theirDone && !myDone));
+    const myDone = viewerSide && typeof viewerSide.done === 'boolean'
+        ? viewerSide.done
+        : (myStatus === 'completed' || myStatus === 'archived' || testerLeg === 'completed');
+    const theirDone = testerSide && typeof testerSide.done === 'boolean'
+        ? testerSide.done
+        : (theirStatus === 'completed' || theirStatus === 'archived' || viewerLeg === 'completed');
+    const isBroken = exchangeState ? !!exchangeState.is_broken : !!(rel && rel.is_broken);
+    const isMutualDebt = !isBroken && (exchangeState
+        ? !!exchangeState.is_mutual_debt
+        : !!(rel && rel.is_mutual_debt));
+    const relationDebtHolder = String(
+        exchangeState && exchangeState.debt_holder || rel && rel.debt_holder || ''
+    ).trim().toLowerCase();
+    // openTesterLinkStatusFromRow opens the owner/project context where
+    // "partner" means the current viewer (project owner).
+    const modalDebtHolder = relationDebtHolder === 'viewer'
+        ? 'partner'
+        : (relationDebtHolder === 'tester' ? 'tester' : '');
 
     const cardClass = 'linked-project-card is-mutual'
         + (isPrimary ? ' is-primary-link' : '')
@@ -8803,23 +9570,29 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         + (isBroken ? ' is-broken' : '')
         + (isMutualDebt ? ' has-debt' : '');
 
-    let theirDays = 0;
-    let theirSkips = 0;
-    if (tester) {
+    const viewerMetrics = viewerSide && viewerSide.metrics || null;
+    const testerMetrics = testerSide && testerSide.metrics || null;
+    let theirDays = testerMetrics && testerMetrics.testing_days != null
+        ? Number(testerMetrics.testing_days || 0)
+        : (rel && rel.tester_testing_days != null
+            ? Number(rel.tester_testing_days || 0)
+            : 0);
+    let theirSkips = testerMetrics && testerMetrics.skips != null
+        ? Number(testerMetrics.skips || 0)
+        : (rel && rel.tester_skips != null
+            ? Number(rel.tester_skips || 0)
+            : 0);
+    if (tester && !testerMetrics && !(rel && rel.tester_testing_days != null)) {
         theirDays = tester.start_date && typeof getUserTestingDay === 'function'
             ? getUserTestingDay(tester.start_date)
             : Number(tester.testing_days || 0);
         theirSkips = Number(tester.skips_count != null ? tester.skips_count : 0);
     }
-    let myDays = 0;
-    let mySkips = 0;
-    if (Array.isArray(myTests)) {
+    if (Array.isArray(myTests) && !viewerMetrics && !(rel && rel.viewer_testing_days != null)) {
         const reciprocalTest = myTests.find(function(item) {
             return Number(item.id || item.app_id || 0) === Number(pair.theirAppId || 0);
         });
         if (reciprocalTest) {
-            myDays = Number(reciprocalTest.testing_days || 0);
-            mySkips = Number(reciprocalTest.skips_count || 0);
             if (!pair.theirIcon && reciprocalTest.icon_url) {
                 pair.theirIcon = reciprocalTest.icon_url;
             }
@@ -8830,12 +9603,14 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         ? formatSkipsLabel
         : function(n) { return String(n); };
     const openAttrs = canOpenBalance
-        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event, { reciprocalAppId: ${pair.theirAppId}, isBroken: ${isBroken ? 'true' : 'false'}, isMutualDebt: ${isMutualDebt ? 'true' : 'false'}, myAppName: '${escapeInlineJsString(pair.myName)}', theirAppName: '${escapeInlineJsString(pair.theirName)}' })"`
+        ? ` onclick="event.stopPropagation(); openTesterLinkStatusFromRow(${pair.myAppId}, ${testerId}, event, { reciprocalAppId: ${pair.theirAppId}, isBroken: ${isBroken ? 'true' : 'false'}, isMutualDebt: ${isMutualDebt ? 'true' : 'false'}, mutualDebtHolder: '${modalDebtHolder}', myAppName: '${escapeInlineJsString(pair.myName)}', theirAppName: '${escapeInlineJsString(pair.theirName)}' })"`
         : '';
     const tag = canOpenBalance ? 'button' : 'div';
     const typeAttr = canOpenBalance ? ' type="button"' : '';
-    const dayValue = theirDays || myDays || 0;
-    const skipValue = theirSkips || mySkips || 0;
+    // This compact line describes the partner testing our project. Zero is a
+    // valid partner value; never replace it with the viewer's own metrics.
+    const dayValue = theirDays;
+    const skipValue = theirSkips;
     const skipWarn = skipValue >= 3;
     const completedBadge = `<span class="linked-side-done">${window.escapeHTML(window.t('linkedSideCompleted', {}, lang))}</span>`;
     const statsParts = [];
@@ -8881,7 +9656,7 @@ function _renderDossierLinkedExchangeCard(rel, options) {
     const badgeHtml = isBroken
         ? `<span class="linked-badge is-broken" style="background: rgba(255, 59, 48, 0.15); color: #ff453a; border-color: rgba(255, 59, 48, 0.3);">${window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка')}</span>`
         : (isMutualDebt
-            ? `<span class="linked-badge is-debt">${window.escapeHTML(window.t('linkedBadgeDebt', {}, lang) || '🫵 Долг')}</span>`
+            ? `<span class="linked-badge is-debt">${window.escapeHTML(window.t('linkedBadgeDebt', {}, lang) || '⚖️ Долг')}</span>`
             : `<span class="linked-badge is-mutual">${window.escapeHTML(window.t('linkedBadgeMutual', {}, lang))}</span>`);
 
     let swapArrow = '<svg class="linked-swap-svg is-mutual" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="8" x2="5" y2="8"></line><polyline points="9 4 5 8 9 12"></polyline><line x1="5" y1="16" x2="19" y2="16"></line><polyline points="15 12 19 16 15 20"></polyline></svg>';
@@ -9146,7 +9921,7 @@ function _renderDossierOwnedProjectCard(ownedProject, testerId, linkedOwnedProje
         ? '<div class="' + cardClass + '" style="cursor:default;">'
         : '<button type="button" class="' + cardClass + '" onclick="openTesterOwnedProjectFromDossier(' + testerId + ', ' + Number(ownedProject.app_id) + ')">';
     const archivedChipHtml = isArchivedLike
-        ? '<div class="dossier-linked-archived-chip">' + window.escapeHTML(window.t('dossierOwnedProjectCompleted', {}, lang)) + '</div>'
+        ? '<div class="dossier-linked-archived-chip' + (isBlocked ? ' is-blocked' : '') + '">' + window.escapeHTML(window.t(isBlocked ? 'dossierOwnedProjectBlocked' : 'dossierOwnedProjectCompleted', {}, lang)) + '</div>'
         : '';
 
     return innerOpen +
@@ -9206,7 +9981,64 @@ function _renderDossierOtherProjectMiniCard(ownedProject, testerId) {
         ((isArchivedLike || isJoinBlocked) ? '</div>' : '</button>');
 }
 
-function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
+function _formatDossierDeviceLine(deviceOrProfile) {
+    if (!deviceOrProfile) return '';
+    const rawDev = (deviceOrProfile.device && typeof deviceOrProfile.device === 'object')
+        ? deviceOrProfile.device
+        : (deviceOrProfile.device_info && typeof deviceOrProfile.device_info === 'object'
+            ? deviceOrProfile.device_info
+            : deviceOrProfile);
+
+    if (typeof rawDev === 'string' && rawDev.trim()) {
+        try {
+            if (rawDev.trim().charAt(0) === '{') {
+                const parsed = JSON.parse(rawDev);
+                return _formatDossierDeviceLine(parsed);
+            }
+        } catch (_) {}
+        const str = rawDev.trim();
+        return str.indexOf('📱') === 0 ? str : ('📱 ' + str);
+    }
+
+    let android = '';
+    let brand = '';
+    let model = '';
+
+    if (rawDev && typeof rawDev === 'object') {
+        android = String(rawDev.android_version || rawDev.androidVersion || rawDev.os_version || '').trim();
+        brand = String(rawDev.brand || rawDev.manufacturer || '').trim();
+        model = String(rawDev.model || rawDev.device_model || rawDev.model_code || '').trim();
+    }
+    if (!android && deviceOrProfile.android_version) android = String(deviceOrProfile.android_version).trim();
+    if (!brand && deviceOrProfile.brand) brand = String(deviceOrProfile.brand).trim();
+    if (!model && deviceOrProfile.model) model = String(deviceOrProfile.model).trim();
+
+    if (brand && model) {
+        const brandLower = brand.toLowerCase();
+        const modelLower = model.toLowerCase();
+        if (modelLower.indexOf(brandLower) === 0) {
+            const stripped = model.slice(brand.length).trim();
+            if (stripped) model = stripped;
+        }
+    }
+
+    if (android) {
+        if (!/^android/i.test(android)) {
+            const match = android.match(/(\d+(?:\.\d+)*)/);
+            android = match ? ('Android ' + match[1]) : ('Android ' + android);
+        }
+    }
+
+    const parts = [];
+    if (android) parts.push(android);
+    if (brand) parts.push(brand);
+    if (model && model.toLowerCase() !== brand.toLowerCase()) parts.push(model);
+
+    if (!parts.length) return '';
+    return '📱 ' + parts.join(' · ');
+}
+
+function renderDossierHeader(fullName, username, avatarUrl, fallbackId, deviceOrProfile) {
     const initials = window.escapeHTML(
         (fullName || username || '?')
             .trim().replace('@', '').substring(0, 2).toUpperCase()
@@ -9217,19 +10049,33 @@ function renderDossierHeader(fullName, username, avatarUrl, fallbackId) {
         <span class="dossier-avatar-initials" style="${avatarUrl ? 'display:none;' : ''}">${initials}</span>
     </div>`;
 
-    const cleanUsername = String(username || '').replace('@', '');
-    const dispName = fullName || (username ? '@' + cleanUsername : '');
+    const cleanUsername = String(username || '').replace(/^@+/, '');
+    const dispName = fullName || (cleanUsername ? '@' + cleanUsername : '');
     const mainName = dispName || window.t('idLabel', { id: fallbackId || 0 }, lang);
-    const subName = (fullName && username) ? `@${cleanUsername}` : '';
-    const subNameHtml = subName
-        ? `<div class="dossier-profile-username notranslate">${window.escapeHTML(subName)}</div>`
+
+    const safeUsernameJs = escapeInlineJsString(cleanUsername);
+    const usernameChipHtml = cleanUsername
+        ? `<button type="button" class="dossier-username-chip notranslate" onclick="event.stopPropagation(); if (typeof tg !== 'undefined' && tg && typeof tg.openTelegramLink === 'function') { tg.openTelegramLink('https://t.me/${safeUsernameJs}'); } else { window.open('https://t.me/${safeUsernameJs}', '_blank'); }" title="${window.escapeHTML(window.t('pcDossierOpenDm', {}, lang) || 'Telegram')}">@${window.escapeHTML(cleanUsername)}</button>`
         : '';
+
+    const deviceLine = _formatDossierDeviceLine(deviceOrProfile);
+    const unknownDeviceLabel = window.t('pcDossierDeviceUnknown', {}, lang) || 'Устройство не указано';
+    const deviceHtml = deviceLine
+        ? `<div class="dossier-profile-device notranslate">${window.escapeHTML(deviceLine)}</div>`
+        : (cleanUsername
+            ? `<div class="dossier-profile-device notranslate">📱 ${window.escapeHTML(unknownDeviceLabel)}</div>`
+            : '');
+
+    const hasSeparateUsernameChip = Boolean(fullName && cleanUsername);
 
     return `<div class="dossier-profile-identity">
         ${avatarHtml}
         <div class="dossier-profile-names">
-            <div class="dossier-profile-name notranslate">${window.escapeHTML(mainName)}</div>
-            ${subNameHtml}
+            <div class="dossier-profile-title-row">
+                <div class="dossier-profile-name notranslate">${window.escapeHTML(mainName)}</div>
+                ${hasSeparateUsernameChip ? usernameChipHtml : ''}
+            </div>
+            ${deviceHtml}
         </div>
     </div>`;
 }
@@ -9455,6 +10301,7 @@ async function openDossierModal(username, testerId, appId) {
 
     const openSeq = ++_dossierOpenSeq;
     modal.classList.add('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
     const project = myProjects.find((item) => Number(item.id) === Number(appId));
     const tester = project ? (project.testers || []).find((candidate) => Number(candidate.tester_id) === Number(testerId)) : null;
@@ -9495,7 +10342,8 @@ async function openDossierModal(username, testerId, appId) {
         (cachedProfile && cachedProfile.full_name) || dossierOwnerProfile.owner_full_name,
         (cachedProfile && cachedProfile.username) || dossierOwnerProfile.owner_username,
         (cachedProfile && cachedProfile.avatar_url) || dossierOwnerProfile.owner_avatar_url,
-        testerId
+        testerId,
+        (cachedProfile && (cachedProfile.device || cachedProfile.device_info || cachedProfile)) || (tester && (tester.device || tester.device_info || tester)) || (marketCandidate && (marketCandidate.device || marketCandidate.device_info || marketCandidate))
     );
     bodyEl.innerHTML = _renderDossierLoadingSkeleton(earlyIdentityHtml);
 
@@ -9582,6 +10430,10 @@ async function openDossierModal(username, testerId, appId) {
 
     const settled = await Promise.all([offersTask, profileTask, projectsTask]);
     if (openSeq !== _dossierOpenSeq) return;
+    if (typeof window.ensureUserBlacklistLoaded === 'function') {
+        try { await window.ensureUserBlacklistLoaded(); } catch (e) {}
+        if (openSeq !== _dossierOpenSeq) return;
+    }
 
     const profile = settled[1] || {};
     const projectsPayload = settled[2] || { testerProjects: [], relations: [] };
@@ -9618,7 +10470,10 @@ async function openDossierModal(username, testerId, appId) {
     const canDeleteFromProject = !!tester && !!project && !!appId && testingDay > 0;
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
         && marketCandidate.market_kind !== 'mutual-return';
-    const takeFromShowcaseDisabled = !!(marketCandidate && marketCandidate.has_pending_offer);
+    const takeFromShowcaseBlockedByAccess = !!(marketCandidate && marketCandidate.has_access_issue);
+    const takeFromShowcaseBlockedByUser = !!(marketCandidate && marketCandidate.blocked_by_me)
+        || (typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId));
+    const takeFromShowcaseDisabled = !!(marketCandidate && (marketCandidate.has_pending_offer || takeFromShowcaseBlockedByAccess || takeFromShowcaseBlockedByUser));
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
     const pendingBountyApplication = (typeof findPendingBountyApplicationForTester === 'function')
         ? findPendingBountyApplicationForTester(testerId, appId)
@@ -9630,7 +10485,8 @@ async function openDossierModal(username, testerId, appId) {
         profile.full_name || dossierOwnerProfile.owner_full_name,
         profile.username || dossierOwnerProfile.owner_username,
         profile.avatar_url || dossierOwnerProfile.owner_avatar_url,
-        testerId
+        testerId,
+        profile.device || profile.device_info || (tester && (tester.device || tester.device_info || tester)) || (marketCandidate && (marketCandidate.device || marketCandidate.device_info || marketCandidate)) || profile
     );
 
     const projectsCount = dossierBlocks.otherProjects.length;
@@ -9711,6 +10567,14 @@ async function openDossierModal(username, testerId, appId) {
     var isAdmin = Boolean(window.App && (window.App.isAdmin || (window.currentUser && window.currentUser.is_admin)));
     var currentUserId = Number((window.App && window.App.userId) || (window.currentUser && window.currentUser.user_id) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user && window.Telegram.WebApp.initDataUnsafe.user.id) || 0);
     var canAdminBan = isAdmin && Number(testerId || 0) > 0 && Number(testerId || 0) !== currentUserId;
+    var canUserBlacklist = Number(testerId || 0) > 0 && Number(testerId || 0) !== currentUserId;
+    var alreadyBlacklisted = typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId);
+    var blacklistDisplayName = String(
+        (profile && (profile.full_name || profile.username))
+        || (dossierOwnerProfile && (dossierOwnerProfile.owner_full_name || dossierOwnerProfile.owner_username))
+        || ''
+    ).trim();
+    var blacklistConfirmName = escapeInlineJsString(blacklistDisplayName || ('#' + testerId));
 
     html += `<div class="dossier-actions-section">
         <div class="dossier-section-title">${t.dossierActionsTitle}</div>
@@ -9728,9 +10592,10 @@ async function openDossierModal(username, testerId, appId) {
                 </div>
             </div>` : ''}
             ${tgName ? `<button class="btn btn-accent-soft" onclick="event.stopPropagation(); tg.openTelegramLink('https://t.me/${safeTelegramUsername}')">${t.dossierBtnTelegram}</button>` : ''}
-            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest', {}, lang))}</button>` : ''}
+            ${canTakeFromShowcase ? `<button class="btn ${takeFromShowcaseDisabled ? 'pending disabled' : 'btn-primary'}" ${takeFromShowcaseDisabled ? 'disabled' : `onclick="closeDossierModal(); ${takeFromShowcaseIsPrelaunch ? `openPrelaunchJoinModal(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)` : `createMutualOffer(${appId}, ${Number(marketCandidate.owner_id || 0)}, event)`}"`}>${window.escapeHTML(window.t(takeFromShowcaseBlockedByAccess ? 'accessIssueCta' : (takeFromShowcaseBlockedByUser ? 'blacklistBlockedCta' : (takeFromShowcaseDisabled ? 'offerPending' : 'dossierBtnTakeTest')), {}, lang))}</button>` : ''}
             ${canReward ? `<button class="btn btn-karma-soft" onclick="closeDossierModal(); showKarmaPopup(${appId}, ${testerId})">${t.dossierBtnKarma}</button>` : ''}
             ${canDeleteFromProject ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger-soft" onclick="closeDossierModal(); openKickTesterModal(${appId}, ${testerId})">${t.dossierBtnDelete}</button></div>` : ''}
+            ${canUserBlacklist ? `<div class="dossier-action-danger-zone"><button class="btn ${alreadyBlacklisted ? 'btn-secondary' : 'btn-danger-soft'}" onclick="event.stopPropagation(); ${alreadyBlacklisted ? `unblockUserOnBlacklist(${testerId}, '${blacklistConfirmName}')` : `blockUserOnBlacklist(${testerId}, '${blacklistConfirmName}')`}.then(function(ok){ if(ok) closeDossierModal(); })">${window.escapeHTML(window.t(alreadyBlacklisted ? 'dossierBtnUnblacklist' : 'dossierBtnBlacklist', {}, lang))}</button></div>` : ''}
             ${canAdminBan ? `<div class="dossier-action-danger-zone"><button class="btn btn-danger" onclick="closeDossierModal(); openBanUserModal(${testerId}, '${safeTelegramUsername}')">${t.dossierBtnBan || '🛑 Заблокировать'}</button></div>` : ''}
         </div>
     </div>`;
@@ -9742,6 +10607,7 @@ async function openDossierModal(username, testerId, appId) {
 function closeDossierModal(event) {
     if (event && event.target && event.target.id !== 'dossier-modal') return;
     document.getElementById('dossier-modal').classList.remove('active');
+    if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
 function openTimelineStatsSheet(appId) {
@@ -9862,6 +10728,9 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         const ownerLinkMeta = _getProjectOwnerLinkMeta(p, targetOwnerId, fallbackOwnerAppName);
         const targetAlreadyTesting = !!ownerLinkMeta;
         const blockedEntry = blockedProjects[String(p.id)] || null;
+        const blockedReason = String(blockedEntry && blockedEntry.reason_code || '');
+        const targetProfileMissing = blockedReason === 'tester_profile_required';
+        const targetAndroidTooLow = blockedReason === 'android_version_too_low';
         const emailIncompatible = String(p.test_mode || 'google_group') === 'email_list' && !targetOwnerHasEmail;
         const isInBuffer = String(p.status || '').toLowerCase() === 'pending_completion';
         const isArchived = String(p.status || '').toLowerCase() === 'archived';
@@ -9875,7 +10744,10 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
             badges.push(`<span class="meta-chip accent-purple">${window.escapeHTML(window.t('alreadyTestingBadge', {}, lang))}</span>`);
         }
         if (blockedEntry) {
-            badges.push(`<span class="meta-chip accent-orange">${window.escapeHTML(window.t('offerProjectLockedBadge', {}, lang))}</span>`);
+            var blockedBadgeKey = targetProfileMissing
+                ? 'offerTargetProfileRequiredBadge'
+                : (targetAndroidTooLow ? 'offerTargetAndroidTooLowBadge' : 'offerProjectLockedBadge');
+            badges.push(`<span class="meta-chip accent-orange">${window.escapeHTML(window.t(blockedBadgeKey, {}, lang))}</span>`);
         }
         if (emailIncompatible && !targetAlreadyTesting && !blockedEntry) {
             badges.push('<span class="project-select-lock">🔒</span>');
@@ -9894,7 +10766,13 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         if (targetAlreadyTesting && ownerLinkMeta) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('projectSelectOwnerLinkedDetails', { owner_app: ownerLinkMeta.linkedProjectName }, lang))}</span>`;
         } else if (blockedEntry) {
-            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`;
+            if (targetProfileMissing) {
+                reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerTargetProfileRequiredDetails', { min_android_version: Number(blockedEntry.min_android_version || 0) }, lang))}</span>`;
+            } else if (targetAndroidTooLow) {
+                reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerTargetAndroidTooLowDetails', { min_android_version: Number(blockedEntry.min_android_version || 0) }, lang))}</span>`;
+            } else {
+                reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectLockedDetails', { target_app: blockedEntry.target_app_name || window.t('unknownLabel', {}, lang) }, lang))}</span>`;
+            }
         } else if (emailIncompatible) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectGroupsOnly', {}, lang))}</span>`;
         } else if (isInBuffer) {
@@ -10033,6 +10911,10 @@ function openKarmaSelectPopup(appId, testerId) {
         ? project.testers.find(function(t) { return Number(t.tester_id) === Number(testerId); })
         : null;
     const pools = getProjectKarmaPools(project, testerId);
+    const badge = document.getElementById('karma-select-icon-badge');
+    if (badge && typeof window.karmaIconHtml === 'function') {
+        badge.innerHTML = window.karmaIconHtml('karma-yin-icon--lg');
+    }
 
     const testerMetaEl = document.getElementById('karma-select-tester-meta');
     if (testerMetaEl) {
@@ -10050,6 +10932,15 @@ function openKarmaSelectPopup(appId, testerId) {
     const bugBtn = document.getElementById('karma-btn-bug') || document.querySelector('#karma-select-popup .popup-btn.bug');
     const goodStatus = document.getElementById('karma-status-good');
     const bugStatus = document.getElementById('karma-status-bug');
+    const testerLimitNote = document.getElementById('karma-select-tester-limit');
+    const testerRewardedToday = pools.rewardedToday;
+
+    if (testerLimitNote) {
+        testerLimitNote.hidden = !testerRewardedToday;
+        testerLimitNote.textContent = testerRewardedToday
+            ? (window.t('karmaTesterRewardedToday', {}, lang) || 'A reward has already been issued to this tester today. The next reward can be issued tomorrow.')
+            : '';
+    }
 
     if (goodBtn) {
         goodBtn.disabled = !pools.canGiveThanks;
@@ -10061,8 +10952,8 @@ function openKarmaSelectPopup(appId, testerId) {
     }
 
     if (goodStatus) {
-        if (pools.hasThanks) {
-            goodStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+        if (testerRewardedToday) {
+            goodStatus.textContent = window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today';
             goodStatus.className = 'karma-option-status is-given';
         } else if (pools.thanksAvailable <= 0) {
             goodStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
@@ -10074,8 +10965,8 @@ function openKarmaSelectPopup(appId, testerId) {
     }
 
     if (bugStatus) {
-        if (pools.hasSpecial) {
-            bugStatus.textContent = window.t('karmaRewardAlreadyGiven', {}, lang) || 'Уже выдано этому тестеру';
+        if (testerRewardedToday) {
+            bugStatus.textContent = window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today';
             bugStatus.className = 'karma-option-status is-given';
         } else if (pools.specialAvailable <= 0) {
             bugStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
@@ -10435,12 +11326,15 @@ Object.assign(window, {
     openIssueReportModal,
     closeIssueReportModal,
     submitIssueReportFromModal,
+    getIssueAccessWaitState,
     syncIssueReportPauseState,
     isIssueReportChecklistComplete,
     nextIssueReportStep,
     previousIssueReportStep,
     openIssueChecklistGoogleGroup,
     openIssueChecklistGooglePlay,
+    openIssueChecklistAppPlay,
+    clearIssueScreenshot,
     openCheckinOptionsModal,
     closeCheckinOptionsModal,
     syncCheckinOptionsJustConfirmTimer,
@@ -10573,6 +11467,7 @@ Object.assign(window, {
     closeContractEconomyModal,
     openKarmaDistribution,
     closeKarmaDistribution,
+    getProjectKarmaPools,
     openKarmaSelectPopup,
     closeKarmaSelectPopup,
     confirmKarmaSelect,
@@ -10619,6 +11514,7 @@ Object.assign(window, {
     selectPlayReviewRejectReason,
     confirmPlayReviewReject,
     toggleFeedbackCardCollapse,
+    buildTesterReminderDeepLink,
 });
 
 console.log('[DEBUG] ui-market.js END — switchTab=', typeof switchTab, 'showLoading=', typeof showLoading);

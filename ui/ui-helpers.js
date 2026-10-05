@@ -106,13 +106,13 @@ function parseLocalDateOnly(dateValue) {
     if (dateValue instanceof Date) {
         return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
     }
-    const str = String(dateValue);
-    const datePart = str.includes('T') ? str.split('T')[0] : str;
+    const str = String(dateValue).trim();
+    const datePart = str.split(/[T\s]/)[0];
     const parts = datePart.split('-').map(Number);
     if (parts.length === 3 && parts.every((value) => Number.isFinite(value))) {
         return new Date(parts[0], parts[1] - 1, parts[2]);
     }
-    const parsed = new Date(str);
+    const parsed = new Date(str.replace(' ', 'T'));
     if (Number.isNaN(parsed.getTime())) return null;
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
@@ -123,8 +123,14 @@ function getDayDiffFromToday(dateValue) {
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
 }
 
-function getProjectPlatformDay(createdAt) {
-    return Math.max(1, getDayDiffFromToday(createdAt) + 1);
+function getProjectPlatformDay(createdAtOrProject, restartedAt) {
+    if (createdAtOrProject && typeof createdAtOrProject === 'object') {
+        const p = createdAtOrProject;
+        const dateSource = p.restarted_at || p.last_restarted_at || p.created_at;
+        return Math.max(1, getDayDiffFromToday(dateSource) + 1);
+    }
+    const dateSource = restartedAt || createdAtOrProject;
+    return Math.max(1, getDayDiffFromToday(dateSource) + 1);
 }
 const GUEST_LANGUAGE_META = {
     ar: { flag: '🇦🇪', label: 'Arabic' },
@@ -356,6 +362,46 @@ function getAvatar(name) {
     return `<div class="avatar" style="background-color: ${color}">${window.escapeHTML(letter)}</div>`;
 }
 
+/** Crisp black & white yin-yang mark for karma UI (replaces ☯️ emoji icons). */
+function karmaIconHtml(extraClass) {
+    var cls = 'karma-yin-icon' + (extraClass ? (' ' + String(extraClass)) : '');
+    return '<svg class="' + cls + '" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false">' +
+        '<circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle>' +
+        '<path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path>' +
+        '<circle r="5.5" cy="19" fill="#ffffff"></circle>' +
+        '<circle r="5.5" cy="-19" fill="#000000"></circle>' +
+    '</svg>';
+}
+
+function withKarmaIcon(text, extraClass, options) {
+    var raw = String(text == null ? '' : text);
+    var cleaned = raw.replace(/\u262F\uFE0F?/g, '').replace(/\s{2,}/g, ' ').trim();
+    var icon = karmaIconHtml(extraClass || 'karma-yin-icon--inline');
+    if (!cleaned) return icon;
+    if (options && options.after) return cleaned + ' ' + icon;
+    return icon + ' ' + cleaned;
+}
+
+window.karmaIconHtml = karmaIconHtml;
+window.withKarmaIcon = withKarmaIcon;
+
+function hydrateKarmaIcons(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('[data-karma-icon]').forEach(function (el) {
+        if (el.getAttribute('data-karma-ready') === '1') return;
+        el.innerHTML = karmaIconHtml(el.getAttribute('data-karma-class') || 'karma-yin-icon--inline');
+        el.setAttribute('data-karma-ready', '1');
+    });
+}
+window.hydrateKarmaIcons = hydrateKarmaIcons;
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { hydrateKarmaIcons(); });
+    } else {
+        hydrateKarmaIcons();
+    }
+}
+
 function resolveIconUrl(iconUrl) {
     if (!iconUrl || typeof iconUrl !== 'string') return '';
     var trimmed = iconUrl.trim();
@@ -521,3 +567,102 @@ function isProjectSynced(test) {
     return !!(test && test.last_sync_date);
 }
 window.isProjectSynced = isProjectSynced;
+
+function applyActionButtonProcessing(btn, processing, label) {
+    if (!btn) return;
+    if (processing) {
+        if (btn.dataset.processingLock !== '1') {
+            btn.dataset.processingHtml = btn.innerHTML;
+            btn.dataset.processingLock = '1';
+        }
+        btn.disabled = true;
+        btn.classList.add('is-processing');
+        btn.setAttribute('aria-busy', 'true');
+        var lang = (typeof getLang === 'function') ? getLang() : (typeof window.lang === 'string' ? window.lang : 'ru');
+        var text = label
+            || (typeof window.t === 'function' ? window.t('loading', {}, lang) : '')
+            || '…';
+        btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span><span>' +
+            window.escapeHTML(text) + '</span>';
+        return;
+    }
+    btn.classList.remove('is-processing');
+    btn.removeAttribute('aria-busy');
+    if (btn.dataset.processingLock === '1') {
+        btn.innerHTML = btn.dataset.processingHtml || btn.innerHTML;
+        delete btn.dataset.processingHtml;
+        delete btn.dataset.processingLock;
+    }
+    btn.disabled = false;
+}
+
+function applyCardButtonsBusy(card, busy, exceptBtn) {
+    if (!card) return;
+    card.querySelectorAll('button').forEach(function(b) {
+        if (busy) {
+            b.disabled = true;
+            if (b !== exceptBtn) {
+                b.style.opacity = '0.55';
+                b.style.cursor = 'not-allowed';
+            } else {
+                b.style.opacity = '';
+                b.style.cursor = 'wait';
+            }
+            return;
+        }
+        b.disabled = false;
+        b.style.opacity = '';
+        b.style.cursor = '';
+    });
+}
+
+window.applyActionButtonProcessing = applyActionButtonProcessing;
+window.applyCardButtonsBusy = applyCardButtonsBusy;
+
+function normalizeTelegramCLinkChatId(raw) {
+    var value = String(raw == null ? '' : raw).trim().replace(/^[-@]+/, '');
+    if (/^100\d{10,}$/.test(value)) {
+        value = value.slice(3);
+    }
+    return /^\d+$/.test(value) ? value : '';
+}
+
+function buildTesterFeedbackMessageUrl(messageId, options) {
+    var msgId = Number(messageId || 0);
+    if (!Number.isFinite(msgId) || msgId <= 0) return '';
+    var opts = options || {};
+    var topicRaw = opts.topicId;
+    if (topicRaw == null && window.App) topicRaw = window.App.testerFeedbackTopicId;
+    var topicId = Number(topicRaw || 4000);
+    if (!Number.isFinite(topicId) || topicId <= 0) topicId = 4000;
+    var hasPublicOverride = Object.prototype.hasOwnProperty.call(opts, 'publicGroupUrl');
+    var publicBase = String(
+        hasPublicOverride
+            ? opts.publicGroupUrl
+            : ((window.App && window.App.publicGroupUrl)
+                || window.FEEDBACK_PUBLIC_LINK_BASE
+                || 'https://t.me/googleplay_console_12testers')
+    ).replace(/\/+$/, '');
+    if (publicBase && !/t\.me\/\+|joinchat/i.test(publicBase)) {
+        var tail = publicBase.split('/').pop();
+        if (/^\d+$/.test(tail)) {
+            if (Number(tail) === topicId) {
+                return publicBase + '/' + msgId;
+            }
+            publicBase = publicBase.replace(/\/\d+$/, '');
+        }
+        return publicBase + '/' + topicId + '/' + msgId;
+    }
+    var groupId = normalizeTelegramCLinkChatId(
+        opts.frontendGroupId != null
+            ? opts.frontendGroupId
+            : (window.App && window.App.frontendGroupId)
+    );
+    if (groupId) {
+        return 'https://t.me/c/' + groupId + '/' + topicId + '/' + msgId;
+    }
+    return '';
+}
+
+window.normalizeTelegramCLinkChatId = normalizeTelegramCLinkChatId;
+window.buildTesterFeedbackMessageUrl = buildTesterFeedbackMessageUrl;

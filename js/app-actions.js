@@ -173,6 +173,25 @@ function openOwnerCheckpointChat(ownerUsername, text, options) {
 }
 
 function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
+    var safeAppId = Number(appId || 0);
+    var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
+    var isExternal = !!(test && (test.is_external || test.is_guest || String(test.flow || '') === 'external'));
+    if (isExternal) {
+        if (typeof window.sendExternalScreenshotAndConfirmFromUi === 'function') {
+            window.sendExternalScreenshotAndConfirmFromUi(safeAppId, ownerUsername || (test && test.owner_username) || '');
+            return;
+        }
+    }
+    if (
+        typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+        ? window.isInternalScreenshotProofUploadEnabled(test || safeAppId)
+        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())
+    ) {
+        if (typeof window.openCheckinProofUploadModal === 'function') {
+            window.openCheckinProofUploadModal(appId);
+            return;
+        }
+    }
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
     confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
     openOwnerCheckpointChat(resolvedOwnerUsername, buildCheckpointReportPrefill(appId));
@@ -510,6 +529,8 @@ function setAccessProblemAccordionOpen(appId, isOpen) {
     if (toggle) {
         toggle.classList.toggle('is-open', !!isOpen);
         toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        var issueInline = toggle.querySelector('[data-access-issue-wait-toggle]');
+        if (issueInline) issueInline.hidden = !!isOpen;
     }
     if (typeof syncCustomGroupAccessWaitUi === 'function') {
         syncCustomGroupAccessWaitUi();
@@ -614,24 +635,52 @@ async function handleAutoAcceptMutualToggle(input) {
     }
 }
 
-function _ensureTestCardExpanded(card) {
+function _expandCollapsedTestSection(section, toggleFnName, collapsedClass) {
+    if (!section || typeof window[toggleFnName] !== 'function') return false;
+    var isCollapsed = collapsedClass === 'active'
+        ? !section.classList.contains('active')
+        : section.classList.contains(collapsedClass || 'is-collapsed');
+    if (!isCollapsed) return false;
+    window[toggleFnName]();
+    return true;
+}
+
+function _scrollTestCardIntoCarousel(card) {
     if (!card) return;
-    var doneList = document.getElementById('done-list');
-    var doneSection = document.getElementById('done-section');
-    if (!doneList || !doneSection || !doneList.contains(card)) return;
-    if (!doneSection.classList.contains('active') && typeof window.toggleAccordion === 'function') {
-        window.toggleAccordion();
+    var wrap = card.closest('#pending-release-list, #external-tests-list, .pending-release-scroll, .horizontal-scroll');
+    if (!wrap || wrap.scrollWidth <= wrap.clientWidth + 4) return;
+    var wrapRect = wrap.getBoundingClientRect();
+    var cardRect = card.getBoundingClientRect();
+    var nextLeft = wrap.scrollLeft + (cardRect.left - wrapRect.left) - Math.max(0, (wrap.clientWidth - cardRect.width) / 2);
+    if (typeof wrap.scrollTo === 'function') {
+        wrap.scrollTo({ left: Math.max(0, nextLeft), behavior: 'smooth' });
+    } else {
+        wrap.scrollLeft = Math.max(0, nextLeft);
     }
 }
 
-function _highlightTestCard(appId) {
-    var normalizedId = Number(appId || 0);
-    if (!normalizedId) return false;
-    var card = document.getElementById('test-card-' + normalizedId);
-    if (!card) return false;
+function _ensureTestCardExpanded(card) {
+    if (!card) return;
+    var doneSection = document.getElementById('done-section');
+    if (doneSection && doneSection.contains(card)) {
+        _expandCollapsedTestSection(doneSection, 'toggleAccordion', 'active');
+        return;
+    }
+    var pendingSection = document.getElementById('pending-release-section');
+    if (pendingSection && pendingSection.contains(card)) {
+        _expandCollapsedTestSection(pendingSection, 'togglePendingReleaseSection', 'is-collapsed');
+        return;
+    }
+    var externalSection = document.getElementById('external-tests-section');
+    if (externalSection && externalSection.contains(card)) {
+        _expandCollapsedTestSection(externalSection, 'toggleExternalTestsSection', 'is-collapsed');
+    }
+}
 
-    _ensureTestCardExpanded(card);
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+function _paintTestCardHighlight(card) {
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    _scrollTestCardIntoCarousel(card);
     card.classList.remove('test-card-highlight-pulse');
     void card.offsetWidth;
     card.classList.add('test-card-highlight-pulse');
@@ -642,6 +691,25 @@ function _highlightTestCard(appId) {
         card.classList.remove('test-card-highlight-pulse');
         _highlightTestTimerId = null;
     }, 3600);
+}
+
+function _highlightTestCard(appId) {
+    var normalizedId = Number(appId || 0);
+    if (!normalizedId) return false;
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (!card) return false;
+
+    _ensureTestCardExpanded(card);
+    var hidden = !(card.offsetWidth || card.offsetHeight || (card.getClientRects && card.getClientRects().length));
+    if (hidden) {
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                _paintTestCardHighlight(card);
+            });
+        });
+    } else {
+        _paintTestCardHighlight(card);
+    }
     return true;
 }
 
@@ -727,7 +795,43 @@ function _setConfirmButtonLabel(btn, text) {
         label.textContent = text;
         return;
     }
+    var boostEl = btn.querySelector('.checkin-confirm-btn__boost');
+    if (boostEl) {
+        Array.from(btn.childNodes).forEach(function(node) {
+            if (node !== boostEl) node.remove();
+        });
+        btn.insertAdjacentText('afterbegin', text);
+        return;
+    }
     btn.innerText = text;
+}
+
+function getFeedbackCheckinPendingLabelHtml() {
+    return '<span class="feedback-pending-label">' +
+        window.escapeHTML(getFeedbackCheckinPendingLabel()) +
+        '<span class="feedback-pending-dots" aria-hidden="true">' +
+        '<span>.</span><span>.</span><span>.</span>' +
+        '</span></span>';
+}
+
+function _setConfirmButtonPendingLabel(btn) {
+    if (!btn) return;
+    var html = getFeedbackCheckinPendingLabelHtml();
+    var label = btn.querySelector('.tstep__label');
+    if (label) {
+        label.innerHTML = html;
+        return;
+    }
+    btn.innerHTML = html;
+}
+
+function _setSplitOptionsHidden(splitBtn, hidden) {
+    if (!splitBtn) return;
+    splitBtn.hidden = !!hidden;
+    splitBtn.disabled = !!hidden;
+    splitBtn.style.display = hidden ? 'none' : '';
+    splitBtn.style.pointerEvents = hidden ? 'none' : '';
+    splitBtn.style.opacity = '';
 }
 
 function _setAccessProblemStepLabel(btn, text) {
@@ -855,7 +959,8 @@ function syncCustomGroupAccessWaitUi() {
         var clock = inlineWrap.querySelector('[data-custom-group-wait-toggle-clock]');
         var panel = document.getElementById('access-problem-panel-' + appId);
         var panelOpen = !!(panel && panel.classList.contains('is-open'));
-        if (remaining <= 0 || panelOpen) {
+        var issueInline = document.querySelector('[data-access-issue-wait-toggle="' + appId + '"]');
+        if (remaining <= 0 || panelOpen || issueInline) {
             inlineWrap.hidden = true;
             return;
         }
@@ -1031,6 +1136,18 @@ function _applyPersistedReadyTimerButtons() {
             applyTestFeedbackCheckinPendingUi(appId);
             return;
         }
+        var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+        var testingDay = test && typeof window.getUserTestingDay === 'function'
+            ? window.getUserTestingDay(test.start_date, test.testing_days)
+            : null;
+        if ((test && test.status === 'new') || Number(testingDay || 0) === 1) {
+            var isDownloadDone = typeof window.isFirstDayScreenshotVisible === 'function'
+                ? !!window.isFirstDayScreenshotVisible(appId)
+                : false;
+            if (!isDownloadDone) {
+                return;
+            }
+        }
         // Revalidate localDate on every render — prevents Confirm lighting up after midnight.
         var payload = _getTimerReadyPayload(appId);
         if (!payload) return;
@@ -1040,11 +1157,15 @@ function _applyPersistedReadyTimerButtons() {
 
 function _clearPersistedActiveTimer() {
     _timerLocalDate = '';
-    try {
-        localStorage.removeItem(_timerStorageKey);
-    } catch (error) {
-        console.warn('Failed to clear active timer state:', error);
+    _timerEndTimestamp = 0;
+    _timerIsScreenshot = false;
+    _timerOwnerUsername = '';
+    activeTimerAppId = null;
+    if (_timerIntervalId) {
+        clearInterval(_timerIntervalId);
+        _timerIntervalId = null;
     }
+    _persistActiveTimer();
 }
 
 function clearActiveTimerForApp(appId) {
@@ -1065,9 +1186,9 @@ function clearActiveTimerForApp(appId) {
 window.clearActiveTimerForApp = clearActiveTimerForApp;
 
 function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
-    var normalized = String(ownerUsername || '').trim().replace(/^@+/, '');
-    if (normalized) {
-        return normalized;
+    var explicit = String(ownerUsername || '').trim().replace(/^@+/, '');
+    if (explicit) {
+        return explicit;
     }
 
     var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
@@ -1076,6 +1197,34 @@ function _resolveCheckpointOwnerUsername(appId, ownerUsername) {
     }
 
     return String(test.owner_username || '').trim().replace(/^@+/, '');
+}
+
+function _syncScreenshotBoostPaperclip(button, appId) {
+    if (!button) return;
+    var offer = null;
+    var hasCatchup = false;
+    var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    if (test && typeof window.getScreenshotBoostOffer === 'function') {
+        var testingDay = typeof window.getUserTestingDay === 'function'
+            ? window.getUserTestingDay(test.start_date, test.testing_days)
+            : Number(test.testing_days || 0);
+        offer = window.getScreenshotBoostOffer(test, testingDay);
+    }
+    if (test && typeof window.hasOpenControlProofCatchup === 'function') {
+        hasCatchup = !!window.hasOpenControlProofCatchup(test);
+    }
+    button.classList.toggle('has-screenshot-boost', !!offer);
+    button.classList.toggle('has-catchup-proof', hasCatchup);
+    button.innerHTML = typeof window.getScreenshotBoostPaperclipContent === 'function'
+        ? window.getScreenshotBoostPaperclipContent(appId)
+        : '<span aria-hidden="true">📎</span>';
+    var title = String(button.getAttribute('title') || window.t('checkinOptionsTitle', {}, lang));
+    var catchupHint = window.t('checkinOptionsCatchupAria', {}, lang);
+    if (hasCatchup && catchupHint && title.indexOf(catchupHint) === -1) {
+        title = title + ' · ' + catchupHint;
+    }
+    button.title = title;
+    button.setAttribute('aria-label', title);
 }
 
 function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
@@ -1100,9 +1249,48 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
         btn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         btn.style.color = 'var(--hint-color)';
         btn.style.cursor = 'not-allowed';
-        btn.innerText = typeof window.getIssueAwaitingFixLabel === 'function'
+        var issueText = typeof window.getIssueAwaitingFixLabel === 'function'
             ? window.getIssueAwaitingFixLabel(test)
             : window.t('issueAwaitingFix', {}, lang);
+        _setConfirmButtonLabel(btn, issueText);
+        return true;
+    }
+
+    var isTstepRow = btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow');
+    if (isTstepRow) {
+        var isDownloadStepDone = typeof window.isFirstDayScreenshotVisible === 'function'
+            ? !!window.isFirstDayScreenshotVisible(finishedId)
+            : false;
+
+        if (!isDownloadStepDone) {
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+            var tstepParent = btn.closest('.tstep');
+            if (tstepParent) {
+                tstepParent.classList.remove('is-current', 'is-done');
+                tstepParent.classList.add('is-locked');
+            }
+            return true;
+        }
+
+        btn.disabled = false;
+        btn.removeAttribute('aria-disabled');
+        btn.style.backgroundColor = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+        btn.style.cursor = 'pointer';
+
+        var tstepParent = btn.closest('.tstep');
+        if (tstepParent) {
+            tstepParent.classList.remove('is-locked', 'is-next');
+            tstepParent.classList.add('is-current');
+        }
+
+        var labelText = window.t('stepSendScreenshot', {}, lang) || 'Отправить скриншот подтверждения';
+        _setConfirmButtonLabel(btn, labelText);
+        btn.onclick = function() {
+            handleScreenshotAndConfirm(finishedId, resolvedOwnerUsername || '');
+        };
         return true;
     }
 
@@ -1113,10 +1301,14 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
     btn.style.cursor = 'pointer';
     btn.classList.add('btn-success', 'btn-confirm-ready');
     if (isScreenshot) {
+        var screenshotBtnText = isFirstDayScreenshot
+            ? window.t('screenshotBtn', {}, lang)
+            : window.t('completeControlDayBtn', {}, lang);
+        _setConfirmButtonLabel(btn, screenshotBtnText);
+        if (typeof window.syncScreenshotBoostConfirmButton === 'function') {
+            window.syncScreenshotBoostConfirmButton(btn, finishedId);
+        }
         if (isExternalTest) {
-            btn.innerText = isFirstDayScreenshot
-                ? window.t('screenshotBtn', {}, lang)
-                : window.t('completeControlDayBtn', {}, lang);
             btn.onclick = function(event) {
                 if (event) {
                     event.preventDefault();
@@ -1134,9 +1326,6 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             };
             return true;
         }
-        btn.innerText = isFirstDayScreenshot
-            ? window.t('screenshotBtn', {}, lang)
-            : window.t('completeControlDayBtn', {}, lang);
         btn.onclick = function() {
             if (isFirstDayScreenshot) {
                 handleScreenshotAndConfirm(finishedId, resolvedOwnerUsername || '');
@@ -1153,8 +1342,8 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             btn.style.color = '';
             btn.style.borderColor = '';
         }
-        if (existingSplitGroup) {
-            existingSplitGroup.classList.remove('split-timer-running');
+            if (existingSplitGroup) {
+            existingSplitGroup.classList.remove('split-timer-running', 'is-feedback-pending');
             if (isExternalTest) {
                 btn.className = 'btn btn-success split-btn-main external-tests-confirm-btn external-tests-confirm-ready';
                 btn.textContent = window.t('externalProjectCheckinBtn', {}, lang);
@@ -1187,9 +1376,10 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             existingOptionsBtn.className = isExternalTest
                 ? 'btn btn-success split-btn-options external-tests-attach-btn'
                 : 'btn btn-success split-btn-options';
-            existingOptionsBtn.textContent = '📎';
+            _setSplitOptionsHidden(existingOptionsBtn, false);
             existingOptionsBtn.title = window.t('checkinOptionsTitle', {}, lang);
             existingOptionsBtn.setAttribute('aria-label', window.t('checkinOptionsTitle', {}, lang));
+            _syncScreenshotBoostPaperclip(existingOptionsBtn, finishedId);
             existingOptionsBtn.onclick = function(event) {
                 if (event) {
                     event.preventDefault();
@@ -1219,8 +1409,9 @@ function _setTimerButtonReady(finishedId, isScreenshot, ownerUsername) {
             '<button class="btn btn-success split-btn-options' + (isExternalTest ? ' external-tests-attach-btn' : '') + '" onclick="' + (isExternalTest
                 ? 'openExternalCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\', event)'
                 : 'openCheckinOptionsModal(' + finishedId + ', \'' + safeOwner + '\')') + '" title="' + window.escapeHTML(window.t('checkinOptionsTitle', {}, lang)) + '">' +
-            '📎' +
+            (typeof window.getScreenshotBoostPaperclipContent === 'function' ? window.getScreenshotBoostPaperclipContent(finishedId) : '📎') +
             '</button>';
+        _syncScreenshotBoostPaperclip(splitWrapper.querySelector('.split-btn-options'), finishedId);
         btn.parentNode.replaceChild(splitWrapper, btn);
     }
     return true;
@@ -1242,6 +1433,9 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
     if (isTestFeedbackCheckinPending(appId)) return false;
     var btn = document.getElementById('btn-confirm-' + appId);
     if (!btn) return false;
+    if (btn.classList.contains('tstep__row') || !!btn.closest('.tstep-flow')) {
+        return false;
+    }
 
     var test = myTests.find(function(item) { return Number(item.id) === Number(appId); });
     if (test && test.is_external) return false;
@@ -1276,9 +1470,9 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
         }
         optionsBtn.disabled = false;
         optionsBtn.className = 'btn split-btn-options split-btn-options--timer';
-        optionsBtn.textContent = '📎';
         optionsBtn.title = optionsTitle;
         optionsBtn.setAttribute('aria-label', optionsTitle);
+        _syncScreenshotBoostPaperclip(optionsBtn, appId);
         optionsBtn.onclick = function(event) {
             if (event) {
                 event.preventDefault();
@@ -1299,7 +1493,9 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
         window.escapeHTML(timerLabel) +
         '</button>' +
         '<button class="btn split-btn-options split-btn-options--timer" onclick="openCheckinOptionsModal(' + appId + ', \'' + safeOwner + '\')" ' +
-        'title="' + optionsTitleSafe + '" aria-label="' + optionsTitleSafe + '">📎</button>';
+        'title="' + optionsTitleSafe + '" aria-label="' + optionsTitleSafe + '">' +
+        (typeof window.getScreenshotBoostPaperclipContent === 'function' ? window.getScreenshotBoostPaperclipContent(appId) : '📎') + '</button>';
+    _syncScreenshotBoostPaperclip(splitWrapper.querySelector('.split-btn-options'), appId);
     btn.parentNode.replaceChild(splitWrapper, btn);
     return true;
 }
@@ -1318,10 +1514,14 @@ function _startActiveTimerInterval(id) {
             return;
         }
         if (liveBtn && !liveBtn.getAttribute('data-feedback-pending')) {
-            liveBtn.innerText = t.timerRemaining.replace('{sec}', remaining);
+            var timerText = t.timerRemaining.replace('{sec}', remaining);
+            _setConfirmButtonLabel(liveBtn, timerText);
         }
         if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
             window.syncCheckinOptionsJustConfirmTimer(id, remaining);
+        }
+        if (typeof window.syncActiveTimerSwitchModalButton === 'function') {
+            window.syncActiveTimerSwitchModalButton(remaining);
         }
     }, 1000);
 }
@@ -1333,9 +1533,13 @@ function _syncActiveTimerState() {
         _timerIntervalId = null;
         _timerEndTimestamp = null;
         activeTimerAppId = null;
+        _activeTimerSwitchAttempts = 0;
         _timerIsScreenshot = false;
         _timerOwnerUsername = '';
         _clearPersistedActiveTimer();
+        if (typeof closeActiveTimerSwitchModal === 'function') {
+            closeActiveTimerSwitchModal();
+        }
         return false;
     }
     if (Date.now() < _timerEndTimestamp) {
@@ -1359,6 +1563,7 @@ function _syncActiveTimerState() {
     _timerIntervalId = null;
     _timerEndTimestamp = null;
     activeTimerAppId = null;
+    _activeTimerSwitchAttempts = 0;
     _timerIsScreenshot = false;
     _timerOwnerUsername = '';
     _timerLocalDate = '';
@@ -1366,6 +1571,9 @@ function _syncActiveTimerState() {
     _clearPersistedActiveTimer();
     if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
         window.syncCheckinOptionsJustConfirmTimer(finishedId, 0);
+    }
+    if (typeof closeActiveTimerSwitchModal === 'function') {
+        closeActiveTimerSwitchModal();
     }
     notifyCheckinTimerFinished();
     return true;
@@ -1772,6 +1980,9 @@ function _setIssueUiState(id, blocked) {
 }
 
 function _onStoreLinkClickedForIssueFlow(id) {
+    if (typeof window.rememberTestsScrollForResume === 'function') {
+        window.rememberTestsScrollForResume();
+    }
     var test = myTests.find(function(item) { return Number(item.id) === Number(id); });
     if (!test) return;
     test.has_clicked_store = true;
@@ -1811,23 +2022,17 @@ async function decideOffer(offerId, action, event) {
     if (!offerId) return;
 
     var lang = (typeof getLang === 'function') ? getLang() : 'ru';
-    var card = document.querySelector(`.offer-card[data-offer-id="${offerId}"]`);
-    var clickedBtn = event && event.currentTarget ? event.currentTarget : null;
-    var prevText = clickedBtn ? clickedBtn.textContent : '';
-
-    if (card) {
-        var btns = card.querySelectorAll('button');
-        btns.forEach(function(b) {
-            b.disabled = true;
-            b.style.opacity = '0.6';
-            b.style.cursor = 'not-allowed';
-        });
-        if (clickedBtn) {
-            var spinText = action === 'accept'
-                ? (window.t('acceptingOffer', {}, lang) || 'Принятие...')
-                : (window.t('rejectingOffer', {}, lang) || 'Отклонение...');
-            clickedBtn.innerHTML = '<span class="offer-btn-spinner" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span>' + window.escapeHTML(spinText);
-        }
+    var card = document.querySelector('.offer-card[data-offer-id="' + offerId + '"]');
+    var cardBtn = card && card.querySelector(action === 'accept' ? '.bounty-app-accept-btn' : '.bounty-app-reject-btn');
+    var clickedBtn = cardBtn || (event && event.currentTarget);
+    var processingLabel = action === 'accept'
+        ? window.t('acceptingOffer', {}, lang)
+        : window.t('rejectingOffer', {}, lang);
+    if (typeof applyActionButtonProcessing === 'function') {
+        applyActionButtonProcessing(clickedBtn, true, processingLabel);
+    }
+    if (typeof applyCardButtonsBusy === 'function') {
+        applyCardButtonsBusy(card, true, clickedBtn);
     }
 
     try {
@@ -1838,14 +2043,11 @@ async function decideOffer(offerId, action, event) {
         });
         const result = await response.json();
         if (result.status !== 'success') {
-            if (card) {
-                var btns = card.querySelectorAll('button');
-                btns.forEach(function(b) {
-                    b.disabled = false;
-                    b.style.opacity = '1';
-                    b.style.cursor = 'pointer';
-                });
-                if (clickedBtn && prevText) clickedBtn.textContent = prevText;
+            if (typeof applyActionButtonProcessing === 'function') {
+                applyActionButtonProcessing(clickedBtn, false);
+            }
+            if (typeof applyCardButtonsBusy === 'function') {
+                applyCardButtonsBusy(card, false);
             }
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             return;
@@ -1885,14 +2087,11 @@ async function decideOffer(offerId, action, event) {
         }
     } catch (error) {
         console.error('Offer decision error:', error);
-        if (card) {
-            var btns = card.querySelectorAll('button');
-            btns.forEach(function(b) {
-                b.disabled = false;
-                b.style.opacity = '1';
-                b.style.cursor = 'pointer';
-            });
-            if (clickedBtn && prevText) clickedBtn.textContent = prevText;
+        if (typeof applyActionButtonProcessing === 'function') {
+            applyActionButtonProcessing(clickedBtn, false);
+        }
+        if (typeof applyCardButtonsBusy === 'function') {
+            applyCardButtonsBusy(card, false);
         }
         handleApiError('network_error');
     }
@@ -1953,12 +2152,22 @@ async function createMutualOffer(targetAppId, targetOwnerId, event) {
             title: window.t('emailGateOfferTitle', {}, lang),
             text: window.t('emailGateOfferText', {}, lang),
             primaryLabel: window.t('emailGateSaveContinue', {}, lang),
-            onSave: function() { _continueMutualOffer(targetAppId, targetOwnerId, sourceButton); },
+            onSave: function() { _continueMutualOfferAfterDeviceGate(targetAppId, targetOwnerId, sourceButton); },
         });
         return;
     }
 
-    await _continueMutualOffer(targetAppId, targetOwnerId, sourceButton);
+    _continueMutualOfferAfterDeviceGate(targetAppId, targetOwnerId, sourceButton);
+}
+
+function _continueMutualOfferAfterDeviceGate(targetAppId, targetOwnerId, sourceButton) {
+    var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
+    if (typeof window.gateTesterProfileForMinAndroid === 'function' && window.gateTesterProfileForMinAndroid(target, {
+        onSavedComplete: function() { _continueMutualOffer(targetAppId, targetOwnerId, sourceButton); },
+    })) {
+        return;
+    }
+    _continueMutualOffer(targetAppId, targetOwnerId, sourceButton);
 }
 
 async function openPrelaunchJoinModal(targetAppId, targetOwnerId, event) {
@@ -1981,6 +2190,11 @@ async function openPrelaunchJoinModal(targetAppId, targetOwnerId, event) {
             primaryLabel: window.t('emailGateSaveContinue', {}, lang),
             onSave: function() { openPrelaunchJoinModal(targetAppId, targetOwnerId); },
         });
+        return;
+    }
+    if (typeof window.gateTesterProfileForMinAndroid === 'function' && window.gateTesterProfileForMinAndroid(target, {
+        onSavedComplete: function() { openPrelaunchJoinModal(targetAppId, targetOwnerId); },
+    })) {
         return;
     }
 
@@ -2148,6 +2362,247 @@ async function _requestCheckinOpenToken(appId) {
     return result;
 }
 
+let _activeTimerSwitchAttempts = 0;
+let _activeTimerSwitchModalState = {
+    appId: null,
+    appName: '',
+    pkg: '',
+};
+const ACTIVE_TIMER_SWITCH_TIP_KEY = 'last_active_timer_switch_tip_at';
+
+function _getActiveTimerDetails() {
+    if (!activeTimerAppId) return null;
+    var activeTest = (Array.isArray(myTests) ? myTests : []).find(function(item) {
+        return Number(item && item.id) === Number(activeTimerAppId);
+    });
+    var rawName = (activeTest && (activeTest.name || activeTest.package || activeTest.package_name || activeTest.external_package_name)) || 'App';
+    var activeAppName = (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(rawName) : rawName) || 'App';
+    var activePkg = (activeTest && (activeTest.package || activeTest.package_name || activeTest.pkg || activeTest.external_package_name)) || '';
+    var remainingSec = Math.max(1, Math.ceil((_timerEndTimestamp - Date.now()) / 1000));
+    return {
+        appId: activeTimerAppId,
+        appName: activeAppName,
+        pkg: activePkg,
+        remainingSec: remainingSec,
+        isScreenshot: !!_timerIsScreenshot,
+    };
+}
+
+function _openStorePackage(pkg, appId) {
+    var safePkg = String(pkg || '').trim();
+    if (!safePkg) return;
+    var playUrl = 'https://play.google.com/store/apps/details?id=' + encodeURIComponent(safePkg);
+    if (window.tg && typeof window.tg.openLink === 'function') {
+        window.tg.openLink(playUrl);
+    } else {
+        window.open(playUrl, '_blank');
+    }
+    if (appId && typeof _onStoreLinkClickedForIssueFlow === 'function') {
+        _onStoreLinkClickedForIssueFlow(appId);
+    }
+}
+
+// Paid protection days do not require another anti-fraud timer.  When the
+// owner opted into screenshot bonuses, this explicit Open action encourages
+// a real app session while keeping the existing one-tap installation check-in.
+function openProtectionBoostApp(appId, pkg) {
+    if (window.tg && window.tg.HapticFeedback) {
+        try { window.tg.HapticFeedback.selectionChanged(); } catch (e) {}
+    }
+    _openStorePackage(pkg, appId);
+}
+window.openProtectionBoostApp = openProtectionBoostApp;
+
+function _findAttemptedOpenButton(attemptedAppId) {
+    if (!attemptedAppId) return null;
+    var card = document.getElementById('test-card-' + attemptedAppId);
+    if (card) {
+        var openBtn = card.querySelector('.checkin-open-btn, .external-tests-open-btn, .tstep[data-step-key="download"] .tstep__row');
+        if (openBtn) return openBtn;
+    }
+    var directBtn = document.querySelector(`[onclick*="startTimer(${attemptedAppId}"]`)
+        || document.querySelector(`[onclick*="handleFirstDownload(${attemptedAppId}"]`)
+        || document.querySelector(`[onclick*="openPlay(${attemptedAppId}"]`);
+    if (directBtn) return directBtn;
+    if (card) {
+        var anyActionBtn = card.querySelector('#actions-' + attemptedAppId + ' button:not([id^="btn-confirm-"]):not([id^="btn-claim-"])');
+        if (anyActionBtn) return anyActionBtn;
+    }
+    return null;
+}
+
+function handleActiveTimerSwitchAttempt(attemptedAppId) {
+    var details = _getActiveTimerDetails();
+    if (!details) return;
+
+    var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+
+    _activeTimerSwitchAttempts = (_activeTimerSwitchAttempts || 0) + 1;
+    var cycleStep = ((_activeTimerSwitchAttempts - 1) % 4) + 1;
+
+    // 1. Step 1 (clicks 1, 5, 9...): Show large modal
+    if (cycleStep === 1) {
+        openActiveTimerSwitchModal(details);
+        return;
+    }
+
+    // 2. Step 4 (clicks 4, 8, 12...): Direct opening of active project's Google Play
+    if (cycleStep === 4) {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+        _openStorePackage(details.pkg, details.appId);
+        return;
+    }
+
+    // 3. Steps 2 & 3: Haptics, shake clicked Open button, highlight active card, and show warning toast
+    if (window.tg && window.tg.HapticFeedback) {
+        try {
+            window.tg.HapticFeedback.impactOccurred('medium');
+        } catch (e) {}
+    }
+
+    // Shake the clicked "Открыть" button (specifically the open button, NOT the confirm button next to it)
+    if (attemptedAppId) {
+        var clickedBtn = _findAttemptedOpenButton(attemptedAppId);
+        if (clickedBtn) {
+            clickedBtn.classList.remove('is-shaking');
+            void clickedBtn.offsetWidth;
+            clickedBtn.classList.add('is-shaking');
+            setTimeout(function() {
+                clickedBtn.classList.remove('is-shaking');
+            }, 400);
+        }
+    }
+
+    // Highlight current active test card
+    var activeConfirmBtn = document.getElementById('btn-confirm-' + details.appId);
+    var activeCard = activeConfirmBtn ? activeConfirmBtn.closest('.card') : (document.getElementById('test-card-' + details.appId) || null);
+    if (activeCard) {
+        activeCard.classList.remove('active-timer-card-highlight');
+        void activeCard.offsetWidth;
+        activeCard.classList.add('active-timer-card-highlight');
+        setTimeout(function() {
+            activeCard.classList.remove('active-timer-card-highlight');
+        }, 1500);
+    }
+
+    // Select toast text based on cycle step (2nd or 3rd click)
+    var toastMessage = '';
+    if (cycleStep === 2) {
+        var msgTpl1 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP1', {}, currentLang) : null)
+            || 'Многозадачность впечатляет, но тестируем по одному 🙂\n{appName} · ещё {sec} сек';
+        toastMessage = msgTpl1.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
+    } else if (cycleStep === 3) {
+        var msgTpl2 = (typeof window.t === 'function' ? window.t('activeTimerSwitchToastP2', {}, currentLang) : null)
+            || '👀 Мы тоже проверили. Таймер настоящий 🙂\n{appName} · ещё {sec} сек';
+        toastMessage = msgTpl2.replace('{appName}', details.appName).replace('{sec}', details.remainingSec);
+    }
+
+    // Show toast with standard duration (default 3000ms, does not vanish prematurely)
+    if (toastMessage && typeof showToast === 'function') {
+        showToast(toastMessage);
+    }
+}
+
+function openActiveTimerSwitchModal(details) {
+    if (!details) {
+        details = _getActiveTimerDetails();
+    }
+    if (!details) return;
+
+    _activeTimerSwitchModalState = {
+        appId: details.appId,
+        appName: details.appName,
+        pkg: details.pkg,
+    };
+
+    var modal = document.getElementById('active-timer-switch-modal');
+    var titleEl = document.getElementById('active-timer-switch-title');
+    var bodyEl = document.getElementById('active-timer-switch-body');
+    var btnEl = document.getElementById('btn-return-to-active-timer');
+    var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+
+    if (titleEl) {
+        titleEl.innerText = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalTitle', {}, currentLang) : null) || 'Слишком быстро';
+    }
+
+    if (bodyEl) {
+        var p1 = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalP1', {}, currentLang) : null)
+            || 'Google Play вряд ли поверит в тест за пару секунд — мы тоже 🙂';
+        var p2 = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalP2', { appName: details.appName }, currentLang) : null)
+            || ('Сейчас идёт сессия ' + details.appName + '. Дайте приложению хотя бы 15 секунд: откройте пару экранов, попробуйте основную функцию или оцените интерфейс.');
+        var p3 = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalP3', {}, currentLang) : null)
+            || '15 секунд — это время на реальный тест, а не ожидание.';
+
+        bodyEl.innerHTML = '<div style="font-size: 15px; font-weight: 600; color: var(--text-color);">' + window.escapeHTML(p1) + '</div>'
+            + '<div style="font-size: 14px; line-height: 1.5; color: var(--text-color); background: var(--secondary-bg-color); border: 1px solid rgba(142, 142, 147, 0.18); border-radius: 12px; padding: 12px 14px;">'
+            + window.escapeHTML(p2)
+            + '</div>'
+            + '<div style="font-size: 13px; color: var(--hint-color); padding: 0 4px; line-height: 1.45;">'
+            + '💡 ' + window.escapeHTML(p3)
+            + '</div>';
+    }
+
+    if (btnEl) {
+        var btnTextTpl = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalBtn', { appName: details.appName, sec: details.remainingSec }, currentLang) : null)
+            || ('↗ Вернуться к ' + details.appName + ' · ещё ' + details.remainingSec + ' сек');
+        btnEl.innerText = btnTextTpl;
+    }
+
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function syncActiveTimerSwitchModalButton(remainingSec) {
+    var modal = document.getElementById('active-timer-switch-modal');
+    if (!modal || !modal.classList.contains('active')) return;
+    var btnEl = document.getElementById('btn-return-to-active-timer');
+    if (!btnEl) return;
+    var currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
+    var appName = _activeTimerSwitchModalState.appName || 'App';
+    if (remainingSec > 0) {
+        var btnTextTpl = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalBtn', { appName: appName, sec: remainingSec }, currentLang) : null)
+            || ('↗ Вернуться к ' + appName + ' · ещё ' + remainingSec + ' сек');
+        btnEl.innerText = btnTextTpl;
+    } else {
+        var readyTpl = (typeof window.t === 'function' ? window.t('activeTimerSwitchModalBtnReady', { appName: appName }, currentLang) : null)
+            || ('↗ Вернуться к ' + appName + ' · можно подтверждать');
+        btnEl.innerText = readyTpl;
+    }
+}
+
+function handleReturnToActiveTimerClick() {
+    var pkg = _activeTimerSwitchModalState.pkg;
+    var appId = _activeTimerSwitchModalState.appId || activeTimerAppId;
+    closeActiveTimerSwitchModal();
+
+    localStorage.setItem(ACTIVE_TIMER_SWITCH_TIP_KEY, String(Date.now()));
+
+    if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+        window.tg.HapticFeedback.selectionChanged();
+    }
+    _openStorePackage(pkg, appId);
+}
+
+function closeActiveTimerSwitchModal(event) {
+    if (event && event.target && event.target.closest && event.target.closest('.modal-content')) {
+        return;
+    }
+    var modal = document.getElementById('active-timer-switch-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    localStorage.setItem(ACTIVE_TIMER_SWITCH_TIP_KEY, String(Date.now()));
+}
+
+window.openActiveTimerSwitchModal = openActiveTimerSwitchModal;
+window.closeActiveTimerSwitchModal = closeActiveTimerSwitchModal;
+window.handleReturnToActiveTimerClick = handleReturnToActiveTimerClick;
+window.syncActiveTimerSwitchModalButton = syncActiveTimerSwitchModalButton;
+window.handleActiveTimerSwitchAttempt = handleActiveTimerSwitchAttempt;
+
 function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
     _startTimerAsync(id, pkg, isScreenshotDay, ownerUsername, durationSeconds).catch(function(err) {
         console.error('startTimer failed:', err);
@@ -2167,6 +2622,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         _timerIntervalId = null;
         _timerEndTimestamp = null;
         activeTimerAppId = null;
+        _activeTimerSwitchAttempts = 0;
         _timerIsScreenshot = false;
         _timerOwnerUsername = '';
         _clearPersistedActiveTimer();
@@ -2175,6 +2631,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         _timerIntervalId = null;
         _timerEndTimestamp = null;
         activeTimerAppId = null;
+        _activeTimerSwitchAttempts = 0;
         _timerIsScreenshot = false;
         _timerOwnerUsername = '';
         _clearPersistedActiveTimer();
@@ -2195,7 +2652,7 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
     }
 
     if (activeTimerAppId !== null && activeTimerAppId !== id) {
-        showCustomAlert(t.antiFraudAlert);
+        handleActiveTimerSwitchAttempt(id);
         return;
     }
 
@@ -2209,15 +2666,20 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
 
     // 2. Start timer countdown immediately
     activeTimerAppId = id;
+    _activeTimerSwitchAttempts = 0;
     _timerEndTimestamp = Date.now() + (resolvedDurationSeconds * 1000);
     _timerIsScreenshot = isScreenshotDay;
     _timerOwnerUsername = resolvedOwnerUsername;
     _timerLocalDate = getLocalDate();
     _persistActiveTimer();
-    btn.innerText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
+    var timerCountdownText = t.timerRemaining.replace('{sec}', resolvedDurationSeconds);
+    _setConfirmButtonLabel(btn, timerCountdownText);
     // Normal days: show green active 📎 immediately while confirm stays on the countdown.
+    // Control days: the +$BUST sticker appears only after Open starts the timer.
     if (!isScreenshotDay) {
         _ensureEarlyPaperclipSplit(id, resolvedOwnerUsername);
+    } else if (typeof window.syncScreenshotBoostConfirmButton === 'function') {
+        window.syncScreenshotBoostConfirmButton(btn, id);
     }
     _startActiveTimerInterval(id);
 
@@ -2253,9 +2715,12 @@ function _restoreActiveTimer() {
     if (remaining <= 0) {
         _syncActiveTimerState();
     } else {
-        btn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        var timerText = window.t('timerRemaining', {}, lang).replace('{sec}', remaining);
+        _setConfirmButtonLabel(btn, timerText);
         if (!_timerIsScreenshot) {
             _ensureEarlyPaperclipSplit(activeTimerAppId, _timerOwnerUsername || '');
+        } else if (typeof window.syncScreenshotBoostConfirmButton === 'function') {
+            window.syncScreenshotBoostConfirmButton(btn, activeTimerAppId);
         }
         _persistActiveTimer();
         _startActiveTimerInterval(activeTimerAppId);
@@ -2283,13 +2748,18 @@ function advanceFirstDayStepsAfterDownload(id) {
     if (downloadStep) {
         downloadStep.classList.remove('is-current', 'is-next');
         downloadStep.classList.add('is-done');
+        const downloadBtn = downloadStep.querySelector('.tstep__row');
+        if (downloadBtn) {
+            downloadBtn.disabled = false;
+            downloadBtn.removeAttribute('aria-disabled');
+        }
     }
     const screenshotStep = flow.querySelector('[data-step-key="screenshot"]');
     if (screenshotStep) {
         screenshotStep.classList.remove('is-locked', 'is-next');
         screenshotStep.classList.add('is-current');
     }
-    const confirmBtn = document.getElementById(`btn-confirm-${id}`);
+    const confirmBtn = document.getElementById(`btn-confirm-${id}`) || (screenshotStep ? screenshotStep.querySelector('.tstep__row') : null);
     if (confirmBtn) {
         confirmBtn.disabled = false;
         confirmBtn.removeAttribute('aria-disabled');
@@ -2297,6 +2767,10 @@ function advanceFirstDayStepsAfterDownload(id) {
 }
 
 function handleFirstDownload(id, pkg) {
+    if (activeTimerAppId !== null && Number(activeTimerAppId) !== Number(id)) {
+        handleActiveTimerSwitchAttempt(id);
+        return;
+    }
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
     setFirstDayScreenshotVisible(id, true);
     tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
@@ -2349,10 +2823,42 @@ async function submitIssueReport(appId) {
     }
 
     try {
+        var wait = typeof getIssueAccessWaitState === 'function'
+            ? getIssueAccessWaitState(appId)
+            : { remainingMs: 0, timeLabel: '00:00' };
+        if (wait.remainingMs > 0) {
+            showToast(window.t(
+                wait.reason === 'group' ? 'reportIssueWaitGroupActive' : 'reportIssueWaitActive',
+                { time: wait.timeLabel },
+                lang
+            ));
+            return;
+        }
+
+        var screenshotFileId = '';
+        var screenshotRaw = (typeof _issueReportScreenshotFileId !== 'undefined' ? _issueReportScreenshotFileId : '')
+            || (typeof _issueReportScreenshotUrl !== 'undefined' ? _issueReportScreenshotUrl : '')
+            || (window._issueReportScreenshotFileId || window._issueReportScreenshotUrl || '');
+        if (typeof _telegramFileIdFromMediaUrl === 'function') {
+            screenshotFileId = _telegramFileIdFromMediaUrl(screenshotRaw);
+        } else {
+            screenshotFileId = String(screenshotRaw || '').trim();
+        }
+        if (!screenshotFileId) {
+            showToast(window.t('reportIssueScreenshotRequired', {}, lang));
+            return;
+        }
+
         var response = await fetch(`${API_BASE}/projects/${appId}/report_issue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({ tester_id: userId, issue_reason: reason, email: email, account_match_confirmed: true }))
+            body: JSON.stringify(withInitData({
+                tester_id: userId,
+                issue_reason: reason,
+                email: email,
+                account_match_confirmed: true,
+                screenshot_file_id: screenshotFileId,
+            }))
         });
         var result = await response.json();
         if (!response.ok || !result || result.status !== 'success') {
@@ -2409,7 +2915,30 @@ async function sendReport() {
     document.getElementById('report-modal').classList.remove('active');
 
     if (appId) {
-        confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
+        var safeAppId = Number(appId || 0);
+        var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
+        var isExternal = !!(test && (test.is_external || test.is_guest || String(test.flow || '') === 'external'));
+        var usesProofUpload = !isExternal && (
+            typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+            ? window.isInternalScreenshotProofUploadEnabled(test || safeAppId)
+            : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())
+        );
+        if (
+            usesProofUpload
+            && typeof window.openCheckinProofUploadModal === 'function'
+        ) {
+            window.openCheckinProofUploadModal(appId);
+            return;
+        }
+        if (isExternal) {
+            if (typeof window.submitExternalGuestActivityFromUi === 'function') {
+                window.submitExternalGuestActivityFromUi(appId).catch(function(err) {
+                    console.error('Submit external guest activity from sendReport error:', err);
+                });
+            }
+        } else {
+            confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
+        }
     }
     if (ownerUsername) {
         openOwnerCheckpointChat(ownerUsername, text);
@@ -2431,10 +2960,15 @@ function renderEarnBustDynamic() {
         <span class="meta-chip accent-green">⚡ ${window.escapeHTML(window.t('earnEarlyFinishCountChip', { count: _earnEarlyFinishCount }, lang))}</span>
         <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnEarlyFinishBust)}</span>
     `;
-    document.getElementById('earn-feedback-status').innerHTML = `
-        <span class="meta-chip accent-green">🐞 ${window.t('earnFeedbackCountChip', { count: _earnFeedbackCount }, lang)}</span>
-        <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnFeedbackBust)}</span>
-    `;
+    var developerRewardsStatus = document.getElementById('earn-developer-rewards-status');
+    if (developerRewardsStatus) {
+        developerRewardsStatus.innerHTML = `
+            <span class="meta-chip accent-green">🐞 ${window.escapeHTML(window.t('earnDeveloperTicketChip', { count: Number(_earnTicketRewardCount || 0) }, lang))}</span>
+            <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnTicketRewardBust)}</span>
+            <span class="meta-chip accent-green">📸 ${window.escapeHTML(window.t('earnDeveloperBoostChip', { count: Number(_earnScreenshotBoostCount || 0) }, lang))}</span>
+            <span class="meta-chip accent-purple">💎 ${formatBustAmount(_earnScreenshotBoostBust)}</span>
+        `;
+    }
     var playReviewStatus = document.getElementById('earn-play-review-status');
     if (playReviewStatus) {
         playReviewStatus.innerHTML = `
@@ -2450,7 +2984,7 @@ function renderEarnBustDynamic() {
         sprintJoinedEl.innerText = `🏁 ${window.t('earnSprintJoinedChip', { count: Number(_earnSprintJoined || 0) }, lang)}`;
     }
     if (sprintBustEl) {
-        sprintBustEl.innerText = `💎 ${window.t('earnSprintBustChip', { amount: formatBustAmount(_earnSprintBust) }, lang)}`;
+        sprintBustEl.innerText = `💎 ${formatBustAmount(_earnSprintBust)}`;
     }
     const socialStatus = document.getElementById('earn-social-status');
     if (_socialBonusStatus === 'approved') {
@@ -2492,6 +3026,10 @@ async function openEarnBustModal() {
         _earnEarlyFinishBust = Number(data.early_finish_bust_earned || 0);
         _earnFeedbackCount = Number(data.feedback_sent_count || 0);
         _earnFeedbackBust = Number(data.feedback_bust_earned || 0);
+        _earnTicketRewardCount = Number(data.developer_ticket_count || 0);
+        _earnTicketRewardBust = Number(data.developer_ticket_bust_earned || 0);
+        _earnScreenshotBoostCount = Number(data.screenshot_boost_count || 0);
+        _earnScreenshotBoostBust = Number(data.screenshot_boost_bust_earned || 0);
         _earnPlayReviewCount = Number(data.play_review_count || 0);
         _earnPlayReviewBust = Number(data.play_review_bust_earned || 0);
         _socialBonusStatus = data.social_bonus_status || 'none';
@@ -2551,7 +3089,91 @@ function markTestFeedbackCheckinPending(appId) {
     // through Open → timer again with no explanation.
     clearActiveTimerForApp(normalizedId);
     applyTestFeedbackCheckinPendingUi(normalizedId);
+    scheduleFeedbackPendingHint(normalizedId);
 }
+
+var FEEDBACK_PENDING_HINT_DELAY_MS = 7000;
+var _feedbackPendingHintShownAppIds = {};
+var _feedbackPendingHintTimers = {};
+
+function _removeFeedbackPendingHint(card) {
+    if (!card) return;
+    card.querySelectorAll('.feedback-pending-hint').forEach(function(el) {
+        el.remove();
+    });
+}
+
+function isFeedbackPendingHintVisible(appId) {
+    return !!_feedbackPendingHintShownAppIds[Number(appId || 0)];
+}
+
+function _clearFeedbackPendingHintTimer(appId) {
+    var key = String(Number(appId || 0));
+    if (!key || key === '0') return;
+    if (_feedbackPendingHintTimers[key]) {
+        clearTimeout(_feedbackPendingHintTimers[key]);
+        delete _feedbackPendingHintTimers[key];
+    }
+}
+
+function _ensureFeedbackPendingHint(card) {
+    if (!card || card.querySelector('.feedback-pending-hint')) return;
+    var hint = document.createElement('div');
+    hint.className = 'feedback-pending-hint';
+    hint.textContent = window.t('feedbackCheckinPendingHint', {}, lang);
+    var actions = card.querySelector('[id^="actions-"]');
+    var anchor = (actions && (actions.querySelector('.checkin-actions') || actions.querySelector('.action-row') || actions.querySelector('.tstep-flow')))
+        || card.querySelector('.checkin-actions')
+        || card.querySelector('.action-row')
+        || card.querySelector('.tstep-flow');
+    if (anchor) {
+        anchor.insertAdjacentElement('afterend', hint);
+        return;
+    }
+    if (actions) {
+        actions.appendChild(hint);
+        return;
+    }
+    card.appendChild(hint);
+}
+
+function revealFeedbackPendingHint(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0 || !isTestFeedbackCheckinPending(normalizedId)) return false;
+    _clearFeedbackPendingHintTimer(normalizedId);
+    _feedbackPendingHintShownAppIds[normalizedId] = Date.now();
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (card) {
+        _ensureFeedbackPendingHint(card);
+    }
+    return true;
+}
+
+function scheduleFeedbackPendingHint(appId) {
+    var normalizedId = Number(appId || 0);
+    if (normalizedId <= 0 || !isTestFeedbackCheckinPending(normalizedId)) return;
+    if (isFeedbackPendingHintVisible(normalizedId)) {
+        revealFeedbackPendingHint(normalizedId);
+        return;
+    }
+    var key = String(normalizedId);
+    if (_feedbackPendingHintTimers[key]) return;
+    _feedbackPendingHintTimers[key] = setTimeout(function() {
+        delete _feedbackPendingHintTimers[key];
+        revealFeedbackPendingHint(normalizedId);
+    }, FEEDBACK_PENDING_HINT_DELAY_MS);
+}
+
+function revealAllFeedbackPendingHints() {
+    Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
+        revealFeedbackPendingHint(Number(key));
+    });
+}
+
+window.isFeedbackPendingHintVisible = isFeedbackPendingHintVisible;
+window.revealFeedbackPendingHint = revealFeedbackPendingHint;
+window.scheduleFeedbackPendingHint = scheduleFeedbackPendingHint;
+window.revealAllFeedbackPendingHints = revealAllFeedbackPendingHints;
 
 function restoreCheckinReadyAfterFeedbackPending(appId) {
     var normalizedId = Number(appId || 0);
@@ -2559,13 +3181,15 @@ function restoreCheckinReadyAfterFeedbackPending(appId) {
     var card = document.getElementById('test-card-' + normalizedId);
     if (card) {
         card.classList.remove('card-feedback-pending');
-        var splitBtn = card.querySelector('.split-btn-options');
-        if (splitBtn) {
-            splitBtn.disabled = false;
-            splitBtn.style.pointerEvents = '';
-            splitBtn.style.opacity = '';
+        var splitGroup = card.querySelector('.split-btn-group');
+        if (splitGroup) {
+            splitGroup.classList.remove('is-feedback-pending');
         }
+        _setSplitOptionsHidden(card.querySelector('.split-btn-options'), false);
+        _removeFeedbackPendingHint(card);
     }
+    _clearFeedbackPendingHintTimer(normalizedId);
+    delete _feedbackPendingHintShownAppIds[normalizedId];
     var payload = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(normalizedId) : null;
     var hasOpenToken = !!(typeof _getCheckinOpenToken === 'function' && _getCheckinOpenToken(normalizedId));
     if (payload || hasOpenToken) {
@@ -2589,9 +3213,15 @@ function clearTestFeedbackCheckinPending(appId) {
     try {
         localStorage.setItem('pending_feedback_checkins_v1', JSON.stringify(_pendingFeedbackCheckinAppIds));
     } catch (e) {}
+    _clearFeedbackPendingHintTimer(normalizedId);
+    delete _feedbackPendingHintShownAppIds[normalizedId];
     var confirmBtn = document.getElementById('btn-confirm-' + normalizedId);
     if (confirmBtn) {
         confirmBtn.removeAttribute('data-feedback-pending');
+    }
+    var card = document.getElementById('test-card-' + normalizedId);
+    if (card) {
+        _removeFeedbackPendingHint(card);
     }
 }
 
@@ -2608,28 +3238,35 @@ function applyTestFeedbackCheckinPendingUi(appId) {
         card.classList.add('card-feedback-pending');
     }
 
-    var pendingLabel = getFeedbackCheckinPendingLabel();
     var confirmBtn = document.getElementById('btn-confirm-' + normalizedId)
         || (card ? card.querySelector('#btn-confirm-' + normalizedId) : null)
         || (card ? card.querySelector('.split-btn-main') : null);
     if (confirmBtn) {
+        var alreadyPending = confirmBtn.getAttribute('data-feedback-pending') === '1'
+            && !!confirmBtn.querySelector('.feedback-pending-dots');
         confirmBtn.disabled = true;
         confirmBtn.setAttribute('data-feedback-pending', '1');
         confirmBtn.style.backgroundColor = 'rgba(142, 142, 147, 0.2)';
         confirmBtn.style.color = 'var(--hint-color)';
         confirmBtn.style.cursor = 'not-allowed';
         confirmBtn.classList.remove('btn-success', 'external-tests-confirm-ready');
-        _setConfirmButtonLabel(confirmBtn, pendingLabel);
+        if (!alreadyPending) {
+            _setConfirmButtonPendingLabel(confirmBtn);
+        }
         confirmBtn.onclick = null;
         confirmBtn.removeAttribute('onclick');
+        var splitGroup = confirmBtn.closest('.split-btn-group');
+        if (splitGroup) {
+            splitGroup.classList.add('is-feedback-pending');
+        }
     }
 
     if (!card) return;
-    var splitBtn = card.querySelector('.split-btn-options');
-    if (splitBtn) {
-        splitBtn.disabled = true;
-        splitBtn.style.pointerEvents = 'none';
-        splitBtn.style.opacity = '0.55';
+    _setSplitOptionsHidden(card.querySelector('.split-btn-options'), true);
+    if (isFeedbackPendingHintVisible(normalizedId)) {
+        _ensureFeedbackPendingHint(card);
+    } else {
+        scheduleFeedbackPendingHint(normalizedId);
     }
 }
 
@@ -2672,6 +3309,19 @@ async function syncPendingFeedbackCheckinsFromServer() {
         }
 
         var waitingAppId = data.waiting ? Number(data.app_id || 0) : 0;
+
+        // Ensure tasks are freshly loaded before deciding if a pending checkin completed or failed
+        if (typeof _testsInFlight !== 'undefined' && _testsInFlight) {
+            try { await _testsInFlight; } catch (e) {}
+        } else if (typeof loadTasks === 'function') {
+            try { await loadTasks(true); } catch (e) {}
+        }
+
+        // clearCompletedPendingFeedbackCheckins() in loadTasks may have already handled completed checkins
+        if (!hasPendingFeedbackCheckins()) {
+            return false;
+        }
+
         var clearedIds = [];
         var today = typeof getLocalDate === 'function' ? getLocalDate() : '';
         Object.keys(_pendingFeedbackCheckinAppIds || {}).forEach(function(key) {
@@ -2689,9 +3339,9 @@ async function syncPendingFeedbackCheckinsFromServer() {
         var unfinishedCleared = false;
         clearedIds.forEach(function(appId) {
             var test = (myTests || []).find(function(item) {
-                return Number(item.id) === appId;
+                return Number(item.id) === appId || Number(item.app_id) === appId;
             });
-            var doneToday = !!(test && test.status === 'done' && String(test.last_check_date || '') === today);
+            var doneToday = !!(test && (test.status === 'done' || String(test.last_check_date || '') === today));
             if (!doneToday) {
                 unfinishedCleared = true;
                 if (restoreCheckinReadyAfterFeedbackPending(appId)) {
@@ -2755,7 +3405,7 @@ function clearCompletedPendingFeedbackCheckins() {
         if (test) {
             var testingDay = Number(test.testing_days || 0);
             var isOvertime = testingDay >= 15;
-            var earnedKarma = isOvertime ? 0.5 : 0;
+            var earnedKarma = isOvertime ? 0.1 : 0;
             var earnedBust = typeof test.exact_daily_reward !== 'undefined' ? Number(test.exact_daily_reward) : (test.join_type === 'bounty' ? test.bounty_per_tester * 0.65 / 14 : 0);
             
             if (earnedBust > 0 && earnedKarma > 0) {
@@ -2855,25 +3505,289 @@ async function initiateProjectFeedback(appId, options) {
     }
 }
 
-function setFeedbackRewardBust(amount) {
-    _feedbackRewardBust = Number(amount || 0);
-    const input = document.getElementById('feedback-reward-bust-input');
-    if (input) {
-        input.value = _feedbackRewardBust > 0 ? String(_feedbackRewardBust) : '';
+var FEEDBACK_REWARD_BUST_PRESETS = [5, 10, 25, 50, 100, 500];
+var FEEDBACK_REWARD_BUST_STEP = 5;
+var FEEDBACK_REWARD_CONTRIB_POINTS = { bug: 5, idea: 4, review: 3 };
+
+function getFeedbackRewardOwnerBalance() {
+    return Math.max(0, Number((typeof visibilityStats !== 'undefined' && visibilityStats && visibilityStats.balance_bust) || 0) || 0);
+}
+
+function getFeedbackRewardTicketKind(item) {
+    var type = String((item && item.type) || 'bug').toLowerCase();
+    if (type.indexOf('google_play_review') === 0 || type === 'review' || type === 'play_review') return 'review';
+    if (type === 'idea') return 'idea';
+    return 'bug';
+}
+
+function getFeedbackRewardContributionPoints(item) {
+    var kind = getFeedbackRewardTicketKind(item);
+    return Number(FEEDBACK_REWARD_CONTRIB_POINTS[kind] || FEEDBACK_REWARD_CONTRIB_POINTS.bug);
+}
+
+function feedbackRewardHasProof(item) {
+    if (!item) return false;
+    if (Array.isArray(item.media_urls) && item.media_urls.some(Boolean)) return true;
+    if (Array.isArray(item.tg_file_ids) && item.tg_file_ids.some(Boolean)) return true;
+    if (item.tg_file_id) return true;
+    if (item.screenshot_url || item.play_review_screenshot_url) return true;
+    return false;
+}
+
+function getFeedbackRewardSubtitleKey(item) {
+    var kind = getFeedbackRewardTicketKind(item);
+    var hasProof = feedbackRewardHasProof(item);
+    if (kind === 'idea') return hasProof ? 'feedbackRewardProofIdea' : 'feedbackRewardNoProofIdea';
+    if (kind === 'review') return hasProof ? 'feedbackRewardProofReview' : 'feedbackRewardNoProofReview';
+    return hasProof ? 'feedbackRewardProofBug' : 'feedbackRewardNoProofBug';
+}
+
+function getFeedbackRewardTypeBadge(item) {
+    var kind = getFeedbackRewardTicketKind(item);
+    if (kind === 'idea') return '💡';
+    if (kind === 'review') return '⭐';
+    return '🐞';
+}
+
+function getFeedbackRewardDisplayName(item) {
+    var fullName = String((item && item.tester_full_name) || '').trim();
+    if (fullName) return fullName;
+    var username = String((item && item.tester_username) || '').replace(/^@+/, '').trim();
+    if (username) return username;
+    return window.t('idLabel', { id: (item && item.tester_id) || 0 }, lang);
+}
+
+function getFeedbackRewardInitials(item) {
+    var source = String((item && (item.tester_full_name || item.tester_username)) || '?')
+        .trim()
+        .replace(/^@+/, '');
+    var letters = source.replace(/[^A-Za-zА-Яа-яЁё0-9]/g, ' ').trim();
+    if (!letters) letters = source;
+    var parts = letters.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
     }
-    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
-    [5, 10, 25, 50, 100].forEach(function(value) {
-        const chip = document.getElementById(`feedback-bust-chip-${value}`);
-        if (chip) {
-            chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
-            chip.classList.toggle('is-disabled', Number(value) > balance);
+    return (letters.substring(0, 2) || '?').toUpperCase();
+}
+
+function formatFeedbackRewardBustNumber(amount) {
+    if (typeof formatAmountValue === 'function') {
+        return String(formatAmountValue(amount, 1));
+    }
+    var formatted = (typeof formatBustAmount === 'function') ? String(formatBustAmount(amount)) : String(amount || 0);
+    return formatted.replace(/\s*\$BUST\s*$/i, '').trim();
+}
+
+function formatFeedbackRewardBustLabel(amount) {
+    if (typeof formatBustAmount === 'function') return formatBustAmount(amount);
+    return formatFeedbackRewardBustNumber(amount) + ' $BUST';
+}
+
+function getFeedbackRewardLifetimeScore(item) {
+    var scores = [];
+    function pushScore(raw) {
+        if (raw == null || raw === '') return;
+        var n = Number(raw);
+        if (Number.isFinite(n)) scores.push(Math.max(0, Math.round(n)));
+    }
+    pushScore(item && item.contribution_lifetime_score);
+    var testerId = Number((item && item.tester_id) || 0);
+    var project = typeof getFeedbackRewardProject === 'function' ? getFeedbackRewardProject() : null;
+    var testers = (project && project.testers) || [];
+    for (var i = 0; i < testers.length; i++) {
+        if (Number(testers[i].tester_id || testers[i].id || 0) === testerId) {
+            pushScore(testers[i].contribution_lifetime_score);
+            break;
+        }
+    }
+    if (!scores.length) return null;
+    var best = scores[0];
+    for (var s = 1; s < scores.length; s++) {
+        if (scores[s] > best) best = scores[s];
+    }
+    return best;
+}
+
+function _feedbackRewardLightHaptic() {
+    try {
+        if (!(tg && tg.HapticFeedback && typeof tg.HapticFeedback.selectionChanged === 'function')) return;
+        var run = function() {
+            try { tg.HapticFeedback.selectionChanged(); } catch (e) {}
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+        else setTimeout(run, 0);
+    } catch (e) {}
+}
+
+function fillFeedbackRewardAuthorCard(item) {
+    var nameEl = document.getElementById('feedback-reward-target-name');
+    var metaEl = document.getElementById('feedback-reward-target-meta');
+    var contribEl = document.getElementById('feedback-reward-contrib-chip');
+    var contribLabelEl = document.getElementById('feedback-reward-contrib-label');
+    var badgeEl = document.getElementById('feedback-reward-type-badge');
+    var avatarEl = document.getElementById('feedback-reward-avatar');
+    var initialsEl = document.getElementById('feedback-reward-avatar-initials');
+    if (nameEl) nameEl.textContent = getFeedbackRewardDisplayName(item);
+    if (metaEl) {
+        metaEl.textContent = window.t(getFeedbackRewardSubtitleKey(item), {}, lang);
+    }
+    if (contribEl) {
+        contribEl.textContent = window.t('feedbackRewardContribChip', {
+            points: getFeedbackRewardContributionPoints(item)
+        }, lang);
+    }
+    if (contribLabelEl) {
+        var lifetimeScore = getFeedbackRewardLifetimeScore(item);
+        contribLabelEl.textContent = (lifetimeScore == null)
+            ? window.t('feedbackRewardContribLabel', {}, lang)
+            : window.t('feedbackRewardContribLabelScore', { score: lifetimeScore }, lang);
+    }
+    if (badgeEl) badgeEl.textContent = getFeedbackRewardTypeBadge(item);
+    if (avatarEl) {
+        var existingImg = avatarEl.querySelector('img');
+        if (existingImg) existingImg.remove();
+        var hue = ((Number((item && item.tester_id) || 0) * 73 + 17) % 360);
+        avatarEl.style.background = 'linear-gradient(180deg, hsl(' + hue + ', 62%, 42%), hsl(' + hue + ', 58%, 28%))';
+        if (initialsEl) {
+            initialsEl.textContent = getFeedbackRewardInitials(item);
+            initialsEl.style.display = 'flex';
+        }
+        var avatarUrl = item && (item.tester_avatar_url || item.avatar_url);
+        if (avatarUrl) {
+            var img = document.createElement('img');
+            img.alt = '';
+            img.decoding = 'async';
+            img.src = String(avatarUrl);
+            img.addEventListener('load', function() {
+                if (initialsEl) initialsEl.style.display = 'none';
+            });
+            img.addEventListener('error', function() {
+                img.remove();
+                if (initialsEl) initialsEl.style.display = 'flex';
+            });
+            avatarEl.insertBefore(img, avatarEl.firstChild);
+        }
+    }
+}
+
+function setFeedbackRewardBust(amount, options) {
+    var balance = getFeedbackRewardOwnerBalance();
+    var next = Math.max(0, Math.round(Number(amount || 0)));
+    if (next > balance) next = Math.floor(balance);
+    var prev = _feedbackRewardBust;
+    var syncLimits = !!(options && options.syncLimits);
+    if (next === prev && !syncLimits) return;
+    _feedbackRewardBust = next;
+    const input = document.getElementById('feedback-reward-bust-input');
+    if (input) input.value = String(_feedbackRewardBust);
+    var display = document.getElementById('feedback-reward-bust-display');
+    if (display) display.textContent = String(_feedbackRewardBust);
+    FEEDBACK_REWARD_BUST_PRESETS.forEach(function(value) {
+        const chip = document.getElementById('feedback-bust-chip-' + value);
+        if (!chip) return;
+        chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
+        if (syncLimits) {
+            var overBalance = Number(value) > balance;
+            chip.classList.toggle('is-disabled', overBalance);
+            chip.disabled = overBalance;
         }
     });
+    var minusBtn = document.getElementById('feedback-reward-bust-minus');
+    var plusBtn = document.getElementById('feedback-reward-bust-plus');
+    if (minusBtn) minusBtn.disabled = _feedbackRewardBust <= 0;
+    if (plusBtn) plusBtn.disabled = _feedbackRewardBust >= balance;
     _updateFeedbackRewardSubmitState();
 }
 
-function setFeedbackRewardKarma(amount) {
-    var item = getFeedbackRewardItem();
+function nudgeFeedbackRewardBust(delta) {
+    var direction = Number(delta) < 0 ? -1 : 1;
+    setFeedbackRewardBust(_feedbackRewardBust + (direction * FEEDBACK_REWARD_BUST_STEP));
+    _feedbackRewardLightHaptic();
+}
+
+function applyFeedbackRewardQuickReply(kind) {
+    var keyMap = {
+        thanks: 'feedbackRewardQuickThanks',
+        bug: 'feedbackRewardQuickBug',
+        idea: 'feedbackRewardQuickIdea',
+        noted: 'feedbackRewardQuickNoted'
+    };
+    var key = keyMap[String(kind || '')];
+    var reply = document.getElementById('feedback-reward-reply');
+    if (!key || !reply) return;
+    var phrase = window.t(key, {}, lang);
+    if (!phrase) return;
+    var current = String(reply.value || '');
+    if (!current.trim()) {
+        reply.value = phrase;
+    } else {
+        reply.value = current.replace(/\s+$/, '') + '\n' + phrase;
+    }
+    try {
+        var len = reply.value.length;
+        reply.focus();
+        reply.setSelectionRange(len, len);
+    } catch (err) {}
+    syncFeedbackRewardQuickReplyState();
+    _syncFeedbackRewardSubmitEnabled();
+    _feedbackRewardLightHaptic();
+}
+
+function syncFeedbackRewardQuickReplyState() {
+    var reply = document.getElementById('feedback-reward-reply');
+    var current = reply ? String(reply.value || '') : '';
+    var chips = document.querySelectorAll('#feedback-reward-modal .feedback-reward-quick-chip');
+    for (var i = 0; i < chips.length; i++) {
+        var phrase = String(chips[i].textContent || '').trim();
+        chips[i].classList.toggle('is-active', !!phrase && current.indexOf(phrase) !== -1);
+    }
+}
+
+function updateFeedbackRewardSummary() {
+    var contribEl = document.getElementById('feedback-reward-summary-contrib');
+    var bustEl = document.getElementById('feedback-reward-summary-bust');
+    var karmaEl = document.getElementById('feedback-reward-summary-karma');
+    var karmaAmountEl = document.getElementById('feedback-reward-summary-karma-amount');
+    var emptyEl = document.getElementById('feedback-reward-summary-empty');
+    var item = typeof getFeedbackRewardItem === 'function' ? getFeedbackRewardItem() : null;
+    var contribPoints = item ? getFeedbackRewardContributionPoints(item) : 0;
+    var hasContrib = contribPoints > 0;
+    var hasBust = _feedbackRewardBust > 0;
+    var hasKarma = _feedbackRewardKarma > 0;
+    if (contribEl) {
+        contribEl.hidden = !hasContrib;
+        if (hasContrib) {
+            contribEl.textContent = window.t('feedbackRewardSummaryContrib', {
+                points: contribPoints
+            }, lang);
+        }
+    }
+    if (bustEl) {
+        bustEl.hidden = !hasBust;
+        if (hasBust) bustEl.textContent = formatFeedbackRewardBustLabel(_feedbackRewardBust);
+    }
+    if (karmaEl) karmaEl.hidden = !hasKarma;
+    if (hasKarma && karmaAmountEl) {
+        karmaAmountEl.textContent = window.t('feedbackRewardSummaryKarma', {
+            amount: Number(_feedbackRewardKarma).toFixed(1)
+        }, lang);
+    }
+    if (emptyEl) {
+        emptyEl.hidden = hasContrib || hasBust || hasKarma;
+        if (!hasContrib && !hasBust && !hasKarma) {
+            emptyEl.textContent = window.t('feedbackRewardSummaryEmpty', {}, lang);
+        }
+    }
+}
+
+var _feedbackRewardKarmaGate = {
+    thanksAvailable: true,
+    specialAvailable: true,
+    alreadyThanked: false,
+    alreadySpecial: false
+};
+
+function _readFeedbackRewardKarmaGate(item) {
     var thanksAvailable = item ? (item.thanks_available !== false) : true;
     var specialAvailable = item ? (item.special_available !== false) : true;
     if (item && item.thanks_available == null && item.special_available == null) {
@@ -2882,43 +3796,69 @@ function setFeedbackRewardKarma(amount) {
     }
     var alreadyThanked = item ? !!item.tester_already_thanked : false;
     var alreadySpecial = item ? !!item.tester_already_special : false;
+    var rewardedToday = item ? !!item.tester_rewarded_today : false;
+    if (rewardedToday) {
+        alreadyThanked = true;
+        alreadySpecial = true;
+    }
     if (!item || (item.tester_already_thanked == null && item.tester_already_special == null && item.tester_already_rewarded_karma)) {
         alreadyThanked = !!item && !!item.tester_already_rewarded_karma;
         alreadySpecial = alreadyThanked;
     }
+    return {
+        thanksAvailable: thanksAvailable,
+        specialAvailable: specialAvailable,
+        alreadyThanked: alreadyThanked,
+        alreadySpecial: alreadySpecial
+    };
+}
+
+function setFeedbackRewardKarma(amount, options) {
+    var gate = _feedbackRewardKarmaGate || _readFeedbackRewardKarmaGate(getFeedbackRewardItem());
+    var thanksAvailable = gate.thanksAvailable !== false;
+    var specialAvailable = gate.specialAvailable !== false;
+    var alreadyThanked = !!gate.alreadyThanked;
+    var alreadySpecial = !!gate.alreadySpecial;
+    var syncLimits = !!(options && options.syncLimits);
 
     if ((Number(amount) === 1.5 && (!thanksAvailable || alreadyThanked)) ||
         (Number(amount) === 3 && (!specialAvailable || alreadySpecial))) {
         amount = 0;
     }
 
-    _feedbackRewardKarma = Number(amount || 0);
+    var next = Number(amount || 0);
+    if (next === _feedbackRewardKarma && !syncLimits) return;
+    _feedbackRewardKarma = next;
     var mapping = { 0: '0', 1.5: '15', 3: '30' };
     ['0', '15', '30'].forEach(function(code) {
         var chip = document.getElementById('feedback-karma-chip-' + code);
-        if (chip) {
-            chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
-            if (code === '15') {
-                var disabledThanks = !thanksAvailable || alreadyThanked;
-                chip.classList.toggle('is-disabled', disabledThanks);
-                chip.disabled = disabledThanks;
-            } else if (code === '30') {
-                var disabledSpecial = !specialAvailable || alreadySpecial;
-                chip.classList.toggle('is-disabled', disabledSpecial);
-                chip.disabled = disabledSpecial;
-            } else {
-                chip.classList.remove('is-disabled');
-                chip.disabled = false;
-            }
+        if (!chip) return;
+        chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
+        if (!syncLimits) return;
+        if (code === '15') {
+            var disabledThanks = !thanksAvailable || alreadyThanked;
+            chip.classList.toggle('is-disabled', disabledThanks);
+            chip.disabled = disabledThanks;
+        } else if (code === '30') {
+            var disabledSpecial = !specialAvailable || alreadySpecial;
+            chip.classList.toggle('is-disabled', disabledSpecial);
+            chip.disabled = disabledSpecial;
+        } else {
+            chip.classList.remove('is-disabled');
+            chip.disabled = false;
         }
     });
     _updateFeedbackRewardSubmitState();
 }
 
 function getFeedbackRewardProject() {
-    var activeProject = myProjects.find(function(p) { return Number(p.id) === Number(_activeProjectFeedbackAppId); });
-    if (activeProject) return activeProject;
-    return archivedProjects.find(function(p) { return Number(p.app_id) === Number(_activeProjectFeedbackAppId); }) || null;
+    var appId = Number(_activeProjectFeedbackAppId || 0);
+    function match(project) {
+        return Number(project && (project.app_id || project.id) || 0) === appId;
+    }
+    return ((typeof myProjects !== 'undefined' && myProjects) || []).find(match)
+        || ((typeof archivedProjects !== 'undefined' && archivedProjects) || []).find(match)
+        || null;
 }
 
 function getFeedbackRewardItem() {
@@ -2967,7 +3907,11 @@ function updateFeedbackRewardKarmaStatus(project) {
     var karmaEl = document.getElementById('feedback-karma-status');
     if (!karmaEl) return;
     var meta = buildFeedbackRewardKarmaMeta(project);
-    karmaEl.textContent = meta.statusLabel;
+    var label = String(meta.statusLabel || '');
+    var labelHtml = (typeof window.withKarmaIcon === 'function')
+        ? window.withKarmaIcon(window.escapeHTML(label))
+        : window.escapeHTML(label);
+    karmaEl.innerHTML = labelHtml + ' <span class="feedback-reward-status-info" aria-hidden="true">ℹ️</span>';
     karmaEl.dataset.toast = meta.toastText || '';
 }
 
@@ -2978,41 +3922,290 @@ function showFeedbackRewardKarmaInfo() {
     showToast(karmaEl.dataset.toast || window.t('feedbackRewardKarmaLimitToast', {}, lang));
 }
 
-async function openProjectFeedback(appId, isArchived) {
+function focusProjectFeedbackCard(feedbackId) {
+    var safeId = Number(feedbackId || 0);
+    if (safeId <= 0) return false;
+    var card = document.querySelector('.fb-card[data-feedback-id="' + safeId + '"]');
+    if (!card || card.style.display === 'none' || card.hidden) {
+        if (typeof _projectFeedbackStatusFilter !== 'undefined' && _projectFeedbackStatusFilter !== 'all') {
+            _projectFeedbackStatusFilter = 'all';
+            var filterAllBtn = document.querySelector('[data-feedback-status-filter="all"]');
+            if (filterAllBtn) {
+                var siblings = filterAllBtn.parentElement ? filterAllBtn.parentElement.querySelectorAll('.filter-chip') : [];
+                siblings.forEach(function(s) { s.classList.remove('active'); });
+                filterAllBtn.classList.add('active');
+            }
+            if (typeof applyProjectFeedbackFilters === 'function') {
+                applyProjectFeedbackFilters();
+            }
+            card = document.querySelector('.fb-card[data-feedback-id="' + safeId + '"]');
+        }
+        if (card) {
+            card.style.display = '';
+            card.hidden = false;
+        }
+    }
+    if (!card) return false;
+    card.classList.remove('fb-card--collapsed');
+    card.classList.add('fb-card--expanded');
+    var expandBtn = card.querySelector('.fb-card__expand-btn, [data-action="expand-feedback"]');
+    if (expandBtn) expandBtn.setAttribute('aria-expanded', 'true');
+    if (typeof toggleFeedbackCardCollapse === 'function' && !card.classList.contains('fb-card--expanded')) {
+        toggleFeedbackCardCollapse(card, { target: card, currentTarget: card });
+    }
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('fb-card--focused');
+    setTimeout(function () { card.classList.remove('fb-card--focused'); }, 2200);
+    return true;
+}
+
+async function fetchProjectFeedbackPayload(appId, statusScope) {
+    var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
+    var scope = String(statusScope || 'all').trim().toLowerCase() || 'all';
+    var statusQ = (scope && scope !== 'all') ? ('&status=' + encodeURIComponent(scope)) : '';
+    var response = await fetch(API_BASE + '/projects/' + appId + '/feedback?owner_id=' + userId + '&' + initQ + statusQ);
+    var data = await response.json();
+    if (!response.ok || data.status !== 'success') {
+        var err = new Error((data && (data.message || data.code)) || 'loadError');
+        err.payload = data;
+        err.httpStatus = response.status;
+        throw err;
+    }
+    return {
+        feedback: Array.isArray(data.feedback) ? data.feedback : [],
+        scope: String(data.scope || scope || 'all')
+    };
+}
+
+function _isProjectFeedbackModalOpenFor(appId) {
+    var modal = document.getElementById('project-feedback-modal');
+    if (!modal || !modal.classList.contains('active')) return false;
+    return Number(_activeProjectFeedbackAppId || 0) === Number(appId || 0);
+}
+
+var _projectFeedbackSessionCache = Object.create(null);
+
+function feedbackItemsSignature(items) {
+    return (items || []).map(function (item) {
+        return String(item && item.id || 0) + ':' + String(item && item.status || '');
+    }).join('|');
+}
+
+function rememberProjectFeedbackSession(appId) {
+    var safeId = Number(appId || _activeProjectFeedbackAppId || 0);
+    if (safeId <= 0) return;
+    _projectFeedbackSessionCache[safeId] = {
+        items: Array.isArray(_activeProjectFeedbackItems) ? _activeProjectFeedbackItems.slice() : [],
+        fullLoaded: !!_activeProjectFeedbackFullLoaded,
+        partial: !!_activeProjectFeedbackPartial,
+        archived: !!_activeProjectFeedbackArchived,
+        loadedAt: Date.now()
+    };
+}
+window.rememberProjectFeedbackSession = rememberProjectFeedbackSession;
+
+function getProjectFeedbackSession(appId) {
+    var cached = _projectFeedbackSessionCache[Number(appId || 0)];
+    if (!cached || !Array.isArray(cached.items) || !cached.items.length) return null;
+    return cached;
+}
+
+function isUnprocessedFeedbackFilter(value) {
+    var filter = String(value == null ? _projectFeedbackStatusFilter : value).toLowerCase();
+    return filter === 'new' || filter === 'pending' || filter === 'open';
+}
+
+function refreshProjectFeedbackInBackground(project, loadSeq, options) {
+    options = options || {};
+    var appId = Number((project && (project.id || project.app_id)) || 0);
+    if (!appId) return;
+    fetchProjectFeedbackPayload(appId, 'all').then(function (fullPayload) {
+        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (Number(_activeProjectFeedbackAppId || 0) !== appId) return;
+        var items = fullPayload.feedback || [];
+        var previousSig = feedbackItemsSignature(_activeProjectFeedbackItems);
+        var nextSig = feedbackItemsSignature(items);
+        _activeProjectFeedbackItems = items;
+        _activeProjectFeedbackFullLoaded = true;
+        _activeProjectFeedbackPartial = false;
+        rememberProjectFeedbackSession(appId);
+        if (!_isProjectFeedbackModalOpenFor(appId)) return;
+        if (previousSig === nextSig) {
+            if (typeof refreshProjectFeedbackHeader === 'function') {
+                refreshProjectFeedbackHeader(project, items, { partialLoad: false });
+            }
+            return;
+        }
+        if (window.showProjectFeedbackModal) {
+            window.showProjectFeedbackModal(project, items, {
+                preferUnprocessed: isUnprocessedFeedbackFilter(),
+                partialLoad: false,
+                preserveFilters: true
+            });
+        }
+        if (Number(options.focusId || 0) > 0) {
+            setTimeout(function () { focusProjectFeedbackCard(options.focusId); }, 50);
+        }
+    }).catch(function (error) {
+        console.warn('Background feedback refresh failed:', error);
+    });
+}
+
+async function ensureFullProjectFeedbackLoaded(options) {
+    options = options || {};
+    if (_activeProjectFeedbackFullLoaded && !options.force) return _activeProjectFeedbackItems || [];
+    var appId = Number(_activeProjectFeedbackAppId || options.appId || 0);
+    if (!appId) return _activeProjectFeedbackItems || [];
+    var loadSeq = Number(options.loadSeq || _activeProjectFeedbackLoadSeq || 0);
+    var payload = await fetchProjectFeedbackPayload(appId, 'all');
+    if (loadSeq && loadSeq !== _activeProjectFeedbackLoadSeq) return _activeProjectFeedbackItems || [];
+    if (Number(_activeProjectFeedbackAppId || 0) !== appId) return _activeProjectFeedbackItems || [];
+    _activeProjectFeedbackItems = payload.feedback || [];
+    _activeProjectFeedbackFullLoaded = true;
+    _activeProjectFeedbackPartial = false;
+    return _activeProjectFeedbackItems;
+}
+
+async function openProjectFeedback(appId, isArchived, options) {
+    options = options || {};
     const project = (isArchived ? archivedProjects : myProjects).find(function(item) {
         return Number(item.app_id || item.id) === Number(appId);
     });
     if (!project) return;
 
+    var explicitUnprocessed = typeof options.preferUnprocessed === 'boolean';
+    var forceUnprocessed = options.preferUnprocessed === true;
+    var focusId = Number(options.focusFeedbackId || 0);
+    var reportedOpen = Number(project.feedback_new_count || 0);
+    var preferUnprocessed = explicitUnprocessed ? forceUnprocessed : (focusId <= 0 && reportedOpen > 0);
+    var typeFilter = options.typeFilter || 'all';
+    var cached = getProjectFeedbackSession(appId);
+    if (cached && !preferUnprocessed && !cached.fullLoaded) cached = null;
+
     _activeProjectFeedbackAppId = Number(appId);
     _activeProjectFeedbackArchived = !!isArchived;
+    var loadSeq = ++_activeProjectFeedbackLoadSeq;
+
+    if (cached) {
+        var hasFocusInCached = focusId > 0 && Array.isArray(cached.items) && cached.items.some(function (it) {
+            return Number(it && it.id) === focusId;
+        });
+        if (focusId > 0 && !hasFocusInCached) {
+            cached = null;
+        } else {
+            _activeProjectFeedbackItems = cached.items;
+            _activeProjectFeedbackFullLoaded = !!cached.fullLoaded;
+            _activeProjectFeedbackPartial = !!cached.partial && !cached.fullLoaded;
+            if (window.showProjectFeedbackModal) {
+                window.showProjectFeedbackModal(project, cached.items, {
+                    preferUnprocessed: preferUnprocessed,
+                    typeFilter: typeFilter,
+                    focusFeedbackId: focusId,
+                    partialLoad: !!_activeProjectFeedbackPartial
+                });
+            }
+            if (focusId > 0) {
+                setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
+            }
+            refreshProjectFeedbackInBackground(project, loadSeq, {
+                preferUnprocessed: preferUnprocessed,
+                focusId: focusId
+            });
+            return;
+        }
+    }
+
     _activeProjectFeedbackItems = [];
+    _activeProjectFeedbackFullLoaded = false;
+    _activeProjectFeedbackPartial = false;
 
     if (window.showProjectFeedbackModalLoading) {
         window.showProjectFeedbackModalLoading(project);
     }
 
+    var preferOpenFirst = preferUnprocessed;
+
     try {
-        const initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
-        const response = await fetch(`${API_BASE}/projects/${appId}/feedback?owner_id=${userId}&${initQ}`);
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            if (window.showProjectFeedbackModalError) {
-                window.showProjectFeedbackModalError(project);
+        var stageItems = [];
+
+        if (preferOpenFirst) {
+            var openPayload = await fetchProjectFeedbackPayload(appId, 'open');
+            if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+            stageItems = (openPayload.feedback || []).filter(function(item) {
+                return typeof isOpenFeedbackStatus === 'function'
+                    ? isOpenFeedbackStatus(item && item.status)
+                    : true;
+            });
+            if (stageItems.length > 0) {
+                _activeProjectFeedbackItems = stageItems;
+                _activeProjectFeedbackPartial = true;
+                _activeProjectFeedbackFullLoaded = false;
+                rememberProjectFeedbackSession(appId);
+                if (window.showProjectFeedbackModal) {
+                    window.showProjectFeedbackModal(project, stageItems, {
+                        preferUnprocessed: true,
+                        typeFilter: typeFilter,
+                        partialLoad: true
+                    });
+                }
+                if (focusId > 0) {
+                    setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
+                }
+                fetchProjectFeedbackPayload(appId, 'all').then(function(fullPayload) {
+                    if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+                    if (Number(_activeProjectFeedbackAppId || 0) !== Number(appId)) return;
+                    _activeProjectFeedbackItems = fullPayload.feedback || [];
+                    _activeProjectFeedbackFullLoaded = true;
+                    _activeProjectFeedbackPartial = false;
+                    rememberProjectFeedbackSession(appId);
+                    if (!_isProjectFeedbackModalOpenFor(appId)) return;
+                    if (isUnprocessedFeedbackFilter()) {
+                        if (typeof refreshProjectFeedbackHeader === 'function') {
+                            refreshProjectFeedbackHeader(project, _activeProjectFeedbackItems, { partialLoad: false });
+                        }
+                        return;
+                    }
+                    if (window.showProjectFeedbackModal) {
+                        window.showProjectFeedbackModal(project, _activeProjectFeedbackItems, {
+                            preferUnprocessed: false,
+                            partialLoad: false,
+                            preserveFilters: true
+                        });
+                    }
+                }).catch(function(bgError) {
+                    console.warn('Background full feedback load failed:', bgError);
+                });
+                return;
             }
-            showToast(getApiErrorMessage(data, 'loadError'));
-            return;
         }
-        _activeProjectFeedbackItems = data.feedback || [];
+
+        var fullPayload = await fetchProjectFeedbackPayload(appId, 'all');
+        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        stageItems = fullPayload.feedback || [];
+        _activeProjectFeedbackItems = stageItems;
+        _activeProjectFeedbackFullLoaded = true;
+        _activeProjectFeedbackPartial = false;
+        rememberProjectFeedbackSession(appId);
         if (window.showProjectFeedbackModal) {
-            window.showProjectFeedbackModal(project, _activeProjectFeedbackItems);
+            window.showProjectFeedbackModal(project, stageItems, {
+                preferUnprocessed: preferUnprocessed,
+                typeFilter: typeFilter,
+                focusFeedbackId: focusId,
+                partialLoad: false
+            });
+        }
+        if (focusId > 0) {
+            setTimeout(function () {
+                focusProjectFeedbackCard(focusId);
+            }, 80);
         }
     } catch (error) {
+        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
         console.error('Load project feedback error:', error);
         if (window.showProjectFeedbackModalError) {
             window.showProjectFeedbackModalError(project);
         }
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        showToast(getApiErrorMessage((error && error.payload) || (error && error.message), error && error.payload ? 'loadError' : 'networkError'));
     }
 }
 
@@ -3045,26 +4238,16 @@ function openFeedbackRewardModal(appId, feedbackId) {
     var project = getFeedbackRewardProject();
     var item = getFeedbackRewardItem();
 
-    var balance = (visibilityStats && visibilityStats.balance_bust) || 0;
+    var balance = getFeedbackRewardOwnerBalance();
     var balanceEl = document.getElementById('feedback-owner-balance');
-    if (balanceEl) balanceEl.textContent = window.t('feedbackRewardBustStatus', { amount: formatBustAmount(balance) }, lang);
+    if (balanceEl) balanceEl.textContent = window.t('feedbackRewardBustStatus', { amount: formatFeedbackRewardBustNumber(balance) }, lang);
 
-    var targetNameEl = document.getElementById('feedback-reward-target-name');
-    var targetMetaEl = document.getElementById('feedback-reward-target-meta');
-    if (targetNameEl) {
-        var fullName = (item && item.tester_full_name) || '';
-        var username = item && item.tester_username ? '@' + String(item.tester_username).replace(/^@+/, '') : '';
-        var fallback = window.t('idLabel', { id: item && item.tester_id ? item.tester_id : 0 }, lang);
-        targetNameEl.textContent = fullName || username || fallback;
+    fillFeedbackRewardAuthorCard(item);
+    if (typeof window.hydrateKarmaIcons === 'function') {
+        window.hydrateKarmaIcons(document.getElementById('feedback-reward-modal'));
     }
-    if (targetMetaEl) {
-        var usernameText = item && item.tester_username ? '@' + String(item.tester_username).replace(/^@+/, '') : '';
-        var fullNameText = (item && item.tester_full_name) || '';
-        var parts = [];
-        if (fullNameText && usernameText) parts.push(usernameText);
-        if (item && item.message_text) parts.push(window.t('feedbackRewardTargetHint', {}, lang));
-        targetMetaEl.textContent = parts.join(' • ') || window.t('feedbackRewardTargetHint', {}, lang);
-    }
+
+    _feedbackRewardKarmaGate = _readFeedbackRewardKarmaGate(item);
 
     // Evaluate limits
     var thanksAvailable = item ? (item.thanks_available !== false) : true;
@@ -3072,7 +4255,12 @@ function openFeedbackRewardModal(appId, feedbackId) {
     var isKarmaAvailable = item ? (item.project_karma_available !== false && (thanksAvailable || specialAvailable)) : true;
     var alreadyThanked = item ? !!item.tester_already_thanked : false;
     var alreadySpecial = item ? !!item.tester_already_special : false;
-    var isTesterFullyRewarded = (alreadyThanked && alreadySpecial) || (item && item.tester_already_rewarded_karma && item.tester_already_thanked == null && item.tester_already_special == null);
+    var rewardedToday = item ? !!item.tester_rewarded_today : false;
+    if (rewardedToday) {
+        alreadyThanked = true;
+        alreadySpecial = true;
+    }
+    var isTesterFullyRewarded = rewardedToday || (alreadyThanked && alreadySpecial) || (item && item.tester_already_rewarded_karma && item.tester_already_thanked == null && item.tester_already_special == null);
     var hasAnyKarmaOption = (thanksAvailable && !alreadyThanked) || (specialAvailable && !alreadySpecial);
 
     var warningEl = document.getElementById('feedback-reward-karma-warning');
@@ -3090,31 +4278,32 @@ function openFeedbackRewardModal(appId, feedbackId) {
 
     updateFeedbackRewardKarmaStatus(project);
 
+    var poolBoostContainer = document.getElementById('feedback-reward-pool-boost-container');
+    if (poolBoostContainer) {
+        var testerId = Number((item && item.tester_id) || 0);
+        var poolBoost = (window.getTesterTodayBoost && testerId > 0)
+            ? window.getTesterTodayBoost(appId, testerId)
+            : 0;
+        if (poolBoost > 0) {
+            poolBoostContainer.textContent = window.t('feedbackRewardPoolAwardedToday', { amount: poolBoost }, lang);
+            poolBoostContainer.style.display = 'block';
+        } else {
+            poolBoostContainer.textContent = '';
+            poolBoostContainer.style.display = 'none';
+        }
+    }
+
     if (window.openFeedbackRewardModalUi) {
         window.openFeedbackRewardModalUi();
     }
-    setFeedbackRewardBust(0);
-    setFeedbackRewardKarma(0);
-    const input = document.getElementById('feedback-reward-bust-input');
+    setFeedbackRewardBust(0, { syncLimits: true });
+    setFeedbackRewardKarma(0, { syncLimits: true });
     const reply = document.getElementById('feedback-reward-reply');
-    if (input) {
-        input.value = '';
-        input.oninput = function() {
-            _feedbackRewardBust = Number(input.value || 0);
-            [5, 10, 25, 50, 100].forEach(function(value) {
-                const chip = document.getElementById(`feedback-bust-chip-${value}`);
-                if (chip) {
-                    chip.classList.toggle('is-active', Number(value) === _feedbackRewardBust);
-                    chip.classList.toggle('is-disabled', Number(value) > balance);
-                }
-            });
-            _updateFeedbackRewardSubmitState();
-        };
-    }
     if (reply) {
         reply.value = '';
-        reply.oninput = function() { _updateFeedbackRewardSubmitState(); };
+        reply.oninput = _syncFeedbackRewardSubmitEnabled;
     }
+    syncFeedbackRewardQuickReplyState();
     _updateFeedbackRewardSubmitState();
 }
 
@@ -3127,15 +4316,18 @@ function closeFeedbackRewardModal() {
     }
 }
 
-function _updateFeedbackRewardSubmitState() {
+function _syncFeedbackRewardSubmitEnabled() {
     var btn = document.getElementById('feedback-reward-submit-btn');
     if (!btn) return;
     var reply = document.getElementById('feedback-reward-reply');
-    var hasReply = reply && reply.value && reply.value.trim().length > 0;
-    var hasReward = _feedbackRewardBust > 0 || _feedbackRewardKarma > 0;
-    var enabled = hasReward || hasReply;
-    btn.disabled = !enabled;
-    btn.style.opacity = enabled ? '1' : '0.4';
+    var hasReply = !!(reply && reply.value && reply.value.trim());
+    var enabled = hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0;
+    if (btn.disabled !== !enabled) btn.disabled = !enabled;
+}
+
+function _updateFeedbackRewardSubmitState() {
+    _syncFeedbackRewardSubmitEnabled();
+    updateFeedbackRewardSummary();
 }
 
 var _feedbackRewardSubmitting = false;
@@ -3206,17 +4398,32 @@ async function submitFeedbackReward() {
         var rewardedKarma = Number(_feedbackRewardKarma || 0);
         _setFeedbackRewardSubmitLoading(false);
         closeFeedbackRewardModal();
+        var fbItem = typeof getFeedbackRewardItem === 'function' ? getFeedbackRewardItem() : null;
+        var fbTesterId = fbItem ? Number(fbItem.user_id || fbItem.tester_id || fbItem.author_id || 0) : 0;
         if (typeof window.removeFeedbackCardOptimistic === 'function') {
-            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma });
+            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma, tester_id: fbTesterId });
         }
         if (typeof window.triggerFeedbackAutoAdvance === 'function') {
             window.triggerFeedbackAutoAdvance(processedFeedbackId);
-        } else if (typeof loadProjects === 'function') {
+        }
+        // Feedback karma is stored in the same project reward log as a direct
+        // "Наградить" action. Refresh the card so its compact award badge shows
+        // the accumulated issued types immediately.
+        if (typeof loadProjects === 'function') {
             Promise.resolve()
                 .then(function() { return loadProjects(true); })
                 .catch(function() { /* ignore */ });
         }
-        showToast(window.t('feedbackRewardSuccessToast', {}, lang));
+        var contribPoints = fbItem ? getFeedbackRewardContributionPoints(fbItem) : 0;
+        var lifetimeScore = fbItem ? getFeedbackRewardLifetimeScore(fbItem) : null;
+        var nextScore = (lifetimeScore == null) ? null : (lifetimeScore + contribPoints);
+        showToast(window.t(
+            (contribPoints > 0 && nextScore != null)
+                ? 'feedbackRewardSuccessToastContrib'
+                : 'feedbackRewardSuccessToast',
+            { points: contribPoints, score: nextScore == null ? '' : nextScore },
+            lang
+        ));
     } catch (error) {
         console.error('Feedback reward error:', error);
         _setFeedbackRewardSubmitLoading(false);
@@ -3517,6 +4724,9 @@ async function sendKarmaReward(appId, testerId, rewardType) {
                     project.special_used = (project.special_used || 0) + 1;
                 }
             }
+            if (typeof persistProjectsCacheSnapshot === 'function') {
+                persistProjectsCacheSnapshot();
+            }
             renderProjects();
             if (window._karmaDistributionProjectId === appId && window.openKarmaDistribution) {
                 window.openKarmaDistribution(appId);
@@ -3535,45 +4745,60 @@ async function sendKarmaReward(appId, testerId, rewardType) {
 
 function showCheckinRewardToasts(result) {
     result = result || {};
+    var screenshotBoostEarned = Math.max(0, Number(result.screenshot_boost_earned || 0));
+    var catchupSuffix = result.catchup_proof_completed
+        ? '\n' + window.t('catchupTesterSent', {}, lang)
+        : '';
+    var screenshotBoostSuffix = screenshotBoostEarned > 0
+        ? '\n' + window.t('screenshotBoostRewardToast', {
+            amount: formatAmountValue(screenshotBoostEarned, 1)
+        }, lang)
+        : '';
+    var showPrimaryCheckinToast = function(message) {
+        showToast(String(message || '') + catchupSuffix + screenshotBoostSuffix);
+    };
     if (result.already_checked_today) {
-        showToast(window.t('checkinAlreadyDone', {}, lang));
+        showPrimaryCheckinToast(window.t('checkinAlreadyDone', {}, lang));
         return;
     }
 
     var earnedBust = Number(result.earned_bust != null ? result.earned_bust : result.bust_earned || 0);
+    var baseEarnedBust = Math.max(0, earnedBust - screenshotBoostEarned);
     var earnedKarma = Number(result.earned_karma != null ? result.earned_karma : result.karma_earned || 0);
     var sourceType = String(result.source_type || '').toLowerCase();
-    var rewardBust = Number(result.reward_bust != null ? result.reward_bust : earnedBust);
+    var rewardBust = Number(result.reward_bust != null ? result.reward_bust : baseEarnedBust);
     var holdBonusEarned = Number(result.hold_bonus_earned || 0);
     var holdBonusForfeited = !!result.hold_bonus_forfeited;
-    var dailyOnlyBust = Math.max(0, earnedBust - (holdBonusEarned > 0 ? holdBonusEarned : 0));
+    var dailyOnlyBust = Math.max(0, baseEarnedBust - (holdBonusEarned > 0 ? holdBonusEarned : 0));
+
+    var karmaValFormatted = formatAmountValue(earnedKarma || 0.1, 1);
+    var karmaStr = (lang === 'ru') ? karmaValFormatted.replace('.', ',') : karmaValFormatted;
 
     if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-        var karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
         var bustVal = formatAmountValue(rewardBust, 1);
-        showToast(lang === 'ru'
-            ? ('Чекин успешен! +' + karmaVal + ' ☯️ Кармы и +' + bustVal + '💎$BUST')
-            : ('Check-in successful! +' + karmaVal + ' ☯️ Karma and +' + bustVal + '💎$BUST'));
+        showPrimaryCheckinToast(lang === 'ru'
+            ? ('Чекин успешен! +' + karmaStr + ' ☯️ кармы и +' + bustVal + '💎$BUST')
+            : ('Check-in successful! +' + karmaValFormatted + ' ☯️ Karma and +' + bustVal + '💎$BUST'));
     } else if (sourceType === 'overtime_checkin' && earnedKarma > 0) {
-        showToast(window.t('checkinEarnOvertimeKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+        showPrimaryCheckinToast(window.t('checkinEarnOvertimeKarma', { amount: karmaStr }, lang));
     } else if (dailyOnlyBust > 0 && earnedKarma > 0) {
-        showToast(window.t('checkinEarnBustAndKarma', {
+        showPrimaryCheckinToast(window.t('checkinEarnBustAndKarma', {
             bust: formatAmountValue(dailyOnlyBust, 1),
-            karma: formatAmountValue(earnedKarma, 1)
+            karma: karmaStr
         }, lang));
-    } else if (earnedBust > 0 && earnedKarma > 0 && holdBonusEarned <= 0) {
-        showToast(window.t('checkinEarnBustAndKarma', {
-            bust: formatAmountValue(earnedBust, 1),
-            karma: formatAmountValue(earnedKarma, 1)
+    } else if (baseEarnedBust > 0 && earnedKarma > 0 && holdBonusEarned <= 0) {
+        showPrimaryCheckinToast(window.t('checkinEarnBustAndKarma', {
+            bust: formatAmountValue(baseEarnedBust, 1),
+            karma: karmaStr
         }, lang));
     } else if (dailyOnlyBust > 0) {
-        showToast(window.t('checkinEarnBust', { amount: formatAmountValue(dailyOnlyBust, 1) }, lang));
-    } else if (earnedBust > 0 && holdBonusEarned <= 0) {
-        showToast(window.t('checkinEarnBust', { amount: formatAmountValue(earnedBust, 1) }, lang));
+        showPrimaryCheckinToast(window.t('checkinEarnBust', { amount: formatAmountValue(dailyOnlyBust, 1) }, lang));
+    } else if (baseEarnedBust > 0 && holdBonusEarned <= 0) {
+        showPrimaryCheckinToast(window.t('checkinEarnBust', { amount: formatAmountValue(baseEarnedBust, 1) }, lang));
     } else if (earnedKarma > 0) {
-        showToast(window.t('checkinEarnKarma', { amount: formatAmountValue(earnedKarma, 1) }, lang));
+        showPrimaryCheckinToast(window.t('checkinEarnKarma', { amount: karmaStr }, lang));
     } else if (holdBonusEarned <= 0 && !holdBonusForfeited) {
-        showToast(window.t('successCheckin', {}, lang));
+        showPrimaryCheckinToast(window.t('successCheckin', {}, lang));
     }
 
     if (holdBonusEarned > 0) {
@@ -3763,6 +4988,16 @@ async function confirmStart(id, options) {
                         || errorCode === 'test_or_app_not_found'
                         || errorCode === 'project_pending_completion') {
                         _handleInactiveCheckinCard(id, errorCode);
+                    } else if (errorCode === 'screenshot_upload_required') {
+                        if (
+                            typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+                            && window.isInternalScreenshotProofUploadEnabled()
+                            && typeof window.openCheckinProofUploadModal === 'function'
+                        ) {
+                            window.openCheckinProofUploadModal(id);
+                            return false;
+                        }
+                        handleApiError(errorCode, result.details || {});
                     } else if (
                         errorCode === 'open_required'
                         || errorCode === 'open_invalid'
@@ -3800,7 +5035,7 @@ async function confirmStart(id, options) {
                 if (typeof showCheckinRewardToasts === 'function') {
                     showCheckinRewardToasts(result);
                 } else if (sourceType === 'overtime_checkin' && rewardBust > 0) {
-                    const karmaVal = formatAmountValue(earnedKarma || 0.5, 1);
+                    const karmaVal = formatAmountValue(earnedKarma || 0.1, 1);
                     const bustVal = formatAmountValue(rewardBust, 1);
                     if (lang === 'ru') {
                         showToast(`Чекин успешен! +${karmaVal} ☯️ Кармы и +${bustVal}💎$BUST`);
@@ -3962,7 +5197,16 @@ async function claimGrant(progressId, appId) {
 async function claimEarlyFinishBonus(progressId, appId) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     const btn = document.getElementById('btn-early-finish-' + appId);
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+    const finishCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
+    const origBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> <span>' + window.escapeHTML(window.t('loading', {}, lang) || 'Обработка...') + '</span>';
+    }
+    if (finishCard) {
+        finishCard.classList.add('is-processing');
+    }
     try {
         const response = await fetch(`${API_BASE}/testing/${progressId}/claim_early_finish`, {
             method: 'POST',
@@ -3971,7 +5215,12 @@ async function claimEarlyFinishBonus(progressId, appId) {
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
-            if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('is-loading');
+                btn.innerHTML = origBtnHtml;
+            }
+            if (finishCard) finishCard.classList.remove('is-processing');
             handleApiError(getBackendErrorCode(result), result.details || {});
             return;
         }
@@ -3996,14 +5245,18 @@ async function claimEarlyFinishBonus(progressId, appId) {
         } else {
             showToast(window.t('earlyFinishNoBonus', {}, lang));
         }
-        const finishCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
         if (finishCard && finishCard.parentNode) {
             await animateTestCardOut(finishCard);
         }
         if (window.renderTests) window.renderTests(true);
     } catch (error) {
         console.error('Claim early finish error:', error);
-        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+            btn.innerHTML = origBtnHtml;
+        }
+        if (finishCard) finishCard.classList.remove('is-processing');
         handleApiError('network_error');
     }
 }
@@ -4183,6 +5436,68 @@ async function handleReviewScreenshotUpload(fileInput, appId) {
 
 window.handleReviewScreenshotUpload = handleReviewScreenshotUpload;
 
+function _telegramFileIdFromUploadPayload(data) {
+    var fileId = String((data && data.file_id) || '').trim();
+    if (fileId) return fileId;
+    var url = String((data && data.url) || '').trim();
+    var marker = '/telegram-media/';
+    var idx = url.indexOf(marker);
+    if (idx >= 0) return url.slice(idx + marker.length).replace(/^\/+/, '');
+    return '';
+}
+
+async function handleIssueScreenshotUpload(fileInput) {
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (file.type && String(file.type).indexOf('image/') !== 0) {
+        showToast(window.t('reportIssueScreenshotRequired', {}, lang));
+        fileInput.value = '';
+        return;
+    }
+
+    var zone = document.getElementById('issue-screenshot-zone');
+    var origHtml = zone ? zone.innerHTML : '';
+    if (zone) {
+        zone.classList.add('is-uploading');
+        zone.innerHTML = '<span class="icon-upload-spinner"></span>';
+    }
+
+    try {
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', String((window.App && window.App.userId) || window.userId || 0));
+        formData.append('init_data', getTelegramInitDataRaw());
+        formData.append('upload_kind', 'access_issue');
+
+        var apiBase = (window.App && window.App.API_BASE) || API_BASE || '';
+        var resp = await fetch(apiBase + '/upload-icon', { method: 'POST', body: formData });
+        var data = await resp.json();
+        var fileId = _telegramFileIdFromUploadPayload(data);
+        if (!(data && data.status === 'success' && fileId)) {
+            showToast((data && data.message) || window.t('reportIssueScreenshotRequired', {}, lang));
+            return;
+        }
+        _issueReportScreenshotFileId = fileId;
+        _issueReportScreenshotUrl = String(data.url || ('/telegram-media/' + fileId));
+        window._issueReportScreenshotFileId = _issueReportScreenshotFileId;
+        window._issueReportScreenshotUrl = _issueReportScreenshotUrl;
+        if (typeof _renderIssueScreenshotUi === 'function') _renderIssueScreenshotUi();
+        if (typeof syncIssueReportPauseState === 'function') syncIssueReportPauseState();
+    } catch (error) {
+        console.error('Access issue screenshot upload error:', error);
+        handleApiError('network_error');
+    } finally {
+        if (fileInput) fileInput.value = '';
+        if (zone) {
+            zone.classList.remove('is-uploading');
+            if (origHtml) zone.innerHTML = origHtml;
+        }
+        if (typeof _renderIssueScreenshotUi === 'function') _renderIssueScreenshotUi();
+    }
+}
+
+window.handleIssueScreenshotUpload = handleIssueScreenshotUpload;
+
 function updateIconPreview(inputId, previewId) {
     var input = document.getElementById(inputId);
     var preview = document.getElementById(previewId);
@@ -4201,143 +5516,12 @@ function updateIconPreview(inputId, previewId) {
     if (picker) picker.classList.add('has-icon');
 }
 
-let _feedbackAcceptLongPressTimeout = null;
-let _feedbackAcceptLongPressActive = false;
-let _feedbackAcceptLongPressStart = 0;
-let _feedbackAcceptLongPressPulse = null;
-let _feedbackAcceptTouchStartX = 0;
-let _feedbackAcceptTouchStartY = 0;
-const FEEDBACK_ACCEPT_HOLD_DURATION_MS = 3500;
-
-function startFeedbackAcceptLongPress(btnEl, feedbackId, projectId, event) {
-    if (_feedbackAcceptLongPressActive) return;
-    if (event && event.touches && event.touches[0]) {
-        _feedbackAcceptTouchStartX = event.touches[0].clientX;
-        _feedbackAcceptTouchStartY = event.touches[0].clientY;
-    } else {
-        _feedbackAcceptTouchStartX = 0;
-        _feedbackAcceptTouchStartY = 0;
-    }
-
-    _feedbackAcceptLongPressActive = true;
-    _feedbackAcceptLongPressStart = Date.now();
-    if (btnEl) btnEl.classList.add('fb-action-btn--holding');
-
-    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
-    if (progressEl) {
-        progressEl.style.transition = `width ${FEEDBACK_ACCEPT_HOLD_DURATION_MS / 1000}s linear`;
-        progressEl.getBoundingClientRect();
-        progressEl.style.width = '100%';
-    }
-
-    if (window.tg && window.tg.HapticFeedback) {
-        window.tg.HapticFeedback.impactOccurred('light');
-    }
-
-    if (_feedbackAcceptLongPressPulse) clearInterval(_feedbackAcceptLongPressPulse);
-    _feedbackAcceptLongPressPulse = setInterval(function() {
-        if (navigator.vibrate) navigator.vibrate(10);
-    }, 400);
-
-    _feedbackAcceptLongPressTimeout = setTimeout(async function() {
-        _feedbackAcceptLongPressActive = false;
-        if (_feedbackAcceptLongPressPulse) {
-            clearInterval(_feedbackAcceptLongPressPulse);
-            _feedbackAcceptLongPressPulse = null;
-        }
-        if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
-        if (window.tg && window.tg.HapticFeedback) {
-            window.tg.HapticFeedback.notificationOccurred('success');
-        } else if (navigator.vibrate) {
-            navigator.vibrate([20, 40, 20]);
-        }
-
-        await submitQuickFeedbackAccept(feedbackId, projectId, btnEl);
-
-        if (progressEl) {
-            progressEl.style.transition = 'none';
-            progressEl.style.width = '0';
-        }
-    }, FEEDBACK_ACCEPT_HOLD_DURATION_MS);
-}
-
-function handleFeedbackAcceptTouchMove(btnEl, event) {
-    if (!_feedbackAcceptLongPressActive) return;
-    if (event && event.touches && event.touches[0]) {
-        const dx = Math.abs(event.touches[0].clientX - _feedbackAcceptTouchStartX);
-        const dy = Math.abs(event.touches[0].clientY - _feedbackAcceptTouchStartY);
-        if (dx > 8 || dy > 8) {
-            cancelFeedbackAcceptLongPress(btnEl, event);
-        }
-    }
-}
-
-function cancelFeedbackAcceptLongPress(btnEl, event) {
-    if (!_feedbackAcceptLongPressActive) return;
-    _feedbackAcceptLongPressActive = false;
-
-    clearTimeout(_feedbackAcceptLongPressTimeout);
-    if (_feedbackAcceptLongPressPulse) {
-        clearInterval(_feedbackAcceptLongPressPulse);
-        _feedbackAcceptLongPressPulse = null;
-    }
-    if (btnEl) btnEl.classList.remove('fb-action-btn--holding');
-
-    const progressEl = btnEl && btnEl.querySelector('.fb-btn-accept-progress');
-    if (progressEl) {
-        progressEl.style.transition = 'width 0.2s ease-out';
-        progressEl.style.width = '0';
-    }
-}
-
 function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
-    const duration = Date.now() - _feedbackAcceptLongPressStart;
-    if (duration >= FEEDBACK_ACCEPT_HOLD_DURATION_MS) {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        return;
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
     }
-
-    cancelFeedbackAcceptLongPress(btnEl, event);
     openFeedbackRewardModal(projectId, feedbackId);
-}
-
-async function submitQuickFeedbackAccept(feedbackId, projectId, btnEl) {
-    // Long-press = instant accept with 0 $BUST (and no karma).
-    const targetBust = 0;
-    const targetKarma = 0;
-
-    if (typeof window.removeFeedbackCardOptimistic === 'function') {
-        window.removeFeedbackCardOptimistic(feedbackId, 'accepted', { reward_bust: targetBust });
-    }
-
-    if (typeof window.triggerFeedbackAutoAdvance === 'function') {
-        window.triggerFeedbackAutoAdvance(feedbackId);
-    }
-
-    try {
-        const response = await fetch(`${API_BASE}/feedback/${feedbackId}/reward`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                owner_id: userId,
-                bust_amount: targetBust,
-                karma_amount: targetKarma,
-                reply_text: "",
-            }))
-        });
-        const data = await response.json();
-        if (!response.ok || data.status !== 'success') {
-            showToast(getApiErrorMessage(data, 'genericError'));
-            return;
-        }
-        showToast(window.t('feedbackQuickAcceptToast', {}, lang) || (lang === 'ru' ? '✅ Принято' : '✅ Accepted'));
-    } catch (error) {
-        console.error('Quick accept error:', error);
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
-    }
 }
 
 function triggerFeedbackAutoAdvance(currentFeedbackId) {
@@ -4382,10 +5566,18 @@ function triggerFeedbackAutoAdvance(currentFeedbackId) {
 }
 window.triggerFeedbackAutoAdvance = triggerFeedbackAutoAdvance;
 
-window.startFeedbackAcceptLongPress = startFeedbackAcceptLongPress;
-window.cancelFeedbackAcceptLongPress = cancelFeedbackAcceptLongPress;
 window.handleFeedbackAcceptClick = handleFeedbackAcceptClick;
-window.submitQuickFeedbackAccept = submitQuickFeedbackAccept;
+window.nudgeFeedbackRewardBust = nudgeFeedbackRewardBust;
+window.applyFeedbackRewardQuickReply = applyFeedbackRewardQuickReply;
+window.setFeedbackRewardBust = setFeedbackRewardBust;
+window.setFeedbackRewardKarma = setFeedbackRewardKarma;
+window.openFeedbackRewardModal = openFeedbackRewardModal;
+window.closeFeedbackRewardModal = closeFeedbackRewardModal;
+window.getFeedbackRewardLifetimeScore = getFeedbackRewardLifetimeScore;
+window.getFeedbackRewardContributionPoints = getFeedbackRewardContributionPoints;
+window.getFeedbackRewardTicketKind = getFeedbackRewardTicketKind;
+window.feedbackRewardHasProof = feedbackRewardHasProof;
+window.getFeedbackRewardSubtitleKey = getFeedbackRewardSubtitleKey;
 
 window.updateIconPreview = updateIconPreview;
 
@@ -4394,3 +5586,6 @@ window.markTestFeedbackCheckinPending = markTestFeedbackCheckinPending;
 window.applyTestFeedbackCheckinPendingUi = applyTestFeedbackCheckinPendingUi;
 window.reapplyAllFeedbackCheckinPendingUi = reapplyAllFeedbackCheckinPendingUi;
 window.getFeedbackCheckinPendingLabel = getFeedbackCheckinPendingLabel;
+window.getFeedbackCheckinPendingLabelHtml = getFeedbackCheckinPendingLabelHtml;
+window.openOwnerCheckpointChat = openOwnerCheckpointChat;
+

@@ -2,84 +2,16 @@
 /* TG init, constants, language system, state vars, route parsing */
 
 window.App = window.App || {};
+window.App.checkinProofMode = window.App.checkinProofMode || 'off';
+window.App.screenshotProofUploadEnabled = window.App.screenshotProofUploadEnabled === true;
+window.App.testingControlEnabled = window.App.testingControlEnabled === true;
+window.App.checkinProofGalleryEnabled = window.App.checkinProofGalleryEnabled === true;
+window.App.testerFeedbackTopicId = Number(window.App.testerFeedbackTopicId || 4000) || 4000;
 
 var tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
-
-function _closeTopTelegramBackTarget() {
-    var protectionCenter = document.getElementById('protection-center');
-    if (protectionCenter && protectionCenter.classList.contains('active')) {
-        if (typeof closeProtectionCenter === 'function') {
-            closeProtectionCenter();
-        } else {
-            protectionCenter.classList.remove('active');
-        }
-        return true;
-    }
-
-    var attractSheet = document.getElementById('attract-testers-sheet-overlay');
-    if (attractSheet && attractSheet.classList.contains('active')) {
-        if (typeof closeAttractTestersSheet === 'function') {
-            closeAttractTestersSheet();
-        } else {
-            attractSheet.classList.remove('active');
-        }
-        return true;
-    }
-
-    var activeModals = document.querySelectorAll('.modal-overlay.active');
-    if (activeModals.length) {
-        var topModal = activeModals[activeModals.length - 1];
-        topModal.classList.remove('active');
-        return true;
-    }
-
-    return false;
-}
-
-function syncTelegramBackButton() {
-    if (!tg || !tg.BackButton) return;
-    var protectionCenter = document.getElementById('protection-center');
-    var attractSheet = document.getElementById('attract-testers-sheet-overlay');
-    var shouldShow = (protectionCenter && protectionCenter.classList.contains('active'))
-        || (attractSheet && attractSheet.classList.contains('active'))
-        || document.querySelectorAll('.modal-overlay.active').length > 0;
-    if (shouldShow) {
-        tg.BackButton.show();
-    } else {
-        tg.BackButton.hide();
-    }
-    if (typeof window.syncPipelineHeaderVisibility === 'function') {
-        window.syncPipelineHeaderVisibility();
-    }
-}
-
-function initTelegramBackButton() {
-    if (!tg || !tg.BackButton || tg.BackButton._devtestBound) return;
-    tg.BackButton.onClick(function() {
-        if (!_closeTopTelegramBackTarget()) {
-            tg.BackButton.hide();
-        } else {
-            syncTelegramBackButton();
-        }
-    });
-    tg.BackButton._devtestBound = true;
-
-    var watchSelectors = '.modal-overlay, .protection-center-view, #attract-testers-sheet-overlay';
-    document.querySelectorAll(watchSelectors).forEach(function(element) {
-        if (typeof MutationObserver === 'undefined') return;
-        var observer = new MutationObserver(function() {
-            syncTelegramBackButton();
-        });
-        observer.observe(element, { attributes: true, attributeFilter: ['class'] });
-    });
-
-    syncTelegramBackButton();
-}
-
-window.syncTelegramBackButton = syncTelegramBackButton;
-window.initTelegramBackButton = initTelegramBackButton;
+// Telegram BackButton handling lives in js/app-navigation.js.
 window.DEFAULT_GOOGLE_GROUP_URL = 'https://groups.google.com/g/google-play-dev-test';
 
 const initData = tg.initDataUnsafe || {};
@@ -287,16 +219,29 @@ async function loadRuntimeConfig() {
             window.App.publicGroupUrl = runtimeGroupUrl;
             window.FEEDBACK_PUBLIC_LINK_BASE = runtimeGroupUrl;
         }
+        var runtimeProofsTopicUrl = String((payload && payload.proofs_topic_url) || '').trim().replace(/\/+$/, '');
+        if (runtimeProofsTopicUrl) {
+            window.App.proofsTopicUrl = runtimeProofsTopicUrl;
+        }
         var runtimeGroupId = String((payload && payload.frontend_group_id) || '').trim();
         if (runtimeGroupId) {
             window.App.frontendGroupId = runtimeGroupId;
         }
+        var runtimeTesterTopic = Number((payload && payload.tester_feedback_topic_id) || 0);
+        if (runtimeTesterTopic > 0) {
+            window.App.testerFeedbackTopicId = runtimeTesterTopic;
+        }
+        window.App.checkinProofMode = String((payload && payload.checkin_proof_mode) || 'off').trim().toLowerCase();
+        window.App.screenshotProofUploadEnabled = !!(payload && payload.screenshot_proof_upload_enabled === true);
+        window.App.testingControlEnabled = !!(payload && payload.testing_control_enabled === true);
+        window.App.checkinProofGalleryEnabled = !!(payload && payload.checkin_proof_gallery_enabled === true);
     } catch (error) {
         console.warn('Runtime config fetch failed:', error);
     }
 }
 
-const GUEST_PROJECTS_PAGE_SIZE = 5;
+var GUEST_PROJECTS_PAGE_SIZE = 5;
+window.GUEST_PROJECTS_PAGE_SIZE = GUEST_PROJECTS_PAGE_SIZE;
 const NATIVE_APP_LANGS = ['ru', 'en'];
 const RTL_APP_LANGS = ['ar', 'fa', 'he', 'ur'];
 const APP_BASE_LANGUAGE_STORAGE_KEY = 'app_language';
@@ -735,6 +680,10 @@ var _earnEarlyFinishCount = 0;
 var _earnEarlyFinishBust = 0;
 var _earnFeedbackCount = 0;
 var _earnFeedbackBust = 0;
+var _earnTicketRewardCount = 0;
+var _earnTicketRewardBust = 0;
+var _earnScreenshotBoostCount = 0;
+var _earnScreenshotBoostBust = 0;
 var _earnPlayReviewCount = 0;
 var _earnPlayReviewBust = 0;
 var _earnSprintJoined = 0;
@@ -746,6 +695,9 @@ var projectToDelete = null;
 var _activeProjectFeedbackAppId = null;
 var _activeProjectFeedbackItems = [];
 var _activeProjectFeedbackArchived = false;
+var _activeProjectFeedbackFullLoaded = false;
+var _activeProjectFeedbackPartial = false;
+var _activeProjectFeedbackLoadSeq = 0;
 var _feedbackRewardTargetId = null;
 var _feedbackRewardBust = 0;
 var _feedbackRewardKarma = 0;
@@ -837,6 +789,7 @@ var _guestProjectsInFlight = null;
 var _guestProjectsLoadedOnce = false;
 var _guestProjectsExpanded = true;
 var _guestProjectsLoadError = false;
+var _guestProjectsTotalCount = 0;
 var _externalCountsInFlight = null;
 var _externalCountsLoadedOnce = false;
 var _externalCounts = { leads_count: 0, guest_projects_count: 0, updated_at: 0 };
@@ -932,6 +885,10 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_earnEarlyFinishBust', function () { return _earnEarlyFinishBust; }, function (value) { _earnEarlyFinishBust = value; });
     window.App.bindStateProperty('_earnFeedbackCount', function () { return _earnFeedbackCount; }, function (value) { _earnFeedbackCount = value; });
     window.App.bindStateProperty('_earnFeedbackBust', function () { return _earnFeedbackBust; }, function (value) { _earnFeedbackBust = value; });
+    window.App.bindStateProperty('_earnTicketRewardCount', function () { return _earnTicketRewardCount; }, function (value) { _earnTicketRewardCount = value; });
+    window.App.bindStateProperty('_earnTicketRewardBust', function () { return _earnTicketRewardBust; }, function (value) { _earnTicketRewardBust = value; });
+    window.App.bindStateProperty('_earnScreenshotBoostCount', function () { return _earnScreenshotBoostCount; }, function (value) { _earnScreenshotBoostCount = value; });
+    window.App.bindStateProperty('_earnScreenshotBoostBust', function () { return _earnScreenshotBoostBust; }, function (value) { _earnScreenshotBoostBust = value; });
     window.App.bindStateProperty('_earnPlayReviewCount', function () { return _earnPlayReviewCount; }, function (value) { _earnPlayReviewCount = value; });
     window.App.bindStateProperty('_earnPlayReviewBust', function () { return _earnPlayReviewBust; }, function (value) { _earnPlayReviewBust = value; });
     window.App.bindStateProperty('_earnSprintJoined', function () { return _earnSprintJoined; }, function (value) { _earnSprintJoined = value; });
@@ -943,6 +900,9 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_activeProjectFeedbackAppId', function () { return _activeProjectFeedbackAppId; }, function (value) { _activeProjectFeedbackAppId = value; });
     window.App.bindStateProperty('_activeProjectFeedbackItems', function () { return _activeProjectFeedbackItems; }, function (value) { _activeProjectFeedbackItems = value; });
     window.App.bindStateProperty('_activeProjectFeedbackArchived', function () { return _activeProjectFeedbackArchived; }, function (value) { _activeProjectFeedbackArchived = value; });
+    window.App.bindStateProperty('_activeProjectFeedbackFullLoaded', function () { return _activeProjectFeedbackFullLoaded; }, function (value) { _activeProjectFeedbackFullLoaded = value; });
+    window.App.bindStateProperty('_activeProjectFeedbackPartial', function () { return _activeProjectFeedbackPartial; }, function (value) { _activeProjectFeedbackPartial = value; });
+    window.App.bindStateProperty('_activeProjectFeedbackLoadSeq', function () { return _activeProjectFeedbackLoadSeq; }, function (value) { _activeProjectFeedbackLoadSeq = value; });
     window.App.bindStateProperty('_feedbackRewardTargetId', function () { return _feedbackRewardTargetId; }, function (value) { _feedbackRewardTargetId = value; });
     window.App.bindStateProperty('_feedbackRewardBust', function () { return _feedbackRewardBust; }, function (value) { _feedbackRewardBust = value; });
     window.App.bindStateProperty('_feedbackRewardKarma', function () { return _feedbackRewardKarma; }, function (value) { _feedbackRewardKarma = value; });
@@ -1009,6 +969,7 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('_guestProjectsLoadedOnce', function () { return _guestProjectsLoadedOnce; }, function (value) { _guestProjectsLoadedOnce = value; });
     window.App.bindStateProperty('_guestProjectsExpanded', function () { return _guestProjectsExpanded; }, function (value) { _guestProjectsExpanded = value; });
     window.App.bindStateProperty('_guestProjectsLoadError', function () { return _guestProjectsLoadError; }, function (value) { _guestProjectsLoadError = value; });
+    window.App.bindStateProperty('_guestProjectsTotalCount', function () { return _guestProjectsTotalCount; }, function (value) { _guestProjectsTotalCount = value; });
     window.App.bindStateProperty('_externalCountsInFlight', function () { return _externalCountsInFlight; }, function (value) { _externalCountsInFlight = value; });
     window.App.bindStateProperty('_externalCountsLoadedOnce', function () { return _externalCountsLoadedOnce; }, function (value) { _externalCountsLoadedOnce = value; });
     window.App.bindStateProperty('_externalCounts', function () { return _externalCounts; }, function (value) { _externalCounts = value; });
@@ -1293,6 +1254,20 @@ function _parseInitialRouteTarget() {
         var raw = String(candidateValues[index] || '').trim();
         if (!raw) continue;
         var normalized = raw.toLowerCase();
+        var controlMatch = normalized.match(/^control[_:](\d+)(?:[_:](\d+))?$/);
+        if (controlMatch) {
+            routeKind = 'control';
+            feedbackProjectId = Number(controlMatch[1] || 0);
+            routeExtraId = Number(controlMatch[2] || 0);
+            break;
+        }
+        var feedbackExactMatch = normalized.match(/^feedback[_:](\d+)(?:[_:](\d+))?$/);
+        if (feedbackExactMatch) {
+            routeKind = 'feedback';
+            feedbackProjectId = Number(feedbackExactMatch[1] || 0);
+            routeExtraId = Number(feedbackExactMatch[2] || 0);
+            break;
+        }
         var feedbackMatch = normalized.match(/(?:project_feedback|feedback|owner_feedback|feedback_project)[_:=.-]?(\d+)?/);
         if (feedbackMatch) {
             routeKind = 'feedback';
@@ -1393,6 +1368,15 @@ function _parseInitialRouteTarget() {
             tab: 'projects',
             openFeedback: true,
             appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+            focusFeedbackId: routeExtraId > 0 ? routeExtraId : null,
+        };
+    }
+    if (routeKind === 'control') {
+        return {
+            tab: 'projects',
+            openTestingControl: true,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+            focusProgressId: routeExtraId > 0 ? routeExtraId : null,
         };
     }
     if (routeKind === 'projects') {
@@ -1578,6 +1562,32 @@ async function _handleInitialRoute() {
     }
     if (route.tab === 'tests') {
         switchTab('tests');
+    }
+    if (route.openTestingControl && route.appId) {
+        try {
+            showTgDeeplinkLoader('control');
+            await Promise.allSettled([
+                loadProjects(true),
+                loadArchivedProjects({ silent: true })
+            ]);
+            if (window.App && window.App.testingControlEnabled && typeof window.openTestingControl === 'function') {
+                var isArchivedControlProject = !(myProjects || []).some(function(project) {
+                    return Number(project.id) === Number(route.appId);
+                }) && (archivedProjects || []).some(function(project) {
+                    return Number(project.app_id) === Number(route.appId);
+                });
+                await window.openTestingControl(route.appId, {
+                    archived: isArchivedControlProject,
+                    focusProgressId: route.focusProgressId,
+                });
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial Testing Control route error:', error);
+        } finally {
+            hideTgDeeplinkLoader('control');
+        }
+        return;
     }
         if (route.highlightTestId) {
             try {
@@ -1778,7 +1788,7 @@ async function _handleInitialRoute() {
             return Number(project.app_id) === Number(route.appId);
         });
 
-        await openProjectFeedback(route.appId, isArchived);
+        await openProjectFeedback(route.appId, isArchived, { focusFeedbackId: route.focusFeedbackId });
     } catch (error) {
         console.error('Initial feedback route error:', error);
         hideTgDeeplinkLoader('feedback');

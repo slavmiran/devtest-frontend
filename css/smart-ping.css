@@ -1,0 +1,509 @@
+/* Compact Smart Ping launcher in the project-params header + bottom sheet. */
+.pc-project-params__head {
+    container-type: inline-size;
+    container-name: params-head;
+    gap: 6px;
+}
+.pc-smart-ping-btn {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    gap: 4px;
+    height: 28px;
+    min-width: 28px;
+    margin: 0;
+    padding: 0 8px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .05);
+    color: #94a3b8;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.pc-smart-ping-btn:hover {
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, .08);
+}
+.pc-smart-ping-btn.is-armed {
+    border-color: rgba(148, 163, 184, 0.20);
+    background: rgba(88, 166, 255, 0.07);
+    color: #8da4c4;
+}
+.pc-smart-ping-btn.is-armed:hover {
+    border-color: rgba(148, 163, 184, 0.32);
+    background: rgba(88, 166, 255, 0.12);
+    color: #a8bdce;
+}
+.pc-smart-ping-btn.is-cooldown {
+    border-color: rgba(148, 163, 184, 0.12);
+    background: rgba(148, 163, 184, 0.04);
+    color: #64748b;
+}
+.pc-smart-ping-btn.is-cooldown:hover {
+    border-color: rgba(148, 163, 184, 0.20);
+    background: rgba(148, 163, 184, 0.07);
+    color: #94a3b8;
+}
+.pc-smart-ping-btn.is-cooldown .pc-smart-ping-btn__bolt {
+    display: inline;
+    opacity: 0.5;
+}
+.pc-smart-ping-btn__cooldown-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #64748b;
+    margin-left: 1px;
+}
+.pc-smart-ping-btn__bolt {
+    display: none;
+    font-size: 12px;
+    line-height: 1;
+}
+.pc-smart-ping-btn.is-armed .pc-smart-ping-btn__bolt { display: inline; }
+.pc-smart-ping-btn__short { display: none; }
+.pc-smart-ping-btn:focus-visible {
+    outline: 2px solid #388bfd;
+    outline-offset: 1px;
+}
+
+@container params-head (max-width: 360px) {
+    .pc-smart-ping-btn__full { display: none; }
+    .pc-smart-ping-btn__short { display: inline; }
+}
+@container params-head (max-width: 292px) {
+    .pc-smart-ping-btn.is-armed .pc-smart-ping-btn__short { display: none; }
+    .pc-smart-ping-btn.is-armed { padding: 0 7px; }
+}
+@container params-head (max-width: 268px) {
+    .pc-smart-ping-btn:not(.is-armed) .pc-smart-ping-btn__full { display: none; }
+    .pc-smart-ping-btn:not(.is-armed) .pc-smart-ping-btn__short { display: none; }
+    .pc-smart-ping-btn:not(.is-armed) .pc-smart-ping-btn__bolt { display: inline; }
+    .pc-smart-ping-btn:not(.is-armed) { padding: 0 7px; }
+}
+
+.smart-ping-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    align-items: flex-end;
+    background: rgba(6, 10, 16, .62);
+    overscroll-behavior: contain;
+    touch-action: none;
+}
+.smart-ping-overlay.active { display: flex; }
+.smart-ping-sheet {
+    width: 100%;
+    max-height: min(86vh, 720px);
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 8px 14px 14px;
+    border-radius: 18px 18px 0 0;
+    background: #15202c;
+    color: #e7eef8;
+    box-shadow: 0 -18px 40px rgba(0, 0, 0, .35);
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+.smart-ping-sheet__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 4px 0 10px;
+}
+.smart-ping-sheet__head h3 {
+    margin: 0;
+    min-width: 0;
+    font-size: 17px;
+    font-weight: 750;
+    letter-spacing: .01em;
+}
+.smart-ping-sheet__balance {
+    margin: 0;
+    flex: 0 0 auto;
+    color: #8a9bb3;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.smart-ping-sheet__filters {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.smart-ping-sheet__filters button {
+    appearance: none;
+    flex: 1 1 0;
+    min-height: 32px;
+    padding: 6px 8px;
+    border: 1px solid rgba(174, 195, 226, .12);
+    border-radius: 8px;
+    background: rgba(174, 195, 226, .05);
+    color: #9aabc2;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+}
+.smart-ping-sheet__filters button.is-active {
+    border-color: rgba(88, 166, 255, .42);
+    background: rgba(56, 139, 253, .16);
+    color: #58a6ff;
+}
+.smart-ping-sheet__body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    min-height: 120px;
+    margin: 0 -4px 10px;
+    padding: 0 4px 4px;
+    -webkit-overflow-scrolling: touch;
+}
+.smart-ping-section { margin-bottom: 12px; }
+.smart-ping-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    color: #c5d1e3;
+    font-size: 12px;
+    font-weight: 700;
+}
+.smart-ping-section h4 span {
+    display: inline-flex;
+    min-width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, .10);
+    color: #9eabb9;
+    font-size: 10px;
+}
+.smart-ping-row {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 52px;
+    margin: 0 0 6px;
+    padding: 8px 10px;
+    border: 1px solid rgba(174, 195, 226, .08);
+    border-radius: 10px;
+    background: rgba(174, 195, 226, .04);
+}
+.smart-ping-row { flex-wrap: wrap; }
+.smart-ping-row__pick {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+.smart-ping-row input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    margin-top: 7px;
+    accent-color: #388bfd;
+}
+.smart-ping-row input:disabled { opacity: .38; cursor: default; }
+.smart-ping-row .pc-avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    margin-top: 2px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.smart-ping-row__meta {
+    display: grid;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 3px;
+}
+.smart-ping-row__name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.smart-ping-row__meta strong {
+    overflow: hidden;
+    color: #e7eef8;
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.smart-ping-risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px 2px 6px;
+    border-radius: 999px;
+    background: rgba(161, 151, 116, .12);
+    color: #b7ad8f;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    line-height: 1.2;
+}
+.smart-ping-risk-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #aaa17f;
+}
+.smart-ping-row__reasons {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.smart-ping-row__reasons li {
+    color: #8a9bb3;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: normal;
+}
+.smart-ping-row__reasons li::before {
+    content: '• ';
+}
+.smart-ping-row__reasons li.is-child {
+    padding-left: 12px;
+}
+.smart-ping-row__reasons li.is-child::before {
+    content: '· ';
+}
+.smart-ping-row__catchups {
+    display: grid;
+    flex: 0 1 calc(100% - 60px);
+    min-width: 0;
+    gap: 6px;
+    margin: 1px 0 0 60px;
+}
+/* A planned catch-up is an explicit Smart Ping outcome, not another signal. */
+.smart-ping-catchup-plan {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    max-width: 100%;
+    min-height: 28px;
+    padding: 5px 8px;
+    border: 1px solid rgba(154, 177, 207, .24);
+    border-radius: 8px;
+    background: rgba(99, 119, 145, .10);
+    color: #a8b9cd;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+.smart-ping-catchup-plan__icon { width: 14px; height: 14px; flex: 0 0 14px; color: #b8c8dc; }
+/* A submitted proof belongs to the owner review flow and must not look urgent. */
+.smart-ping-catchup-received {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px 7px;
+    max-width: 100%;
+    min-height: 27px;
+    padding: 4px 7px;
+    border: 1px solid rgba(139, 184, 166, .18);
+    border-radius: 8px;
+    background: rgba(108, 153, 135, .07);
+    color: #9eafa8;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+.smart-ping-catchup-received__text { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.smart-ping-catchup-received__text > span:first-child { color: #8db4a4; font-weight: 700; }
+.smart-ping-catchup-received__separator { color: rgba(158, 175, 168, .58); }
+.smart-ping-catchup-review {
+    appearance: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #9ec8b5;
+    font: inherit;
+    font-weight: 700;
+    line-height: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.smart-ping-catchup-review:hover { color: #c3e2d3; }
+.smart-ping-catchup-review:focus-visible { outline: 2px solid rgba(150, 202, 180, .5); outline-offset: 2px; border-radius: 3px; }
+.smart-ping-row.is-service-only { background: rgba(174, 195, 226, .025); }
+@media (max-width: 360px) {
+    .smart-ping-row__catchups {
+        flex-basis: calc(100% - 28px);
+        margin-left: 28px;
+    }
+}
+.smart-ping-empty {
+    padding: 28px 8px;
+    color: #8a9bb3;
+    font-size: 13px;
+    text-align: center;
+}
+.smart-ping-sheet__foot { flex: 0 0 auto; }
+.smart-ping-sheet__send {
+    appearance: none;
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #388bfd, #2f6fdb);
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 750;
+    cursor: pointer;
+}
+.smart-ping-sheet__send:disabled {
+    background: rgba(174, 195, 226, .12);
+    color: #8a9bb3;
+    cursor: not-allowed;
+}
+
+.smart-ping-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, .3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: smart-ping-spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+@keyframes smart-ping-spin {
+    to { transform: rotate(360deg); }
+}
+
+.smart-ping-sheet__send.is-loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(56, 139, 253, .7);
+    cursor: wait;
+    pointer-events: none;
+}
+
+.smart-ping-sheet__send.is-success {
+    background: linear-gradient(180deg, #238636, #1f7a31);
+    color: #fff;
+    pointer-events: none;
+    transition: background .2s ease;
+}
+
+.smart-ping-sheet__last-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(88, 166, 255, 0.08);
+    border: 1px solid rgba(88, 166, 255, 0.18);
+    color: #a5d6ff;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.smart-ping-row__notified-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: rgba(46, 160, 67, 0.15);
+    border: 1px solid rgba(46, 160, 67, 0.35);
+    color: #3fb950;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    flex-shrink: 0;
+    margin-top: 6px;
+}
+
+.smart-ping-row.is-notified {
+    opacity: 0.85;
+    background: rgba(174, 195, 226, .02);
+}
+
+.pc-reminder-receipt.is-manual-remind {
+    flex-basis: 100%;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #ffd166;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.pc-reminder-receipt.is-smart-ping {
+    flex-basis: 100%;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #79c0ff;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.pc-attention-ping-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(56, 139, 253, 0.12);
+    border: 1px solid rgba(56, 139, 253, 0.25);
+    color: #79c0ff;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+.pc-attention-tile__subline.pc-attention-ping-info {
+    color: #79c0ff;
+    font-weight: 500;
+}
+
+.pc-attention-btn.is-remind-again {
+    background: rgba(88, 166, 255, 0.08);
+    border-color: rgba(88, 166, 255, 0.22);
+    color: #a5d6ff;
+}
+
+.pc-attention-btn.is-remind-again:hover {
+    background: rgba(88, 166, 255, 0.14);
+    color: #c8e1ff;
+}
+

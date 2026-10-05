@@ -128,7 +128,20 @@
 }
 
 #email-tester-modal .email-tester-accordion {
-    margin-top: 2px;
+    margin-top: 8px;
+    border: 1px solid rgba(142, 142, 147, 0.22);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--bg-surface-muted);
+}
+
+#email-tester-modal .email-tester-accordion .setup-accordion-head {
+    border: 0;
+    border-radius: 14px;
+}
+
+#email-tester-modal .email-tester-accordion.open .setup-accordion-head {
+    border-radius: 14px 14px 0 0;
 }
 
 #email-tester-modal .email-tester-automation-note {

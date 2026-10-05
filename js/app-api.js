@@ -29,6 +29,142 @@ function runWhenIdle(task, timeoutMs) {
     setTimeout(task, Math.min(timeoutMs || 1000, 250));
 }
 
+var _testsListRefreshCount = 0;
+var _testsRefreshIndicatorVisible = false;
+var _testsRefreshIndicatorTimer = null;
+var _projectsViewDirty = true;
+var _testsViewDirty = true;
+var _archivedProjectsViewDirty = true;
+var _archivedProjectsLoadedOnce = false;
+var _archivedProjectsInFlight = false;
+
+function updateProjectsRefreshUi() {
+    var list = document.getElementById('projects-list');
+    var isListRefreshing = (_backgroundSyncState.projects || 0) > 0;
+
+    if (list) {
+        list.classList.toggle('is-refreshing', isListRefreshing);
+        list.setAttribute('aria-busy', isListRefreshing ? 'true' : 'false');
+    }
+
+    var tab = document.getElementById('tab-projects');
+    if (tab) tab.classList.toggle('has-project-refresh', isListRefreshing);
+}
+
+function markProjectsViewDirty() {
+    _projectsViewDirty = true;
+}
+
+function markProjectsViewClean() {
+    _projectsViewDirty = false;
+}
+
+function markTestsViewDirty() {
+    _testsViewDirty = true;
+}
+
+function markTestsViewClean() {
+    _testsViewDirty = false;
+}
+
+function markArchivedProjectsViewDirty() {
+    _archivedProjectsViewDirty = true;
+}
+
+function markArchivedProjectsViewClean() {
+    _archivedProjectsViewDirty = false;
+}
+
+function reconcileProjectsView() {
+    if (!isTabCurrentlyActive('projects')) return;
+    if (_projectsViewDirty) renderProjects();
+    if (_archivedProjectsViewDirty) renderArchivedProjects();
+}
+
+function reconcileTestsView() {
+    if (!isTabCurrentlyActive('tests')) return;
+    if (_testsViewDirty) renderTests();
+}
+
+window.updateProjectsRefreshUi = updateProjectsRefreshUi;
+window.markProjectsViewDirty = markProjectsViewDirty;
+window.markProjectsViewClean = markProjectsViewClean;
+window.markTestsViewDirty = markTestsViewDirty;
+window.markTestsViewClean = markTestsViewClean;
+window.markArchivedProjectsViewDirty = markArchivedProjectsViewDirty;
+window.markArchivedProjectsViewClean = markArchivedProjectsViewClean;
+window.reconcileProjectsView = reconcileProjectsView;
+window.reconcileTestsView = reconcileTestsView;
+
+function refreshVisibleProjects(force) {
+    if (document.hidden || !isTabCurrentlyActive('projects')) return Promise.resolve();
+    // Detail data is revalidated independently, but ProjectToday keeps the last
+    // painted snapshot and only touches the card when the response is different.
+    _refreshProjectActivityData(myProjects, true);
+    var jobs = [];
+    if (typeof loadProjects === 'function') {
+        jobs.push(loadProjects(true, !!force));
+    }
+    if (typeof loadArchivedProjects === 'function') {
+        jobs.push(loadArchivedProjects({ background: true, silent: true, force: !!force }));
+    }
+    return Promise.all(jobs);
+}
+
+window.refreshVisibleProjects = refreshVisibleProjects;
+
+function updateTestsRefreshUi() {
+    var refreshing = _testsListRefreshCount > 0;
+    var showIndicator = refreshing && _testsRefreshIndicatorVisible;
+    var tab = document.getElementById('tab-tests');
+    var list = document.getElementById('my-tests-list');
+    if (tab) tab.classList.toggle('is-tests-refreshing', showIndicator);
+    if (list) list.setAttribute('aria-busy', refreshing ? 'true' : 'false');
+}
+
+function beginTestsListRefresh() {
+    _testsListRefreshCount += 1;
+    if (_testsListRefreshCount === 1) {
+        _testsRefreshIndicatorVisible = false;
+        if (_testsRefreshIndicatorTimer) window.clearTimeout(_testsRefreshIndicatorTimer);
+        _testsRefreshIndicatorTimer = window.setTimeout(function() {
+            _testsRefreshIndicatorTimer = null;
+            if (_testsListRefreshCount > 0) {
+                _testsRefreshIndicatorVisible = true;
+                updateTestsRefreshUi();
+            }
+        }, 450);
+    }
+    updateTestsRefreshUi();
+}
+
+function endTestsListRefresh() {
+    _testsListRefreshCount = Math.max(0, _testsListRefreshCount - 1);
+    if (_testsListRefreshCount === 0) {
+        if (_testsRefreshIndicatorTimer) window.clearTimeout(_testsRefreshIndicatorTimer);
+        _testsRefreshIndicatorTimer = null;
+        _testsRefreshIndicatorVisible = false;
+    }
+    updateTestsRefreshUi();
+}
+
+function refreshVisibleTests(options) {
+    var opts = options || {};
+    if (document.hidden || !isTabCurrentlyActive('tests')) return Promise.resolve();
+    var jobs = [];
+    if (typeof loadTasks === 'function') jobs.push(loadTasks(true));
+    if (opts.contentOnly !== true) {
+        if (typeof loadIncomingOffers === 'function') jobs.push(loadIncomingOffers({ background: true }));
+        if (typeof loadBountyApplications === 'function') jobs.push(loadBountyApplications({ background: true }));
+        if (typeof loadReliabilitySummary === 'function') jobs.push(loadReliabilitySummary(true));
+        if (typeof loadReliabilityBreakdown === 'function') jobs.push(loadReliabilityBreakdown(true));
+    }
+    return Promise.all(jobs);
+}
+
+window.updateTestsRefreshUi = updateTestsRefreshUi;
+window.refreshVisibleTests = refreshVisibleTests;
+
 function updateBackgroundSyncUi() {
     var hasAnySync = Object.keys(_backgroundSyncState).some(function(key) {
         return (_backgroundSyncState[key] || 0) > 0;
@@ -44,6 +180,7 @@ function updateBackgroundSyncUi() {
     if (testsDot) testsDot.classList.toggle('hidden', (_backgroundSyncState.tests || 0) === 0);
     if (projectsDot) projectsDot.classList.toggle('hidden', (_backgroundSyncState.projects || 0) === 0);
     if (marketDot) marketDot.classList.toggle('hidden', (_backgroundSyncState.market || 0) === 0);
+    updateProjectsRefreshUi();
 }
 
 function beginBackgroundSync(scope) {
@@ -124,9 +261,11 @@ function _guestProjectFiltersMatch(cachedFilters, liveFilters) {
 
 function _applyGuestProjectsPayload(payload) {
     guestProjects = Array.isArray(payload && payload.items) ? payload.items : [];
+    _guestProjectsTotalCount = Number((payload && (payload.total != null ? payload.total : payload.count)) || guestProjects.length);
     setGuestProjectAvailableLangs(payload && payload.available_langs);
 
-    const selectedLang = normalizeGuestProjectsFilterLang(_guestProjectsFilters.lang);
+    var currentFilters = (typeof _guestProjectsFilters !== 'undefined' && _guestProjectsFilters) ? _guestProjectsFilters : { lang: 'ALL', category: 'ALL' };
+    const selectedLang = normalizeGuestProjectsFilterLang(currentFilters.lang);
     return selectedLang === 'ALL' || _guestProjectsAvailableLangs.includes(selectedLang);
 }
 
@@ -275,6 +414,7 @@ function _syncGuestProjectsCache() {
     setGuestProjectsCache({
         filters: Object.assign({}, _guestProjectsFilters),
         items: Array.isArray(guestProjects) ? guestProjects : [],
+        total: Number(_guestProjectsTotalCount || (Array.isArray(guestProjects) ? guestProjects.length : 0)),
         available_langs: getGuestProjectAvailableLangs(),
         ts: Date.now(),
     });
@@ -291,6 +431,7 @@ async function loadGuestApps(options) {
 
     if (!options.force && filtersMatch && Array.isArray(cached.items)) {
         guestProjects = cached.items;
+        _guestProjectsTotalCount = Number(cached.total != null ? cached.total : guestProjects.length);
         setGuestProjectAvailableLangs(cached.available_langs);
         resetGuestProjectsPagination();
         _guestProjectsLoadedOnce = true;
@@ -323,6 +464,7 @@ async function loadGuestApps(options) {
             if (!_guestProjectsLoadedOnce) {
                 const hasCachedItems = !!(filtersMatch && Array.isArray((cached || {}).items));
                 guestProjects = hasCachedItems ? cached.items : [];
+                _guestProjectsTotalCount = hasCachedItems ? Number(cached.total != null ? cached.total : guestProjects.length) : 0;
                 setGuestProjectAvailableLangs(hasCachedItems ? cached.available_langs : []);
                 _guestProjectsLoadedOnce = hasCachedItems;
             }
@@ -542,15 +684,57 @@ function getProjectsCache() {
     }
 }
 
+function persistProjectsCacheSnapshot() {
+    if (typeof myProjects !== 'undefined' && Array.isArray(myProjects)) {
+        setProjectsCache({
+            projects: myProjects,
+            visibilityStats: (typeof visibilityStats !== 'undefined') ? visibilityStats : {},
+            is_community_member: window.isCommunityMember,
+            ts: Date.now(),
+        });
+    }
+}
+window.persistProjectsCacheSnapshot = persistProjectsCacheSnapshot;
+
 function setProjectsCache(nextCache) {
     myProjectsCache = nextCache || null;
-    try {
-        if (myProjectsCache) {
-            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(myProjectsCache));
-        } else {
+    if (!myProjectsCache) {
+        try {
             localStorage.removeItem(PROJECTS_CACHE_KEY);
+        } catch (_) {}
+        return;
+    }
+    try {
+        localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(myProjectsCache));
+    } catch (e) {
+        console.warn('Failed to set projects cache, attempting storage cleanup:', e);
+        try {
+            localStorage.removeItem(MARKET_CACHE_KEY);
+            localStorage.removeItem('market_cache_v1');
+            localStorage.removeItem('incoming_offers_cache_v1');
+            localStorage.removeItem('guest_projects_cache_v2');
+            localStorage.removeItem('external_counts_cache_v2');
+            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(myProjectsCache));
+            return;
+        } catch (retryError) {
+            console.warn('Retry setProjectsCache after cleanup failed:', retryError);
         }
-    } catch (e) {}
+        try {
+            var compact = {
+                projects: (myProjectsCache.projects || []).map(function (p) {
+                    return Object.assign({}, p, {
+                        instructions: (p.instructions || '').slice(0, 300),
+                    });
+                }),
+                visibilityStats: myProjectsCache.visibilityStats,
+                is_community_member: myProjectsCache.is_community_member,
+                ts: myProjectsCache.ts || Date.now(),
+            };
+            localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(compact));
+        } catch (finalError) {
+            console.error('Final fallback setProjectsCache failed:', finalError);
+        }
+    }
 }
 
 function hasProjectsCache() {
@@ -768,6 +952,7 @@ async function loadIncomingOffers(options) {
     }
 
     var shouldMarkBackgroundSync = background || _offersLoadedOnce || Array.isArray(cached);
+    var shouldRenderOffersAfterRequest = !_offersLoadedOnce;
 
     var requestPromise = (async function() {
         if (shouldMarkBackgroundSync) {
@@ -778,7 +963,11 @@ async function loadIncomingOffers(options) {
             var response = await fetchWithRetry(`${API_BASE}/offers/incoming/${userId}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             var data = await response.json();
-            incomingOffers = data.offers || [];
+            var nextIncomingOffers = data.offers || [];
+            if (JSON.stringify(incomingOffers) !== JSON.stringify(nextIncomingOffers)) {
+                shouldRenderOffersAfterRequest = true;
+            }
+            incomingOffers = nextIncomingOffers;
             setOffersCache(incomingOffers);
             _offersLoadedOnce = true;
             _offersLoadError = false;
@@ -786,23 +975,21 @@ async function loadIncomingOffers(options) {
 
             // Contract applications ride along with mutual offers (same proven GET path).
             if (Array.isArray(data.bounty_applications) && typeof applyIncomingBountyApplications === 'function') {
-                applyIncomingBountyApplications(data.bounty_applications, { forceRender: true });
-            }
-
-            renderIncomingOffers();
-            if (typeof renderBountyApplications === 'function') {
-                renderBountyApplications(true);
+                applyIncomingBountyApplications(data.bounty_applications);
             } else if (typeof syncIncomingApplicationsSection === 'function') {
                 syncIncomingApplicationsSection();
             }
         } catch (error) {
             console.error('Error loading incoming offers:', error);
             if (!Array.isArray(incomingOffers) || incomingOffers.length === 0) {
-                incomingOffers = Array.isArray(cached) ? cached : [];
+                var fallbackOffers = Array.isArray(cached) ? cached : [];
+                if (JSON.stringify(incomingOffers || []) !== JSON.stringify(fallbackOffers)) {
+                    shouldRenderOffersAfterRequest = true;
+                }
+                incomingOffers = fallbackOffers;
             }
             _offersLoadedOnce = true;
             _offersLoadError = true;
-            renderIncomingOffers();
             if (!background && (!incomingOffers || incomingOffers.length === 0)) {
                 _showNonCriticalLoaderToast(getApiErrorMessage(error && error.message, 'networkError'), 'incoming_offers');
             }
@@ -815,7 +1002,7 @@ async function loadIncomingOffers(options) {
     })();
 
     _offersInFlight = requestPromise;
-    renderIncomingOffers();
+    if (!_offersLoadedOnce) renderIncomingOffers();
 
     try {
         await requestPromise;
@@ -823,7 +1010,7 @@ async function loadIncomingOffers(options) {
         if (_offersInFlight === requestPromise) {
             _offersInFlight = null;
         }
-        renderIncomingOffers();
+        if (shouldRenderOffersAfterRequest) renderIncomingOffers();
     }
 }
 
@@ -832,7 +1019,7 @@ function startOffersPolling() {
         clearInterval(_offersPollId);
     }
     _offersPollId = setInterval(function() {
-        if (!document.hidden) {
+        if (!document.hidden && isTabCurrentlyActive('tests')) {
             loadIncomingOffers({ background: true }).catch(function() {});
         }
     }, 30000);
@@ -1021,16 +1208,23 @@ async function readApiErrorPayload(response) {
 }
 
 async function buildHttpStatusError(response, fallbackKey) {
+    if (response && response.status === 401) {
+        return new Error(window.t ? window.t('sessionExpiredToast') : 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.');
+    }
     var payload = await readApiErrorPayload(response);
     var code = getBackendErrorCode(payload);
     if (code === 'invalid_init_data') {
-        return new Error(window.t ? window.t('guestClaimAuthErrorToast') : 'invalid_init_data');
+        return new Error(window.t ? window.t('sessionExpiredToast') : 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.');
     }
     if (code === 'username_required') {
         return new Error(window.t ? window.t('noUsernameTitle') : 'username_required');
     }
     if (payload && (payload.detail || payload.message)) {
-        return new Error(String(payload.detail || payload.message));
+        var detailStr = String(payload.detail || payload.message).trim();
+        if (detailStr === 'invalid_init_data' || /^(http\s*)?401(\s*unauthorized)?$/i.test(detailStr)) {
+            return new Error(window.t ? window.t('sessionExpiredToast') : 'Сессия Telegram устарела. Пожалуйста, перезапустите Mini App.');
+        }
+        return new Error(detailStr);
     }
     return new Error('HTTP ' + (response && response.status ? response.status : 'error'));
 }
@@ -1040,6 +1234,7 @@ function handleApiError(code, details = {}) {
         ALREADY_OWNED: 'ALREADY_OWNED',
         ALREADY_ACTIVE: 'ALREADY_ACTIVE',
         NEEDS_RESTART: 'NEEDS_RESTART',
+        APP_BLOCKED: 'appRemovedFromPublication',
         insufficient_bust_balance: 'err_insufficient_bust_balance',
         transaction_failed: 'err_transaction_failed',
         invalid_init_data: 'guestClaimAuthErrorToast',
@@ -1052,6 +1247,7 @@ function handleApiError(code, details = {}) {
         open_mismatch: 'err_open_mismatch',
         open_expired: 'err_open_expired',
         open_not_ready: 'err_open_not_ready',
+        screenshot_upload_required: 'err_screenshot_upload_required',
         day_boundary_moved: 'err_day_boundary_moved',
         app_not_archived: 'err_app_not_archived_early_finish',
         invalid_start_date: 'err_grant_unavailable',
@@ -1073,6 +1269,7 @@ function handleApiError(code, details = {}) {
         invalid_feedback_karma_amount: 'invalid_feedback_karma_amount',
         invalid_feedback_bust_amount: 'invalid_feedback_bust_amount',
         app_archived: 'err_app_archived',
+        archive_failed: 'err_archive_failed',
         app_not_found: 'app_not_found',
         already_published: 'already_published',
         not_owner: 'not_owner',
@@ -1090,6 +1287,7 @@ function handleApiError(code, details = {}) {
         offer_owner_mismatch: 'err_offer_owner_mismatch',
         offer_proposer_app_locked_owner: 'err_offer_proposer_app_locked_owner',
         offer_no_available_apps: 'err_offer_no_available_apps',
+        mutual_contract_active_conflict: 'err_mutual_contract_active_conflict',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
         bounty_application_already_pending: 'err_bounty_application_already_pending',
@@ -1100,6 +1298,7 @@ function handleApiError(code, details = {}) {
         bounty_application_create_failed: 'err_bounty_application_create_failed',
         bounty_application_accept_failed: 'err_bounty_application_accept_failed',
         bounty_application_failed: 'err_bounty_application_failed',
+        bounty_mutual_active_conflict: 'err_bounty_mutual_active_conflict',
         bounty_applications_unavailable: 'err_bounty_applications_unavailable',
         bounty_applications_load_failed: 'err_bounty_applications_load_failed',
         user_not_found: 'err_user_not_found',
@@ -1114,6 +1313,8 @@ function handleApiError(code, details = {}) {
         transfer_app_unavailable: 'err_transfer_app_unavailable',
         bot_is_blocked: 'err_bot_is_blocked',
         mass_invite_project_unavailable: 'massInviteUnavailable',
+        mass_invite_project_in_buffer: 'massInviteSafetyBufferAlert',
+        mass_invite_in_progress: 'massInviteInProgress',
         mass_invite_cooldown_active: 'massInviteCooldownActiveError',
         mass_invite_cooldown_not_active: 'massInviteCooldownNotActive',
         invalid_email_commas: 'invalidEmailCommas',
@@ -1123,7 +1324,14 @@ function handleApiError(code, details = {}) {
         target_owner_has_access_issue: 'targetOwnerAccessIssueBlockToast',
         email_required: 'reportIssueEmailRequired',
         access_checklist_required: 'reportIssueChecklistIncomplete',
+        access_wait_active: 'reportIssueWaitActive',
+        issue_screenshot_required: 'reportIssueScreenshotRequired',
         auto_accept_reliability_required: 'auto_accept_reliability_required',
+        tester_profile_required: 'err_tester_profile_required',
+        android_version_too_low: 'err_android_version_too_low',
+        mutual_limit_reached: 'err_mutual_limit_reached',
+        user_interaction_blocked: 'user_interaction_blocked',
+        cannot_block_self: 'cannot_block_self',
     };
 
     var normalizedCode = String(code || '').trim();
@@ -1288,6 +1496,7 @@ function applyOptimisticMyTestJoin(appId, options) {
         myTests = [optimisticRow].concat(Array.isArray(myTests) ? myTests : []);
     }
     _testsLoadedOnce = true;
+    markTestsViewDirty();
     _lastFetchTimes.tests = 0;
     persistTestsCacheSnapshot();
     if (typeof renderTests === 'function') {
@@ -1306,6 +1515,7 @@ function removeOptimisticMyTest(appId) {
     myTests = (Array.isArray(myTests) ? myTests : []).filter(function(test) {
         return Number(test && test.id) !== normalizedId;
     });
+    markTestsViewDirty();
     persistTestsCacheSnapshot();
     if (typeof renderTests === 'function') {
         renderTests(true);
@@ -1323,6 +1533,7 @@ async function loadTasks(isBackground) {
         if (cached && Array.isArray(cached.tests)) {
             myTests = cached.tests;
             _testsLoadedOnce = true;
+            markTestsViewDirty();
             renderTests();
             if (Array.isArray(cached.incoming_offers)) {
                 incomingOffers = cached.incoming_offers;
@@ -1350,6 +1561,27 @@ async function loadTasks(isBackground) {
             _testsInFlight = null;
         }
     }
+}
+
+function _testSnapshotId(test) {
+    return Number(test && test.id || 0);
+}
+
+function _changedTestIds(previousTests, nextTests) {
+    var previousById = Object.create(null);
+    var nextById = Object.create(null);
+    (Array.isArray(previousTests) ? previousTests : []).forEach(function(test) {
+        var id = _testSnapshotId(test);
+        if (id) previousById[id] = test;
+    });
+    (Array.isArray(nextTests) ? nextTests : []).forEach(function(test) {
+        var id = _testSnapshotId(test);
+        if (id) nextById[id] = test;
+    });
+    var ids = new Set(Object.keys(previousById).concat(Object.keys(nextById)));
+    return Array.from(ids).filter(function(id) {
+        return JSON.stringify(previousById[id] || null) !== JSON.stringify(nextById[id] || null);
+    }).map(Number);
 }
 
 function _mapTestsFromApi(data) {
@@ -1464,6 +1696,11 @@ function _mapTestsFromApi(data) {
             owner_avg_handle_hours: (app.owner_avg_handle_hours == null || app.owner_avg_handle_hours === '')
                 ? null
                 : Number(app.owner_avg_handle_hours),
+            owner_pending_open: Math.max(0, Number(app.owner_pending_open || 0) || 0),
+            owner_accepted_total: Math.max(0, Number(app.owner_accepted_total || 0) || 0),
+            owner_acceptance_rate_pct: (app.owner_acceptance_rate_pct == null || app.owner_acceptance_rate_pct === '')
+                ? null
+                : Number(app.owner_acceptance_rate_pct),
             active_testers_count: app.active_testers_count,
             eligible_testers_count: Number(app.eligible_testers_count || 0),
             days_since_publish: app.days_since_publish,
@@ -1476,7 +1713,10 @@ function _mapTestsFromApi(data) {
             skips_count: resolvedSkipsCount,
             consecutive_skips: Number(app.consecutive_skips != null ? app.consecutive_skips : 0),
             is_mutual_debt: !!app.is_mutual_debt,
+            mutual_debt_holder: app.mutual_debt_holder || '',
+            exchange_state: app.exchange_state || null,
             partner_testing_days: Number(app.partner_testing_days || 0),
+            partner_start_date: app.partner_start_date || null,
             partner_skips: Number(app.partner_skips || 0),
             partner_consecutive_skips: Number(app.partner_consecutive_skips || 0),
             partner_checkins: Number(app.partner_checkins || 0),
@@ -1505,6 +1745,7 @@ function _mapTestsFromApi(data) {
             consumed_pending_hours: Number(app.consumed_pending_hours || 0),
             pending_completion_started_at: app.pending_completion_started_at || null,
             last_check_date: resolvedLastCheckDate,
+            today_proof_id: Number(app.today_proof_id || 0) || null,
             issue_reported_at: app.issue_reported_at || null,
             issue_reason: app.issue_reason || '',
             issue_fixed_at: app.issue_fixed_at || null,
@@ -1591,12 +1832,23 @@ function _mapTestsFromApi(data) {
                 ? null
                 : Number(app.external_days_since_last_completed || 0),
             external_control_day_due: !!(isExternal && isMandatoryScreenshotDay(testingDays)),
+            control_proof_catchups: Array.isArray(app.control_proof_catchups)
+                ? app.control_proof_catchups.map(function(item) {
+                    return {
+                        id: Number(item && item.id || 0),
+                        missed_testing_day: Number(item && item.missed_testing_day || 0),
+                    };
+                }).filter(function(item) { return item.id > 0 && item.missed_testing_day > 0; })
+                : [],
+            screenshot_boost_campaign: app.screenshot_boost_campaign || null,
         };
     });
 }
 
 async function _loadTasksImpl(options) {
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    var wasTestsLoadedBeforeRequest = _testsLoadedOnce;
+    beginTestsListRefresh();
     if (shouldMarkBackgroundSync) {
         beginBackgroundSync('tests');
     }
@@ -1608,6 +1860,9 @@ async function _loadTasksImpl(options) {
         var data = await response.json();
         _userEmail = String(data.user_email || '').trim();
         window.App.userEmail = _userEmail;
+        if (typeof data.email_projects_enabled === 'boolean') {
+            window.App.emailProjectsEnabled = data.email_projects_enabled;
+        }
         if (typeof syncSettingsEmailRowUi === 'function') {
             try { syncSettingsEmailRowUi(); } catch (e) {}
         }
@@ -1616,17 +1871,19 @@ async function _loadTasksImpl(options) {
         // /api/tasks no longer embeds incoming_offers; missing key must not wipe the inbox.
         var nextOffers = Array.isArray(data.incoming_offers) ? data.incoming_offers : null;
 
-        // Diff: only re-render if changed
-        var testsChanged = JSON.stringify(myTests) !== JSON.stringify(nextTests);
-        if (testsChanged) {
+        // Rebuild the lists only when the API snapshot actually changed.
+        var changedTestIds = _changedTestIds(myTests, nextTests);
+        var testsChanged = changedTestIds.length > 0;
+        if (testsChanged || !wasTestsLoadedBeforeRequest) {
             myTests = nextTests;
+            markTestsViewDirty();
             var pendingHandled = typeof clearCompletedPendingFeedbackCheckins === 'function'
                 && clearCompletedPendingFeedbackCheckins();
             if (!pendingHandled) {
-                renderTests();
+                if (isTabCurrentlyActive('tests')) renderTests(true);
                 if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
             }
-            if (typeof renderBountyFeed === 'function') renderBountyFeed(true);
+            if (testsChanged && typeof renderBountyFeed === 'function') renderBountyFeed(true);
         } else if (typeof clearCompletedPendingFeedbackCheckins === 'function') {
             clearCompletedPendingFeedbackCheckins();
         }
@@ -1667,6 +1924,7 @@ async function _loadTasksImpl(options) {
         if (shouldMarkBackgroundSync) {
             endBackgroundSync('tests');
         }
+        endTestsListRefresh();
     }
 }
 
@@ -1928,8 +2186,15 @@ async function loadProjects(isBackground, force) {
         if (cached && Array.isArray(cached.projects)) {
             myProjects = cached.projects;
             visibilityStats = cached.visibilityStats || {};
+            if (typeof cached.is_community_member !== 'undefined') {
+                window.isCommunityMember = !!cached.is_community_member;
+                if (window.ProofPing && typeof window.ProofPing.setCommunityMember === 'function') {
+                    window.ProofPing.setCommunityMember(window.isCommunityMember);
+                }
+            }
             _projectsLoadedOnce = true;
             myProjectsLoadError = false;
+            markProjectsViewDirty();
             renderProjects();
             if (typeof window.updateOwnerAccessIssueBanner === 'function') {
                 window.updateOwnerAccessIssueBanner();
@@ -1955,6 +2220,44 @@ async function loadProjects(isBackground, force) {
             _projectsInFlight = null;
         }
     }
+}
+
+function _projectSnapshotId(project) {
+    return Number(project && (project.id || project.app_id) || 0);
+}
+
+function _changedProjectIds(previousProjects, nextProjects) {
+    var previousById = Object.create(null);
+    var nextById = Object.create(null);
+    (Array.isArray(previousProjects) ? previousProjects : []).forEach(function(project) {
+        var id = _projectSnapshotId(project);
+        if (id) previousById[id] = project;
+    });
+    (Array.isArray(nextProjects) ? nextProjects : []).forEach(function(project) {
+        var id = _projectSnapshotId(project);
+        if (id) nextById[id] = project;
+    });
+
+    var ids = new Set(Object.keys(previousById).concat(Object.keys(nextById)));
+    return Array.from(ids).filter(function(id) {
+        return JSON.stringify(previousById[id] || null) !== JSON.stringify(nextById[id] || null);
+    }).map(Number);
+}
+
+function _refreshProjectActivityData(projects, forceRefresh) {
+    if (!window.ProjectToday) return;
+    (Array.isArray(projects) ? projects : []).forEach(function(project) {
+        var appId = _projectSnapshotId(project);
+        if (!appId) return;
+        if (typeof window.ProjectToday.refresh === 'function') {
+            // Revalidate through ProjectToday instead of dropping its cache.
+            // refresh() retains the painted snapshot until a whole fresh result
+            // arrives, so dynamic filters never flash into an empty state.
+            window.ProjectToday.refresh(appId, { maxAgeMs: forceRefresh ? 90000 : 0 });
+        } else if (typeof window.ProjectToday.invalidate === 'function') {
+            window.ProjectToday.invalidate(appId);
+        }
+    });
 }
 
 async function publishProjectToMarket(projectId) {
@@ -2026,6 +2329,7 @@ function _mapProjectsFromApi(data) {
                     : (typeof calculateConsecutiveSkips === 'function'
                         ? calculateConsecutiveSkips(tester)
                         : 0)),
+                created_at: tester.created_at || tester.progress_created_at || null,
                 is_external: !!tester.is_external,
                 is_guest_tester: !!tester.is_guest_tester,
                 external_source: tester.external_source || '',
@@ -2039,6 +2343,7 @@ function _mapProjectsFromApi(data) {
                 reciprocal_app_name: tester.reciprocal_app_name || '',
                 reciprocal_app_status: tester.reciprocal_app_status || '',
                 reciprocal_app_package_name: tester.reciprocal_app_package_name || '',
+                karma: tester.karma == null || tester.karma === '' ? null : Number(tester.karma),
             });
         });
         return {
@@ -2067,6 +2372,7 @@ function _mapProjectsFromApi(data) {
             accepts_email_testers: !!project.accepts_email_testers,
             target_lang: project.target_lang || 'ALL',
             request_reviews: project.request_reviews !== false,
+            min_android_version: Number(project.min_android_version || 0),
             limit_mutual: project.limit_mutual || 0,
             limit_bounty: project.limit_bounty || 0,
             bounty_per_tester: project.bounty_per_tester || 0,
@@ -2080,14 +2386,36 @@ function _mapProjectsFromApi(data) {
             last_mass_invite_at: project.last_mass_invite_at || null,
             last_mass_invite_sent_count: Number(project.last_mass_invite_sent_count || 0),
             run_iteration: Number(project.run_iteration || 1),
-            feedback_new_count: project.feedback_new_count || 0,
-            feedback_total_count: project.feedback_total_count || 0,
+            feedback_new_count: Number(project.feedback_new_count || 0),
+            feedback_total_count: Number(project.feedback_total_count || 0),
+            bugs_new_count: Number(project.bugs_new_count || 0),
+            bugs_total_count: Number(project.bugs_total_count || 0),
+            ideas_new_count: Number(project.ideas_new_count || 0),
+            ideas_total_count: Number(project.ideas_total_count || 0),
+            reviews_new_count: Number(project.reviews_new_count || 0),
+            reviews_total_count: Number(project.reviews_total_count || 0),
+            // Keep the lightweight coverage aggregate returned by the
+            // dashboard API. Dropping this object made the card render five
+            // zeroes even though the detailed coverage endpoint had data.
+            results_summary: Object.assign({
+                models_count: 0,
+                android_range: '',
+                countries_count: 0,
+                screenshots_count: 0,
+                checkins_count: 0,
+                coverage_tuples: [],
+                countries_list: [],
+            }, project.results_summary || {}),
             guest_testers_count: Number(project.guest_testers_count || 0),
+            verified_testers_count: Number(project.verified_testers_count || 0),
+            twelve_verified_testers_at: project.twelve_verified_testers_at || null,
             paid_protection_days: Number(project.purchased_protection_days || project.paid_protection_days || 0),
             protection_bust_pool: Number(project.protection_bust_pool || 0),
             consumed_pending_hours: Number(project.consumed_pending_hours || 0),
             pending_completion_started_at: project.pending_completion_started_at || null,
             phase: project.phase || 'testing',
+            screenshot_boost_campaign: project.screenshot_boost_campaign || null,
+            smart_ping_sent_at: project.smart_ping_sent_at || null,
         };
     });
 }
@@ -2205,7 +2533,9 @@ function _markPostSyncRefreshCooldown() {
 }
 
 async function _loadProjectsImpl(options) {
+    var parametersRequestedAt = Date.now();
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
+    var wasProjectsLoadedBeforeRequest = _projectsLoadedOnce;
     if (shouldMarkBackgroundSync) {
         beginBackgroundSync('projects');
     }
@@ -2215,19 +2545,39 @@ async function _loadProjectsImpl(options) {
         var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var data = await response.json();
+        if (typeof data.is_community_member !== 'undefined') {
+            window.isCommunityMember = !!data.is_community_member;
+            if (window.ProofPing && typeof window.ProofPing.setCommunityMember === 'function') {
+                window.ProofPing.setCommunityMember(window.isCommunityMember);
+            }
+        }
         var nextProjects = _mapProjectsFromApi(data);
+        if (window.ProjectParameters) window.ProjectParameters.reconcile(nextProjects, parametersRequestedAt);
         var nextStats = _mapStatsFromApi(data);
 
-        // Diff: only re-render if changed
-        var projectsChanged = JSON.stringify(myProjects) !== JSON.stringify(nextProjects);
+        // Diff the project records so only the cards that actually changed get
+        // a visual confirmation after the background reconcile.
+        var previousProjects = Array.isArray(myProjects) ? myProjects : [];
+        var changedProjectIds = _changedProjectIds(previousProjects, nextProjects);
+        var projectsChanged = changedProjectIds.length > 0;
         var statsChanged = JSON.stringify(visibilityStats) !== JSON.stringify(nextStats);
 
-        if (projectsChanged || statsChanged) {
+        if (projectsChanged || statsChanged || !wasProjectsLoadedBeforeRequest) {
             myProjects = nextProjects;
             visibilityStats = nextStats;
             myProjectsLoadError = false;
-            renderProjects();
+            markProjectsViewDirty();
+            if (projectsChanged) {
+                var changedProjectIdSet = new Set(changedProjectIds.map(Number));
+                _refreshProjectActivityData(nextProjects.filter(function(project) {
+                    return changedProjectIdSet.has(_projectSnapshotId(project));
+                }), false);
+            }
+            if (isTabCurrentlyActive('projects')) {
+                renderProjects(true);
+            }
             if (typeof window.renderTests === 'function' && Array.isArray(myTests) && myTests.length) {
+                markTestsViewDirty();
                 window.renderTests();
             }
         }
@@ -2236,7 +2586,7 @@ async function _loadProjectsImpl(options) {
         }
 
         // Update cache
-        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
+        setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, is_community_member: window.isCommunityMember, ts: Date.now() });
         _projectsLoadedOnce = true;
         _lastFetchTimes.projects = Date.now();
         myProjectsLoadError = false;
@@ -2666,10 +3016,13 @@ async function loadArchivedProjects(options) {
     var silent = !!opts.silent || background;
     var shouldMarkBackgroundSync = background || archivedProjects.length > 0;
 
-    if (background && (Date.now() - (_lastFetchTimes.archived || 0)) < ARCHIVED_FETCH_THROTTLE_MS) {
+    if (_archivedProjectsInFlight) return;
+
+    if (background && !opts.force && (Date.now() - (_lastFetchTimes.archived || 0)) < ARCHIVED_FETCH_THROTTLE_MS) {
         return;
     }
 
+    _archivedProjectsInFlight = true;
     try {
         if (shouldMarkBackgroundSync) {
             beginBackgroundSync('projects');
@@ -2678,29 +3031,38 @@ async function loadArchivedProjects(options) {
         const response = await fetch(`${API_BASE}/projects/${userId}/archived?init_data=${encodeURIComponent(initDataRaw)}`);
         if (!response.ok) return;
         const data = await response.json();
-        archivedProjects = (data.archived || []).map(function(project) {
+        var nextArchivedProjects = (data.archived || []).map(function(project) {
             return Object.assign({}, project, {
                 target_lang: project.target_lang || 'ALL',
                 run_iteration: Number(project.run_iteration || 1),
                 feedback_new_count: project.feedback_new_count || 0,
                 feedback_total_count: project.feedback_total_count || 0,
                 archive_reason: project.archive_reason || null,
+                blocked_at: project.blocked_at || null,
+                blocked_by: project.blocked_by || null,
+                is_blocked: !!(project.is_blocked || project.blocked_at),
             });
         });
         _lastFetchTimes.archived = Date.now();
-        renderArchivedProjects();
-        // Pipeline: archived payload may contain phase === 'moderation' projects that
-        // belong on the main screen's moderation panel, not in the archive list.
-        // renderProjects() reads `archivedProjects` too, so it must re-run whenever
-        // this data changes, otherwise the moderation panel never appears until some
-        // unrelated action happens to trigger a re-render.
-        if (typeof renderProjects === 'function') renderProjects(true);
+        var archiveChanged = JSON.stringify(archivedProjects) !== JSON.stringify(nextArchivedProjects);
+        if (archiveChanged || !_archivedProjectsLoadedOnce) {
+            archivedProjects = nextArchivedProjects;
+            _archivedProjectsLoadedOnce = true;
+            markArchivedProjectsViewDirty();
+            if (typeof markProjectsViewDirty === 'function') markProjectsViewDirty();
+            if (isTabCurrentlyActive('projects')) {
+                renderArchivedProjects();
+                // Moderation projects are received through the archive endpoint.
+                if (typeof renderProjects === 'function') renderProjects(true);
+            }
+        }
     } catch (error) {
         console.error('Archive load error:', error);
         if (!silent) {
             showToast(getApiErrorMessage(error && error.message, 'networkError'));
         }
     } finally {
+        _archivedProjectsInFlight = false;
         if (shouldMarkBackgroundSync) {
             endBackgroundSync('projects');
         }
@@ -2754,6 +3116,10 @@ async function confirmDeleteProject() {
 
     window._projectDeleteInFlight[id] = true;
 
+    // Save snapshot before optimistic update for safe rollback on failure
+    const previousMyProjects = myProjects ? myProjects.slice() : [];
+    const previousArchivedProjects = archivedProjects ? archivedProjects.slice() : [];
+
     // Instant UX: close modal and fade the card out before the server responds
     closeDeleteModal();
     if (card) {
@@ -2772,6 +3138,12 @@ async function confirmDeleteProject() {
             feedback_total_count: deletedProject.feedback_total_count || 0,
             archive_reason: null,
         });
+        if (typeof persistProjectsCacheSnapshot === 'function') {
+            persistProjectsCacheSnapshot();
+        }
+        if (window.ProjectToday && typeof window.ProjectToday.invalidate === 'function') {
+            window.ProjectToday.invalidate(id);
+        }
     }
 
     const applyOptimisticRender = function() {
@@ -2785,11 +3157,17 @@ async function confirmDeleteProject() {
     }
 
     const refreshListsAfterError = function() {
+        myProjects = previousMyProjects;
+        archivedProjects = previousArchivedProjects;
+        if (typeof persistProjectsCacheSnapshot === 'function') {
+            persistProjectsCacheSnapshot();
+        }
+        applyOptimisticRender();
         if (typeof loadProjects === 'function') {
-            loadProjects(true).catch(function() {});
+            loadProjects(false, true).catch(function() {});
         }
         if (typeof loadArchivedProjects === 'function') {
-            loadArchivedProjects({ background: true, silent: true }).catch(function() {});
+            loadArchivedProjects({ background: true, silent: true, force: true }).catch(function() {});
         }
     };
 
@@ -2803,24 +3181,29 @@ async function confirmDeleteProject() {
                 init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
             })
         });
-        const result = await response.json();
-        if (result.status === 'success') {
+        let result = null;
+        try {
+            result = await response.json();
+        } catch (parseErr) {
+            result = null;
+        }
+        if (response.ok && result && result.status === 'success') {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
             // Immediately remove from the active list so the card vanishes right
             // away without waiting for the server round-trip.
             myProjects = myProjects.filter(function(p) { return p.id !== id; });
-            renderProjects();
+            renderProjects(true);
 
             closeDeleteModal();
 
-            // Force-reload archived projects so the completed project (which the
-            // backend marks with phase='moderation') appears immediately in the
-            // Moderation section. loadArchivedProjects already calls renderProjects()
-            // internally after updating archivedProjects, so no extra re-render needed.
-            loadArchivedProjects({ background: false, silent: true }).catch(function() {});
-            // Background-refresh active projects to stay in sync.
-            loadProjects(true).catch(function() {});
+            // Quiet background refresh for accurate archive metadata (force bypasses throttle)
+            if (typeof loadProjects === 'function') {
+                loadProjects(true, true).catch(function() {});
+            }
+            if (typeof loadArchivedProjects === 'function') {
+                loadArchivedProjects({ background: true, silent: true, force: true }).catch(function() {});
+            }
         } else {
             handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
             refreshListsAfterError();
@@ -2967,6 +3350,10 @@ async function saveProject() {
         } catch (e) { /* noop */ }
     }
 
+    const minAndroidVersion = (typeof normalizeMinAndroidVersion === 'function')
+        ? normalizeMinAndroidVersion((document.getElementById('app-min-android-version') || {}).value)
+        : (parseInt((document.getElementById('app-min-android-version') || {}).value, 10) || 0);
+
     await doSaveProject({
         owner_id: userId,
         name: finalName,
@@ -2980,6 +3367,7 @@ async function saveProject() {
         is_setup_completed: (emailMode || (groupUrl && groupUrl !== 'https://groups.google.com/g/google-play-dev-test')) ? true : false,
         accepts_email_testers: acceptsEmailTesters,
         tester_email: acceptsEmailTesters ? testerEmailInput : null,
+        min_android_version: minAndroidVersion,
         ...pricingPayload
     });
 }
@@ -3202,6 +3590,10 @@ async function saveProjectEdit() {
         }
     }
 
+    const minAndroidVersion = (typeof normalizeMinAndroidVersion === 'function')
+        ? normalizeMinAndroidVersion((document.getElementById('edit-min-android-version') || {}).value)
+        : (parseInt((document.getElementById('edit-min-android-version') || {}).value, 10) || 0);
+
     try {
         const response = await fetch(`${API_BASE}/projects/${projectToEdit}`, {
             method: 'PUT',
@@ -3216,6 +3608,7 @@ async function saveProjectEdit() {
                 request_reviews: requestReviews,
                 accepts_email_testers: acceptsEmailTesters,
                 tester_email: acceptsEmailTesters ? testerEmailInput : null,
+                min_android_version: minAndroidVersion,
                 is_setup_completed: isSetupCompleted,
                 init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                 ...pricingPayload
@@ -3412,15 +3805,23 @@ async function confirmRestartFromSettings() {
     if (!settingsPayload) return null;
 
     const editBtn = document.getElementById('t-editSave');
-    const originalText = editBtn ? editBtn.innerText : '';
-    if (editBtn) {
-        editBtn.innerText = '...';
+    const cancelBtn = document.getElementById('t-editCancel');
+    if (editBtn && editBtn.classList.contains('is-processing')) return null;
+
+    const processingLabel = window.t('archiveRestartProcessingBtn', {}, lang);
+    if (typeof applyActionButtonProcessing === 'function') {
+        applyActionButtonProcessing(editBtn, true, processingLabel);
+    } else if (editBtn) {
+        editBtn.innerText = processingLabel || '...';
         editBtn.disabled = true;
     }
+    if (cancelBtn) cancelBtn.disabled = true;
 
+    var succeeded = false;
     try {
         const result = await restartArchivedProject(projectToEdit, settingsPayload);
-        if (result && result.status === 'success') {
+        succeeded = !!(result && result.status === 'success');
+        if (succeeded) {
             if (typeof window.markEditModalSavedState === 'function') {
                 window.markEditModalSavedState();
             }
@@ -3434,9 +3835,14 @@ async function confirmRestartFromSettings() {
         }
         return result;
     } finally {
-        if (editBtn) {
-            editBtn.innerText = originalText || window.t('archiveRestartConfirmBtn', {}, lang);
-            editBtn.disabled = false;
+        if (!succeeded) {
+            if (cancelBtn) cancelBtn.disabled = false;
+            if (typeof applyActionButtonProcessing === 'function') {
+                applyActionButtonProcessing(editBtn, false);
+            } else if (editBtn) {
+                editBtn.innerText = window.t('archiveRestartConfirmBtn', {}, lang);
+                editBtn.disabled = false;
+            }
             if (typeof window.updateEditSaveButtonState === 'function') {
                 window.updateEditSaveButtonState();
             }

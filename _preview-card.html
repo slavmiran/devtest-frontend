@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card preview</title>
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./css/project-card-dashboard.css">
+<link rel="stylesheet" href="./css/proof-ping.css">
+<style>
+  body { background:#0b0b10; padding:14px; margin:0; }
+  #tab-projects, #projects-list { width: min(392px, calc(100vw - 28px)) !important; max-width: 392px !important; margin: 0 auto; }
+  .card { width:100%; box-sizing:border-box; background: var(--bg-surface-1, #16141c); border-radius:16px; padding:0; margin-bottom:22px; }
+</style>
+</head>
+<body>
+<div id="tab-projects">
+  <div id="projects-list"></div>
+</div>
+<div id="proof-ping-explain" class="modal-overlay centered-popup-overlay proof-ping-explain-overlay" aria-hidden="true">
+  <div class="modal-content centered-popup proof-ping-explain-card" role="dialog" aria-modal="true" aria-labelledby="proof-ping-explain-title">
+    <div id="proof-ping-explain-body"></div>
+  </div>
+</div>
+
+<script>
+const CAL = `<svg class="pc-cal__icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.11-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7H5V6h14v2z"/></svg>`;
+const PEOPLE = `<svg class="pc-cta__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM6 10V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+const GEAR = `<svg class="project-icon-btn__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.48.48 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>`;
+const TG = `<svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>`;
+const BELL = `<svg class="pc-ping__glyph" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.64 5.36 6 7.92 6 11v5l-1.71 1.71A1 1 0 0 0 5 19.4h14a1 1 0 0 0 .71-1.7L18 16z"/></svg>`;
+
+function interpolateColor(hex1, hex2, factor) {
+  const r1 = parseInt(hex1.slice(1, 3), 16);
+  const g1 = parseInt(hex1.slice(3, 5), 16);
+  const b1 = parseInt(hex1.slice(5, 7), 16);
+  const r2 = parseInt(hex2.slice(1, 3), 16);
+  const g2 = parseInt(hex2.slice(3, 5), 16);
+  const b2 = parseInt(hex2.slice(5, 7), 16);
+  const f = Math.max(0, Math.min(1, factor));
+  const r = Math.round(r1 + f * (r2 - r1));
+  const g = Math.round(g1 + f * (g2 - g1));
+  const b = Math.round(b1 + f * (b2 - b1));
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+const DAILY_PROGRESS_COLOR_STOPS = [
+  { count: 1,  color: '#f97316' },
+  { count: 4,  color: '#f59e0b' },
+  { count: 7,  color: '#eab308' },
+  { count: 9,  color: '#84cc16' },
+  { count: 12, color: '#30d158' },
+  { count: 15, color: '#00c7ff' },
+  { count: 18, color: '#a855f7' },
+  { count: 22, color: '#f43f5e' }
+];
+
+function getDailyActivityProgressColor(count) {
+  const c = Number(count) || 0;
+  if (c <= 0) return '#8e8e93';
+  const stops = DAILY_PROGRESS_COLOR_STOPS;
+  if (c <= stops[0].count) return stops[0].color;
+  if (c >= stops[stops.length - 1].count) return stops[stops.length - 1].color;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const s1 = stops[i];
+    const s2 = stops[i + 1];
+    if (c >= s1.count && c <= s2.count) {
+      const factor = (c - s1.count) / (s2.count - s1.count);
+      return interpolateColor(s1.color, s2.color, factor);
+    }
+  }
+  return stops[stops.length - 1].color;
+}
+
+function buildDailyProgressGradientStops(countStart, countEnd) {
+  if (countStart >= countEnd) {
+    const c = getDailyActivityProgressColor(countEnd);
+    return `<stop offset="0%" stop-color="${c}" /><stop offset="100%" stop-color="${c}" />`;
+  }
+  const stops = DAILY_PROGRESS_COLOR_STOPS;
+  const startCol = getDailyActivityProgressColor(countStart);
+  const endCol = getDailyActivityProgressColor(countEnd);
+  let stopsHtml = `<stop offset="0%" stop-color="${startCol}" />`;
+  for (let i = 0; i < stops.length; i++) {
+    const s = stops[i];
+    if (s.count > countStart && s.count < countEnd) {
+      const offset = Math.round(((s.count - countStart) / (countEnd - countStart)) * 100);
+      stopsHtml += `<stop offset="${offset}%" stop-color="${s.color}" />`;
+    }
+  }
+  stopsHtml += `<stop offset="100%" stop-color="${endCol}" />`;
+  return stopsHtml;
+}
+
+function ring(done, total) {
+  const baseMax = Math.max(total, 12);
+  const pin = (12 / baseMax) * 360;
+  const prog = Math.min((done / baseMax) * 360, 360);
+  const cx = 50, cy = 50, r = 37.5, strokeW = 7.5, capR = strokeW / 2;
+  let deficit = '';
+  if (total < 12) {
+    const sa = (total / 12) * 360, rad = (sa - 90) * Math.PI / 180;
+    const x1 = cx + r * Math.cos(rad), y1 = cy + r * Math.sin(rad);
+    deficit = total <= 0
+      ? `<circle cx="50" cy="50" r="37.5" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${strokeW}"/>`
+      : `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A 37.5 37.5 0 ${360 - sa > 180 ? 1 : 0} 1 50 12.5" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${strokeW}" stroke-linecap="round"/>`;
+  }
+  let fill = '';
+  let defs = '';
+  if (done > 0 && prog > 0) {
+    const uid = 'prv-g-' + Math.floor(Math.random() * 1000000);
+    const gradId1 = `${uid}-1`;
+    const gradId2 = `${uid}-2`;
+    const endCount = done;
+    const startCount = done > 12 ? Math.max(1, done - 11) : 1;
+    const startColor = getDailyActivityProgressColor(startCount);
+    const peakColor = getDailyActivityProgressColor(endCount);
+
+    if (prog <= 180) {
+      const radP = (prog - 90) * Math.PI / 180;
+      const px = cx + r * Math.cos(radP);
+      const py = cy + r * Math.sin(radP);
+      const stops1 = buildDailyProgressGradientStops(startCount, endCount);
+      defs = `<linearGradient id="${gradId1}" x1="${cx}" y1="${cy - r}" x2="${px.toFixed(2)}" y2="${py.toFixed(2)}" gradientUnits="userSpaceOnUse">${stops1}</linearGradient>`;
+      fill = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId1})" stroke-width="${strokeW}" stroke-linecap="butt"/>
+              <circle cx="${cx}" cy="${cy - r}" r="${capR}" fill="${startColor}"/>
+              <circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${capR}" fill="${peakColor}"/>`;
+    } else {
+      const fraction180 = 180 / prog;
+      const midCount = startCount + fraction180 * (endCount - startCount);
+      const stops1 = buildDailyProgressGradientStops(startCount, midCount);
+      const stops2 = buildDailyProgressGradientStops(midCount, endCount);
+      const isFullCircle = prog >= 359.5;
+      let px = cx, py = cy - r;
+      if (!isFullCircle) {
+        const radP = (prog - 90) * Math.PI / 180;
+        px = cx + r * Math.cos(radP);
+        py = cy + r * Math.sin(radP);
+      }
+      defs = `<linearGradient id="${gradId1}" x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" gradientUnits="userSpaceOnUse">${stops1}</linearGradient>
+              <linearGradient id="${gradId2}" x1="${cx}" y1="${cy + r}" x2="${px.toFixed(2)}" y2="${py.toFixed(2)}" gradientUnits="userSpaceOnUse">${stops2}</linearGradient>`;
+      fill = `<path d="M ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${cx} ${cy + r}" fill="none" stroke="url(#${gradId1})" stroke-width="${strokeW}" stroke-linecap="butt"/>
+              <path d="M ${cx} ${cy + r} A ${r} ${r} 0 0 1 ${px.toFixed(2)} ${py.toFixed(2)}" fill="none" stroke="url(#${gradId2})" stroke-width="${strokeW}" stroke-linecap="butt"/>
+              <circle cx="${cx}" cy="${cy - r}" r="${capR}" fill="${startColor}"/>
+              ${!isFullCircle ? `<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${capR}" fill="${peakColor}"/>` : ''}`;
+    }
+  }
+  const pr = (pin - 90) * Math.PI / 180;
+  const pinHtml = done >= 12
+    ? `<circle cx="${(cx + r * Math.cos(pr)).toFixed(2)}" cy="${(cy + r * Math.sin(pr)).toFixed(2)}" r="3.5" fill="#30d158" stroke="#16141c" stroke-width="1.5"/>`
+    : `<circle cx="${(cx + r * Math.cos(pr)).toFixed(2)}" cy="${(cy + r * Math.sin(pr)).toFixed(2)}" r="3" fill="#8e8e93" stroke="#16141c" stroke-width="1.5"/>`;
+  const ringClasses = `pc-ring${done > 12 ? ' is-over' : ''}${done === 12 ? ' is-done' : ''}${done === 0 ? ' is-zero' : ''}`;
+  return `<div class="${ringClasses}"><svg viewBox="0 0 100 100" class="pc-ring__svg"><defs>${defs}</defs><circle cx="50" cy="50" r="37.5" fill="none" stroke="#24232c" stroke-width="7.5"/>${deficit}${fill}${pinHtml}</svg><div class="pc-ring__center"><span class="pc-ring__count">${done}&nbsp;/&nbsp;12</span><span class="pc-ring__label">Чекины дня</span></div></div>`;
+}
+
+function recruitBreakdown(o) {
+  const mutual = o.mutual || '4/15';
+  const bounty = o.bounty || '0/6';
+  const mutualFilled = !!o.mutualFilled;
+  const bountyFilled = !!o.bountyFilled;
+  let html = `
+    <button type="button" class="pc-recruit-chip pc-recruit-chip--mutual${mutualFilled ? ' is-filled' : ''}">
+      <span class="pc-recruit-chip__label">Взаимка</span>
+      <span class="pc-recruit-chip__count">${mutual}</span>${mutualFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : ''}
+    </button>
+    <button type="button" class="pc-recruit-chip pc-recruit-chip--bounty${bountyFilled ? ' is-filled' : ''}">
+      <span class="pc-recruit-chip__label">Контракты</span>
+      <span class="pc-recruit-chip__count">${bounty}</span>${bountyFilled ? ' <span class="pc-recruit-chip__check">✓</span>' : ''}
+    </button>
+  `;
+  if (o.guests) {
+    html += `
+      <span class="pc-recruit-group-sep" aria-hidden="true"></span>
+      <button type="button" class="pc-recruit-chip pc-recruit-chip--guest is-guest" onclick="alert('Переход на витрину в раздел «Гостевые проекты»'); event.stopPropagation();" title="Гостевые тестеры: ${o.guests}. Нажмите для перехода на витрину в раздел «Гостевые проекты»">
+        <span class="pc-recruit-chip__label">👽 Гости</span>
+        <span class="pc-recruit-chip__count">${o.guests}</span>
+      </button>
+    `;
+  }
+  return html;
+}
+
+function stateBlock(o) {
+  const teamSize = o.teamSize || o.testers;
+  const timeIcon = '<img class="pc-action-btn__icon" src="./images/Icons/time-add-svgrepo-com.svg" alt="">';
+  const dayValue = `<span class="pc-metric-day__value${o.bufferActive ? ' pc-metric-day__value--buffer' : ''}">${o.day}</span>${o.total ? '<span class="pc-metric-day__total">/ 14</span>' : ''}`;
+  const dayFooter = o.total
+    ? `<span class="pc-metric-footer__line">Всего: <span class="pc-metric-footer__value">${o.totalDays} дн.</span></span>`
+    : `<span class="pc-metric-footer__line pc-metric-footer__line--buffer">${timeIcon}Буфер +48ч</span>`;
+  const peakColor = getDailyActivityProgressColor(o.done);
+  const isComplete = Number(o.pct) >= 100 || Number(o.done) >= 12;
+  const valueStyle = isComplete ? ` style="color: ${peakColor}; font-weight: 700;"` : '';
+  const isRecruitExpanded = !!o.isRecruitExpanded;
+  return `
+  <div class="pc-metrics-grid${isRecruitExpanded ? ' is-recruit-expanded' : ''}" id="project-metrics-${o.id}">
+    <section class="pc-metric-card pc-metric-card--term">
+      <div class="pc-metric-title">ДЕНЬ</div>
+      <button type="button" class="pc-metric-num-btn pc-metric-main pc-metric-day">${dayValue}</button>
+      <div class="pc-metric-footer">${dayFooter}</div>
+    </section>
+    <section class="pc-metric-card pc-metric-card--testers">
+      <div class="pc-metric-title">ТЕСТЕРЫ</div>
+      <button type="button" class="pc-metric-num-btn pc-metric-main">
+        <span class="pc-metric-team__value${o.paidActive ? ' pc-metric-team__value--paid' : ''}">${teamSize}</span>
+        <div class="pc-testers-microbar"><span class="pc-testers-microbar__fill${teamSize > 12 ? ' is-over' : ''}" style="width: ${teamSize >= 12 ? 100 : Math.max(teamSize > 0 ? 8 : 0, Math.min(100, Math.round((teamSize / 12) * 100)))}%;"></span></div>
+      </button>
+      <div class="pc-metric-footer">
+        <button type="button" class="pc-metric-footer__line pc-recruit-toggle-btn" onclick="toggleRecruit(${o.id})" aria-expanded="${isRecruitExpanded ? 'true' : 'false'}" title="${isRecruitExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора'}">
+          Набор: <span class="pc-metric-footer__value">${o.recruitTarget || teamSize} чел.</span>
+          <svg class="pc-recruit-toggle-chevron" viewBox="0 0 12 12" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5L6 8L9.5 4.5"/></svg>
+        </button>
+      </div>
+    </section>
+    <section class="pc-metric-card pc-metric-card--google">
+      <div class="pc-metric-title">АКТИВНОСТЬ</div>
+      <div class="pc-metric-ring">${ring(o.done, o.testers).replace('Чекины дня', 'тесты')}</div>
+      <div class="pc-metric-footer"><span class="pc-metric-footer__line pc-daily-activity-line${isComplete ? ' is-complete' : ''}">${isComplete ? '<span aria-hidden="true">⚡ </span>' : ''}Сегодня <span class="pc-metric-footer__value"${valueStyle}>${o.pct}%</span></span></div>
+    </section>
+    <div class="pc-metrics-recruit" id="project-metrics-recruit-${o.id}">
+      <div class="pc-metrics-recruit__inner">
+        ${recruitBreakdown(o)}
+      </div>
+    </div>
+  </div>
+  <div class="pc-action-footer">
+    <span class="pc-ping-slot"><button type="button" class="telegram-community-chip pc-ping-mini">${TG}</button></span>
+  </div>`;
+}
+
+function actionBar(o) {
+  const timeIcon = '<img class="pc-action-btn__icon" src="./images/Icons/time-add-svgrepo-com.svg" alt="">';
+  const syncIcon = '<img class="pc-action-btn__icon" src="./images/Icons/add-calendar-symbol-for-events-svgrepo-com.svg" alt="">';
+  const actionSecondary = o.needSync
+    ? `<button type="button" class="pc-action-btn pc-action-btn--sync">${syncIcon}<span>Синхронизировать</span></button>`
+    : `<button type="button" class="pc-action-btn pc-action-btn--term">${timeIcon}<span>Срок</span></button>`;
+  return `<div class="pc-action-bar${o.needSync ? ' is-sync-required' : ''}">
+    <button type="button" class="pc-cta pc-cta--primary pc-action-btn--invite">${PEOPLE}<span class="pc-cta__label">Пригласить тестеров${o.availableOffer ? ` · ${o.availableOffer}` : ''}</span></button>
+    ${actionSecondary}
+  </div>`;
+}
+
+function pingExpanded() {
+  return `<section class="pc-ping pc-ping--expanded is-on">
+    <div class="pc-ping__head">
+      <div class="pc-ping__badge" aria-hidden="true">${BELL}</div>
+      <div class="pc-ping__titles">
+        <div class="pc-ping__title-row">
+          <h3 class="pc-ping__title">Уведомления</h3>
+        </div>
+        <p class="pc-ping__desc">Скриншот контрольного дня попадает в общий топик «Testing Proofs». Бот отметит вас <span class="pc-ping__mention">@упоминанием</span>.</p>
+      </div>
+      <div class="pc-ping__action">
+        <button type="button" class="pc-switch-toggle pc-dotswitch is-on" role="switch" aria-checked="true" aria-pressed="true">
+          <span class="pc-switch-toggle__track"><span class="pc-switch-toggle__thumb"></span></span>
+        </button>
+      </div>
+    </div>
+    <div class="pc-ping__foot">
+      <button type="button" class="pc-ping__chat pc-ping__chat--compact">
+        <div class="pc-ping__chat-badge pc-ping__chat-badge--compact" aria-hidden="true">${TG}</div>
+        <div class="pc-ping__chat-content pc-ping__chat-content--compact">
+          <div class="pc-ping__chat-title-row">
+            <span class="pc-ping__chat-label">Testing Proofs</span>
+            <span class="pc-ping__verified-check" title="Вы состоите в сообществе">
+              <svg viewBox="0 0 16 16" class="pc-ping__check-svg" aria-hidden="true"><path d="M3.2 8.5L6.6 11.8L12.8 4.8" fill="none" stroke="#30d158" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </div>
+        </div>
+        <div class="pc-ping__chat-action pc-ping__chat-action--compact" aria-hidden="true">
+          <span class="pc-ping__chat-action-label">Открыть</span>
+          <svg class="pc-ping__chat-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </button>
+    </div>
+  </section>`;
+}
+
+function pingCompact() {
+  return `<section class="pc-ping pc-ping--compact is-on" data-pc-ping="2">
+    <button type="button" class="pc-ping-icon-btn pc-ping-icon-btn--info is-on" aria-haspopup="dialog" aria-expanded="false" aria-label="Что это за уведомления">
+      <img class="pc-ping-svg-ico pc-ping-notification-icon" src="./images/Icons/notification-new-svgrepo-com.svg" alt="" aria-hidden="true">
+    </button>
+    <button type="button" class="pc-ping__link pc-ping__link--sm">${TG}<span class="pc-ping__link-label">Community Chat</span></button>
+    <button type="button" class="pc-ping__close"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.4 1.41 6.29 6.3-6.3 6.29 1.42 1.42 6.29-6.3 6.3 6.3 1.41-1.42-6.3-6.29 6.3-6.3z"/></svg></button>
+  </section>`;
+}
+
+function header(o) {
+  return `<div class="card-header">
+    <div class="project-avatar-container"><div class="avatar" style="width:48px;height:48px;border-radius:14px;background:#3b5bdb;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;">P</div></div>
+    <div class="card-info">
+      <div class="card-title notranslate">${o.title || 'RuPay'}</div>
+      <div class="card-subtitle notranslate"><button type="button" class="pc-stage-badge pc-stage-badge--${o.stage}">${o.stageLabel}</button></div>
+    </div>
+    <div class="project-header-actions"><button type="button" class="project-icon-btn">${GEAR}</button></div>
+  </div>`;
+}
+
+function quickSettings() {
+  return `<div class="project-settings-drawer" style="display:block">
+    <div class="project-settings-drawer__inner">
+      <section class="pc-quick-settings" aria-label="Быстрые настройки проекта">
+        <div class="pc-quick-settings__head">
+          <span class="pc-quick-settings__title">Быстрые настройки проекта</span>
+          <span class="pc-quick-settings__meta">ID: 12 · Run #1</span>
+        </div>
+        <div class="pc-quick-settings__grid">
+          <button type="button" class="pc-quick-tile pc-quick-tile--visibility">
+            <span class="pc-quick-tile__icon pc-quick-tile__icon--visibility" aria-hidden="true">👁</span>
+            <span class="pc-quick-tile__copy">
+              <span class="pc-quick-tile__label">Видимость</span>
+              <span class="pc-quick-tile__value">Публичный</span>
+            </span>
+          </button>
+          <div class="pc-quick-tile pc-quick-tile--notifications is-on" data-pc-ping-drawer="1">
+            <button type="button" class="pc-quick-tile__icon pc-quick-tile__icon--notifications pc-quick-tile__explain" aria-haspopup="dialog" aria-label="Что это за уведомления">
+              <img src="./images/Icons/notification-new-svgrepo-com.svg" alt="">
+            </button>
+            <button type="button" class="pc-quick-tile__toggle" role="switch" aria-checked="true" aria-pressed="true" aria-label="Уведомления о скриншотах контрольного дня">
+              <span class="pc-quick-tile__copy">
+                <span class="pc-quick-tile__label">Уведомления</span>
+                <span class="pc-quick-tile__value pc-quick-tile__value--ping is-on">Включены</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function activityStub() {
+  return `<div class="pc-today"><section class="pc-activity"><div class="pc-activity__filters"><button class="pc-activity__filter is-active">Все</button></div><div class="pc-activity__caption"><div class="pc-activity__hint-wrap"><div class="pc-activity__hint-scroll"><span class="pc-activity__hint-text">Все, кто сейчас в тесте.</span><button type="button" class="pc-activity__info">ⓘ</button></div></div><div class="pc-activity__actions"><button type="button" class="pc-activity__karma">☯️ <span class="pc-activity__karma-count">3/3</span></button><button type="button" class="pc-activity__hist"><span class="pc-activity__hist-dot"></span>История</button></div></div><div class="pc-activity__list" style="min-height:44px"></div></section></div>`;
+}
+
+function feedbackStub() {
+  return `<div class="pc-actions"><button type="button" class="project-feedback-btn">💬 Фидбэк</button></div>`;
+}
+
+function collapseHandle(collapsed, attention) {
+  return `<div class="card-footer pc-collapse-handle">
+    <div class="card-expand-handle-circle">
+      <span class="card-expand-chevron${collapsed ? ' is-collapsed' : ''}">
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      ${attention ? '<div class="footer-notification-dot"></div>' : ''}
+    </div>
+  </div>`;
+}
+
+function card(id, opts) {
+  opts.id = id;
+  const pingClass = opts.ping && opts.ping.includes('pc-ping--expanded')
+    ? ' pc-ping-is-expanded'
+    : (opts.ping && opts.ping.includes('pc-ping--compact') ? ' pc-ping-is-compact' : ' pc-ping-is-mini');
+  return `<div class="card${opts.collapsed ? ' card-collapsed' : ''}${pingClass}" id="project-card-${id}">
+    <section class="pc-state-unified">${header(opts)}${opts.quickSettings ? quickSettings() : ''}${stateBlock(opts)}</section>
+    <div class="pc-dashboard-body">${opts.ping || ''}${opts.activity ? activityStub() : ''}${opts.collapsed ? '' : actionBar(opts)}${opts.feedback ? feedbackStub() : ''}</div>
+    ${collapseHandle(!!opts.collapsed, !!opts.attention)}
+  </div>`;
+}
+
+window.toggleRecruit = function(id) {
+  const grid = document.getElementById('project-metrics-' + id);
+  if (!grid) return;
+  const isExpanded = grid.classList.toggle('is-recruit-expanded');
+  const btn = grid.querySelector('.pc-recruit-toggle-btn');
+  if (btn) {
+    btn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+    btn.setAttribute('title', isExpanded ? 'Свернуть структуру набора' : 'Развернуть структуру набора');
+  }
+};
+
+document.getElementById('projects-list').innerHTML =
+  card(1, { title:'RuPay', stage:'recruiting', stageLabel:'Идёт набор команды · Минимум +4', day:3, total:false, extra:false, totalDays:0, testers:0, teamSize:8, done:0, pct:0, needSync:false, availableOffer:4, recruitTarget:12, mutual:'4/15', bounty:'0/6', guests:1, isRecruitExpanded:true, ping: pingExpanded(), activity:false, feedback:true, quickSettings:true })
++ card(2, { title:'SpeedDial Pro', stage:'need_sync', stageLabel:'Нужна синхронизация', day:7, total:false, extra:false, totalDays:0, testers:9, teamSize:12, done:7, pct:78, needSync:true, availableOffer:7, recruitTarget:12, mutual:'8/12', bounty:'4/4', bountyFilled:true, guests:0, isRecruitExpanded:false, ping: pingCompact(), activity:true, feedback:true })
++ card(3, { title:'QuickPaste', stage:'active', stageLabel:'Активный тест · сегодня 14/16', day:14, total:true, extra:2, totalDays:16, testers:16, teamSize:21, done:14, pct:88, needSync:false, availableOffer:9, recruitTarget:21, pingMini:true, mutual:'15/15', mutualFilled:true, bounty:'6/6', bountyFilled:true, guests:2, isRecruitExpanded:false, ping:'', activity:true, paidActive:true, collapsed:true, attention:true })
++ card(4, { title:'Habit Tracker', stage:'buffer', stageLabel:'Буфер +32ч', day:15, total:true, extra:false, totalDays:18, testers:16, teamSize:21, done:12, pct:100, needSync:false, availableOffer:9, recruitTarget:21, pingMini:true, mutual:'15/15', mutualFilled:true, bounty:'6/6', bountyFilled:true, guests:0, isRecruitExpanded:false, ping:'', activity:true, bufferActive:true, collapsed:true });
+
+function bindPingToggles(root) {
+  (root || document).querySelectorAll('.pc-dotswitch, .pc-switch-toggle').forEach(function (btn) {
+    if (btn._pingBound) return;
+    btn._pingBound = true;
+    btn.addEventListener('click', function () {
+      var on = !btn.classList.contains('is-on');
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      var block = btn.closest('.pc-ping');
+      if (block) {
+        block.classList.toggle('is-on', on);
+        block.classList.toggle('is-off', !on);
+        var status = block.querySelector('.pc-ping__status');
+        if (status) {
+          status.classList.toggle('is-on', on);
+          status.classList.toggle('is-off', !on);
+          status.textContent = on ? 'Включены' : 'Выключены';
+        }
+      }
+      var compactBell = document.querySelector('.pc-ping--compact .pc-ping-icon-btn--info');
+      if (compactBell) compactBell.classList.toggle('is-on', on);
+    });
+  });
+}
+bindPingToggles();
+var explainOverlay = document.getElementById('proof-ping-explain');
+var explainBody = document.getElementById('proof-ping-explain-body');
+document.querySelectorAll('.pc-ping-icon-btn--info, .pc-quick-tile__explain').forEach(function (btn) {
+  btn.addEventListener('click', function (event) {
+    event.stopPropagation();
+    explainBody.innerHTML = pingExpanded().replace('pc-ping pc-ping--expanded', 'pc-ping pc-ping--expanded pc-ping--dialog');
+    explainOverlay.classList.add('active');
+    explainOverlay.setAttribute('aria-hidden', 'false');
+    btn.setAttribute('aria-expanded', 'true');
+    bindPingToggles(explainBody);
+  });
+});
+explainOverlay.addEventListener('click', function (event) {
+  if (event.target !== explainOverlay) return;
+  explainOverlay.classList.remove('active');
+  explainOverlay.setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('.pc-ping-icon-btn--info, .pc-quick-tile__explain').forEach(function (btn) {
+    btn.setAttribute('aria-expanded', 'false');
+  });
+});
+document.querySelectorAll('.pc-quick-tile__toggle').forEach(function (btn) {
+  btn.addEventListener('click', function (event) {
+    event.stopPropagation();
+    var tile = btn.closest('.pc-quick-tile--notifications');
+    if (!tile) return;
+    var on = !tile.classList.contains('is-on');
+    tile.classList.toggle('is-on', on);
+    tile.classList.toggle('is-off', !on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    var status = tile.querySelector('.pc-quick-tile__value--ping');
+    if (status) {
+      status.classList.toggle('is-on', on);
+      status.classList.toggle('is-off', !on);
+      status.textContent = on ? 'Включены' : 'Выключены';
+    }
+  });
+});
+document.querySelectorAll('.pc-activity__hist').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    btn.classList.toggle('is-on');
+  });
+});
+</script>
+</body>
+</html>

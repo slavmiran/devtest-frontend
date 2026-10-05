@@ -394,6 +394,29 @@
     font-weight: 600;
     color: var(--stage-buffer);
 }
+.ppc-slider-buffer-legend-row.is-tight {
+    color: #ff9500;
+}
+.ppc-slider-buffer-legend-row.is-tight .ppc-slider-buffer-swatch {
+    background: #ff9500;
+    box-shadow: 0 0 6px rgba(255, 149, 0, 0.35);
+}
+
+.ppc-status-add-day-btn {
+    margin-top: 4px;
+    width: 100%;
+    border: 1px solid rgba(255, 149, 0, 0.45);
+    background: rgba(255, 149, 0, 0.16);
+    color: #ffb340;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+.ppc-status-add-day-btn:active {
+    background: rgba(255, 149, 0, 0.28);
+}
 
 .ppc-slider-buffer-swatch {
     flex-shrink: 0;
@@ -1331,7 +1354,7 @@
     margin-bottom: 4px;
 }
 .ppc-status-block.state-safe .ppc-status-buffer-text { color: var(--success); }
-.ppc-status-block.state-warning .ppc-status-buffer-text { color: var(--danger); }
+.ppc-status-block.state-warning .ppc-status-buffer-text { color: #ff9500; }
 
 .ppc-status-progress-bar {
     height: 6px;
@@ -1348,7 +1371,7 @@
     background-color: var(--success);
 }
 .ppc-status-block.state-warning .ppc-status-progress-fill {
-    background-color: var(--danger);
+    background-color: #ff9500;
 }
 
 .ppc-status-cost-block {

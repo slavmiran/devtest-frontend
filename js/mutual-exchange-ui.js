@@ -52,6 +52,11 @@
         });
     }
 
+    function _isBrokenProgressStatus(value) {
+        return ['abandoned', 'justified_exit', 'kicked_by_owner', 'canceled_neutral', 'dropped']
+            .includes(String(value || '').trim().toLowerCase());
+    }
+
     function _renderIconHtml(name, iconUrl) {
         if (typeof renderIcon === 'function') {
             return renderIcon(name || '?', iconUrl || '');
@@ -99,18 +104,31 @@
     function getBarterChipState(test) {
         var joinType = String(test && test.join_type || '').toLowerCase();
         var progressStatus = String(test && test.progress_status || 'active').toLowerCase();
-        if (progressStatus === 'kicked_by_owner' || progressStatus === 'canceled_neutral') {
+        if (joinType !== 'mutual' && joinType !== 'prelaunch') {
+            return null;
+        }
+
+        var exchangeState = test && test.exchange_state && Number(test.exchange_state.version || 0) >= 1
+            ? test.exchange_state
+            : null;
+
+        if (exchangeState && exchangeState.is_broken) {
             return {
                 kind: 'broken',
                 className: 'meta-chip accent-danger barter-chip',
                 label: _t('barterChipBroken'),
             };
         }
-        if (joinType !== 'mutual' && joinType !== 'prelaunch') {
-            return null;
+
+        if (!exchangeState && _isBrokenProgressStatus(progressStatus)) {
+            return {
+                kind: 'broken',
+                className: 'meta-chip accent-danger barter-chip',
+                label: _t('barterChipBroken'),
+            };
         }
 
-        if (test && test.is_mutual_debt) {
+        if ((exchangeState && exchangeState.is_mutual_debt) || (!exchangeState && test && test.is_mutual_debt)) {
             return {
                 kind: 'debt',
                 className: 'meta-chip accent-cyan barter-chip',
@@ -124,7 +142,7 @@
             : (partnerProgress === 'active');
         var hasReciprocal = Number(test && test.reciprocal_app_id || 0) > 0;
 
-        if (hasReciprocal && !partnerActive && partnerProgress && partnerProgress !== 'completed') {
+        if (!exchangeState && hasReciprocal && !partnerActive && partnerProgress && partnerProgress !== 'completed') {
             return {
                 kind: 'broken',
                 className: 'meta-chip accent-danger barter-chip',
@@ -132,7 +150,7 @@
             };
         }
 
-        if (!hasReciprocal && joinType === 'mutual') {
+        if (!exchangeState && !hasReciprocal && joinType === 'mutual') {
             // Voluntary / broken one-sided mutual still on My Tests
             return {
                 kind: 'broken',
@@ -141,15 +159,15 @@
             };
         }
 
-        var partnerHasDates = !!(test && (test.partner_last_check_date || test.partner_start_date));
-        var partnerConsecutive = partnerHasDates
-            ? calculateConsecutiveSkips({
-                last_check_date: test && test.partner_last_check_date,
-                start_date: test && test.partner_start_date,
-            })
-            : Number(test && test.partner_consecutive_skips != null
-                ? test.partner_consecutive_skips
-                : 0);
+        // Warning state must come from the same server snapshot as the balance
+        // modal. Recalculating from dates in the browser produced a different
+        // result around local midnight.
+        var partnerMetrics = exchangeState && exchangeState.right && exchangeState.right.metrics;
+        var partnerConsecutive = Number(
+            partnerMetrics && partnerMetrics.consecutive_skips != null
+                ? partnerMetrics.consecutive_skips
+                : (test && test.partner_consecutive_skips != null ? test.partner_consecutive_skips : 0)
+        );
         if (partnerConsecutive >= 3) {
             return {
                 kind: 'warning',
@@ -302,20 +320,31 @@
             }
         }
 
+        var exchangeState = tester && tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+            ? tester.exchange_state
+            : null;
         var partnerProgressStatus = String((tester && tester.reciprocal_partner_progress_status) || '').toLowerCase();
-        var isViewerLeft = partnerProgressStatus === 'abandoned'
-            || partnerProgressStatus === 'justified_exit'
-            || partnerProgressStatus === 'kicked_by_owner'
-            || partnerProgressStatus === 'canceled_neutral'
-            || partnerProgressStatus === 'dropped';
         var testerProgressStatus = String((tester && tester.status) || '').toLowerCase();
-        var isTesterLeft = !!options.leftSoft || !!(tester && tester.is_left_soft)
-            || testerProgressStatus === 'abandoned'
-            || testerProgressStatus === 'justified_exit'
-            || testerProgressStatus === 'kicked_by_owner'
-            || testerProgressStatus === 'canceled_neutral'
-            || testerProgressStatus === 'dropped';
-        var isBroken = options.isBroken != null ? !!options.isBroken : (isViewerLeft || isTesterLeft || !!(tester && tester.is_broken_reciprocal));
+        var leftLegStatus = exchangeState && exchangeState.left && exchangeState.left.leg_status;
+        var rightLegStatus = exchangeState && exchangeState.right && exchangeState.right.leg_status;
+        var isViewerLeft = exchangeState
+            ? _isBrokenProgressStatus(rightLegStatus)
+            : _isBrokenProgressStatus(partnerProgressStatus);
+        var isTesterLeft = exchangeState
+            ? _isBrokenProgressStatus(leftLegStatus)
+            : (!!options.leftSoft || !!(tester && tester.is_left_soft) || _isBrokenProgressStatus(testerProgressStatus));
+        var isBroken = exchangeState
+            ? !!exchangeState.is_broken
+            : (options.isBroken != null
+                ? !!options.isBroken
+                : (isViewerLeft || isTesterLeft || !!(tester && tester.is_broken_reciprocal)));
+        var isMutualDebt = exchangeState
+            ? !!exchangeState.is_mutual_debt
+            : (options.isMutualDebt != null ? !!options.isMutualDebt : !!(tester && tester.is_mutual_debt));
+        var mutualDebtHolder = (exchangeState && exchangeState.debt_holder)
+            || options.mutualDebtHolder
+            || (tester && tester.mutual_debt_holder)
+            || '';
 
         openMutualBalanceModal(safeProjectId, null, {
             context: 'projects',
@@ -331,7 +360,8 @@
             myIconUrl: myIconUrl,
             theirIconUrl: theirIconUrl,
             testerSnapshot: tester,
-            isMutualDebt: options.isMutualDebt != null ? !!options.isMutualDebt : !!(tester && tester.is_mutual_debt),
+            isMutualDebt: isMutualDebt,
+            mutualDebtHolder: mutualDebtHolder,
             leftSoft: isTesterLeft,
             isTesterLeft: isTesterLeft,
             isViewerLeft: isViewerLeft,
@@ -385,6 +415,7 @@
             projectId: Number(options.projectId || (context === 'projects' ? safeAppId : 0)),
             joinType: joinType,
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt)),
+            mutualDebtHolder: String(options.mutualDebtHolder || (test && test.mutual_debt_holder) || ''),
             leftSoft: !!options.leftSoft,
             reciprocalAppId: Number(options.reciprocalAppId || 0),
             testerUsername: String(options.testerUsername || '').replace(/^@+/, ''),
@@ -539,11 +570,26 @@
             theirName = options.theirAppName || theirName;
         }
         var tester = options.testerSnapshot || null;
+        var localExchangeState = (
+            options.context === 'projects' && tester && tester.exchange_state
+            || test && test.exchange_state
+            || null
+        );
+        if (localExchangeState && Number(localExchangeState.version || 0) < 1) {
+            localExchangeState = null;
+        }
+        var localTesterMetrics = localExchangeState && localExchangeState.left && localExchangeState.left.metrics || null;
+        var localPartnerMetrics = localExchangeState && localExchangeState.right && localExchangeState.right.metrics || null;
         var theirDays = 0;
         var theirSkips = 0;
         var theirConsec = 0;
         var theirCheckins = 0;
-        if (options.context === 'projects' && tester) {
+        if (localTesterMetrics) {
+            theirDays = Number(localTesterMetrics.testing_days || 0);
+            theirSkips = Number(localTesterMetrics.skips || 0);
+            theirConsec = Number(localTesterMetrics.consecutive_skips || 0);
+            theirCheckins = Number(localTesterMetrics.checkins || 0);
+        } else if (options.context === 'projects' && tester) {
             theirDays = tester.start_date && typeof getUserTestingDay === 'function'
                 ? getUserTestingDay(tester.start_date)
                 : Number(tester.testing_days || 0);
@@ -559,12 +605,22 @@
             theirCheckins = Number(test && test.checkins_count || 0);
         }
         var isOwnerView = options.context === 'projects';
-        var isTesterLeft = isOwnerView
-            ? !!(options.isTesterLeft || (tester && (tester.is_left_soft || ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(tester.status || '').toLowerCase()))))
-            : !!(test && test.partner_progress_status && test.partner_progress_status !== 'active' && test.partner_progress_status !== 'completed');
-        var isViewerLeft = isOwnerView
-            ? !!(options.isViewerLeft || (tester && ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(tester.reciprocal_partner_progress_status || '').toLowerCase())))
-            : (['abandoned','kicked_by_owner','canceled_neutral','justified_exit','dropped'].includes(String(test && test.progress_status || '').toLowerCase()));
+        var leftLegBroken = localExchangeState
+            ? _isBrokenProgressStatus(localExchangeState.left && localExchangeState.left.leg_status)
+            : false;
+        var rightLegBroken = localExchangeState
+            ? _isBrokenProgressStatus(localExchangeState.right && localExchangeState.right.leg_status)
+            : false;
+        var isTesterLeft = localExchangeState
+            ? (isOwnerView ? leftLegBroken : rightLegBroken)
+            : (isOwnerView
+                ? !!(options.isTesterLeft || (tester && (tester.is_left_soft || _isBrokenProgressStatus(tester.status))))
+                : !!(test && _isBrokenProgressStatus(test.partner_progress_status)));
+        var isViewerLeft = localExchangeState
+            ? (isOwnerView ? rightLegBroken : leftLegBroken)
+            : (isOwnerView
+                ? !!(options.isViewerLeft || (tester && _isBrokenProgressStatus(tester.reciprocal_partner_progress_status)))
+                : _isBrokenProgressStatus(test && test.progress_status));
 
         return _renderBalanceColumns({
             person: person,
@@ -576,13 +632,15 @@
                 : ((test && test.name) || theirName),
             myIcon: options.myIconUrl || (test && test.reciprocal_app_icon_url) || '',
             theirIcon: options.theirIconUrl || (test && test.icon_url) || '',
-            myDays: Number(test && test.partner_testing_days || 0),
+            myDays: Number(localPartnerMetrics ? localPartnerMetrics.testing_days : test && test.partner_testing_days || 0),
             theirDays: theirDays,
-            mySkips: Number(test && test.partner_skips || 0),
+            mySkips: Number(localPartnerMetrics ? localPartnerMetrics.skips : test && test.partner_skips || 0),
             theirSkips: theirSkips,
-            myConsecutive: Number(test && test.partner_consecutive_skips || 0),
+            myConsecutive: Number(localPartnerMetrics ? localPartnerMetrics.consecutive_skips : test && test.partner_consecutive_skips || 0),
             theirConsecutive: Number(
-                options.context === 'projects' && tester
+                localTesterMetrics
+                    ? localTesterMetrics.consecutive_skips
+                    : options.context === 'projects' && tester
                     ? (tester.consecutive_skips != null ? tester.consecutive_skips : calculateConsecutiveSkips(tester))
                     : (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : (test && test.consecutive_skips || 0))
             ),
@@ -602,13 +660,27 @@
             myProgressStatus: String(test && test.progress_status || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
-            isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            isMutualDebt: localExchangeState
+                ? !!localExchangeState.is_mutual_debt
+                : !!(options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            debtHolder: String(
+                localExchangeState && localExchangeState.debt_holder
+                || options.mutualDebtHolder
+                || (test && test.mutual_debt_holder)
+                || (_balanceState && _balanceState.mutualDebtHolder)
+                || ''
+            ),
             leftSoft: isTesterLeft,
         });
     }
 
     function _renderBalanceFromStats(stats, test, options) {
         options = options || {};
+        var exchangeState = stats && stats.exchange_state && Number(stats.exchange_state.version || 0) >= 1
+            ? stats.exchange_state
+            : null;
+        var testerMetrics = exchangeState && exchangeState.left && exchangeState.left.metrics || null;
+        var partnerMetrics = exchangeState && exchangeState.right && exchangeState.right.metrics || null;
         var person = _resolvePersonForRender(test, options, stats);
         var myAppName = stats.partner_app_name || (test && test.reciprocal_app_name) || _t('mutualBalanceYourProject');
         var theirAppName = stats.app_name || (test && test.name) || _t('unknownLabel');
@@ -629,12 +701,22 @@
             }
         }
         var isOwnerView = options.context === 'projects';
-        var isTesterLeft = isOwnerView
-            ? !!(options.isTesterLeft || (options.testerSnapshot && (options.testerSnapshot.is_left_soft || ['abandoned','justified_exit','kicked_by_owner','canceled_neutral','dropped'].includes(String(options.testerSnapshot.status || '').toLowerCase()))))
-            : !!stats.partner_left;
-        var isViewerLeft = isOwnerView
-            ? !!(options.isViewerLeft || stats.partner_left)
-            : (['abandoned','kicked_by_owner','canceled_neutral','justified_exit','dropped'].includes(String(test && test.progress_status || '').toLowerCase()));
+        var leftLegBroken = exchangeState
+            ? _isBrokenProgressStatus(exchangeState.left && exchangeState.left.leg_status)
+            : false;
+        var rightLegBroken = exchangeState
+            ? _isBrokenProgressStatus(exchangeState.right && exchangeState.right.leg_status)
+            : false;
+        var isTesterLeft = exchangeState
+            ? (isOwnerView ? leftLegBroken : rightLegBroken)
+            : (isOwnerView
+                ? !!(options.isTesterLeft || (options.testerSnapshot && (options.testerSnapshot.is_left_soft || _isBrokenProgressStatus(options.testerSnapshot.status))))
+                : !!stats.partner_left);
+        var isViewerLeft = exchangeState
+            ? (isOwnerView ? rightLegBroken : leftLegBroken)
+            : (isOwnerView
+                ? !!(options.isViewerLeft || stats.partner_left)
+                : _isBrokenProgressStatus(test && test.progress_status));
 
         return _renderBalanceColumns({
             person: person,
@@ -646,19 +728,25 @@
             theirIcon: isOwnerView
                 ? (options.theirIconUrl || stats.partner_app_icon_url || '')
                 : (options.theirIconUrl || stats.app_icon_url || (test && test.icon_url) || ''),
-            myDays: Number(stats.partner_testing_days || 0),
-            theirDays: Number(stats.my_testing_days || (test && test.testing_days) || 0),
-            mySkips: Number(stats.partner_skips || 0),
-            theirSkips: Number(stats.my_skips || (test && test.skips_count) || 0),
-            myConsecutive: Number(stats.partner_consecutive_skips || 0),
+            myDays: Number(partnerMetrics ? partnerMetrics.testing_days : stats.partner_testing_days || 0),
+            theirDays: Number(testerMetrics ? testerMetrics.testing_days : stats.my_testing_days || (test && test.testing_days) || 0),
+            mySkips: Number(partnerMetrics ? partnerMetrics.skips : stats.partner_skips || 0),
+            theirSkips: Number(testerMetrics ? testerMetrics.skips : stats.my_skips || (test && test.skips_count) || 0),
+            myConsecutive: Number(partnerMetrics ? partnerMetrics.consecutive_skips : stats.partner_consecutive_skips || 0),
             theirConsecutive: Number(
-                options.context === 'projects'
+                testerMetrics
+                    ? testerMetrics.consecutive_skips
+                    : options.context === 'projects'
                     ? (stats.my_consecutive_skips || 0)
                     : (stats.my_consecutive_skips || (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : 0))
             ),
-            theirCheckins: Number(stats.my_checkins || (test && test.checkins_count) || 0),
+            theirCheckins: Number(testerMetrics ? testerMetrics.checkins : stats.my_checkins || (test && test.checkins_count) || 0),
             partnerConsecutive: Number(
-                options.context === 'projects'
+                exchangeState
+                    ? (options.context === 'projects'
+                        ? testerMetrics && testerMetrics.consecutive_skips
+                        : partnerMetrics && partnerMetrics.consecutive_skips)
+                    : options.context === 'projects'
                     ? (stats.my_consecutive_skips || stats.partner_consecutive_skips || 0)
                     : (stats.partner_consecutive_skips || 0)
             ),
@@ -671,10 +759,20 @@
             myLastActive: stats.my_last_check_date || (test && test.last_check_date) || null,
             partnerDoneDate: stats.partner_last_active || stats.partner_last_check_date || null,
             myDoneDate: stats.my_last_check_date || (test && test.last_check_date) || null,
-            myProgressStatus: String(test && test.progress_status || 'active'),
+            myProgressStatus: String(stats.my_progress_status || (test && test.progress_status) || 'active'),
             joinType: person.joinType,
             context: options.context || 'tests',
-            isMutualDebt: !!(options.isMutualDebt || stats.is_mutual_debt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            isMutualDebt: exchangeState
+                ? !!exchangeState.is_mutual_debt
+                : !!(stats.is_mutual_debt || options.isMutualDebt || (test && test.is_mutual_debt) || (_balanceState && _balanceState.isMutualDebt)),
+            debtHolder: String(
+                exchangeState && exchangeState.debt_holder
+                || stats.debt_holder
+                || options.mutualDebtHolder
+                || (test && test.mutual_debt_holder)
+                || (_balanceState && _balanceState.mutualDebtHolder)
+                || ''
+            ),
             leftSoft: isTesterLeft,
         });
     }
@@ -684,7 +782,6 @@
         var consec = Number(options.consecutiveSkips != null ? options.consecutiveSkips : 0);
         var totalSkips = Number(skips || 0);
         var consecWarn = consec >= 3;
-        var totalWarn = totalSkips >= 3;
         var isBroken = !!options.broken;
         var isDebtDone = !!options.debtDone;
         var isDebtActive = !!options.debtActive;
@@ -692,7 +789,8 @@
         var stateClass = isBroken ? ' is-broken' : (isDebtDone ? ' is-debt-done' : (isDebtActive || isPartnerDebt ? ' is-debt-active' : ''));
         var stateBadge = '';
         if (isBroken) {
-            var breakDateText = options.breakDate ? (' • ' + _esc(_formatDateShort(options.breakDate))) : '';
+            var dateVal = options.breakDate || options.doneDate || (options.contextData && (options.contextData.partnerLastActive || options.contextData.theirDoneDate));
+            var breakDateText = dateVal ? (' • ' + _esc(_formatDateShort(dateVal))) : '';
             stateBadge = '<div class="parity-side-broken">' + _esc(_t('mutualBalanceSideBroken')) + breakDateText + '</div>';
         } else if (isDebtDone) {
             var doneDateText = options.doneDate ? (' • ' + _esc(_formatDateShort(options.doneDate))) : '';
@@ -720,10 +818,10 @@
                 stateBadge +
                 '<div class="parity-chip-row">' +
                     '<span class="parity-chip">📅 ' + _esc(_t('parityDayChip', { day: day, total: 14 })) + '</span>' +
-                    '<span class="parity-chip' + (consecWarn ? ' is-warn' : (consec > 0 ? ' is-caution' : '')) + '">🔁 ' +
+                    '<span class="parity-chip' + (consecWarn ? ' is-warn' : '') + '">⚠️ ' +
                         _esc(consecText) +
                     '</span>' +
-                    '<span class="parity-chip' + (totalWarn ? ' is-warn' : '') + '">⚠️ ' +
+                    '<span class="parity-chip">📉 ' +
                         _esc(totalText) +
                     '</span>' +
                 '</div>' +
@@ -768,7 +866,9 @@
             userId: data.partnerId || 0,
             joinType: data.joinType || 'mutual',
         };
-        var isDebt = !!(data.isMutualDebt || (_balanceState && _balanceState.isMutualDebt));
+        var isDebt = data.isMutualDebt != null
+            ? !!data.isMutualDebt
+            : !!(_balanceState && _balanceState.isMutualDebt);
         person.isDebt = isDebt;
         if (_balanceState) {
             _balanceState.joinType = person.joinType || _balanceState.joinType;
@@ -808,8 +908,13 @@
         }
 
         var isMutual = _isMutualJoin(person.joinType);
-        var isPartnerDebt = isOwnerView && isDebt;
-        var isSelfDebt = !isOwnerView && isDebt;
+        var debtHolder = String(data.debtHolder || '').toLowerCase();
+        var isPartnerDebt = isDebt && (debtHolder
+            ? (isOwnerView ? debtHolder === 'tester' : debtHolder === 'partner')
+            : isOwnerView);
+        var isSelfDebt = isDebt && (debtHolder
+            ? (isOwnerView ? debtHolder === 'partner' : debtHolder === 'tester')
+            : !isOwnerView);
         var bodyHtml;
         if (isMutual) {
             // Owner: you→their reciprocal app; them→your project.
@@ -878,14 +983,17 @@
             bodyHtml = _renderSingleSideStats(data);
         }
 
+        var isLeftBroken = themBroken || youBroken || !!data.partnerLeft;
         var breakLabel = isSelfDebt
             ? _t('mutualBalanceDebtExitBtn')
-            : (isOwnerView ? _t('linkStatusKickBtn') : (isMutual ? _t('mutualBalanceBreakBtn') : _t('linkStatusKickBtn')));
-        var isLeftSoftView = isOwnerView
-            ? !!data.isTesterLeft
-            : !!(data.leftSoft || (_balanceState && _balanceState.leftSoft));
+            : (isOwnerView
+                ? _t('linkStatusKickBtn')
+                : (isLeftBroken ? (_t('detail_leave_btn') || _t('mutualBalanceBreakBtn')) : (isMutual ? _t('mutualBalanceBreakBtn') : _t('detail_leave_btn'))));
+
+        // "Скрыть тестера" / "Открыть карточку" are ONLY for Project Owner view (context === 'projects') when a tester left the owner's project.
+        var isLeftSoftOwnerView = isOwnerView && !!data.isTesterLeft;
         var actionsHtml = '<div class="parity-actions">';
-        if (isLeftSoftView) {
+        if (isLeftSoftOwnerView) {
             actionsHtml += '' +
                 '<button type="button" class="btn btn-outline-tg" onclick="openLeftTesterReciprocalCard()">' +
                     _esc(_t('leftTesterOpenCardBtn')) +
@@ -894,7 +1002,7 @@
                     _esc(_t('leftTesterHideBtn')) +
                 '</button>';
         } else {
-            if (!isSelfDebt) {
+            if (!isSelfDebt && !isLeftBroken) {
                 actionsHtml += '' +
                     '<button type="button" class="btn btn-outline-tg" onclick="openBellRemindPreview()">' +
                         _esc(_t('mutualBalanceBellBtn')) +
@@ -1011,109 +1119,326 @@
         return (_lang().indexOf('en') === 0) ? 'en' : 'ru';
     }
 
-    function _buildBellMessage(messageLang) {
+    function _buildBellMessage(messageLang, mode) {
         var state = _bellRemindState || _balanceState || {};
-        var appName = state.remindAppName || state.appName || _t('unknownLabel');
+        var appName = state.remindAppName || state.appName || (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(state.name) : state.name) || _t('unknownLabel');
         var appId = Number(state.remindAppId || state.appId || state.projectId || 0);
+        var username = String(state.username || state.testerUsername || '').replace(/^@+/, '');
+        var fullName = String(state.fullName || state.testerFullName || '').trim();
+        var userTag = username ? ('@' + username) : (fullName ? ('@' + fullName) : '');
+
         var deepLink = (typeof buildTesterReminderDeepLink === 'function')
             ? buildTesterReminderDeepLink(appId)
-            : ('https://t.me/Android12TestersBot/app?startapp=test_' + appId);
-        return window.t
-            ? window.t('bellNotifyMsg', { app_name: appName, deep_link: deepLink }, messageLang)
-            : ('check-in: ' + deepLink);
+            : ((typeof buildCheckpointTestLink === 'function')
+                ? buildCheckpointTestLink(appId)
+                : ('https://t.me/Android12TestersBot/app?startapp=app_focus_' + appId));
+
+        var langKey = messageLang === 'en' ? 'en' : 'ru';
+        var reason = String(state.remindReason || 'regular');
+        var isTopic = mode === 'topic';
+
+        var key = isTopic ? 'bellNotifyTopicMsg' : 'bellNotifyDmMsg';
+        if (reason === 'not_opened') {
+            key = isTopic ? 'bellNotifyTopicMsg_not_opened' : 'bellNotifyDmMsg_not_opened';
+        } else if (reason === 'skips') {
+            key = isTopic ? 'bellNotifyTopicMsg_skips' : 'bellNotifyDmMsg_skips';
+        } else if (reason === 'debt') {
+            key = isTopic ? 'bellNotifyTopicMsg_debt' : 'bellNotifyDmMsg_debt';
+        } else if (reason === 'control') {
+            key = isTopic ? 'bellNotifyTopicMsg_control' : 'bellNotifyDmMsg_control';
+        } else if (reason === 'control_bulk') {
+            key = isTopic ? 'bellNotifyTopicMsg_control_bulk' : 'bellNotifyDmMsg_control_bulk';
+        }
+
+        var skipsCount = Number(state.consecutiveSkips || 0);
+        var daysWord = '';
+        if (langKey === 'ru') {
+            var mod10 = skipsCount % 10;
+            var mod100 = skipsCount % 100;
+            if (mod100 >= 11 && mod100 <= 19) daysWord = 'дней';
+            else if (mod10 === 1) daysWord = 'день';
+            else if (mod10 >= 2 && mod10 <= 4) daysWord = 'дня';
+            else daysWord = 'дней';
+        } else {
+            daysWord = skipsCount === 1 ? 'day' : 'days';
+        }
+
+        var userTags = state.userTags || (userTag ? userTag : '');
+
+        if (window.t) {
+            return window.t(key, {
+                user_tag: userTag,
+                user_tags: userTags,
+                app_name: appName,
+                deep_link: deepLink,
+                count: skipsCount,
+                days_word: daysWord,
+                day: Number(state.controlDay || 0),
+            }, langKey);
+        }
+
+        if (isTopic) {
+            return (userTags ? (userTags + ' ') : '') + 'Reminder for ' + appName + ': ' + deepLink + '\n\n#reminder #alarm #devtest';
+        }
+        return 'Hi! Reminder for ' + appName + ': ' + deepLink;
     }
 
-    function openBellRemindPreview() {
-        if (!_balanceState) return;
-        var username = String(_balanceState.testerUsername || '').replace(/^@+/, '');
-        if (!username && !_balanceState.testerId) {
-            if (typeof showToast === 'function') {
-                showToast(_t('bellRemindNoUsername'));
-            }
+    function getGeneralTopicUrl() {
+        var base = (
+            window.FEEDBACK_PUBLIC_LINK_BASE ||
+            (window.App && window.App.publicGroupUrl) ||
+            'https://t.me/googleplay_console_12testers'
+        ).replace(/\/+$/, '');
+
+        if (/\/c\/\d+\/\d+/.test(base)) {
+            return base;
+        }
+        if (/\/\d+$/.test(base)) {
+            return base.replace(/\/\d+$/, '/1');
+        }
+        return base + '/1';
+    }
+
+    function openGeneralTopic() {
+        var topicUrl = getGeneralTopicUrl();
+        if (window.tg && typeof window.tg.openTelegramLink === 'function' && String(topicUrl).indexOf('t.me') !== -1) {
+            window.tg.openTelegramLink(topicUrl);
+            return;
+        }
+        window.open(topicUrl, '_blank');
+    }
+
+    function _renderBellRemindOwnerHeader() {
+        var lineEl = document.getElementById('bell-remind-owner-line');
+        if (!lineEl || !_bellRemindState) return;
+
+        var fullName = String(_bellRemindState.fullName || '').trim();
+        var username = String(_bellRemindState.username || '').trim().replace(/^@+/, '');
+
+        if (fullName && username) {
+            lineEl.innerHTML = _esc(fullName)
+                + '<span class="report-owner-sep">•</span>'
+                + '<span class="report-owner-nick">'
+                + _esc('@' + username)
+                + '</span>';
+        } else if (username) {
+            lineEl.innerHTML = '<span class="report-owner-nick">' + _esc('@' + username) + '</span>';
+        } else if (fullName) {
+            lineEl.innerHTML = _esc(fullName);
+        } else {
+            lineEl.innerHTML = _esc(_t('unknownLabel') || 'Tester');
+        }
+    }
+
+    function _renderBellRemindLanguageToggle() {
+        var toggle = document.getElementById('bell-remind-language-toggle');
+        if (!toggle || !_bellRemindState) return;
+
+        var selectedLang = _bellRemindState.messageLang === 'en' ? 'en' : 'ru';
+        var defaultLang = _bellRemindState.defaultLang === 'en' ? 'en' : 'ru';
+        var currentUiLang = _lang();
+
+        var defaultMarkTitle = _esc(window.t ? window.t('reportLanguageDefaultMark', {}, currentUiLang) : 'Default');
+        var defaultMarkHtml = '<span class="report-lang-default-check" title="' + defaultMarkTitle + '" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
+
+        function renderOption(code) {
+            var isSelected = selectedLang === code;
+            var isDefault = defaultLang === code;
+            var label = _esc(code.toUpperCase());
+            return '<button type="button" class="report-lang-link ' + (isSelected ? 'is-active' : 'is-idle') + '" onclick="setBellRemindLang(\'' + code + '\')" aria-pressed="' + (isSelected ? 'true' : 'false') + '">'
+                + '<span class="report-lang-link__label">' + label + '</span>'
+                + (isDefault ? defaultMarkHtml : '')
+                + '</button>';
+        }
+
+        toggle.innerHTML = '<div class="report-lang-inline" role="group" aria-label="Language">'
+            + renderOption('ru')
+            + '<span class="report-lang-divider" aria-hidden="true">|</span>'
+            + renderOption('en')
+            + '</div>';
+    }
+
+    function _syncBellRemindTextareaLayout() {
+        var textarea = document.getElementById('bell-remind-text');
+        var expandBtn = document.getElementById('bell-remind-text-expand-btn');
+        if (!textarea) return;
+
+        var isExpanded = !!(_bellRemindState && _bellRemindState.isExpanded);
+        textarea.classList.toggle('is-expanded', isExpanded);
+        textarea.classList.toggle('is-collapsed', !isExpanded);
+
+        if (expandBtn) {
+            expandBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        }
+
+        if (!isExpanded) {
+            textarea.style.height = '';
             return;
         }
 
-        _bellRemindState = {
-            username: username,
-            testerId: Number(_balanceState.testerId || 0),
-            fullName: _balanceState.testerFullName || '',
-            avatarUrl: _balanceState.testerAvatarUrl || '',
-            remindAppId: Number(_balanceState.remindAppId || _balanceState.appId || 0),
-            remindAppName: _balanceState.remindAppName || _balanceState.appName || '',
-            messageLang: _guessRemindLang(_balanceState.testerLanguage),
-        };
+        textarea.style.height = 'auto';
+        var nextHeight = Math.min(Math.max(textarea.scrollHeight + 2, 140), 380);
+        textarea.style.height = nextHeight + 'px';
+    }
 
-        var overlay = document.getElementById('bell-remind-overlay');
-        if (!overlay) {
-            confirmBellRemindSend();
-            return;
+    function toggleBellRemindTextExpand() {
+        if (!_bellRemindState) return;
+        _bellRemindState.isExpanded = !_bellRemindState.isExpanded;
+        _syncBellRemindTextareaLayout();
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
         }
-        _syncBellRemindPreviewUi();
-        overlay.classList.add('active');
     }
 
     function _syncBellRemindPreviewUi() {
         if (!_bellRemindState) return;
-        var langLabel = document.getElementById('bell-remind-lang-label');
         var textEl = document.getElementById('bell-remind-text');
-        var personEl = document.getElementById('bell-remind-person');
-        var ruBtn = document.getElementById('bell-remind-lang-ru');
-        var enBtn = document.getElementById('bell-remind-lang-en');
         var msgLang = _bellRemindState.messageLang === 'en' ? 'en' : 'ru';
 
-        if (personEl) {
-            var nick = _bellRemindState.username ? ('@' + _bellRemindState.username) : '';
-            var name = _bellRemindState.fullName || nick || _t('unknownLabel');
-            personEl.innerHTML = '' +
-                '<div class="link-status-avatar">' +
-                    _renderPersonAvatar(_bellRemindState.fullName, _bellRemindState.username, _bellRemindState.avatarUrl) +
-                '</div>' +
-                '<div class="link-status-person-copy">' +
-                    '<div class="link-status-fullname notranslate">' + _esc(name) + '</div>' +
-                    (nick && _bellRemindState.fullName
-                        ? '<div class="link-status-username notranslate">' + _esc(nick) + '</div>'
-                        : '') +
-                    '<div class="bell-remind-lang-hint">' +
-                        _esc(_t('bellRemindRecipientLang', {
-                            lang: msgLang === 'en' ? 'EN' : 'RU',
-                        })) +
-                    '</div>' +
-                '</div>';
-        }
-        if (langLabel) {
-            langLabel.textContent = _t('bellRemindPreviewLabel');
-        }
+        _renderBellRemindOwnerHeader();
+        _renderBellRemindLanguageToggle();
+
         if (textEl) {
-            textEl.value = _buildBellMessage(msgLang);
+            textEl.value = _buildBellMessage(msgLang, 'dm');
         }
-        if (ruBtn) ruBtn.classList.toggle('is-selected', msgLang === 'ru');
-        if (enBtn) enBtn.classList.toggle('is-selected', msgLang === 'en');
+        _syncBellRemindTextareaLayout();
     }
 
     function setBellRemindLang(nextLang) {
         if (!_bellRemindState) return;
         _bellRemindState.messageLang = String(nextLang || 'ru').toLowerCase().indexOf('en') === 0 ? 'en' : 'ru';
         _syncBellRemindPreviewUi();
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.selectionChanged === 'function') {
+            window.tg.HapticFeedback.selectionChanged();
+        }
+    }
+
+    function openBellRemindPreview(customData) {
+        var source = customData || _balanceState || {};
+        var username = String(source.username || source.testerUsername || '').replace(/^@+/, '');
+        var fullName = String(source.fullName || source.testerFullName || '').trim();
+        var avatarUrl = source.avatarUrl || source.testerAvatarUrl || '';
+        var appId = Number(source.remindAppId || source.appId || source.projectId || 0);
+        var appName = source.remindAppName || source.appName || (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(source.name) : source.name) || '';
+        var preferredLang = source.messageLang || source.testerLanguage || source.language || '';
+
+        var detectedLang = _guessRemindLang(preferredLang);
+
+        _bellRemindState = {
+            username: username,
+            testerId: Number(source.testerId || 0),
+            fullName: fullName,
+            avatarUrl: avatarUrl,
+            remindAppId: appId,
+            remindAppName: appName,
+            messageLang: detectedLang,
+            defaultLang: detectedLang,
+            isExpanded: false,
+            remindReason: source.remindReason || source.contextType || 'regular',
+            consecutiveSkips: Number(source.consecutiveSkips || source.skips || 0),
+            controlDay: Number(source.controlDay || source.day || 0),
+            userTags: source.userTags || '',
+            onSent: typeof source.onSent === 'function' ? source.onSent : null,
+        };
+
+        var overlay = document.getElementById('bell-remind-overlay');
+        if (!overlay) {
+            confirmBellRemindSend('dm');
+            return;
+        }
+
+        var titleEl = document.getElementById('t-bellRemindTitle');
+        var hintEl = document.getElementById('t-bellRemindHint');
+        var btnDmEl = document.getElementById('t-bellRemindBtnDm');
+        var btnTopicEl = document.getElementById('t-bellRemindBtnTopic');
+
+        if (titleEl) titleEl.innerText = _t('bellRemindTitle');
+        if (hintEl) hintEl.innerText = _t('bellRemindHint');
+        if (btnDmEl) btnDmEl.innerText = _t('bellRemindBtnDm');
+        if (btnTopicEl) btnTopicEl.innerText = _t('bellRemindBtnTopic');
+
+        _syncBellRemindPreviewUi();
+        overlay.classList.add('active');
     }
 
     function closeBellRemindOverlay(event) {
         var overlay = document.getElementById('bell-remind-overlay');
         if (!overlay) return;
-        if (event && event.target !== overlay) return;
+        if (event && event.target && event.target.closest && event.target.closest('.modal-content')) return;
         overlay.classList.remove('active');
         _bellRemindState = null;
     }
 
-    function confirmBellRemindSend() {
+    function confirmBellRemindSend(target) {
         var state = _bellRemindState || _balanceState;
         if (!state) return;
         var username = String(state.username || state.testerUsername || '').replace(/^@+/, '');
-        var messageLang = (state.messageLang || _guessRemindLang(state.testerLanguage));
-        var text = _buildBellMessage(messageLang === 'en' ? 'en' : 'ru');
+        var fullName = String(state.fullName || state.testerFullName || '').trim();
+        var messageLang = state.messageLang === 'en' ? 'en' : 'ru';
+        var onSent = typeof state.onSent === 'function' ? state.onSent : null;
+
+        var textEl = document.getElementById('bell-remind-text');
+        var enteredText = textEl ? String(textEl.value || '').trim() : '';
+
         var overlay = document.getElementById('bell-remind-overlay');
         if (overlay) overlay.classList.remove('active');
 
+        if (target === 'topic') {
+            var userTag = username ? ('@' + username) : (fullName ? ('@' + fullName) : '');
+            var topicText = '';
+            if (enteredText) {
+                if (enteredText.indexOf('#напоминание') !== -1 || enteredText.indexOf('#reminder') !== -1 || (userTag && enteredText.indexOf(userTag) !== -1)) {
+                    topicText = enteredText;
+                } else {
+                    var prefix = userTag ? (userTag + ' ') : '';
+                    var suffix = messageLang === 'en' ? '\n\n#reminder #alarm #devtest' : '\n\n#напоминание #alarm #devtest';
+                    topicText = prefix + enteredText + suffix;
+                }
+            } else {
+                topicText = _buildBellMessage(messageLang, 'topic');
+            }
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(topicText);
+                }
+            } catch (e) {
+                console.warn('Clipboard write error:', e);
+            }
+
+            _bellRemindState = null;
+            if (typeof onSent === 'function') {
+                try { onSent(target); } catch (_) {}
+            }
+            if (typeof showToast === 'function') {
+                showToast(_t('bellRemindSentTopicToast'));
+            }
+            openGeneralTopic();
+            return;
+        }
+
+        // Default: DM
+        var dmText = enteredText || _buildBellMessage(messageLang, 'dm');
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(dmText);
+            }
+        } catch (e) {
+            console.warn('Clipboard write error:', e);
+        }
+
         if (!username) {
+            if (state.userTags) {
+                if (typeof onSent === 'function') {
+                    try { onSent('topic'); } catch (_) {}
+                }
+                _bellRemindState = null;
+                if (typeof showToast === 'function') {
+                    showToast(_t('bellRemindSentTopicToast'));
+                }
+                openGeneralTopic();
+                return;
+            }
             if (typeof showToast === 'function') {
                 showToast(_t('bellRemindNoUsername'));
             }
@@ -1121,41 +1446,44 @@
             return;
         }
 
+        if (typeof showToast === 'function') {
+            showToast(_t('bellRemindSentDmToast'));
+        }
+
+        var opened = false;
         if (typeof openOwnerCheckpointChat === 'function') {
-            openOwnerCheckpointChat(username, text, {
+            opened = openOwnerCheckpointChat(username, dmText, {
                 trackScreenshotReminder: false,
                 showCopyToast: false,
             });
-            if (typeof showToast === 'function') {
-                showToast(_t('bellRemindSentToast', {}, 'ru') || '✉️ Текст скопирован, открываем диалог...');
-            }
         } else {
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text);
-                }
-            } catch (e) {}
-            openMutualBalanceTelegram('https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text));
+            openMutualBalanceTelegram('https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(dmText));
+            opened = true;
+        }
+        if (opened && typeof onSent === 'function') {
+            try { onSent('dm'); } catch (_) {}
         }
         _bellRemindState = null;
     }
 
     function startMutualBreakFromBalance() {
-        if (!_balanceState) {
+        var state = _balanceState || window._balanceState;
+        if (!state) {
             if (typeof showToast === 'function') showToast(_t('loadError'));
             return;
         }
-        var appId = Number(_balanceState.appId || 0);
-        var context = _balanceState.context || 'tests';
-        var projectId = Number(_balanceState.projectId || appId);
-        var testerId = Number(_balanceState.testerId || 0);
-        var joinType = _normalizeJoinType(_balanceState.joinType || 'mutual');
+        var appId = Number(state.appId || 0);
+        var context = state.context || 'tests';
+        var projectId = Number(state.projectId || appId);
+        var testerId = Number(state.testerId || 0);
+        var joinType = _normalizeJoinType(state.joinType || 'mutual');
         var forceUnlink = _isMutualJoin(joinType);
 
         // Close balance without wiping copied ids (close clears _balanceState).
         var modal = document.getElementById('mutual-balance-modal');
         if (modal) modal.classList.remove('active');
         _balanceState = null;
+        window._balanceState = null;
 
         if (context === 'projects') {
             if (projectId <= 0 || testerId <= 0) {
@@ -1167,8 +1495,8 @@
             if (typeof openKick === 'function') {
                 try {
                     openKick(projectId, testerId, null, {
-                        forceUnlink: forceUnlink,
-                        unlinkReciprocal: forceUnlink,
+                        forceUnlink: false,
+                        unlinkReciprocal: _isMutualJoin(joinType),
                     });
                 } catch (error) {
                     console.error('openKickTesterModal failed', error);
@@ -1196,6 +1524,8 @@
                 joinType: joinType || 'mutual',
                 unlinkReciprocal: false,
             });
+        } else if (typeof window.openLeaveOrDropFromTest === 'function') {
+            window.openLeaveOrDropFromTest(appId);
         } else if (typeof showToast === 'function') {
             showToast(_t('loadError'));
         }
@@ -1310,6 +1640,8 @@
     window.setBellRemindLang = setBellRemindLang;
     window.closeBellRemindOverlay = closeBellRemindOverlay;
     window.confirmBellRemindSend = confirmBellRemindSend;
+    window.toggleBellRemindTextExpand = toggleBellRemindTextExpand;
+    window.openGeneralTopic = openGeneralTopic;
     window.startMutualBreakFromBalance = startMutualBreakFromBalance;
     window.archiveBrokenMutualTest = archiveBrokenMutualTest;
     window.isBrokenTesterDismissed = isBrokenTesterDismissed;
