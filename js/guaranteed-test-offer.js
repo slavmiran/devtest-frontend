@@ -192,7 +192,6 @@
         var overlay = ensureModalInDOM();
         if (overlay) {
             overlay.style.display = 'flex';
-            overlay.style.zIndex = '99999';
         } else {
             setTimeout(function () { showGuaranteedTestOfferModal(); }, 50);
         }

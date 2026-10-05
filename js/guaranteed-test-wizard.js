@@ -3235,19 +3235,66 @@
         });
     }
 
-    async function guardGuaranteedPrivateTestStart(onProceed) {
+    function localDraftConflict(draft) {
+        return [{
+            kind: 'draft',
+            key: 'draft',
+            appName: String(draft.app_name || '').trim(),
+            step: Number(draft.step || 1),
+            fiatOrderId: draft.fiat_order_id || null
+        }];
+    }
+
+    function awaitingOrderConflicts(orders) {
+        return (orders || []).map(function (order) {
+            return {
+                kind: 'awaiting_payment',
+                key: 'order-' + String(order && order.id),
+                orderId: Number(order && order.id) || 0,
+                order: order,
+                appName: String((order && order.app_name) || '').trim(),
+                publicCode: getOrderPublicCode(order, order && order.id)
+            };
+        });
+    }
+
+    function isGuaranteedStartGateOpen() {
+        var gate = document.getElementById('gtw-start-gate-overlay');
+        return !!(gate && gate.getAttribute('aria-hidden') !== 'true' && gate.style.display !== 'none');
+    }
+
+    function guardGuaranteedPrivateTestStart(onProceed) {
         if (typeof onProceed !== 'function') return;
-        try {
-            var conflicts = await detectGuaranteedStartConflicts();
-            if (!conflicts.length) {
-                onProceed();
-                return;
-            }
-            showGuaranteedStartGate(conflicts, onProceed);
-        } catch (error) {
-            console.warn('Guaranteed start gate failed, proceeding:', error);
+
+        var draft = null;
+        try { draft = readGuaranteedTestWizardDraft(); } catch (_) { draft = null; }
+        var hasDraft = !!(draft && String(draft.app_name || '').trim());
+
+        if (hasDraft) {
+            showGuaranteedStartGate(localDraftConflict(draft), onProceed);
+        } else {
             onProceed();
         }
+
+        // Server lookup must not sit in front of Step 1. It only adds an
+        // unpaid order to the gate when that order actually exists.
+        fetchIncompleteGuaranteedOrders().then(function (orders) {
+            var unpaid = awaitingOrderConflicts(orders);
+            if (!unpaid.length) return;
+            if (hasDraft) {
+                if (!isGuaranteedStartGateOpen()) return;
+                detectGuaranteedStartConflicts().then(function (conflicts) {
+                    if (!isGuaranteedStartGateOpen() || !conflicts.length) return;
+                    showGuaranteedStartGate(conflicts, onProceed);
+                }).catch(function () {});
+                return;
+            }
+            var step1 = document.getElementById('guaranteed-test-wizard-step1-overlay');
+            if (!step1 || step1.style.display === 'none') return;
+            showGuaranteedStartGate(unpaid, function () {});
+        }).catch(function (error) {
+            console.warn('Guaranteed start gate failed, proceeding:', error);
+        });
     }
 
     function parseGuaranteedOrderNotesMap(notes) {
@@ -3354,8 +3401,5 @@
     window.clearGuaranteedTestWizardDraft = clearGuaranteedTestWizardDraft;
     window.resumeGuaranteedTestWizardFromDraft = resumeGuaranteedTestWizardFromDraft;
     window.persistGuaranteedTestWizardDraft = persistGuaranteedTestWizardDraft;
-    window.gtwWizardState = wizardState;
-})();
-
     window.gtwWizardState = wizardState;
 })();
