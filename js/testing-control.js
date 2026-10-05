@@ -1378,7 +1378,7 @@
         for (var index = 0; index < count; index++) {
             var source = previewThumbnailCacheGet(proofId, index);
             tiles.push('<button type="button" class="checkin-proof-overview-tile' + (source ? ' is-loading' : '') + '" data-media-index="' + index + '" onclick="openCheckinProofPreview(' + proofId + ',' + index + ')">' +
-                '<span class="checkin-proof-overview-placeholder" aria-hidden="true">▧</span><img alt="' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: index + 1, total: count })) + '"' + (source ? ' src="' + escape(source) + '"' : '') + '>' +
+                '<span class="checkin-proof-overview-placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg></span><img alt="' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: index + 1, total: count })) + '"' + (source ? ' src="' + escape(source) + '"' : '') + '>' +
                 '<span class="checkin-proof-overview-number">' + (index + 1) + '</span></button>');
         }
         body.innerHTML = '<div class="checkin-proof-overview"><div class="checkin-proof-overview-intro"><div><strong>' + escape(text('pcProofOverviewTitle', 'All screenshots')) + ' (' + count + ')</strong></div>' +

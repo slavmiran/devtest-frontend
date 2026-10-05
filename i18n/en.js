@@ -3868,6 +3868,8 @@
             coverageScreenshotsCount: "{count} screenshots",
             coverageNoScreenshots: "No screenshots",
             coverageScreenshotsGallery: "Interface screenshots",
+            coverageModelScreenshots: "Screenshots",
+            coverageModelNoScreenshots: "No screenshots yet",
             coverageScreenshotsSubtitle: "How the app looks on this device",
             coverageScreenshotsEmpty: "Interface screenshots have not been uploaded yet",
             coverageFeedbackFound: "Feedback on this model",

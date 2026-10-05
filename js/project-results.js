@@ -5,6 +5,18 @@
 (function () {
     'use strict';
 
+    function coverageUiIcon(kind, className) {
+        var paths = {
+            stack: '<path d="M8 3h11a2 2 0 0 1 2 2v12"/><rect x="3" y="7" width="14" height="14" rx="2"/><circle cx="7" cy="11" r="1"/><path d="m4 18 4-4 3 3 2-2 3 3"/>',
+            image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/>',
+            down: '<path d="m6 9 6 6 6-6"/>',
+            right: '<path d="m9 6 6 6-6 6"/>',
+            user: '<circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>',
+            globe: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/>'
+        };
+        return '<svg class="coverage-ui-icon' + (className ? ' ' + className : '') + '" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[kind] || paths.image) + '</svg>';
+    }
+
     function _getLang() {
         if (typeof window !== 'undefined') {
             if (window.currentLang) return window.currentLang;
@@ -1355,7 +1367,7 @@
                         '<button type="button" class="coverage-fb-item-row' + (fb.has_media ? ' has-media' : ' is-text-only') + '" onclick="event.stopPropagation(); openCoverageFeedbackViewer(\'' + window.escapeHTML(m.model_key) + '\', ' + Number(fb.id || 0) + ');">' +
                             '<div class="coverage-fb-item-head">' +
                                 '<span class="coverage-fb-item-type coverage-fb-item-type--' + typeClass + '">' + (fb.type === 'bug' ? '🐞 ' : (fb.type === 'idea' ? '💡 ' : '★ ')) + window.escapeHTML(typeLabel) + '</span>' +
-                                (fb.has_media ? '<span class="coverage-fb-item-media" title="' + window.escapeHTML(window.t('coverageHasMediaTitle', {}, lang) || (lang === 'ru' ? 'Есть изображение' : 'Image attached')) + '">▧</span>' : '') +
+                                (fb.has_media ? '<span class="coverage-fb-item-media" title="' + window.escapeHTML(window.t('coverageHasMediaTitle', {}, lang) || (lang === 'ru' ? 'Есть изображение' : 'Image attached')) + '">' + coverageUiIcon('image') + '</span>' : '') +
                                 '<span style="font-size:10.5px; opacity:0.6;">' + (fb.status || 'new') + '</span>' +
                             '</div>' +
                             (fb.title ? '<div style="font-weight:600; font-size:12px;">' + window.escapeHTML(fb.title) + '</div>' : '') +
@@ -1416,25 +1428,27 @@
                 return '<span class="pc-model-card__finding pc-model-card__finding--' + item.type + '" title="' + window.escapeHTML(item.label + ': ' + item.count) + '">' + item.icon + ' ' + item.count + '</span>';
             }).join('') : '';
             var coverSource = coverFeedbackId > 0 && coverMedia && coverMedia.file_id ? _getCoverageMediaUrl(coverMedia.file_id) : '';
+            var coverFallback = '<span class="pc-model-card__empty" aria-hidden="true">' + androidIconSvg('pc-model-card__android') + '</span>';
             var coverHtml = !isExpanded && (coverProofId > 0 || coverFeedbackId > 0)
-                ? '<img class="pc-model-card__cover coverage-gallery-thumb__img"' + (coverProofId > 0 ? ' data-proof-id="' + coverProofId + '" data-media-index="' + coverMediaIndex + '"' : '') + (coverSource ? ' src="' + window.escapeHTML(coverSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onerror="this.style.display=\'none\'">'
-                : (isExpanded ? '' : '<span class="pc-model-card__empty" aria-hidden="true">' + androidIconSvg('pc-model-card__android') + '</span>');
+                ? coverFallback + '<img class="pc-model-card__cover coverage-gallery-thumb__img"' + (coverProofId > 0 ? ' data-proof-id="' + coverProofId + '" data-media-index="' + coverMediaIndex + '"' : '') + (coverSource ? ' src="' + window.escapeHTML(coverSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onerror="this.style.display=\'none\'">'
+                : (isExpanded ? '' : coverFallback);
             var screenAction = coverProofId > 0 || coverFeedbackId > 0
                 ? 'openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + coverProofId + ', ' + coverMediaIndex + ', ' + coverFeedbackId + ');'
                 : 'openCoverageModel(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'));';
+            var hasCover = coverProofId > 0 || coverFeedbackId > 0;
             return (
                 '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-device-card pc-model-card' + (m.is_new ? ' is-new-model' : '') + ' ' + (isExpanded ? 'is-expanded' : '') + (isBrandHidden ? ' is-brand-hidden' : '') + '" data-brand="' + window.escapeHTML(brand) + '" data-model-key="' + window.escapeHTML(m.model_key) + '">' +
-                    '<button type="button" class="pc-model-card__screen" onclick="' + screenAction + '" aria-label="' + window.escapeHTML(window.t(coverProofId > 0 || coverFeedbackId > 0 ? 'coverageViewScreenshotsAria' : 'coverageViewDeviceAria', { model: m.model_name }, lang) || ((lang === 'ru' ? 'Открыть: ' : 'Open: ') + m.model_name)) + '">' +
-                        coverHtml +
-                        '<span class="pc-model-card__screen-shade" aria-hidden="true"></span>' +
-                        (m.is_new ? '<span class="pc-model-card__new">+NEW</span>' : '') +
-                        '<span class="pc-model-card__count">▧ ' + Number(m.screenshots_count || 0) + '</span>' +
-                        (coverProofId > 0 || coverFeedbackId > 0 ? '<span class="pc-model-card__play" aria-hidden="true">▶</span>' : '') +
-                        (compactFindingsHtml ? '<span class="pc-model-card__findings" aria-hidden="true">' + compactFindingsHtml + '</span>' : '') +
-                    '</button>' +
                     '<button type="button" class="pc-model-card__footer" title="' + window.escapeHTML(m.model_name) + '" onclick="toggleCoverageModelExpand(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'))" aria-expanded="false">' +
-                        '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small><span>👤 ' + tCount + '</span><span class="pc-model-card__meta-sep" aria-hidden="true">·</span><span>' + androidIconSvg('pc-model-card__meta-android') + window.escapeHTML(androidText) + '</span></small></span>' +
-                        '<span class="pc-model-card__footer-chevron" aria-hidden="true">⌄</span>' +
+                        '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small><span>' + coverageUiIcon('user') + tCount + '</span><span class="pc-model-card__meta-sep" aria-hidden="true">·</span><span>' + androidIconSvg('pc-model-card__meta-android') + window.escapeHTML(androidText) + '</span></small>' +
+                            '<span class="pc-model-card__findings">' + (m.is_new ? '<span class="pc-model-card__new">+NEW</span>' : '') + compactFindingsHtml + '</span>' +
+                        '</span>' +
+                        coverageUiIcon('down', 'pc-model-card__footer-chevron') +
+                    '</button>' +
+                    '<button type="button" class="pc-model-card__screen"' + (!hasCover ? ' disabled' : '') + ' onclick="' + screenAction + '" aria-label="' + window.escapeHTML(window.t(hasCover ? 'coverageViewScreenshotsAria' : 'coverageViewDeviceAria', { model: m.model_name }, lang) || ((lang === 'ru' ? 'Открыть: ' : 'Open: ') + m.model_name)) + '">' +
+                        '<span class="pc-model-card__preview">' + coverHtml + '</span>' +
+                        '<span class="pc-model-card__gallery-copy"><span class="pc-model-card__count">' + coverageUiIcon('stack') + '<strong>' + Number(m.screenshots_count || 0) + '</strong></span>' +
+                            '<span class="pc-model-card__gallery-label">' + window.escapeHTML(window.t(hasCover ? 'coverageModelScreenshots' : 'coverageModelNoScreenshots', {}, lang)) + '</span></span>' +
+                        (hasCover ? coverageUiIcon('right', 'pc-model-card__gallery-arrow') : '') +
                     '</button>' +
                     (isExpanded ? '<button type="button" class="coverage-device-card__head" onclick="toggleCoverageModelExpand(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'))" aria-expanded="true">' +
                         '<div class="coverage-device-card__head-left">' +
@@ -1500,34 +1514,18 @@
         var stats = data.stats || {};
         var models = data.models || [];
 
-        // Summary metric dimensions
-        var dimensionParts = [];
-        var mCount = stats.models_count || models.length || 0;
-        var mWord = lang === 'ru'
-            ? formatPluralRu(mCount, 'модель', 'модели', 'моделей')
-            : (mCount === 1 ? 'model' : 'models');
-        dimensionParts.push('<span class="coverage-stat-bar__item">' + window.escapeHTML(mCount + ' ' + mWord) + '</span>');
-
-        if (stats.android_range) {
-            dimensionParts.push('<span class="coverage-stat-bar__item">' + window.escapeHTML(stats.android_range) + '</span>');
-        }
-
-        var cCount = stats.countries_count || 0;
+        // Keep the useful dimensions in their disclosure, not in a duplicate header row.
+        var cCount = stats.countries_count || (data.countries || []).length;
         var cWord = lang === 'ru'
             ? formatPluralRu(cCount, 'страна', 'страны', 'стран')
             : (cCount === 1 ? 'country' : 'countries');
-        dimensionParts.push('<span class="coverage-stat-bar__item">' + window.escapeHTML(cCount + ' ' + cWord) + '</span>');
-
-        var sCount = stats.screenshots_count || 0;
-        var sWord = lang === 'ru'
-            ? formatPluralRu(sCount, 'скриншот', 'скриншота', 'скриншотов')
-            : (sCount === 1 ? 'screenshot' : 'screenshots');
-        var statBarHtml = '<div class="coverage-stat-bar__dimensions">' +
-            dimensionParts.join('<span class="coverage-stat-bar__sep">·</span>') +
-            '</div><div class="coverage-stat-bar__evidence" title="' + window.escapeHTML(window.t('coverageEvidenceTitle', {}, lang) || (lang === 'ru' ? 'Скриншоты интерфейса' : 'Interface screenshots')) + '">' +
-                '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/></svg>' +
-                '<strong>' + sCount + '</strong><span>' + window.escapeHTML(sWord) + '</span>' +
-            '</div>';
+        var androidMajors = (data.android_versions || []).map(function (item) {
+            return Number(item.major_version || (String(item.version || '').match(/\d+/) || [])[0]);
+        }).filter(function (version) { return version > 0; }).sort(function (a, b) { return a - b; });
+        var androidRange = stats.android_range || (androidMajors.length ? 'Android ' + androidMajors[0] + (androidMajors.length > 1 && androidMajors[0] !== androidMajors[androidMajors.length - 1] ? '–' + androidMajors[androidMajors.length - 1] : '') : '');
+        var distributionSummary = '<span class="coverage-distribution__copy"><span class="coverage-distribution__title">' + window.escapeHTML(window.t('coverageAndroidVersionsAndGeography', {}, lang)) + '</span>' +
+            '<span class="coverage-distribution__metrics">' + (androidRange ? '<span>' + androidIconSvg('coverage-distribution__android') + window.escapeHTML(androidRange.replace(/^Android\s*/i, '')) + '</span>' : '') +
+            '<span>' + coverageUiIcon('globe') + window.escapeHTML(cCount + ' ' + cWord) + '</span></span></span>' + coverageUiIcon('down', 'coverage-distribution__chevron');
 
         var iconUrl = data.icon_url ? (typeof resolveIconUrl === 'function' ? resolveIconUrl(data.icon_url) : _getCoverageMediaUrl(data.icon_url)) : '';
         var firstLetter = window.escapeHTML(String(data.name || 'P').charAt(0).toUpperCase());
@@ -1604,14 +1602,13 @@
                         window.escapeHTML(allTimeLabel) +
                     '</button>' +
                 '</div>' +
-                '<div class="coverage-stat-bar">' + statBarHtml + '</div>' +
             '</div>' +
             '<div class="coverage-workspace">' +
                 '<div id="coverage-tab-panel" class="coverage-tab-panel is-unified-view">' +
                     '<div class="coverage-tools">' +
                     filterPillsHtml +
                     brandFilterHtml +
-                    (cockpitHtml ? '<details class="coverage-distribution"' + (_activeCoverageTab === 'countries' || dimensionNames.length ? ' open' : '') + '><summary>' + window.escapeHTML(window.t('coverageAndroidVersionsAndGeography', {}, lang) || (lang === 'ru' ? 'Версии Android и география' : 'Android versions & geography')) + '<span>⌄</span></summary>' + cockpitHtml + '</details>' : '') +
+                    (cockpitHtml ? '<details class="coverage-distribution"' + (_activeCoverageTab === 'countries' || dimensionNames.length ? ' open' : '') + '><summary>' + distributionSummary + '</summary>' + cockpitHtml + '</details>' : '') +
                     '</div>' +
                     dimensionFilterHtml +
                     deviceCardsHtml +

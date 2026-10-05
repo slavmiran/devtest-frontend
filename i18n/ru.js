@@ -3874,6 +3874,8 @@
             coverageScreenshotsCount: "{count} скриншотов",
             coverageNoScreenshots: "Нет скриншотов",
             coverageScreenshotsGallery: "Скриншоты интерфейса",
+            coverageModelScreenshots: "Скриншоты",
+            coverageModelNoScreenshots: "Пока без скриншотов",
             coverageScreenshotsSubtitle: "Как приложение выглядит на этой модели",
             coverageScreenshotsEmpty: "Скриншоты интерфейса ещё не загружены",
             coverageFeedbackFound: "Найденный фидбэк",
