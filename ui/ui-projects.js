@@ -1569,7 +1569,10 @@ function renderProjects(force) {
     function resolveProjectPhaseForRender(project) {
         if (typeof resolvePipelineProjectPhase === 'function') return resolvePipelineProjectPhase(project);
         var phase = String(project.phase || 'testing').trim().toLowerCase();
-        if (phase === 'moderation' || phase === 'live') return phase;
+        var status = String(project.app_status || project.status || '').trim().toLowerCase();
+        if (status !== 'completed' && status !== 'archived') return 'testing';
+        if (phase === 'live') return 'live';
+        if (status === 'completed' || phase === 'moderation') return 'moderation';
         return 'testing';
     }
 
@@ -1583,6 +1586,8 @@ function renderProjects(force) {
     });
     const moderationFromArchived = (typeof archivedProjects !== 'undefined' ? archivedProjects : [])
         .filter(function(p) {
+            var id = String(p.app_id || p.id || '');
+            if (myProjects.some(function(current) { return id && String(current.id || current.app_id || '') === id; })) return false;
             return resolveProjectPhaseForRender(p) === 'moderation';
         })
         .map(function(p) {

@@ -21,9 +21,12 @@ var PIPELINE_SCREEN_LOCK_SELECTORS = '.modal-overlay, .protection-center-view, #
 function resolvePipelineProjectPhase(project) {
     if (!project || typeof project !== 'object') return 'testing';
     var phase = String(project.phase == null ? '' : project.phase).trim().toLowerCase();
-    if (phase === 'moderation' || phase === 'live') return phase;
     var status = String(project.app_status || project.status || '').trim().toLowerCase();
-    if (status === 'completed' || status === 'pending_completion') return 'moderation';
+    // A stale phase must never move an ongoing run out of testing. Pending
+    // completion is still testing (including its synchronization/protection period).
+    if (status !== 'completed' && status !== 'archived') return 'testing';
+    if (phase === 'live') return 'live';
+    if (status === 'completed' || phase === 'moderation') return 'moderation';
     return 'testing';
 }
 
@@ -61,6 +64,10 @@ function collectPipelineProjectsByPhase() {
     });
 
     (typeof archivedProjects !== 'undefined' ? archivedProjects : []).forEach(function(project) {
+        var id = String(project.app_id || project.id || '');
+        if ((myProjects || []).some(function(current) {
+            return id && String(current.id || current.app_id || '') === id;
+        })) return;
         if (resolvePipelineProjectPhase(project) !== 'moderation') return;
         moderation.push({
             id: project.app_id || project.id,
