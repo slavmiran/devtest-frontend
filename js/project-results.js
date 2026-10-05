@@ -531,6 +531,17 @@
             : Number(item && item.id || 0);
     }
 
+    // A series can contain a defect on any slide, not only on its cover.
+    function coverageSeriesDefectIndices(appId, series) {
+        var items = series.media_items && series.media_items.length
+            ? series.media_items : Array.from({ length: Math.max(1, Number(series.image_count || 1)) });
+        var map = getProjectScreenshotDefects(appId);
+        var id = coverageMediaDefectId(series);
+        return items.map(function (item, index) {
+            return item && item.media_index != null ? Number(item.media_index) : index;
+        }).filter(function (index) { return !!map[String(id) + '_' + index]; });
+    }
+
     function toggleScreenshotDefect(appId, proofId, mediaIndex) {
         var defects = getProjectScreenshotDefects(appId);
         var key = String(proofId) + '_' + String(mediaIndex || 0);
@@ -545,16 +556,10 @@
 
     function getProjectDefectsCount(appId, covData) {
         if (!appId || !covData || !Array.isArray(covData.models)) return 0;
-        var defects = getProjectScreenshotDefects(appId);
         var count = 0;
         covData.models.forEach(function (m) {
             (m.screenshots || []).forEach(function (s) {
-                var pId = coverageMediaDefectId(s);
-                var mItems = (s.media_items && s.media_items.length) ? s.media_items : [1];
-                mItems.forEach(function (item, mIdx) {
-                    var realIndex = item && item.media_index != null ? Number(item.media_index) : mIdx;
-                    if (defects[String(pId) + '_' + String(realIndex)]) count++;
-                });
+                count += coverageSeriesDefectIndices(appId, s).length;
             });
         });
         return count;
@@ -1174,10 +1179,7 @@
         } else if (_activeCoverageModelFilter === 'defects') {
             filteredModels = models.filter(function (m) {
                 return (m.screenshots || []).some(function (s) {
-                    var sProofId = coverageMediaDefectId(s);
-                    return (s.media_items || []).some(function (item, index) {
-                        return isScreenshotDefect(_activeCoverageAppId, sProofId, item && item.media_index != null ? item.media_index : index);
-                    });
+                    return coverageSeriesDefectIndices(_activeCoverageAppId, s).length > 0;
                 });
             });
         }
@@ -1259,11 +1261,17 @@
                 var thumbs = screenshots.map(function (s) {
                     var proofId = Number(s.id);
                     var feedbackId = s.media_source === 'feedback' ? Number(s.feedback_id || 0) : 0;
-                    var mediaDefectId = coverageMediaDefectId(s);
+                    var defectIndices = coverageSeriesDefectIndices(_activeCoverageAppId, s);
                     var imgCount = Number(s.image_count || 1);
                     var firstMedia = Array.isArray(s.media_items) ? s.media_items[0] : null;
+                    if (_activeCoverageModelFilter === 'defects' && defectIndices.length && s.media_items) {
+                        firstMedia = s.media_items.find(function (item, index) {
+                            return (item && item.media_index != null ? Number(item.media_index) : index) === defectIndices[0];
+                        }) || firstMedia;
+                    }
                     var firstMediaIndex = firstMedia && firstMedia.media_index != null ? Number(firstMedia.media_index) : 0;
-                    var isDefect = isScreenshotDefect(_activeCoverageAppId, mediaDefectId, firstMediaIndex);
+                    if (_activeCoverageModelFilter === 'defects' && defectIndices.length) firstMediaIndex = defectIndices[0];
+                    var isDefect = defectIndices.length > 0;
                     if (_activeCoverageModelFilter === 'defects' && !isDefect) {
                         return '';
                     }
@@ -1307,7 +1315,7 @@
                     var thumbSource = feedbackId > 0 && firstMedia && firstMedia.file_id ? _getCoverageMediaUrl(firstMedia.file_id) : '';
                     var thumbImgHtml = '<img class="coverage-gallery-thumb__img"' + (proofId > 0 ? ' data-proof-id="' + proofId + '" data-media-index="' + firstMediaIndex + '"' : '') + (thumbSource ? ' src="' + window.escapeHTML(thumbSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onload="if(this.nextElementSibling)this.nextElementSibling.style.display=\'none\'" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';">' +
                         '<div class="coverage-gallery-thumb__fallback"><span style="font-size:22px;">📱</span></div>' +
-                        (isDefect ? '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(window.t('coverageDefectBadge', {}, lang) || (lang === 'ru' ? 'Дефект UI' : 'UI Defect')) + '">⚠️</span>' : '');
+                        (isDefect ? '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(window.t('coverageDefectBadge', {}, lang)) + '">⚠ ' + window.escapeHTML(window.t('coverageDefectBtn', {}, lang)) + ' · ' + defectIndices.length + '</span>' : '');
 
                     return (
                         '<button type="button" class="' + itemClasses.join(' ') + '" data-proof-id="' + proofId + '" data-feedback-id="' + feedbackId + '" data-media-index="' + firstMediaIndex + '" onclick="openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + proofId + ', ' + firstMediaIndex + ', ' + feedbackId + ');" title="' + window.escapeHTML(screenshotTitle) + '" aria-label="' + window.escapeHTML(screenshotTitle || window.t('coverageOpenScreenshotAria', {}, lang) || (lang === 'ru' ? 'Открыть скриншот' : 'Open screenshot')) + '">' +
@@ -1397,16 +1405,23 @@
 
             var firstScreenshot = _activeCoverageModelFilter === 'defects'
                 ? screenshots.find(function (shot) {
-                    var proofId = coverageMediaDefectId(shot);
-                    return (shot.media_items || []).some(function (item, index) {
-                        return isScreenshotDefect(_activeCoverageAppId, proofId, item && item.media_index != null ? item.media_index : index);
-                    });
+                    return coverageSeriesDefectIndices(_activeCoverageAppId, shot).length > 0;
                 }) || screenshots[0]
                 : screenshots[0];
             var coverProofId = firstScreenshot ? Number(firstScreenshot.id || 0) : 0;
             var coverFeedbackId = firstScreenshot && firstScreenshot.media_source === 'feedback' ? Number(firstScreenshot.feedback_id || 0) : 0;
             var coverMedia = firstScreenshot && Array.isArray(firstScreenshot.media_items) ? firstScreenshot.media_items[0] : null;
             var coverMediaIndex = coverMedia && coverMedia.media_index != null ? Number(coverMedia.media_index) : 0;
+            var modelDefectCount = screenshots.reduce(function (sum, shot) { return sum + coverageSeriesDefectIndices(_activeCoverageAppId, shot).length; }, 0);
+            if (_activeCoverageModelFilter === 'defects' && firstScreenshot) {
+                var coverDefects = coverageSeriesDefectIndices(_activeCoverageAppId, firstScreenshot);
+                if (coverDefects.length) {
+                    coverMediaIndex = coverDefects[0];
+                    coverMedia = (firstScreenshot.media_items || []).find(function (item, index) {
+                        return (item && item.media_index != null ? Number(item.media_index) : index) === coverMediaIndex;
+                    }) || coverMedia;
+                }
+            }
             var androidLabels = (m.android_versions || []).map(function (v) {
                 var found = String(v || '').match(/(?:android\s*)?(\d+)/i);
                 return found ? found[1] : String(v || '').replace(/^Android\s*/i, '').trim();
@@ -1436,11 +1451,14 @@
                 ? 'openCoverageModelGallery(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'), ' + coverProofId + ', ' + coverMediaIndex + ', ' + coverFeedbackId + ');'
                 : 'openCoverageModel(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'));';
             var hasCover = coverProofId > 0 || coverFeedbackId > 0;
+            var testerLabel = lang === 'ru' ? formatPluralRu(tCount, 'тестер', 'тестера', 'тестеров') : (tCount === 1 ? 'tester' : 'testers');
+            var findingsHtml = (m.is_new ? '<span class="pc-model-card__new">+NEW</span>' : '') +
+                (modelDefectCount ? '<span class="pc-model-card__finding pc-model-card__finding--defect">⚠ ' + window.escapeHTML(window.t('coverageDefectBtn', {}, lang)) + ' ' + modelDefectCount + '</span>' : '') + compactFindingsHtml;
             return (
                 '<div id="cov-model-' + window.escapeHTML(m.model_key) + '" class="coverage-device-card pc-model-card' + (m.is_new ? ' is-new-model' : '') + ' ' + (isExpanded ? 'is-expanded' : '') + (isBrandHidden ? ' is-brand-hidden' : '') + '" data-brand="' + window.escapeHTML(brand) + '" data-model-key="' + window.escapeHTML(m.model_key) + '">' +
                     '<button type="button" class="pc-model-card__footer" title="' + window.escapeHTML(m.model_name) + '" onclick="toggleCoverageModelExpand(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'))" aria-expanded="false">' +
-                        '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small><span>' + coverageUiIcon('user') + tCount + '</span><span class="pc-model-card__meta-sep" aria-hidden="true">·</span><span>' + androidIconSvg('pc-model-card__meta-android') + window.escapeHTML(androidText) + '</span></small>' +
-                            '<span class="pc-model-card__findings">' + (m.is_new ? '<span class="pc-model-card__new">+NEW</span>' : '') + compactFindingsHtml + '</span>' +
+                        '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small><span>' + coverageUiIcon('user') + tCount + ' ' + window.escapeHTML(testerLabel) + '</span><span>' + androidIconSvg('pc-model-card__meta-android') + 'Android ' + window.escapeHTML(androidText) + '</span></small>' +
+                            (findingsHtml ? '<span class="pc-model-card__findings">' + findingsHtml + '</span>' : '') +
                         '</span>' +
                         coverageUiIcon('down', 'pc-model-card__footer-chevron') +
                     '</button>' +
@@ -2584,40 +2602,9 @@
             }
         }
 
-        // Reflect in coverage modal thumbnails if visible
-        if (typeof document.querySelectorAll === 'function') {
-            var selector = feedbackId > 0
-                ? '.coverage-gallery-item[data-feedback-id="' + feedbackId + '"][data-media-index="' + mediaIndex + '"]'
-                : '.coverage-gallery-item[data-proof-id="' + proofId + '"][data-media-index="' + mediaIndex + '"], .coverage-gallery-item[data-proof-id="' + proofId + '"]';
-            document.querySelectorAll(selector).forEach(function (thumbBtn) {
-                if (thumbBtn && thumbBtn.classList) {
-                    if (typeof thumbBtn.classList.toggle === 'function') thumbBtn.classList.toggle('has-defect', newState);
-                    else if (newState) thumbBtn.classList.add('has-defect');
-                    else thumbBtn.classList.remove('has-defect');
-                }
-                var thumbWrap = thumbBtn.querySelector ? thumbBtn.querySelector('.coverage-gallery-thumb') : null;
-                if (thumbWrap) {
-                    var icon = thumbWrap.querySelector ? thumbWrap.querySelector('.coverage-gallery-thumb__defect-icon') : null;
-                    if (newState) {
-                        if (!icon && typeof thumbWrap.insertAdjacentHTML === 'function') {
-                            var lang = _getLang();
-                            thumbWrap.insertAdjacentHTML('beforeend', '<span class="coverage-gallery-thumb__defect-icon" title="' + window.escapeHTML(window.t('coverageDefectBadge', {}, lang) || (lang === 'ru' ? 'Дефект UI' : 'UI Defect')) + '">⚠️</span>');
-                        }
-                    } else {
-                        if (icon && typeof icon.remove === 'function') icon.remove();
-                    }
-                }
-            });
-        }
-
-        // Update defects count in filter pills if coverage screen is rendered
-        if (_activeCoverageData) {
-            var newCount = getProjectDefectsCount(appId, _activeCoverageData);
-            var pillCountEl = document.querySelector('.coverage-filter-pill--defects .coverage-filter-pill__count');
-            if (pillCountEl) {
-                pillCountEl.textContent = '(' + newCount + ')';
-            }
-        }
+        // Recompute series-level and model-level markers together. Removing one
+        // flag must not hide another flagged slide in the same series.
+        if (_activeCoverageData && Number(appId) === Number(_activeCoverageAppId)) refreshCoverageDimensions();
     }
 
     function _coverageArchiveToast(message, undo) {
