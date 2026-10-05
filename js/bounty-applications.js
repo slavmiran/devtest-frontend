@@ -474,6 +474,24 @@ function startBountyApplicationsPolling() {
     }, 30000);
 }
 
+function dismissBountyApplication(applicationId, card) {
+    bountyApplications = (bountyApplications || []).filter(function(item) {
+        return Number(item && item.application_id) !== applicationId;
+    });
+    setBountyAppsCache(bountyApplications);
+    if (card) {
+        card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(function() {
+            try { card.remove(); } catch (e) {}
+            if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
+        }, 300);
+    } else {
+        renderBountyApplications(true);
+    }
+}
+
 async function decideBountyApplication(applicationId, action, event, options) {
     if (event) {
         event.preventDefault();
@@ -549,6 +567,18 @@ async function decideBountyApplication(applicationId, action, event, options) {
             apiStatus === 'rejected'
         );
         if (!decisionOk) {
+            var errorCode = typeof getBackendErrorCode === 'function' ? getBackendErrorCode(result) : 'unexpected_error';
+            var details = result.details || {};
+            var duplicateClosed = details.application_closed === true &&
+                Number(details.application_id) === normalizedId &&
+                (errorCode === 'already_testing' || errorCode === 'bounty_mutual_active_conflict');
+            if (duplicateClosed) {
+                dismissBountyApplication(normalizedId, card);
+                showToast(window.t(errorCode === 'bounty_mutual_active_conflict'
+                    ? 'bountyAppDuplicateMutualClosedToast' : 'bountyAppDuplicateClosedToast', {}, lang));
+                loadBountyApplications({ background: true }).catch(function() {});
+                return;
+            }
             if (typeof applyActionButtonProcessing === 'function') {
                 applyActionButtonProcessing(clickedBtn, false);
             }
@@ -556,27 +586,13 @@ async function decideBountyApplication(applicationId, action, event, options) {
                 applyCardButtonsBusy(card, false);
             }
             if (typeof handleApiError === 'function') {
-                handleApiError(typeof getBackendErrorCode === 'function' ? getBackendErrorCode(result) : 'unexpected_error', result.details || {});
+                handleApiError(errorCode, details);
             }
             return;
         }
-        bountyApplications = (bountyApplications || []).filter(function(item) {
-            return Number(item && item.application_id) !== normalizedId;
-        });
+        dismissBountyApplication(normalizedId, card);
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showToast(window.t(decision === 'accept' ? 'bountyAppAcceptedToast' : 'bountyAppRejectedToast', {}, lang));
-        setBountyAppsCache(bountyApplications);
-        if (card) {
-            card.style.transition = 'all 0.3s ease';
-            card.style.opacity = '0';
-            card.style.transform = 'scale(0.95)';
-            setTimeout(function() {
-                try { card.remove(); } catch (e) {}
-                if (typeof syncIncomingApplicationsSection === 'function') syncIncomingApplicationsSection();
-            }, 300);
-        } else {
-            renderBountyApplications(true);
-        }
         if (typeof loadProjects === 'function') loadProjects(true);
         if (decision === 'accept') {
             if (typeof refreshMyTestsNow === 'function') refreshMyTestsNow();

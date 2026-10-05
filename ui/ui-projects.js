@@ -1726,10 +1726,6 @@ function renderProjects(force) {
         if (requiresAttention || hasAccessOverlay) {
             card.setAttribute('data-project-has-alert', 'true');
         }
-        const showUpdateTip = projectStatus === 'active' && platformDays >= 3 && !isProjectUpdateTipDismissed(project.id);
-        const updateTipHtml = showUpdateTip
-            ? `<div id="update-tip-${project.id}" class="project-update-tip"><div class="project-update-tip__text">${window.escapeHTML(window.t('projectUpdateTipText', {}, lang))}</div><button type="button" class="project-update-tip__close" onclick="dismissProjectUpdateTip(${project.id}, event)" aria-label="${window.escapeHTML(window.t('btnClose', {}, lang))}">✕</button></div>`
-            : '';
 
         const allProjectTesters = Array.isArray(project.testers) ? project.testers : [];
         const guestTesters = allProjectTesters.filter(function(tester) {
@@ -2528,7 +2524,6 @@ function renderProjects(force) {
             ${accessOverlayHtml}
 
             ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
-            ${updateTipHtml}
             ${stateBlockHtml}
             <div class="pc-team-collapsed-slot">${typeof window.buildProjectTeamCollapsedBar === 'function' ? window.buildProjectTeamCollapsedBar(project) : ''}</div>
             <div class="pc-results-collapsed-slot">${typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>

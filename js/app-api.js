@@ -1299,6 +1299,7 @@ function handleApiError(code, details = {}) {
         bounty_application_accept_failed: 'err_bounty_application_accept_failed',
         bounty_application_failed: 'err_bounty_application_failed',
         bounty_mutual_active_conflict: 'err_bounty_mutual_active_conflict',
+        already_testing: 'err_already_testing',
         bounty_applications_unavailable: 'err_bounty_applications_unavailable',
         bounty_applications_load_failed: 'err_bounty_applications_load_failed',
         user_not_found: 'err_user_not_found',
