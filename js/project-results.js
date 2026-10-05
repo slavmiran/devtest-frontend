@@ -1400,7 +1400,21 @@
                 return found ? found[1] : String(v || '').replace(/^Android\s*/i, '').trim();
             }).filter(Boolean).sort(function (a, b) { return Number(a) - Number(b); });
             var androidText = androidLabels.length > 1 ? androidLabels[0] + '–' + androidLabels[androidLabels.length - 1] : (androidLabels[0] || '—');
-            var testerWord = lang === 'ru' ? formatPluralRu(tCount, 'тестер', 'тестера', 'тестеров') : (tCount === 1 ? 'tester' : 'testers');
+            var compactFeedback = [
+                { type: 'bug', count: Number(m.bugs_count || 0), icon: '🐞', label: window.t('coverageBadgeBug', {}, lang) },
+                { type: 'idea', count: Number(m.ideas_count || 0), icon: '💡', label: window.t('coverageBadgeIdea', {}, lang) },
+                { type: 'review', count: Number(m.reviews_count || 0), icon: '★', label: window.t('coverageBadgeReview', {}, lang) }
+            ];
+            (m.feedback_items || []).forEach(function (feedback) {
+                var type = String(feedback.type || '').toLowerCase();
+                if (type.indexOf('review') >= 0) type = 'review';
+                var item = compactFeedback.find(function (candidate) { return candidate.type === type; });
+                if (item) item.fallbackCount = (item.fallbackCount || 0) + 1;
+            });
+            compactFeedback.forEach(function (item) { item.count = Math.max(item.count, item.fallbackCount || 0); });
+            var compactFindingsHtml = !isExpanded ? compactFeedback.filter(function (item) { return item.count > 0; }).map(function (item) {
+                return '<span class="pc-model-card__finding pc-model-card__finding--' + item.type + '" title="' + window.escapeHTML(item.label + ': ' + item.count) + '">' + item.icon + ' ' + item.count + '</span>';
+            }).join('') : '';
             var coverSource = coverFeedbackId > 0 && coverMedia && coverMedia.file_id ? _getCoverageMediaUrl(coverMedia.file_id) : '';
             var coverHtml = !isExpanded && (coverProofId > 0 || coverFeedbackId > 0)
                 ? '<img class="pc-model-card__cover coverage-gallery-thumb__img"' + (coverProofId > 0 ? ' data-proof-id="' + coverProofId + '" data-media-index="' + coverMediaIndex + '"' : '') + (coverSource ? ' src="' + window.escapeHTML(coverSource) + '"' : '') + ' loading="lazy" decoding="async" alt="" onerror="this.style.display=\'none\'">'
@@ -1416,9 +1430,10 @@
                         (m.is_new ? '<span class="pc-model-card__new">+NEW</span>' : '') +
                         '<span class="pc-model-card__count">▧ ' + Number(m.screenshots_count || 0) + '</span>' +
                         (coverProofId > 0 || coverFeedbackId > 0 ? '<span class="pc-model-card__play" aria-hidden="true">▶</span>' : '') +
+                        (compactFindingsHtml ? '<span class="pc-model-card__findings" aria-hidden="true">' + compactFindingsHtml + '</span>' : '') +
                     '</button>' +
-                    '<button type="button" class="pc-model-card__footer" onclick="toggleCoverageModelExpand(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'))" aria-expanded="false">' +
-                        '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small>👤 ' + tCount + ' ' + window.escapeHTML(testerWord) + ' · Android ' + window.escapeHTML(androidText) + '</small></span>' +
+                    '<button type="button" class="pc-model-card__footer" title="' + window.escapeHTML(m.model_name) + '" onclick="toggleCoverageModelExpand(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'))" aria-expanded="false">' +
+                        '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small><span>👤 ' + tCount + '</span><span class="pc-model-card__meta-sep" aria-hidden="true">·</span><span>' + androidIconSvg('pc-model-card__meta-android') + window.escapeHTML(androidText) + '</span></small></span>' +
                         '<span class="pc-model-card__footer-chevron" aria-hidden="true">⌄</span>' +
                     '</button>' +
                     (isExpanded ? '<button type="button" class="coverage-device-card__head" onclick="toggleCoverageModelExpand(this.closest(\'.coverage-device-card\').getAttribute(\'data-model-key\'))" aria-expanded="true">' +
