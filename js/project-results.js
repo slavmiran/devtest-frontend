@@ -415,9 +415,10 @@
         return '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[key] || paths.models) + '</svg>';
     }
 
-    function resultCollapsedMetric(key, value, isNew) {
-        return '<span class="pc-results-collapsed__metric is-' + key + (isNew ? ' has-new' : '') + '">' +
-            resultMiniIcon(key) + '<strong>' + (isNew ? '+' : '') + Number(value || 0) + '</strong>' +
+    function resultCollapsedMetric(key, value, newCount, label) {
+        return '<span class="pc-results-collapsed__metric is-' + key + (newCount > 0 ? ' has-new' : '') + '">' +
+            resultMiniIcon(key) + '<strong>' + (newCount > 0 ? '+' + Number(newCount) : Number(value || 0)) + '</strong>' +
+            '<span class="pc-results-collapsed__metric-label">' + window.escapeHTML(label) + '</span>' +
         '</span>';
     }
 
@@ -427,11 +428,19 @@
         var summary = project.results_summary || {};
         var modelsCount = Number(summary.models_count || 0);
         var countriesCount = Number(summary.countries_count || 0);
-        var totalFeedback = Number(project.feedback_total_count || 0);
         var collapsedTitle = lang === 'ru' ? 'Итоги' : 'Results';
         var openLabel = lang === 'ru' ? 'Открыть сводку' : 'Open overview';
+        var unseen = getProjectCoverageUnseenCounts(project);
+        var metrics = [
+            { key: 'models', count: modelsCount, newCount: unseen.newCoverage, label: window.t('pcResultsModels', {}, lang) },
+            { key: 'countries', count: countriesCount, newCount: unseen.newCountries, label: window.t('pcResultsCountries', {}, lang) },
+            { key: 'bugs', count: Number(project.bugs_total_count || summary.bugs_total_count || project.bugs_count || summary.bugs_count || 0), newCount: unseen.newBugs, label: window.t('pcResultsBugs', {}, lang) },
+            { key: 'ideas', count: Number(project.ideas_total_count || summary.ideas_total_count || project.ideas_count || summary.ideas_count || 0), newCount: unseen.newIdeas, label: window.t('pcResultsIdea', {}, lang) },
+            { key: 'reviews', count: Number(project.reviews_total_count || summary.reviews_total_count || project.reviews_count || summary.reviews_count || 0), newCount: unseen.newReviews, label: window.t('pcResultsReviews', {}, lang) }
+        ];
+        var visibleMetrics = metrics.filter(function (metric) { return metric.count > 0 || metric.newCount > 0; });
 
-        if (modelsCount === 0 && totalFeedback === 0) {
+        if (!visibleMetrics.length) {
             return (
                 '<button type="button" class="pc-results-collapsed" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
                     '<span class="pc-results-collapsed__label">' + window.escapeHTML(collapsedTitle) + '</span>' +
@@ -442,32 +451,16 @@
             );
         }
 
-        var unseen = getProjectCoverageUnseenCounts(project);
-        if (unseen.hasNew) {
-            var items = [];
-            if (unseen.newCoverage > 0) items.push(resultCollapsedMetric('models', unseen.newCoverage, true));
-            if (unseen.newCountries > 0) items.push(resultCollapsedMetric('countries', unseen.newCountries, true));
-            if (unseen.newBugs > 0) items.push(resultCollapsedMetric('bugs', unseen.newBugs, true));
-            if (unseen.newIdeas > 0) items.push(resultCollapsedMetric('ideas', unseen.newIdeas, true));
-            if (unseen.newReviews > 0) items.push(resultCollapsedMetric('reviews', unseen.newReviews, true));
-
-            return (
-                '<button type="button" class="pc-results-collapsed pc-results-collapsed--badges" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
-                    '<span class="pc-results-collapsed__label">' + window.escapeHTML(collapsedTitle) + '</span>' +
-                    '<span class="pc-results-collapsed__metrics">' + items.join('') + '</span>' +
-                    '<span class="pc-results-collapsed__arrow" aria-hidden="true">›</span>' +
-                '</button>'
-            );
-        }
-
-        var calmMetrics = [];
-        if (modelsCount > 0) calmMetrics.push(resultCollapsedMetric('models', modelsCount, false));
-        if (countriesCount > 0) calmMetrics.push(resultCollapsedMetric('countries', countriesCount, false));
-        if (totalFeedback > 0) calmMetrics.push(resultCollapsedMetric('ideas', totalFeedback, false));
+        var metricHtml = visibleMetrics.map(function (metric) {
+            return resultCollapsedMetric(metric.key, metric.count, metric.newCount, metric.label);
+        }).join('');
+        var metricSummary = visibleMetrics.map(function (metric) {
+            return metric.label + ': ' + (metric.newCount > 0 ? '+' + metric.newCount : metric.count);
+        }).join(', ');
         return (
-            '<button type="button" class="pc-results-collapsed pc-results-collapsed--badges" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" aria-label="' + window.escapeHTML(openLabel) + '">' +
+            '<button type="button" class="pc-results-collapsed pc-results-collapsed--badges" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" aria-label="' + window.escapeHTML(openLabel + ': ' + metricSummary) + '">' +
                 '<span class="pc-results-collapsed__label">' + window.escapeHTML(collapsedTitle) + '</span>' +
-                '<span class="pc-results-collapsed__metrics">' + calmMetrics.join('') + '</span>' +
+                '<span class="pc-results-collapsed__metrics">' + metricHtml + '</span>' +
                 '<span class="pc-results-collapsed__arrow" aria-hidden="true">›</span>' +
             '</button>'
         );
@@ -2286,8 +2279,21 @@
         var feedbackPanel = document.getElementById('coverage-screenshot-feedback');
         if (feedbackPanel) {
             var pending = !['accepted', 'rejected', 'processed', 'resolved'].includes(String(cur.feedbackStatus || ''));
+            var modelName = String(cur.modelName || '').trim();
+            var brandName = String(cur.brand || '').trim();
+            var genericModel = /^(any|unknown|undefined|null|неизвестно)$/i;
+            if (genericModel.test(modelName)) modelName = '';
+            if (genericModel.test(brandName)) brandName = '';
+            var displayModel = modelName
+                ? (brandName && modelName.toLowerCase().indexOf(brandName.toLowerCase()) !== 0 ? brandName + ' ' : '') + modelName
+                : (brandName || String(cur.deviceTitle || '').replace(/\s*·\s*Android.*$/i, '').trim());
+            if (!displayModel || /^(any\s*)+$/i.test(displayModel)) {
+                displayModel = window.t('coverageUnknownModel', {}, lang) || (lang === 'ru' ? 'Модель не указана' : 'Model not specified');
+            }
             feedbackPanel.hidden = !cur.feedbackText && !cur.isNew && !(cur.feedbackId && pending);
-            feedbackPanel.innerHTML = (cur.isNew ? '<span class="coverage-viewer-new">' + window.escapeHTML(window.t('coverageNewModelBadge', {}, lang) || (lang === 'ru' ? 'Новая модель' : 'New model')) + '</span>' : '') +
+            if (cur.isNew) feedbackPanel.classList.add('is-new-model');
+            else feedbackPanel.classList.remove('is-new-model');
+            feedbackPanel.innerHTML = (cur.isNew ? '<span class="coverage-viewer-new"><span>' + window.escapeHTML(window.t('coverageNewModelBadge', {}, lang) || (lang === 'ru' ? 'Новая модель' : 'New model')) + '</span><strong class="notranslate">' + window.escapeHTML(displayModel) + '</strong></span>' : '') +
                 (cur.feedbackText ? '<div class="coverage-viewer-feedback__text">' + window.escapeHTML(cur.feedbackText) + '</div>' : '') +
                 (cur.feedbackId && pending ? '<button type="button" class="coverage-viewer-process" onclick="processCoverageViewerFeedback()">' + window.escapeHTML(window.t('coverageProcessFeedbackBtn', {}, lang) || (lang === 'ru' ? 'Обработать фидбэк →' : 'Review feedback →')) + '</button>' : '');
         }

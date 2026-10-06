@@ -3964,6 +3964,7 @@
             coverageArchiveRestoreAria: "Restore screenshot from archive",
             coverageArchiveMoveAria: "Move screenshot to archive",
             coverageNewModelBadge: "New model",
+            coverageUnknownModel: "Model not specified",
             coverageProcessFeedbackBtn: "Review feedback →",
             coverageImageLoadError: "Unable to load image · Retry",
             coverageGallerySeries: "Series {stackIndex}/{totalStacks} · photo {photoInStack}/{photosInStack}",

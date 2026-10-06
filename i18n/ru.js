@@ -3970,6 +3970,7 @@
             coverageArchiveRestoreAria: "Вернуть скриншот из архива",
             coverageArchiveMoveAria: "Переместить скриншот в архив",
             coverageNewModelBadge: "Новая модель",
+            coverageUnknownModel: "Модель не указана",
             coverageProcessFeedbackBtn: "Обработать фидбэк →",
             coverageImageLoadError: "Не удалось загрузить изображение · Повторить",
             coverageGallerySeries: "Серия {stackIndex}/{totalStacks} · фото {photoInStack}/{photosInStack}",
