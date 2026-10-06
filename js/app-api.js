@@ -2361,6 +2361,9 @@ function _mapProjectsFromApi(data) {
             visibility_mode: visibilityMode,
             created_at: project.created_at || null,
             likes: project.likes || [],
+            rewarded_today_tester_ids: Array.isArray(project.rewarded_today_tester_ids)
+                ? project.rewarded_today_tester_ids.map(function(id) { return Number(id || 0); }).filter(function(id) { return id > 0; })
+                : [],
             likes_used: project.likes_used || 0,
             likes_max: project.likes_max || 3,
             thanks_used: project.thanks_used || 0,
