@@ -263,6 +263,12 @@
 .checkin-proof-overview-intro>div { flex: 1; min-width: 0; }
 .checkin-proof-overview-intro strong { color: #edf4ff; font-size: 16px; font-weight: 700; }
 .checkin-proof-overview-intro p { margin: 4px 0 0; color: #98a8bd; font-size: 12px; line-height: 1.45; }
+.checkin-proof-overview-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
 .checkin-proof-overview-topic {
     flex-shrink: 0;
     min-height: 36px;
@@ -273,6 +279,52 @@
     background: #1c2a3c;
     font-size: 11.5px;
     font-weight: 600;
+    cursor: pointer;
+}
+.checkin-proof-overview-reward {
+    flex-shrink: 0;
+    min-height: 36px;
+    padding: 6px 12px;
+    border: 1px solid rgba(150, 180, 220, 0.18);
+    border-radius: 10px;
+    color: #9cb2cd;
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+}
+.checkin-proof-overview-reward:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(150, 180, 220, 0.3);
+    color: #d2e1f2;
+}
+.checkin-proof-overview-reward:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.1);
+}
+.checkin-proof-overview-reward.is-rewarded-today {
+    border-color: rgba(62, 199, 137, 0.22);
+    color: #72b995;
+    background: rgba(62, 199, 137, 0.05);
+}
+.checkin-proof-overview-reward.is-rewarded-today:hover {
+    background: rgba(62, 199, 137, 0.09);
+    border-color: rgba(62, 199, 137, 0.35);
+    color: #98dcb7;
+}
+@media (max-width: 360px) {
+    .checkin-proof-overview-intro {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .checkin-proof-overview-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }
 .checkin-proof-overview-grid {
     display: grid;

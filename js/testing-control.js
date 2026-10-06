@@ -563,8 +563,9 @@
         var device = deviceLine(item && item.device);
         var dimensions = media.width && media.height ? media.width + '×' + media.height : '';
         var detail = [device, dimensions, galleryDateLabel(item && item.created_at)].filter(Boolean).join(' • ');
+        var cardTesterId = Number(item && item.tester && (item.tester.tester_id || item.tester.id) || 0);
         return '<article class="testing-control-gallery-card" data-proof-id="' + proofId + '">' +
-            '<button type="button" class="testing-control-gallery-image" onclick="openCheckinProofOverview(' + proofId + ',{imageCount:' + imageCount + '})">' +
+            '<button type="button" class="testing-control-gallery-image" onclick="openCheckinProofOverview(' + proofId + ',{imageCount:' + imageCount + (state.appId ? ',appId:' + state.appId : '') + (cardTesterId ? ',testerId:' + cardTesterId : '') + '})">' +
                 '<span class="testing-control-gallery-placeholder">' + escape(text('testingControlGalleryImageLoading', 'Loading preview…')) + '</span>' +
                 '<img alt="" data-proof-thumb="' + proofId + '" data-src="' + escape(secureMediaUrl(item.thumbnail_url)) + '" onload="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-loaded\')" onerror="this.closest(\'.testing-control-gallery-card\').classList.add(\'is-error\')">' +
                 (imageCount > 1 ? '<span class="testing-control-gallery-count" aria-label="' + escape(text('testingControlAlbumCount', '{count} images', { count: imageCount })) + '">▣ ' + imageCount + '</span>' : '') +
@@ -1373,6 +1374,41 @@
         return openCheckinProofOriginal(proofId, mediaIndex, event);
     }
 
+    function resolveProofContext(proofId) {
+        var safeId = Number(proofId || 0);
+        var fallback = state.previewFallback;
+        var appId = 0;
+        var testerId = 0;
+
+        if (fallback && Number(fallback.proofId || 0) === safeId) {
+            appId = Number(fallback.appId || 0);
+            testerId = Number(fallback.testerId || 0);
+        }
+
+        if (!appId) {
+            appId = Number(state.appId || 0);
+        }
+        if (!appId && typeof _activeCoverageAppId !== 'undefined' && Number(_activeCoverageAppId || 0) > 0) {
+            appId = Number(_activeCoverageAppId);
+        }
+
+        if (!testerId) {
+            var galleryItem = findGalleryProof(safeId);
+            if (galleryItem && galleryItem.tester) {
+                testerId = Number(galleryItem.tester.id || galleryItem.tester.tester_id || 0);
+            }
+        }
+
+        if (!testerId) {
+            var found = findProof(safeId);
+            if (found && found.item && found.item.tester) {
+                testerId = Number(found.item.tester.id || found.item.tester.tester_id || 0);
+            }
+        }
+
+        return { appId: appId, testerId: testerId };
+    }
+
     function renderProofOverview(body, proofId, count) {
         var tiles = [];
         for (var index = 0; index < count; index++) {
@@ -1381,8 +1417,49 @@
                 '<span class="checkin-proof-overview-placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg></span><img alt="' + escape(text('testingControlAlbumImage', 'Screenshots {current} of {total}', { current: index + 1, total: count })) + '"' + (source ? ' src="' + escape(source) + '"' : '') + '>' +
                 '<span class="checkin-proof-overview-number">' + (index + 1) + '</span></button>');
         }
+
+        var ctx = resolveProofContext(proofId);
+        var appId = ctx.appId;
+        var testerId = ctx.testerId;
+        var rewardBtnHtml = '';
+
+        if (appId > 0 && testerId > 0) {
+            var rewardedToday = false;
+            try {
+                var project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(p) {
+                    return Number(p && p.id) === appId;
+                });
+                if (!project && typeof projectById === 'function') {
+                    project = projectById(appId);
+                }
+                if (project) {
+                    if (typeof getProjectKarmaPools === 'function') {
+                        var pools = getProjectKarmaPools(project, testerId);
+                        rewardedToday = !!(pools && pools.rewardedToday);
+                    } else if (Array.isArray(project.rewarded_today_tester_ids)) {
+                        rewardedToday = project.rewarded_today_tester_ids.indexOf(testerId) !== -1;
+                    }
+                }
+            } catch (_) {}
+
+            var label = rewardedToday
+                ? (text('pcProofRewardDoneBtn', 'Благодарность') || 'Благодарность')
+                : (text('pcProofRewardBtn', 'Благодарность') || 'Благодарность');
+            var icon = rewardedToday ? '✓ ' : '';
+            var title = rewardedToday
+                ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
+                : text('karmaSelectTitle', 'Tester Appreciation');
+
+            rewardBtnHtml = '<button class="checkin-proof-overview-reward' + (rewardedToday ? ' is-rewarded-today' : '') + '" type="button" title="' + escape(title) + '" onclick="if(typeof pcRewardTester===\'function\'){pcRewardTester(' + appId + ',' + testerId + ');}else if(typeof openKarmaSelectPopup===\'function\'){openKarmaSelectPopup(' + appId + ',' + testerId + ');}">' +
+                icon + escape(label) +
+            '</button>';
+        }
+
         body.innerHTML = '<div class="checkin-proof-overview"><div class="checkin-proof-overview-intro"><div><strong>' + escape(text('pcProofOverviewTitle', 'All screenshots')) + ' (' + count + ')</strong></div>' +
-            '<button class="checkin-proof-overview-topic" type="button" onclick="openCheckinProofOriginal(' + proofId + ',0,event)">↗ ' + escape(text('pcProofOpenTopic', 'Open in topic')) + '</button></div>' +
+            '<div class="checkin-proof-overview-actions">' +
+                rewardBtnHtml +
+                '<button class="checkin-proof-overview-topic" type="button" onclick="openCheckinProofOriginal(' + proofId + ',0,event)">↗ ' + escape(text('pcProofOpenTopic', 'Open in topic')) + '</button>' +
+            '</div></div>' +
             '<div class="checkin-proof-overview-grid">' + tiles.join('') + '</div></div>';
         body.querySelectorAll('.checkin-proof-overview-tile img').forEach(function(image) {
             image.onload = function() { image.parentNode.classList.remove('is-loading', 'is-error'); image.parentNode.classList.add('is-loaded'); };
@@ -1398,9 +1475,17 @@
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
         var requestId = ++state.previewOpenRequest;
+        var prevFallback = state.previewFallback;
         var fallback = options
-            ? { proofId: id, imageCount: Number(options.imageCount || 1), title: String(options.title || ''), subtitle: String(options.subtitle || '') }
-            : null;
+            ? {
+                proofId: id,
+                imageCount: Number(options.imageCount || 1),
+                title: String(options.title || (prevFallback && prevFallback.proofId === id ? prevFallback.title : '')),
+                subtitle: String(options.subtitle || (prevFallback && prevFallback.proofId === id ? prevFallback.subtitle : '')),
+                appId: Number(options.appId || (prevFallback && prevFallback.proofId === id ? prevFallback.appId : 0)),
+                testerId: Number(options.testerId || (prevFallback && prevFallback.proofId === id ? prevFallback.testerId : 0)),
+              }
+            : (prevFallback && prevFallback.proofId === id ? prevFallback : null);
         if (fallback) state.previewFallback = fallback;
         // Card data can be stale while an album is still being reconciled.
         // Decide between the one-image viewer and the album only after the
@@ -1450,14 +1535,17 @@
         state.previewOpenRequest += 1;
         var safeProofId = Number(proofId || 0);
         if (!galleryEnabled() || safeProofId <= 0) return;
+        var prevFallback = state.previewFallback;
         if (options) {
             state.previewFallback = {
                 proofId: safeProofId,
                 imageCount: Number(options.imageCount || 1),
-                title: String(options.title || ''),
-                subtitle: String(options.subtitle || ''),
+                title: String(options.title || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.title : '')),
+                subtitle: String(options.subtitle || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.subtitle : '')),
+                appId: Number(options.appId || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.appId : 0)),
+                testerId: Number(options.testerId || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.testerId : 0)),
             };
-        } else if (state.previewFallback && Number(state.previewFallback.proofId) !== safeProofId) {
+        } else if (prevFallback && Number(prevFallback.proofId) !== safeProofId) {
             state.previewFallback = null;
         }
         var imageCount = proofImageCount(safeProofId);
@@ -1622,7 +1710,10 @@
         var type = String(proof.type || 'unavailable');
         var feedbackId = Number(proof.source_feedback_id || 0);
         if (type === 'screenshot' && Number(proof.id || 0) > 0 && galleryEnabled()) {
+            var ctrlTesterId = Number(found.item && found.item.tester && (found.item.tester.tester_id || found.item.tester.id) || (found.item && found.item.tester_id) || 0);
             openCheckinProofOverview(Number(proof.id), {
+                appId: Number(appId || state.appId || 0),
+                testerId: ctrlTesterId,
                 imageCount: Math.max(1, Math.min(5, Number(proof.image_count || 1))),
             });
             return;
@@ -1714,4 +1805,19 @@
     window.closeCheckinProofPreview = closeCheckinProofPreview;
     window.addEventListener('resize', syncProofPreviewViewport, { passive: true });
     if (window.visualViewport) window.visualViewport.addEventListener('resize', syncProofPreviewViewport, { passive: true });
+    window.addEventListener('devtest:karma_rewarded', function (event) {
+        var detail = event && event.detail;
+        if (!detail) return;
+        var safeAppId = Number(detail.appId || 0);
+        var safeTesterId = Number(detail.testerId || 0);
+        var btn = document.querySelector('#checkin-proof-preview-body .checkin-proof-overview-reward');
+        if (!btn) return;
+        var ctx = state.previewProofId ? resolveProofContext(state.previewProofId) : null;
+        if (ctx && Number(ctx.appId) === safeAppId && Number(ctx.testerId) === safeTesterId) {
+            btn.classList.add('is-rewarded-today');
+            var doneLabel = text('pcProofRewardDoneBtn', 'Благодарность');
+            btn.innerHTML = '✓ ' + escape(doneLabel);
+            btn.title = text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today');
+        }
+    });
 })();

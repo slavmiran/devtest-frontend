@@ -1278,6 +1278,19 @@
 .pc-activity--workspace .pc-person__device { color:var(--text-tertiary,#8493a7); font-size:10px; font-weight:400; }
 
 /* Award badges on activity cards */
+.pc-reward-history-chip {
+    display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:3px 9px;
+    border:1px dashed rgba(148,163,184,.3); border-radius:8px;
+    background:rgba(148,163,184,.055); color:var(--text-tertiary,#94a3b8);
+    font-family:inherit; font-weight:500; font-size:11px; line-height:1.35; cursor:pointer;
+}
+.pc-today-reward { display:flex; gap:10px; margin:10px 0 0; align-items:center; }
+.pc-today-reward__check { color:#74bd9e; font-size:14px; width:20px; flex-shrink:0; text-align:center; }
+.pc-today-reward__body { display:flex; flex-wrap:wrap; align-items:center; gap:5px 12px; width:100%; text-align:left; border:1px solid rgba(74,163,128,.25); border-radius:12px; background:rgba(74,163,128,.07); padding:11px 13px; color:#dceee7; cursor:pointer; font-family:inherit; }
+.pc-today-reward__title { font-size:12px; font-weight:600; flex:1 1 65%; }
+.pc-today-reward__meta { color:#87b9a6; font-size:10px; }
+.pc-today-reward__body strong { font-size:12px; }
+
 .pc-activity--workspace .pc-award-badge {
     display: inline-flex;
     align-items: center;
@@ -1786,7 +1799,7 @@
     .pc-proof-album-card__topic-btn:hover .pc-proof-album-card__topic-target {
         color: var(--text-secondary, #afbac9);
     }
-    .pc-reward-accent-btn:not(:disabled):hover {
+.pc-reward-accent-btn:not(:disabled):not(.is-tester-rewarded-today):hover {
         transform: scale(1.08);
         border-color: rgba(191, 219, 254, 0.85);
         box-shadow: 0 3px 15px rgba(59, 130, 246, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.4);
@@ -2148,6 +2161,7 @@
 /* --- Detailed rows & status chips --- */
 .pc-dossier-detail-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     padding: 7px 10px;
@@ -2157,6 +2171,28 @@
     margin-bottom: 6px;
     font-size: 12px;
 }
+
+.pc-dossier-heading { display:flex; align-items:center; gap:14px; margin:0 0 18px; padding:7px 0; position:sticky; top:0; z-index:5; background:#151e2e; border-bottom:1px solid rgba(148,163,184,.14); }
+.pc-dossier-heading h2 { font-size:15px; line-height:1.35; font-weight:650; margin:0; flex:1; color:#cbd5e1; }
+.pc-dossier-heading .pc-dossier-sheet__close { position:static; flex-shrink:0; }
+.pc-dossier-reward-help { font-size:11px; line-height:1.5; color:#8493a7; margin:0 0 10px; }
+.pc-dossier-reward { border:1px solid rgba(148,163,184,.16); border-radius:11px; padding:11px 12px; margin:7px 0; background:rgba(148,163,184,.035); scroll-margin:64px; }
+#pc-dossier-current-rewards { scroll-margin:64px; }
+.pc-dossier-reward--today { border-color:rgba(52,211,153,.25); background:rgba(52,211,153,.055); }
+.pc-dossier-reward.is-focused { border-color:#a8b7d1; box-shadow:0 0 0 2px rgba(148,163,184,.14); }
+.pc-dossier-reward__head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; font-size:12px; line-height:1.45; }
+.pc-dossier-reward__amount { color:#b9d5f4; font-weight:650; white-space:nowrap; }
+.pc-dossier-reward__date { font-size:10px; color:#94a3b8; margin-top:5px; }
+.pc-dossier-reward__today { color:#7ecbae; }
+.pc-dossier-reward__reason { font-size:11px; line-height:1.5; color:#a7b5c9; margin:7px 0 0; overflow-wrap:anywhere; }
+.pc-dossier-reward__open, .pc-dossier-reward-note { border:0; background:transparent; color:#9ebfe6; cursor:pointer; font:inherit; padding:6px 0 0; text-align:left; }
+.pc-dossier-reward__open { font-size:11px; }
+.pc-dossier-reward-note { flex:1 0 100%; font-size:10px; }
+.pc-dossier-previous-rewards { margin:18px 0; padding:12px; border:1px dashed rgba(148,163,184,.22); border-radius:12px; background:rgba(148,163,184,.025); }
+.pc-dossier-previous-rewards summary { cursor:pointer; color:#a3afc2; font-size:12px; font-weight:600; }
+.pc-dossier-previous-rewards[open] summary { margin-bottom:10px; }
+.pc-dossier-reward-run { font-size:11px; color:#8493a7; margin:14px 0 5px; }
+.karma-select-run-meta { color:var(--text-tertiary,#8493a7); font-size:11px; line-height:1.45; margin-top:5px; }
 
 .pc-dossier-detail-row strong,
 .pc-dossier-row-label {

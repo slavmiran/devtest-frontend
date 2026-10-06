@@ -4714,10 +4714,19 @@ async function sendKarmaReward(appId, testerId, rewardType) {
         if (result.status === 'success') {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             showToast(t.karmaToast);
-            const project = myProjects.find(item => item.id === appId);
+            const project = myProjects.find(item => Number(item.id) === Number(appId));
             if (project) {
                 if (!Array.isArray(project.likes)) project.likes = [];
-                project.likes.push({ tester_id: testerId, type: rewardType });
+                const reward = result.reward || {
+                    id: 'local:' + Date.now(), tester_id: Number(testerId), app_id: Number(appId),
+                    run_iteration: Number(project.run_iteration || 1), kind: 'general', type: rewardType,
+                    karma_amount: rewardType === 'bug' ? 3 : (rewardType === 'overtime' ? 2 : 1.5), bust_amount: 0,
+                    created_at: new Date().toISOString(), reward_local_date: project.reward_owner_local_date || null, is_today: true,
+                };
+                project.likes.push({ tester_id: testerId, type: rewardType, created_at: reward.created_at, reward_local_date: reward.reward_local_date, run_iteration: reward.run_iteration });
+                if (!Array.isArray(project.reward_history)) project.reward_history = [];
+                project.reward_history.unshift(reward);
+                if (reward.reward_local_date) project.reward_owner_local_date = reward.reward_local_date;
                 if (!Array.isArray(project.rewarded_today_tester_ids)) project.rewarded_today_tester_ids = [];
                 if (!project.rewarded_today_tester_ids.some(function(id) { return Number(id) === Number(testerId); })) {
                     project.rewarded_today_tester_ids.push(Number(testerId));
@@ -4733,6 +4742,11 @@ async function sendKarmaReward(appId, testerId, rewardType) {
                 persistProjectsCacheSnapshot();
             }
             renderProjects(true);
+            try {
+                window.dispatchEvent(new CustomEvent('devtest:karma_rewarded', {
+                    detail: { appId: Number(appId), testerId: Number(testerId), rewardType: rewardType }
+                }));
+            } catch (_) {}
             if (window._karmaDistributionProjectId === appId && window.openKarmaDistribution) {
                 window.openKarmaDistribution(appId);
             }

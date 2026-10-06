@@ -2361,6 +2361,8 @@ function _mapProjectsFromApi(data) {
             visibility_mode: visibilityMode,
             created_at: project.created_at || null,
             likes: project.likes || [],
+            reward_history: Array.isArray(project.reward_history) ? project.reward_history : [],
+            reward_owner_local_date: project.reward_owner_local_date || null,
             rewarded_today_tester_ids: Array.isArray(project.rewarded_today_tester_ids)
                 ? project.rewarded_today_tester_ids.map(function(id) { return Number(id || 0); }).filter(function(id) { return id > 0; })
                 : [],

@@ -10901,6 +10901,17 @@ function openKarmaSelectPopup(appId, testerId) {
         : null;
     const pools = getProjectKarmaPools(project, testerId);
     const badge = document.getElementById('karma-select-icon-badge');
+    const runMeta = document.getElementById('karma-select-run-meta');
+    if (runMeta) runMeta.textContent = window.t('karmaSelectRunScope', { run: Number(project && project.run_iteration || 1) }, lang);
+    const issuedToday = document.getElementById('karma-select-issued-today');
+    if (issuedToday) {
+        const rewards = typeof window.pcRewardEntriesForTester === 'function'
+            ? window.pcRewardEntriesForTester(project, testerId).filter(entry => entry.reward_local_date && project.reward_owner_local_date ? entry.reward_local_date === project.reward_owner_local_date : entry.is_today)
+            : [];
+        issuedToday.hidden = !pools.rewardedToday;
+        const amount = typeof window.pcRewardAmountLabel === 'function' ? window.pcRewardAmountLabel(rewards) : '';
+        issuedToday.textContent = window.t('karmaTesterRewardedTodayShort', {}, lang) + (amount ? ' · ' + amount : '');
+    }
     if (badge && typeof window.karmaIconHtml === 'function') {
         badge.innerHTML = window.karmaIconHtml('karma-yin-icon--lg');
     }

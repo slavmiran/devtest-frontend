@@ -526,6 +526,60 @@
         '</button>';
     }
 
+    function rewardEntriesForTester(project, testerId, scope) {
+        var run = Number(project && project.run_iteration || 1);
+        return (Array.isArray(project && project.reward_history) ? project.reward_history : []).filter(function (entry) {
+            if (Number(entry.tester_id) !== Number(testerId)) return false;
+            var current = Number(entry.run_iteration || 1) === run;
+            return scope === 'previous' ? Number(entry.run_iteration || 1) < run : current;
+        });
+    }
+
+    function rewardIsToday(project, entry) {
+        if (entry.reward_local_date && project && project.reward_owner_local_date) {
+            return entry.reward_local_date === project.reward_owner_local_date;
+        }
+        return entry.is_today === true;
+    }
+
+    function rewardAmountLabel(entries) {
+        var karma = 0, bust = 0;
+        entries.forEach(function (entry) { karma += Number(entry.karma_amount || 0); bust += Number(entry.bust_amount || 0); });
+        return (karma > 0 ? '+' + karma.toFixed(1) + ' ☯' : '') + (karma > 0 && bust > 0 ? ' · ' : '') + (bust > 0 ? '$BUST ' + Number(bust.toFixed(1)) : '');
+    }
+
+    function rewardReasonLabel(entry) {
+        if (entry.kind === 'feedback') {
+            var kind = String(entry.feedback_type || '');
+            var label = kind === 'bug' ? text('pcProofBug', 'Bug') : (kind === 'idea' ? text('pcContributionIdea', 'Recommendation') : text('pcProofReview', 'Review'));
+            return label + ' #' + Number(entry.feedback_id || 0);
+        }
+        return entry.type === 'good' ? text('pcRewardGeneralThanks', 'Thanks for overall contribution') :
+            (entry.type === 'overtime' ? text('pcRewardOvertime', 'Testing beyond the required period') : text('pcRewardGeneralSpecial', 'Special contribution'));
+    }
+
+    function earlierRewardChipHtml(project, testerId) {
+        var earlier = rewardEntriesForTester(project, testerId).filter(function (entry) { return !rewardIsToday(project, entry); });
+        if (!earlier.length) return '';
+        var label = text('pcRewardsEarlierChip', 'Earlier in RUN{run} · {count}', { run: Number(project.run_iteration || 1), count: earlier.length });
+        return '<button type="button" class="pc-reward-history-chip" onclick="event.stopPropagation(); pcOpenRewardHistory(' + Number(project.id || project.app_id) + ',' + Number(testerId) + ')" title="' + esc(text('pcRewardsHistoryHint', 'Dates and reasons for issued rewards')) + '">' +
+            '<span aria-hidden="true">↶</span> ' + esc(label) + ' <span aria-hidden="true">›</span></button>';
+    }
+
+    function todayRewardTimelineHtml(appId, item, context) {
+        var project = context.project;
+        var entries = rewardEntriesForTester(project, item.testerId).filter(function (entry) {
+            return rewardIsToday(project, entry) && !(entry.feedback_id && (item.reasons || []).some(function (reason) { return Number(reason.feedbackId) === Number(entry.feedback_id); }));
+        });
+        return entries.map(function (entry) {
+            var click = entry.feedback_id ? 'pcOpenFeedback(' + Number(appId) + ',' + Number(entry.feedback_id) + ')' : 'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')';
+            return '<div class="pc-today-reward"><span class="pc-today-reward__check" aria-hidden="true">✓</span><button type="button" class="pc-today-reward__body" onclick="event.stopPropagation(); ' + click + '">' +
+                '<span class="pc-today-reward__title">' + esc(rewardReasonLabel(entry)) + '</span>' +
+                '<span class="pc-today-reward__meta">' + esc(text('pcRewardIssuedToday', 'Issued today')) + '</span>' +
+                '<strong>' + esc(rewardAmountLabel([entry])) + '</strong></button></div>';
+        }).join('');
+    }
+
     function awardedRewardBadgeHtml(context, testerId, item) {
         var rewards = (context && context.rewardTypesByTester && context.rewardTypesByTester[Number(testerId)]) || [];
         var karmaIcon = typeof window.karmaIconHtml === 'function'
@@ -1471,6 +1525,12 @@
             }
         }
         var targetTesterId = Number((item && item.testerId) || (opts && opts.testerId) || 0);
+        var rewardProject = opts.context && opts.context.project;
+        var linkedReward = feedbackId > 0 ? rewardEntriesForTester(rewardProject, targetTesterId).find(function (entry) { return Number(entry.feedback_id) === feedbackId; }) : null;
+        if (linkedReward) {
+            itemKarma = rewardIsToday(rewardProject, linkedReward) ? Number(linkedReward.karma_amount || 0) : 0;
+            itemBust = rewardIsToday(rewardProject, linkedReward) ? Number(linkedReward.bust_amount || 0) : 0;
+        }
         // A reward belongs to one feedback record, not to every later report
         // from the same tester. Do not infer it from the tester's reward history:
         // that showed yesterday's reward on today's new ticket.
@@ -1507,7 +1567,8 @@
         if (feedbackId > 0) {
             mainClick = 'pcOpenFeedback(' + safeAppId + ',' + feedbackId + ')';
         } else if (proofId > 0) {
-            mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount ? ',' + imageCount : '') + ')';
+            var proofOptStr = targetTesterId > 0 ? ('{testerId:' + targetTesterId + '}') : '';
+            mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount || proofOptStr ? ',' + (imageCount || 1) : '') + (proofOptStr ? ',' + proofOptStr : '') + ')';
         }
 
         var feedbackStatus = String(item && (item.feedbackStatus || item.status) || '').toLowerCase();
@@ -2429,6 +2490,18 @@
             if (row.proofType === 'idea' && !item.idea) item.idea = row;
             if (row.proofType === 'play_review' && !item.play_review) item.play_review = row;
         });
+        (project && project.testers || []).forEach(function (tester) {
+            var testerId = Number(tester.tester_id || tester.id || 0);
+            if (!testerId || byTester[testerId]) return;
+            var rewards = rewardEntriesForTester(project, testerId).filter(function (entry) { return rewardIsToday(project, entry); });
+            if (!rewards.length) return;
+            byTester[testerId] = {
+                testerId: testerId, tester: tester, progressId: Number(tester.progress_id || 0),
+                screenshotCount: 0, screenshotSeriesCount: 0, screenshotRow: null,
+                bug: null, idea: null, play_review: null, latestCreatedAt: rewards[0].created_at || '',
+            };
+            order.push(testerId);
+        });
         return order.map(function (testerId) {
             var item = byTester[testerId];
             var reasons = [];
@@ -2652,7 +2725,7 @@
         });
         if (hasUnprocessed) return 1;
 
-        var isRewarded = context && context.rewardedTesterIds && context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
+        var isRewarded = context && context.rewardedTodayTesterIds && context.rewardedTodayTesterIds.indexOf(Number(item.testerId)) !== -1;
         var hasFeedback = reasons.some(function (r) { return r.feedbackId > 0; });
         var allFeedbackProcessed = hasFeedback && reasons.every(function (r) {
             return r.feedbackId > 0 ? isProcessed(r) : true;
@@ -2821,7 +2894,7 @@
         return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' + (rewardedToday ? ' is-tester-rewarded-today' : '') + '" ' +
             'title="' + esc(label) + '" ' +
             'aria-label="' + esc(label) + '" ' +
-            (rewardedToday ? 'disabled ' : 'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')" ') + '>' +
+            'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')" >' +
             '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
             completeMarkHtml +
             orbitHtml +
@@ -3021,10 +3094,9 @@
                 });
             }
 
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item });
+            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item }) + todayRewardTimelineHtml(appId, item, context);
             var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
-            var issuedTypes = (context.rewardTypesByTester && context.rewardTypesByTester[Number(item.testerId)]) || [];
-            var issuedBadgeHtml = issuedTypes.length ? awardedRewardBadgeHtml(context, item.testerId, item) : '';
+            var issuedBadgeHtml = earlierRewardChipHtml(context.project, item.testerId);
 
             return personRowHtml({
                 appId: appId,
@@ -3122,7 +3194,7 @@
         missed_control_received: '📸',
         direct_invite: '🔗',
         tester_left: '🚫',
-        broken_link: '🚫',
+        broken_link: '💔',
         not_opened: '👀',
     };
 
@@ -3150,14 +3222,22 @@
         var isBrokenLink = reason.action === 'link_status' || code === 'broken_link';
 
         if (isLeftAction || isBrokenLink) {
-            priorityLevel = 'p1';
-            reasonIcon = ATTENTION_GLYPHS.tester_left;
-            title = text('pcAttentionLeftTitle', 'Тестер прервал участие');
+            var viewerLeftReciprocal = isBrokenLink && reason.viewerLeft === true && reason.testerLeft !== true;
+            priorityLevel = viewerLeftReciprocal ? 'p2' : 'p1';
+            reasonIcon = viewerLeftReciprocal ? ATTENTION_GLYPHS.broken_link : ATTENTION_GLYPHS.tester_left;
+            title = viewerLeftReciprocal
+                ? text('pcAttentionViewerLeftTitle', 'Вы вышли из проекта партнёра')
+                : text('pcAttentionLeftTitle', 'Тестер прервал участие');
             hasAccordion = true;
             isDone = false;
 
             var hasReciprocalApp = Number(tester && tester.reciprocal_app_id || 0) > 0;
-            if (hasReciprocalApp) {
+            if (viewerLeftReciprocal) {
+                subtitle = text('pcAttentionViewerLeftSubtitle', 'Взаимная связь разорвана\nТестер остаётся в вашем проекте');
+                spoilerText = text('pcAttentionViewerLeftDrawer', 'Вы прекратили тестирование проекта партнёра, но ваш проект по-прежнему остаётся у тестера. Он видит, что взаимная связь разорвана, и может продолжить тестирование или выйти самостоятельно. При необходимости вы можете исключить его из проекта.');
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); openKickTesterModal(' + safeAppId + ',' + safeTesterId + ', event, {forceUnlink:false,unlinkReciprocal:false})">' +
+                    esc(text('pcAttentionExcludeTester', 'Исключить из проекта')) + '</button>');
+            } else if (hasReciprocalApp) {
                 subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен\nВы можете выйти из его теста');
                 spoilerText = text('pcAttentionLeftDrawer', 'Участник покинул проект или исключён платформой со штрафом к Карме. Вы больше не обязаны тестировать его приложение: перейдите в проект партнёра, чтобы закрыть тест без штрафа и удалить приложение, либо скройте тестера из списка.');
                 actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openLeftTesterLinkStatus(' + safeAppId + ',' + safeTesterId + ', event)">' +
@@ -5519,8 +5599,11 @@
         }
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
+        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
         if (typeof openCheckinProofPreview !== 'function') return;
         return openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
+            appId: Number(appId || 0),
+            testerId: safeTesterId,
             imageCount: Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || 1),
             title: fallbackTitle,
             subtitle: fallbackSubtitle,
@@ -5552,9 +5635,12 @@
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
         var fallbackImageCount = Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || fallbackCount || 1);
+        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
 
         if (typeof openCheckinProofOverview === 'function') {
             return openCheckinProofOverview(Number(proofId), {
+                appId: Number(appId || 0),
+                testerId: safeTesterId,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
@@ -5562,6 +5648,8 @@
         }
         if (typeof openCheckinProofPreview === 'function') {
             return openCheckinProofPreview(Number(proofId || 0), 0, {
+                appId: Number(appId || 0),
+                testerId: safeTesterId,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
@@ -5574,6 +5662,7 @@
        ========================================================================== */
 
     var _contributorDossierSeq = 0;
+    var _contributorDossierProfiles = new Map();
 
     function setupDossierSwipeDown(modalEl) {
         var sheet = modalEl ? modalEl.querySelector('.pc-dossier-sheet') : null;
@@ -5609,11 +5698,71 @@
         });
     }
 
+    function rewardCategory(entry) {
+        if (entry.kind !== 'feedback') return 'general';
+        var kind = String(entry.feedback_type || '');
+        return kind === 'bug' ? 'bug' : (kind === 'idea' ? 'idea' : 'review');
+    }
+
+    function dossierRewardCategoryHtml(project, testerId, category) {
+        var entries = rewardEntriesForTester(project, testerId).filter(function (entry) { return rewardCategory(entry) === category; });
+        if (!entries.length) return '';
+        return '<button type="button" class="pc-dossier-reward-note" onclick="pcFocusContributorRewards(\'' + category + '\')">' +
+            esc(text('pcRewardsCategoryTotal', 'Rewards: {count} · {amount}', { count: entries.length, amount: rewardAmountLabel(entries) })) + ' <span aria-hidden="true">›</span></button>';
+    }
+
+    function dossierRewardEntriesHtml(project, entries, focus) {
+        return entries.map(function (entry) {
+            var today = rewardIsToday(project, entry) && Number(entry.run_iteration || 1) === Number(project.run_iteration || 1);
+            var focused = focus === 'earlier' ? !today : (focus && rewardCategory(entry) === focus);
+            var day = entry.reward_local_date || '';
+            var dateLabel = day ? new Date(day + 'T12:00:00Z').toLocaleDateString(typeof lang !== 'undefined' && lang === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : text('pcRewardDateUnknown', 'Date not recorded');
+            var action = entry.feedback_id ? '<button type="button" class="pc-dossier-reward__open" onclick="closeContributorDossierModal(); pcOpenFeedback(' + Number(project.id || project.app_id) + ',' + Number(entry.feedback_id) + ')">' + esc(text('pcRewardOpenReport', 'Open report')) + ' ›</button>' : '';
+            return '<article class="pc-dossier-reward' + (today ? ' pc-dossier-reward--today' : '') + (focused ? ' is-focused' : '') + '" data-reward-category="' + rewardCategory(entry) + '" data-reward-earlier="' + (!today) + '">' +
+                '<div class="pc-dossier-reward__head"><strong>' + esc(rewardReasonLabel(entry)) + '</strong><span class="pc-dossier-reward__amount">' + esc(rewardAmountLabel([entry])) + '</span></div>' +
+                '<div class="pc-dossier-reward__date">' + (today ? '<span class="pc-dossier-reward__today">' + esc(text('pcRewardIssuedToday', 'Issued today')) + '</span> · ' : '') + esc(dateLabel) + '</div>' +
+                (entry.reason ? '<p class="pc-dossier-reward__reason">' + esc(entry.reason) + '</p>' : '') + action + '</article>';
+        }).join('');
+    }
+
+    function dossierRewardHistoryHtml(project, testerId, focus) {
+        if (!project) return '';
+        var current = rewardEntriesForTester(project, testerId);
+        var previous = rewardEntriesForTester(project, testerId, 'previous');
+        var run = Number(project.run_iteration || 1);
+        var html = '<section id="pc-dossier-current-rewards" class="pc-dossier-section"><div class="pc-dossier-section__title"><span aria-hidden="true">☯</span><span>' + esc(text('pcRewardsRunTitle', 'Rewards · RUN{run}', { run: run })) + '</span></div>' +
+            '<p class="pc-dossier-reward-help">' + esc(text('pcRewardsRunHelp', 'Only rewards from this run. Dates follow the project owner’s calendar day.')) + '</p>' +
+            (current.length ? dossierRewardEntriesHtml(project, current, focus) : '<div class="pc-dossier-card-empty">' + esc(text('pcRewardsRunEmpty', 'No owner rewards in this run yet')) + '</div>') + '</section>';
+        if (previous.length) {
+            var runs = Array.from(new Set(previous.map(function (entry) { return Number(entry.run_iteration || 1); }))).sort(function (a, b) { return b - a; });
+            html += '<details class="pc-dossier-previous-rewards"><summary>' + esc(text('pcRewardsPreviousRuns', 'Previous runs · {count} rewards', { count: previous.length })) + '</summary><p class="pc-dossier-reward-help">' + esc(text('pcRewardsPreviousHelp', 'These rewards do not use this run’s limits.')) + '</p>' +
+                runs.map(function (oldRun) { return '<h4 class="pc-dossier-reward-run">RUN' + oldRun + '</h4>' + dossierRewardEntriesHtml(project, previous.filter(function (entry) { return Number(entry.run_iteration || 1) === oldRun; }), ''); }).join('') + '</details>';
+        }
+        return html;
+    }
+
+    window.pcFocusContributorRewards = function (category) {
+        var section = document.getElementById('pc-dossier-current-rewards');
+        if (!section) return;
+        var first = null;
+        section.querySelectorAll('.pc-dossier-reward').forEach(function (node) {
+            var match = category === 'earlier' ? node.getAttribute('data-reward-earlier') === 'true' : node.getAttribute('data-reward-category') === category;
+            node.classList.toggle('is-focused', match);
+            if (match && !first) first = node;
+        });
+        (first || section).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    window.pcOpenRewardHistory = function (appId, testerId) {
+        return window.openContributorDossierModal('', testerId, appId, { rewardFocus: 'earlier' });
+    };
+
     function renderContributorDossierHtml(opts) {
         var profile = opts.profile || {};
         var tester = opts.tester || {};
         var appId = opts.appId;
         var testerId = opts.testerId;
+        var safeTesterId = Number(testerId || 0);
         var project = opts.project || (typeof projectById === 'function' ? projectById(appId) : null);
         var username = opts.username || profile.username || tester.username || '';
         var cleanUsername = String(username || '').replace(/^@+/, '');
@@ -5803,6 +5952,8 @@
             var pRevs = 0, pRevsAcc = 0, pRevsPend = 0;
             window._activeProjectFeedbackItems.forEach(function (f) {
                 if (!f || Number(f.tester_id || f.user_id || 0) !== safeTesterId) return;
+                if (Number(f.app_id || 0) !== Number(appId || 0)) return;
+                if (Number(f.run_iteration || 1) !== Number(project && project.run_iteration || 1)) return;
                 var t = String(f.type || '').toLowerCase();
                 var st = String(f.status || '').toLowerCase();
                 var isAcc = st === 'accepted' || st === 'approved' || st === 'processed' || st === 'tipped';
@@ -5853,6 +6004,7 @@
         projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
             '<span style="color: #94a3b8;">' + esc(text('pcDossierPlayReview', 'Отзыв в Google Play')) + '</span>' +
             '<span class="pc-dossier-badge-status ' + playReviewBadgeClass + '">' + esc(playReviewLabel) + '</span>' +
+            (projectReviewsTotal > 0 ? '' : dossierRewardCategoryHtml(project, safeTesterId, 'review')) +
         '</div>';
 
         // 3. Screenshot series row (rendered if > 0)
@@ -5875,6 +6027,7 @@
                 esc(text('pcDossierSentCount', '{count} отправлено', { count: projectBugsTotal })) + bAccHtml + bPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + bugsProjHtml + '</span>' +
+                dossierRewardCategoryHtml(project, safeTesterId, 'bug') +
             '</div>';
         }
 
@@ -5890,6 +6043,7 @@
                 esc(text('pcDossierSentCount', '{count} отправлено', { count: projectIdeasTotal })) + iAccHtml + iPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + ideasProjHtml + '</span>' +
+                dossierRewardCategoryHtml(project, safeTesterId, 'idea') +
             '</div>';
         }
 
@@ -5905,6 +6059,7 @@
                 esc(text('pcDossierSentCount', '{count} отправлено', { count: projectReviewsTotal })) + rAccHtml + rPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + revsProjHtml + '</span>' +
+                dossierRewardCategoryHtml(project, safeTesterId, 'review') +
             '</div>';
         }
 
@@ -5930,7 +6085,7 @@
             summaryText = text('pcDossierSummaryNewbie', 'Новый участник сообщества — проходит свои первые тесты, репутация ещё формируется.');
         }
 
-        return '' +
+        return '<div class="pc-dossier-heading"><h2 id="pc-dossier-title">' + esc(text('pcContributorDossierTitle', 'Tester contribution dossier')) + '</h2><button type="button" class="pc-dossier-sheet__close" onclick="closeContributorDossierModal()" aria-label="' + esc(text('closeBtn', 'Close')) + '">✕</button></div>' +
             '<div class="pc-dossier-hero">' +
                 '<div class="pc-dossier-avatar">' + avatarHtml + '</div>' +
                 '<div class="pc-dossier-hero__info">' +
@@ -5982,9 +6137,11 @@
                 '<div class="pc-dossier-section__title">' +
                     '<span class="pc-dossier-section__title-ico" aria-hidden="true">📱</span>' +
                     '<span>' + esc(text('pcDossierSecProject', 'Вклад в ваш проект')) + '</span>' +
+                    '<span class="pc-dossier-section__subtitle">RUN' + Number(project && project.run_iteration || 1) + '</span>' +
                 '</div>' +
                 projectContributionsHtml +
             '</section>' +
+            dossierRewardHistoryHtml(project, safeTesterId, opts.rewardFocus) +
             '<section class="pc-dossier-section" style="margin-bottom: 0;">' +
                 '<div class="pc-dossier-summary-card pc-dossier-summary-card' + summaryClass + '">' +
                     '<div class="pc-dossier-summary-card__head">' + esc(text('pcDossierSecSummary', 'Резюме по тестеру')) + '</div>' +
@@ -6000,7 +6157,8 @@
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     };
 
-    window.openContributorDossierModal = async function (username, testerId, appId) {
+    window.openContributorDossierModal = async function (username, testerId, appId, options) {
+        options = options || {};
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
             try { window.Telegram.WebApp.HapticFeedback.selectionChanged(); } catch (_) {}
         }
@@ -6027,6 +6185,13 @@
             });
         }
         var cachedProfile = (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache && _dossierProfilesCache[String(safeTesterId)]) || null;
+        var profileKey = safeTesterId + ':' + safeAppId + ':' + Number(project && project.run_iteration || 1);
+        if (_contributorDossierProfiles.has(profileKey)) {
+            cachedProfile = _contributorDossierProfiles.get(profileKey);
+        } else if (cachedProfile) {
+            cachedProfile = Object.assign({}, cachedProfile);
+            Object.keys(cachedProfile).forEach(function (key) { if (key.indexOf('project_') === 0) delete cachedProfile[key]; });
+        }
 
         bodyEl.innerHTML = renderContributorDossierHtml({
             username: username || (rosterTester && rosterTester.username) || '',
@@ -6035,8 +6200,11 @@
             project: project,
             tester: rosterTester || {},
             profile: cachedProfile || rosterTester || {},
-            isLoading: !cachedProfile
+            isLoading: !cachedProfile,
+            rewardFocus: options.rewardFocus,
         });
+
+        if (options.rewardFocus) window.pcFocusContributorRewards(options.rewardFocus);
 
         setupDossierSwipeDown(modal);
 
@@ -6046,6 +6214,7 @@
             if (resp.ok) {
                 var freshProfile = await resp.json();
                 if (openSeq !== _contributorDossierSeq) return;
+                _contributorDossierProfiles.set(profileKey, freshProfile);
                 if (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache) {
                     _dossierProfilesCache[String(safeTesterId)] = Object.assign({}, cachedProfile || {}, freshProfile);
                 }
@@ -6056,8 +6225,10 @@
                     project: project,
                     tester: rosterTester || {},
                     profile: freshProfile,
-                    isLoading: false
+                    isLoading: false,
+                    rewardFocus: options.rewardFocus,
                 });
+                if (options.rewardFocus) window.pcFocusContributorRewards(options.rewardFocus);
             }
         } catch (fetchErr) {
             console.warn('[ContributorDossier] profile fetch error:', fetchErr);
@@ -6068,6 +6239,8 @@
     window.controlActivitySignalChipHtml = controlActivitySignalChipHtml;
     window.controlRowHtml = controlRowHtml;
     window.renderContributorDossierHtml = renderContributorDossierHtml;
+    window.pcRewardEntriesForTester = rewardEntriesForTester;
+    window.pcRewardAmountLabel = rewardAmountLabel;
     window.calculateTesterControlActivityAssessment = calculateTesterControlActivityAssessment;
     window.calculateTesterControlRisk = calculateTesterControlActivityAssessment;
 })();

@@ -3047,8 +3047,11 @@
         var subParts = [day ? ('D' + day) : '', osPart, testerName].filter(Boolean);
 
         // If openCheckinProofOverview is available and not in coverage screenshot mode
+        var coverageTesterId = Number(foundScreenshot && foundScreenshot.tester_id || tObj && tObj.tester_id || 0);
         if (typeof window.openCheckinProofOverview === 'function' && !document.getElementById('coverage-screenshot-modal')) {
             window.openCheckinProofOverview(targetProofId, {
+                appId: Number(_activeCoverageAppId || 0),
+                testerId: coverageTesterId,
                 imageCount: Number(imageCount || 1),
                 modelName: modelName,
                 title: modelName || (testerName || (day ? ('D' + day) : 'Скриншот')),
@@ -3091,10 +3094,17 @@
         // If no images found in coverage payload, fallback to legacy viewer if available
         if (images.length === 0) {
             if (typeof window.openCheckinProofOverview === 'function') {
-                window.openCheckinProofOverview(targetProofId, { imageCount: Number(imageCount || 1) });
+                window.openCheckinProofOverview(targetProofId, {
+                    appId: Number(_activeCoverageAppId || 0),
+                    testerId: coverageTesterId,
+                    imageCount: Number(imageCount || 1)
+                });
                 return;
             } else if (typeof window.openCheckinProofPreview === 'function') {
-                window.openCheckinProofPreview(targetProofId, 0);
+                window.openCheckinProofPreview(targetProofId, 0, {
+                    appId: Number(_activeCoverageAppId || 0),
+                    testerId: coverageTesterId
+                });
                 return;
             }
             return;
