@@ -28,8 +28,7 @@
     margin-bottom: 8px;
 }
 
-#tab-projects .card[id^="project-card-"] .pc-state-unified > .visibility-hint,
-#tab-projects .card[id^="project-card-"] .pc-state-unified > .project-update-tip {
+#tab-projects .card[id^="project-card-"] .pc-state-unified > .visibility-hint {
     margin-left: 12px;
     margin-right: 12px;
 }

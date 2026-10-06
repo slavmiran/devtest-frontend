@@ -978,42 +978,6 @@ function getProjectCurrentGoogleDay(test, fallbackDay) {
     return syncDay + Math.max(0, syncDiffDays);
 }
 
-function isProjectUpdateTipDismissed(appId) {
-    const key = 'update_tip_dismissed_' + String(Number(appId) || 0);
-    if (key.endsWith('_0')) {
-        return true;
-    }
-    try {
-        return localStorage.getItem(key) === 'true';
-    } catch (error) {
-        return false;
-    }
-}
-
-function dismissProjectUpdateTip(appId, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    const normalizedId = Number(appId) || 0;
-    if (!normalizedId) {
-        return false;
-    }
-    try {
-        localStorage.setItem('update_tip_dismissed_' + String(normalizedId), 'true');
-    } catch (error) {}
-    const banner = document.getElementById('update-tip-' + normalizedId);
-    if (banner) {
-        banner.remove();
-    }
-    try {
-        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
-            window.tg.HapticFeedback.impactOccurred('light');
-        }
-    } catch (error) {}
-    return false;
-}
-
 function toggleCheckpointAccordion(element, event) {
     if (event) {
         event.stopPropagation();
@@ -3764,7 +3728,6 @@ Object.assign(window, {
     getContractPossibleTotalReward,
     getScreenshotReminderHtml,
     openTodayCheckinReport,
-    dismissProjectUpdateTip,
     renderCompactMeta,
     openTelegramProfile,
     renderIncomingOffers,

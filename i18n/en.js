@@ -375,7 +375,6 @@
             testDayModalControlTip: "💡 Sending confirmations on time ensures your rewards are kept and protects your account from inactivity penalties.",
             testDayModalRegularSchedule: "Today is a regular testing day. Simply open the app and perform your daily check-in.<br><br>Mandatory screenshot control days in DM: <b>1, 4, 7, 10, and 14</b>.",
             testDayModalRegularScheduleProof: "Today is a regular testing day. Simply open the app and perform your daily check-in.<br><br>Control days: <b>1, 4, 7, 10, and 14</b> — upload a screenshot in the Mini App.",
-            projectUpdateTipText: "💡 Pro-Tip: Push 1-2 app updates in Google Console during this test (even a minor bug fix). This proves to reviewers that your test is active and boosts your chances of approval!",
             inviteModalTitle: "Invite testers",
             inviteClose: "Close",
             backLabel: "Back",
