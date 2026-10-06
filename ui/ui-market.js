@@ -10901,8 +10901,6 @@ function openKarmaSelectPopup(appId, testerId) {
         : null;
     const pools = getProjectKarmaPools(project, testerId);
     const badge = document.getElementById('karma-select-icon-badge');
-    const runMeta = document.getElementById('karma-select-run-meta');
-    if (runMeta) runMeta.textContent = window.t('karmaSelectRunScope', { run: Number(project && project.run_iteration || 1) }, lang);
     const todayRewards = typeof window.pcRewardEntriesForTester === 'function'
         ? window.pcRewardEntriesForTester(project, testerId).filter(entry => entry.reward_local_date && project.reward_owner_local_date ? entry.reward_local_date === project.reward_owner_local_date : entry.is_today)
         : [];
@@ -10933,7 +10931,8 @@ function openKarmaSelectPopup(appId, testerId) {
     if (note) {
         if (testerRewardedToday && todayKarma) {
             const rewardName = window.t(todayType === 'good' ? 'karmaSelectGood' : todayType === 'bug' ? 'karmaSelectBug' : 'pcRewardOvertime', {}, lang);
-            const amount = typeof window.pcRewardAmountHtml === 'function' ? window.pcRewardAmountHtml(todayRewards) : window.escapeHTML(window.pcRewardAmountLabel ? window.pcRewardAmountLabel(todayRewards) : '');
+            const karmaOnlyReward = Object.assign({}, todayKarma, { bust_amount: 0 });
+            const amount = typeof window.pcRewardAmountHtml === 'function' ? window.pcRewardAmountHtml([karmaOnlyReward]) : ('+' + Number(todayKarma.karma_amount || 0).toFixed(1));
             note.innerHTML = window.escapeHTML(window.t('karmaTodayIssuedType', { reward: rewardName }, lang)) + ' <span class="karma-select-note__amount">' + amount + '</span><br>' + window.escapeHTML(window.t('karmaNextRewardTomorrow', {}, lang));
         } else {
             note.textContent = window.t(testerRewardedToday ? 'karmaTesterRewardedToday' : !pools.canReward ? 'karmaProjectPoolNote' : 'karmaSelectNote', {}, lang);

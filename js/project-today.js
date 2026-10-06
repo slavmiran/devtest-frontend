@@ -572,17 +572,20 @@
             (entry.type === 'overtime' ? text('pcRewardOvertime', 'Testing beyond the required period') : text('pcRewardGeneralSpecial', 'Special contribution'));
     }
 
-    function todayRewardTimelineHtml(appId, item, context) {
+    function todayRewardBadgesHtml(appId, item, context) {
         var project = context.project;
         var entries = rewardEntriesForTester(project, item.testerId).filter(function (entry) {
-            return rewardIsToday(project, entry) && !(entry.feedback_id && (item.reasons || []).some(function (reason) { return Number(reason.feedbackId) === Number(entry.feedback_id); }));
+            return Number(entry.karma_amount || 0) > 0 && rewardIsToday(project, entry) && !(entry.feedback_id && (item.reasons || []).some(function (reason) { return Number(reason.feedbackId) === Number(entry.feedback_id); }));
         });
         return entries.map(function (entry) {
             var click = entry.feedback_id ? 'pcOpenFeedback(' + Number(appId) + ',' + Number(entry.feedback_id) + ')' : 'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')';
-            return '<div class="pc-today-reward"><span class="pc-today-reward__check" aria-hidden="true">✓</span><button type="button" class="pc-today-reward__body" onclick="event.stopPropagation(); ' + click + '">' +
-                '<span class="pc-today-reward__title">' + esc(rewardReasonLabel(entry)) + '</span>' +
-                '<span class="pc-today-reward__meta">' + esc(text('pcRewardIssuedToday', 'Issued today')) + '</span>' +
-                '<strong>' + rewardAmountHtml([entry]) + '</strong></button></div>';
+            var amount = Number(entry.karma_amount || 0);
+            var amountText = '+' + amount.toFixed(1);
+            var title = rewardReasonLabel(entry) + ' · ' + text('pcRewardIssuedToday', 'Issued today') + ' · ' + amountText;
+            return '<button type="button" class="pc-award-badge pc-award-badge--karma pc-award-badge--today" onclick="event.stopPropagation(); ' + click + '" title="' + esc(title) + '">' +
+                rewardKarmaIconHtml() +
+                '<span class="pc-award-badge__value">' + esc(amountText) + '</span>' +
+            '</button>';
         }).join('');
     }
 
@@ -1594,6 +1597,7 @@
             }
         }
 
+        var todayRewardBadges = String(opts.todayRewardBadgesHtml || '');
         var awardsRowHtml = '';
         if (isRejected) {
             var rReason = typeof resolveFeedbackRejectReasonLabel === 'function'
@@ -1610,8 +1614,9 @@
                 '<span class="pc-award-badge pc-award-badge--rejected" title="' + esc(chipLabel) + '">' +
                     badgeContentHtml +
                 '</span>' +
+                todayRewardBadges +
             '</div>';
-        } else if (itemKarma > 0 || itemBust > 0 || boostBust > 0) {
+        } else if (itemKarma > 0 || itemBust > 0 || boostBust > 0 || todayRewardBadges) {
             var kBadge = '';
             if (itemKarma > 0) {
                 var kVal = '+' + (itemKarma % 1 === 0 ? itemKarma.toFixed(1) : itemKarma.toFixed(1));
@@ -1644,7 +1649,7 @@
             }
             awardsRowHtml = '<div class="pc-proof-album-card__awards-row"' +
                 (mainClick ? ' onclick="event.stopPropagation(); ' + mainClick + '"' : '') +
-                '>' + kBadge + bBadge + '</div>';
+                '>' + kBadge + bBadge + todayRewardBadges + '</div>';
         }
 
         var topHtml = '<button type="button" class="pc-proof-album-card__main" onclick="event.stopPropagation(); ' + mainClick + '">' +
@@ -1705,13 +1710,14 @@
         list = list.filter(Boolean);
         if (!list.length) return '';
         var stepOpts = Object.assign({}, opts, { reasons: opts.reasons || list });
-        var stepsHtml = list.map(function (item) {
+        var stepsHtml = list.map(function (item, index) {
             var type = String(item && (item.kind || item.proofType) || '');
             if (type === 'screenshots') type = 'screenshot';
             if (!type && item && item.proofId > 0) type = 'screenshot';
             if (!type) type = 'screenshot';
             var isDone = isItemActionDone(item);
-            var cardHtml = activityCardHtml(appId, item, stepOpts);
+            var itemOpts = index === 0 ? stepOpts : Object.assign({}, stepOpts, { todayRewardBadgesHtml: '' });
+            var cardHtml = activityCardHtml(appId, item, itemOpts);
             var nodeIcon = isDone
                 ? '<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
                 : '';
@@ -3087,8 +3093,6 @@
         return '<ul class="pc-act-list">' + sorted.map(function (item) {
             var rewardState = rewardStateForTester(context, item.testerId);
             var headerActionsHtml = '';
-            var boostBust = getTesterBoostBust(context, item.testerId, item);
-            var boostBustHtml = boostRewardBadgeHtml(boostBust);
             if (rewardState.canReward || rewardState.rewardedToday) {
                 var isInitialTarget = rewardState.canReward && Number(item.testerId) === initialSparkleTesterId;
                 headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
@@ -3100,7 +3104,13 @@
                 });
             }
 
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item }) + todayRewardTimelineHtml(appId, item, context);
+            var subrowsHtml = activityTimelineHtml(appId, item.reasons, {
+                testerId: item.testerId,
+                context: context,
+                reasons: item.reasons,
+                item: item,
+                todayRewardBadgesHtml: todayRewardBadgesHtml(appId, item, context),
+            });
             var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
 
             return personRowHtml({
