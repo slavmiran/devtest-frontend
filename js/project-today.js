@@ -2795,11 +2795,12 @@
 
     function rewardAccentButtonHtml(appId, testerId, opts) {
         opts = opts || {};
+        var rewardedToday = !!opts.rewardedToday;
         var karmaIcon = typeof window.karmaIconHtml === 'function'
             ? window.karmaIconHtml('karma-yin-icon--inline')
             : (ICONS.reward || '<span class="rewards-icon-glyph">☯</span>');
         var orbitHtml = '';
-        if (opts.hasSparkle) {
+        if (opts.hasSparkle && !rewardedToday) {
             var mode = opts.mode || SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)];
             var ang = opts.tilt || ((Math.floor(Math.random() * 40) - 20) + 'deg');
             var dur = opts.duration || '3.8s';
@@ -2811,7 +2812,6 @@
                 '</span>' +
             '</span>';
         }
-        var rewardedToday = !!opts.rewardedToday;
         var label = rewardedToday
             ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
             : text('pcRewardBtn', 'Reward');
@@ -2821,7 +2821,7 @@
         return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' + (rewardedToday ? ' is-tester-rewarded-today' : '') + '" ' +
             'title="' + esc(label) + '" ' +
             'aria-label="' + esc(label) + '" ' +
-            'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')">' +
+            (rewardedToday ? 'disabled ' : 'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')" ') + '>' +
             '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
             completeMarkHtml +
             orbitHtml +
@@ -3023,13 +3023,15 @@
 
             var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item });
             var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
+            var issuedTypes = (context.rewardTypesByTester && context.rewardTypesByTester[Number(item.testerId)]) || [];
+            var issuedBadgeHtml = issuedTypes.length ? awardedRewardBadgeHtml(context, item.testerId, item) : '';
 
             return personRowHtml({
                 appId: appId,
                 tester: item.tester,
                 tone: rewardState.rewardedToday ? 'green' : 'sky',
                 rowClass: 'pc-person--contribution',
-                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
+                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context) + issuedBadgeHtml,
                 actionsHtml: headerActionsHtml,
                 avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
                 extraHtml: subrowsHtml,

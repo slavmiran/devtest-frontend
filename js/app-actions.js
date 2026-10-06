@@ -4716,7 +4716,12 @@ async function sendKarmaReward(appId, testerId, rewardType) {
             showToast(t.karmaToast);
             const project = myProjects.find(item => item.id === appId);
             if (project) {
-                if (project.likes) project.likes.push({ tester_id: testerId, type: rewardType });
+                if (!Array.isArray(project.likes)) project.likes = [];
+                project.likes.push({ tester_id: testerId, type: rewardType });
+                if (!Array.isArray(project.rewarded_today_tester_ids)) project.rewarded_today_tester_ids = [];
+                if (!project.rewarded_today_tester_ids.some(function(id) { return Number(id) === Number(testerId); })) {
+                    project.rewarded_today_tester_ids.push(Number(testerId));
+                }
                 project.likes_used = (project.likes_used || 0) + 1;
                 if (rewardType === 'good') {
                     project.thanks_used = (project.thanks_used || 0) + 1;
@@ -4727,7 +4732,7 @@ async function sendKarmaReward(appId, testerId, rewardType) {
             if (typeof persistProjectsCacheSnapshot === 'function') {
                 persistProjectsCacheSnapshot();
             }
-            renderProjects();
+            renderProjects(true);
             if (window._karmaDistributionProjectId === appId && window.openKarmaDistribution) {
                 window.openKarmaDistribution(appId);
             }
