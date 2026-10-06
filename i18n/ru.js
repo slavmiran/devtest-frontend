@@ -3169,6 +3169,7 @@
             moderationBtnLive: "Приложение в релизе",
             moderationBtnRetest: "Нужен ретест (Модерация не пройдена)",
             moderationBtnDelete: "Удалить проект",
+            moderationActionsTitle: "Действия после модерации",
             moderationSupportLink: "💬 Приложение ТОЧНО в релизе (Поддержка)",
             moderationCheckingLabel: "Проверяем Google Play...",
             moderationLiveSuccess: "🚀 Поздравляем! Проект переведен в Live-режим.",

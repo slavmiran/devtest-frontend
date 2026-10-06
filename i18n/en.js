@@ -3163,6 +3163,7 @@
             moderationBtnLive: "App is Released",
             moderationBtnRetest: "Need Retest (Moderation Failed)",
             moderationBtnDelete: "Delete Project",
+            moderationActionsTitle: "After moderation",
             moderationSupportLink: "💬 App is DEFINITELY released (Support)",
             moderationCheckingLabel: "Checking Google Play...",
             moderationLiveSuccess: "🚀 Congratulations! Project has been moved to Live mode.",

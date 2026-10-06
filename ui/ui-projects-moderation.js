@@ -3,9 +3,9 @@
    Sprint 2 — Pipeline Frontend: Moderation Card Renderer
    Pure rendering helper — no business logic here.
    Depends on: app-api.js (apiPipelineRequestLive, apiPipelineRequestRetest,
-               apiPipelineDeleteProject), ui-market.js (openFeedbackModal),
-               ui-projects.js (buildProjectFeedbackButton, renderProjects,
-               renderIcon), app-actions.js (sendFeedback), i18n globals
+               apiPipelineDeleteProject), ui-projects.js (renderProjects,
+               renderIcon), project-results.js (buildProjectResultsBlock),
+               i18n globals
    ============================================================ */
 
 /**
@@ -66,48 +66,44 @@ function buildModerationCard(project) {
     // Info block text
     var infoText = window.t('moderationInfoText', {}, lang);
 
-    // Action buttons
-    var feedbackBtnHtml = buildProjectFeedbackButton(
-        project.id,
-        project.feedback_total_count || 0,
-        project.feedback_new_count || 0,
-        false,
-        'background-color: rgba(10, 132, 255, 0.12); color: var(--text-color); border: 1px solid rgba(10, 132, 255, 0.22); flex: 1; margin-bottom: 0; min-height: 44px; display: flex; align-items: center; justify-content: center;'
-    );
-
     var liveLabel    = window.t('moderationBtnLive', {}, lang);
     var retestLabel  = window.t('moderationBtnRetest', {}, lang);
     var deleteLabel  = window.t('moderationBtnDelete', {}, lang);
     var supportLabel = window.t('moderationSupportLink', {}, lang);
+    var actionsTitle = window.t('moderationActionsTitle', {}, lang);
+    var resultsHtml = typeof window.buildProjectResultsBlock === 'function'
+        ? window.buildProjectResultsBlock(project)
+        : '';
 
     // Tester list for this card (read-only, compact)
     var testerListHtml = _buildModerationTesterList(project);
 
     card.innerHTML = `
-        <div class="card-header">
-            <div class="project-avatar-container">
-                ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
+        <section class="pc-state-unified moderation-overview">
+            <div class="card-header">
+                <div class="project-avatar-container">
+                    ${renderIcon(project.name || window.t('unknownLabel', {}, lang), project.icon_url)}
+                </div>
+                <div class="card-info">
+                    <div class="card-title notranslate">${safeProjectName}</div>
+                    <div class="card-subtitle"><span class="pc-stage-badge moderation-stage-badge">${window.escapeHTML(window.t('moderationStepModeration', {}, lang))}</span></div>
+                </div>
             </div>
-            <div class="card-info">
-                <div class="card-title notranslate">${safeProjectName}</div>
-                <div class="card-subtitle notranslate">${safeProjectPackage}</div>
+            <div class="moderation-overview-body">
+                ${safeProjectPackage ? `<div class="moderation-package notranslate">${safeProjectPackage}</div>` : ''}
+                ${stepsHtml}
+                <div class="moderation-info-block">
+                    <div class="moderation-info-title">🛂 ${window.escapeHTML(window.t('moderationInfoTitle', {}, lang))}</div>
+                    <div class="moderation-info-text">${window.escapeHTML(infoText)}</div>
+                </div>
+                ${testerListHtml}
             </div>
-        </div>
+        </section>
 
-        <div style="padding: 0 2px;">
-            ${stepsHtml}
+        <div class="pc-results-block-slot moderation-results">${resultsHtml}</div>
 
-            <div class="moderation-info-block">
-                <div class="moderation-info-title">🛂 ${window.escapeHTML(window.t('moderationInfoTitle', {}, lang))}</div>
-                <div class="moderation-info-text">${window.escapeHTML(infoText)}</div>
-            </div>
-
-            ${testerListHtml}
-
-            <div class="card-action-half-row" style="margin-bottom: 10px;">
-                ${feedbackBtnHtml}
-            </div>
-
+        <section class="moderation-decision-panel" aria-label="${window.escapeHTML(actionsTitle)}">
+            <div class="moderation-decision-heading">${window.escapeHTML(actionsTitle)}</div>
             <div class="moderation-actions">
                 <button
                     type="button"
@@ -124,10 +120,10 @@ function buildModerationCard(project) {
                     </div>
                     <a
                         href="javascript:void(0)"
-                        style="display: inline-block; padding: 8px 16px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; text-decoration: none; color: #fff; margin-top: 12px; margin-bottom: 12px; font-size: 14px; text-align: center;"
+                        class="moderation-support-link"
                         onclick="handleModerationContactSupport(event)"
                     >${window.escapeHTML(supportLabel)}</a>
-                    <div style="font-size: 11px; opacity: 0.7; line-height: 1.4; margin-top: 4px;">
+                    <div class="moderation-error-hint">
                         ${lang === 'ru' 
                             ? 'Если модерация Google отклонила проект, используйте кнопку «Нужен ретест» ниже для повторного запуска тестирования.' 
                             : 'If Google moderation rejected the project, use the "Need Retest" button below to restart testing.'}
@@ -151,7 +147,7 @@ function buildModerationCard(project) {
                     🗑️ ${window.escapeHTML(deleteLabel)}
                 </button>
             </div>
-        </div>
+        </section>
     `;
 
     return card;
@@ -185,14 +181,14 @@ function _buildModerationTesterList(project) {
         var label = rawUsername
             ? '<span class="notranslate">@' + window.escapeHTML(rawUsername) + '</span>'
             : '<span>' + window.t('idLabel', { id: tester.tester_id }, lang) + '</span>';
-        return '<li style="display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid rgba(142,142,147,0.12); font-size:13px;">' + label + '</li>';
+        return '<li class="moderation-tester">' + label + '</li>';
     }).join('');
 
     return `
-        <div style="margin-bottom: 12px;">
-            <div class="testers-title" style="margin-bottom:6px; font-size:12px;">${window.t('testersList', {}, lang)} (${testers.length})</div>
-            <ul style="list-style:none; margin:0; padding:0;">${rows}</ul>
-        </div>
+        <details class="moderation-testers">
+            <summary>${window.escapeHTML(window.t('testersList', {}, lang))} (${testers.length})</summary>
+            <ul class="moderation-testers-list">${rows}</ul>
+        </details>
     `;
 }
 

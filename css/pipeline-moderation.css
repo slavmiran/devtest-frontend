@@ -25,32 +25,18 @@
 }
 
 /* ── Moderation card variant ──────────────────────────────── */
-.card.card-moderation {
-    border: 1.5px solid rgba(255, 159, 10, 0.45);
-    background: linear-gradient(
-        160deg,
-        rgba(255, 159, 10, 0.06) 0%,
-        var(--secondary-bg-color, rgba(28, 28, 30, 0.95)) 60%
-    );
+.card-moderation .moderation-overview {
     position: relative;
-    overflow: hidden;
 }
 
-.card.card-moderation::before {
+.card-moderation .moderation-overview::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #ff9f0a 0%, #ffcc02 50%, #ff9f0a 100%);
-    background-size: 200% 100%;
-    animation: moderation-shimmer 3s linear infinite;
-}
-
-@keyframes moderation-shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    height: 2px;
+    background: linear-gradient(90deg, #ff9f0a, #ffcc02);
 }
 
 /* ── Step indicator ───────────────────────────────────────── */
@@ -265,6 +251,111 @@
 
 .moderation-support-link:hover {
     opacity: 0.75;
+}
+
+/* Match the current project card: distinct identity, results and decision panels. */
+#tab-projects .card.card-moderation .pc-state-unified.moderation-overview {
+    border-color: rgba(255, 176, 55, 0.26);
+    padding-bottom: 0;
+}
+
+#tab-projects .card.card-moderation .card-subtitle .moderation-stage-badge {
+    color: #f4b552;
+}
+
+#tab-projects .card.card-moderation .card-subtitle .moderation-stage-badge::before {
+    background: #f4b552;
+}
+
+.card-moderation .moderation-overview-body {
+    padding: 0 16px 16px;
+}
+
+.card-moderation .moderation-package {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--hint-color, #9aa7bb);
+    font-size: 11px;
+}
+
+.card-moderation .moderation-steps {
+    margin: 14px 0;
+}
+
+.card-moderation .moderation-info-block {
+    margin-bottom: 0;
+}
+
+.card-moderation .moderation-testers {
+    margin-top: 12px;
+    border-top: 1px solid rgba(171, 194, 231, 0.12);
+    color: var(--text-color, #fff);
+}
+
+.card-moderation .moderation-testers summary {
+    padding: 12px 0 0;
+    color: var(--text-secondary, #aab8ce);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.card-moderation .moderation-testers-list {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.card-moderation .moderation-tester {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(171, 194, 231, 0.1);
+    font-size: 12px;
+}
+
+#tab-projects .card.card-moderation .moderation-results .pc-results-card {
+    margin: 0 0 12px;
+    border: 1px solid rgba(171, 194, 231, 0.12);
+    border-radius: 18px;
+    background: #182332;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.card-moderation .moderation-decision-panel {
+    padding: 16px;
+    border: 1px solid rgba(171, 194, 231, 0.12);
+    border-radius: 18px;
+    background: #182332;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.card-moderation .moderation-decision-heading {
+    margin-bottom: 12px;
+    color: var(--text-color, #fff);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.card-moderation .moderation-actions {
+    margin-top: 0;
+}
+
+.card-moderation .moderation-support-link {
+    display: inline-block;
+    align-self: flex-start;
+    color: #91bfff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.card-moderation .moderation-error-hint {
+    font-size: 11px;
+    opacity: 0.75;
+    line-height: 1.4;
 }
 
 /* ── Loader spinner inside button ─────────────────────────── */
