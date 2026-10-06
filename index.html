@@ -36,15 +36,15 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261006-attention-break-side-v1"></script>
-    <script src="./i18n/en.js?v=20261006-attention-break-side-v1"></script>
+    <script src="./i18n/ru.js?v=20261006-contribution-ui-v2"></script>
+    <script src="./i18n/en.js?v=20261006-contribution-ui-v2"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261004-feedback-topic-link-v1"></script>
     <script src="./ui/ui-tests.js?v=20261001-access-issue-inline-v1"></script>
     <script src="./ui/ui-projects.js?v=20261001-coverage-polish-v2"></script>
     <script src="./js/project-parameters.js?v=20260920-smart-ping-v2"></script>
-    <script src="./ui/ui-market.js?v=20261006-contribution-reward-history-v1"></script>
+    <script src="./ui/ui-market.js?v=20261006-contribution-ui-v2"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261004-geo-share-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -60,7 +60,7 @@
     <script src="./js/testing-control.js?v=20261005-model-catalog-v2"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20261006-attention-break-side-v1"></script>
-    <script src="./js/project-today.js?v=20261006-attention-break-side-v1"></script>
+    <script src="./js/project-today.js?v=20261006-contribution-ui-v2"></script>
     <script src="./js/smart-ping.js?v=20260921-smart-ping-catchup-v1"></script>
     <script src="./js/proof-ping.js?v=20260910-quick-ping-explain-v1"></script>
     <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
@@ -111,7 +111,7 @@
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
     <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v2">
     <link rel="stylesheet" href="./css/showcase-geo.css?v=20261004-geo-layer-v2">
-<link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261006-contribution-reward-history-v1">
+<link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261006-contribution-ui-v2">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
     <link rel="stylesheet" href="./css/project-results.css?v=20261006-results-summary-v1">
@@ -1695,6 +1695,7 @@
     <div id="contributor-dossier-modal" class="modal-overlay pc-dossier-modal" onclick="closeContributorDossierModal(event)" role="presentation">
         <div class="modal-content pc-dossier-sheet" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="pc-dossier-title">
             <div class="pc-dossier-sheet__handle" aria-hidden="true"></div>
+            <div class="pc-dossier-heading"><h2 id="pc-dossier-title" data-i18n="pcContributorDossierTitle">Вклад тестировщика</h2></div>
             <div id="contributor-dossier-body" class="pc-dossier-body"></div>
         </div>
     </div>
@@ -3032,7 +3033,6 @@
                 <button type="button" class="karma-select-close" onclick="closeKarmaSelectPopup()" aria-label="Close">✕</button>
             </div>
 
-            <div id="karma-select-issued-today" class="karma-select-tester-limit" hidden></div>
             <div class="karma-select-options">
                 <!-- Option 1: Спасибо -->
                 <button type="button" class="karma-option-card good popup-btn good" id="karma-btn-good" onclick="confirmKarmaSelect('good')">
@@ -3059,10 +3059,8 @@
                 </button>
             </div>
 
-            <div id="karma-select-tester-limit" class="karma-select-tester-limit" hidden></div>
-
-            <div class="karma-select-note" data-i18n="karmaSelectNote">
-                Один тестер может получить оба типа наград. Карма повышает репутацию тестера и увеличивает выплату $BUST по грантам.
+            <div id="karma-select-note" class="karma-select-note" role="status">
+                Один тестер может получить одну кармическую награду в день.
             </div>
 
             <button type="button" class="btn btn-secondary karma-select-cancel-btn popup-btn cancel" onclick="closeKarmaSelectPopup()" data-i18n="karmaSelectCancel">Отмена</button>

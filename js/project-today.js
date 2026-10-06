@@ -545,25 +545,31 @@
     function rewardAmountLabel(entries) {
         var karma = 0, bust = 0;
         entries.forEach(function (entry) { karma += Number(entry.karma_amount || 0); bust += Number(entry.bust_amount || 0); });
-        return (karma > 0 ? '+' + karma.toFixed(1) + ' ☯' : '') + (karma > 0 && bust > 0 ? ' · ' : '') + (bust > 0 ? '$BUST ' + Number(bust.toFixed(1)) : '');
+        return (karma > 0 ? '+' + karma.toFixed(1) + ' ' + text('pcRewardKarmaUnit', 'karma') : '') + (karma > 0 && bust > 0 ? ' · ' : '') + (bust > 0 ? '$BUST ' + Number(bust.toFixed(1)) : '');
     }
 
-    function rewardReasonLabel(entry) {
+    function rewardKarmaIconHtml() {
+        if (typeof window.karmaIconHtml === 'function') return window.karmaIconHtml('karma-yin-icon--inline');
+        return '<svg class="karma-yin-icon karma-yin-icon--inline" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false"><circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle><path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path><circle r="5.5" cy="19" fill="#ffffff"></circle><circle r="5.5" cy="-19" fill="#000000"></circle></svg>';
+    }
+
+    function rewardAmountHtml(entries) {
+        var karma = 0, bust = 0;
+        entries.forEach(function (entry) { karma += Number(entry.karma_amount || 0); bust += Number(entry.bust_amount || 0); });
+        return (karma > 0 ? '<span class="pc-reward-amount-karma">' + rewardKarmaIconHtml() + '<span>+' + karma.toFixed(1) + '</span></span>' : '') +
+            (karma > 0 && bust > 0 ? '<span aria-hidden="true"> · </span>' : '') +
+            (bust > 0 ? '<span>$BUST ' + Number(bust.toFixed(1)) + '</span>' : '');
+    }
+
+    function rewardReasonLabel(entry, brief) {
         if (entry.kind === 'feedback') {
             var kind = String(entry.feedback_type || '');
             var label = kind === 'bug' ? text('pcProofBug', 'Bug') : (kind === 'idea' ? text('pcContributionIdea', 'Recommendation') : text('pcProofReview', 'Review'));
             return label + ' #' + Number(entry.feedback_id || 0);
         }
+        if (brief && entry.type === 'good') return text('karmaSelectGood', 'Thanks');
         return entry.type === 'good' ? text('pcRewardGeneralThanks', 'Thanks for overall contribution') :
             (entry.type === 'overtime' ? text('pcRewardOvertime', 'Testing beyond the required period') : text('pcRewardGeneralSpecial', 'Special contribution'));
-    }
-
-    function earlierRewardChipHtml(project, testerId) {
-        var earlier = rewardEntriesForTester(project, testerId).filter(function (entry) { return !rewardIsToday(project, entry); });
-        if (!earlier.length) return '';
-        var label = text('pcRewardsEarlierChip', 'Earlier in RUN{run} · {count}', { run: Number(project.run_iteration || 1), count: earlier.length });
-        return '<button type="button" class="pc-reward-history-chip" onclick="event.stopPropagation(); pcOpenRewardHistory(' + Number(project.id || project.app_id) + ',' + Number(testerId) + ')" title="' + esc(text('pcRewardsHistoryHint', 'Dates and reasons for issued rewards')) + '">' +
-            '<span aria-hidden="true">↶</span> ' + esc(label) + ' <span aria-hidden="true">›</span></button>';
     }
 
     function todayRewardTimelineHtml(appId, item, context) {
@@ -576,7 +582,7 @@
             return '<div class="pc-today-reward"><span class="pc-today-reward__check" aria-hidden="true">✓</span><button type="button" class="pc-today-reward__body" onclick="event.stopPropagation(); ' + click + '">' +
                 '<span class="pc-today-reward__title">' + esc(rewardReasonLabel(entry)) + '</span>' +
                 '<span class="pc-today-reward__meta">' + esc(text('pcRewardIssuedToday', 'Issued today')) + '</span>' +
-                '<strong>' + esc(rewardAmountLabel([entry])) + '</strong></button></div>';
+                '<strong>' + rewardAmountHtml([entry]) + '</strong></button></div>';
         }).join('');
     }
 
@@ -3096,14 +3102,13 @@
 
             var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item }) + todayRewardTimelineHtml(appId, item, context);
             var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
-            var issuedBadgeHtml = earlierRewardChipHtml(context.project, item.testerId);
 
             return personRowHtml({
                 appId: appId,
                 tester: item.tester,
                 tone: rewardState.rewardedToday ? 'green' : 'sky',
                 rowClass: 'pc-person--contribution',
-                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context) + issuedBadgeHtml,
+                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
                 actionsHtml: headerActionsHtml,
                 avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
                 extraHtml: subrowsHtml,
@@ -5666,6 +5671,7 @@
 
     function setupDossierSwipeDown(modalEl) {
         var sheet = modalEl ? modalEl.querySelector('.pc-dossier-sheet') : null;
+        var body = modalEl ? modalEl.querySelector('.pc-dossier-body') : null;
         if (!sheet || sheet._hasSwipeListener) return;
         sheet._hasSwipeListener = true;
         var startY = 0;
@@ -5673,8 +5679,9 @@
         var isDragging = false;
 
         sheet.addEventListener('touchstart', function (e) {
-            if (sheet.scrollTop > 5) return;
+            if (body && body.contains(e.target) && body.scrollTop > 5) return;
             startY = e.touches[0].clientY;
+            currentY = startY;
             isDragging = true;
         }, { passive: true });
 
@@ -5682,7 +5689,7 @@
             if (!isDragging) return;
             currentY = e.touches[0].clientY;
             var delta = currentY - startY;
-            if (delta > 0 && sheet.scrollTop <= 0) {
+            if (delta > 0) {
                 sheet.style.transform = 'translateY(' + delta + 'px)';
             }
         }, { passive: true });
@@ -5696,6 +5703,10 @@
                 window.closeContributorDossierModal();
             }
         });
+        sheet.addEventListener('touchcancel', function () {
+            isDragging = false;
+            sheet.style.transform = '';
+        });
     }
 
     function rewardCategory(entry) {
@@ -5708,7 +5719,7 @@
         var entries = rewardEntriesForTester(project, testerId).filter(function (entry) { return rewardCategory(entry) === category; });
         if (!entries.length) return '';
         return '<button type="button" class="pc-dossier-reward-note" onclick="pcFocusContributorRewards(\'' + category + '\')">' +
-            esc(text('pcRewardsCategoryTotal', 'Rewards: {count} · {amount}', { count: entries.length, amount: rewardAmountLabel(entries) })) + ' <span aria-hidden="true">›</span></button>';
+            esc(text('pcRewardsCategoryLabel', 'Appreciation')) + ': ' + rewardAmountHtml(entries) + ' <span aria-hidden="true">›</span></button>';
     }
 
     function dossierRewardEntriesHtml(project, entries, focus) {
@@ -5718,10 +5729,16 @@
             var day = entry.reward_local_date || '';
             var dateLabel = day ? new Date(day + 'T12:00:00Z').toLocaleDateString(typeof lang !== 'undefined' && lang === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : text('pcRewardDateUnknown', 'Date not recorded');
             var action = entry.feedback_id ? '<button type="button" class="pc-dossier-reward__open" onclick="closeContributorDossierModal(); pcOpenFeedback(' + Number(project.id || project.app_id) + ',' + Number(entry.feedback_id) + ')">' + esc(text('pcRewardOpenReport', 'Open report')) + ' ›</button>' : '';
-            return '<article class="pc-dossier-reward' + (today ? ' pc-dossier-reward--today' : '') + (focused ? ' is-focused' : '') + '" data-reward-category="' + rewardCategory(entry) + '" data-reward-earlier="' + (!today) + '">' +
-                '<div class="pc-dossier-reward__head"><strong>' + esc(rewardReasonLabel(entry)) + '</strong><span class="pc-dossier-reward__amount">' + esc(rewardAmountLabel([entry])) + '</span></div>' +
-                '<div class="pc-dossier-reward__date">' + (today ? '<span class="pc-dossier-reward__today">' + esc(text('pcRewardIssuedToday', 'Issued today')) + '</span> · ' : '') + esc(dateLabel) + '</div>' +
-                (entry.reason ? '<p class="pc-dossier-reward__reason">' + esc(entry.reason) + '</p>' : '') + action + '</article>';
+            var row = '<span class="pc-dossier-reward__main"><span class="pc-dossier-reward__label">' + esc(rewardReasonLabel(entry, true)) + '</span>' +
+                '<span class="pc-dossier-reward__date">' + (today ? esc(text('pcRewardTodayShort', 'Today')) + ' · ' : '') + esc(dateLabel) + '</span></span>' +
+                '<span class="pc-dossier-reward__amount" aria-label="' + esc(rewardAmountLabel([entry])) + '">' + rewardAmountHtml([entry]) + '</span>';
+            if (!entry.reason && !action) {
+                return '<div class="pc-dossier-reward' + (focused ? ' is-focused' : '') + '" data-reward-category="' + rewardCategory(entry) + '" data-reward-earlier="' + (!today) + '" title="' + esc(rewardReasonLabel(entry)) + '"><div class="pc-dossier-reward__summary">' + row + '</div></div>';
+            }
+            return '<details class="pc-dossier-reward' + (focused ? ' is-focused' : '') + '" data-reward-category="' + rewardCategory(entry) + '" data-reward-earlier="' + (!today) + '">' +
+                '<summary>' + row + '</summary>' +
+                '<div class="pc-dossier-reward__detail">' +
+                (entry.reason ? '<p class="pc-dossier-reward__reason">' + esc(entry.reason) + '</p>' : '') + action + '</div></details>';
         }).join('');
     }
 
@@ -5729,14 +5746,13 @@
         if (!project) return '';
         var current = rewardEntriesForTester(project, testerId);
         var previous = rewardEntriesForTester(project, testerId, 'previous');
-        var run = Number(project.run_iteration || 1);
-        var html = '<section id="pc-dossier-current-rewards" class="pc-dossier-section"><div class="pc-dossier-section__title"><span aria-hidden="true">☯</span><span>' + esc(text('pcRewardsRunTitle', 'Rewards · RUN{run}', { run: run })) + '</span></div>' +
-            '<p class="pc-dossier-reward-help">' + esc(text('pcRewardsRunHelp', 'Only rewards from this run. Dates follow the project owner’s calendar day.')) + '</p>' +
-            (current.length ? dossierRewardEntriesHtml(project, current, focus) : '<div class="pc-dossier-card-empty">' + esc(text('pcRewardsRunEmpty', 'No owner rewards in this run yet')) + '</div>') + '</section>';
+        var html = current.length ? '<section id="pc-dossier-current-rewards" class="pc-dossier-section"><details class="pc-dossier-rewards-current"' + (focus ? ' open' : '') + '><summary>' +
+            '<span>' + esc(text('pcRewardsRunTitle', 'Appreciation in the current run')) + '</span><span class="pc-dossier-rewards-count">' + current.length + '</span></summary>' +
+            dossierRewardEntriesHtml(project, current, focus) + '</details></section>' : '';
         if (previous.length) {
             var runs = Array.from(new Set(previous.map(function (entry) { return Number(entry.run_iteration || 1); }))).sort(function (a, b) { return b - a; });
-            html += '<details class="pc-dossier-previous-rewards"><summary>' + esc(text('pcRewardsPreviousRuns', 'Previous runs · {count} rewards', { count: previous.length })) + '</summary><p class="pc-dossier-reward-help">' + esc(text('pcRewardsPreviousHelp', 'These rewards do not use this run’s limits.')) + '</p>' +
-                runs.map(function (oldRun) { return '<h4 class="pc-dossier-reward-run">RUN' + oldRun + '</h4>' + dossierRewardEntriesHtml(project, previous.filter(function (entry) { return Number(entry.run_iteration || 1) === oldRun; }), ''); }).join('') + '</details>';
+            html += '<details class="pc-dossier-previous-rewards"><summary><span>' + esc(text('pcRewardsPreviousRuns', 'Previous runs')) + '</span><span class="pc-dossier-rewards-count">' + previous.length + '</span></summary>' +
+                runs.map(function (oldRun) { return '<h4 class="pc-dossier-reward-run">' + esc(text('pcLaunchNumber', 'Run {run}', { run: oldRun })) + '</h4>' + dossierRewardEntriesHtml(project, previous.filter(function (entry) { return Number(entry.run_iteration || 1) === oldRun; }), ''); }).join('') + '</details>';
         }
         return html;
     }
@@ -5744,6 +5760,8 @@
     window.pcFocusContributorRewards = function (category) {
         var section = document.getElementById('pc-dossier-current-rewards');
         if (!section) return;
+        var list = section.querySelector('.pc-dossier-rewards-current');
+        if (list) list.open = true;
         var first = null;
         section.querySelectorAll('.pc-dossier-reward').forEach(function (node) {
             var match = category === 'earlier' ? node.getAttribute('data-reward-earlier') === 'true' : node.getAttribute('data-reward-category') === category;
@@ -5751,10 +5769,6 @@
             if (match && !first) first = node;
         });
         (first || section).scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-
-    window.pcOpenRewardHistory = function (appId, testerId) {
-        return window.openContributorDossierModal('', testerId, appId, { rewardFocus: 'earlier' });
     };
 
     function renderContributorDossierHtml(opts) {
@@ -6085,7 +6099,7 @@
             summaryText = text('pcDossierSummaryNewbie', 'Новый участник сообщества — проходит свои первые тесты, репутация ещё формируется.');
         }
 
-        return '<div class="pc-dossier-heading"><h2 id="pc-dossier-title">' + esc(text('pcContributorDossierTitle', 'Tester contribution dossier')) + '</h2><button type="button" class="pc-dossier-sheet__close" onclick="closeContributorDossierModal()" aria-label="' + esc(text('closeBtn', 'Close')) + '">✕</button></div>' +
+        return '' +
             '<div class="pc-dossier-hero">' +
                 '<div class="pc-dossier-avatar">' + avatarHtml + '</div>' +
                 '<div class="pc-dossier-hero__info">' +
@@ -6137,7 +6151,7 @@
                 '<div class="pc-dossier-section__title">' +
                     '<span class="pc-dossier-section__title-ico" aria-hidden="true">📱</span>' +
                     '<span>' + esc(text('pcDossierSecProject', 'Вклад в ваш проект')) + '</span>' +
-                    '<span class="pc-dossier-section__subtitle">RUN' + Number(project && project.run_iteration || 1) + '</span>' +
+                    '<span class="pc-dossier-section__subtitle">' + esc(text('pcCurrentLaunch', 'Current run')) + '</span>' +
                 '</div>' +
                 projectContributionsHtml +
             '</section>' +
@@ -6151,7 +6165,7 @@
     }
 
     window.closeContributorDossierModal = function (event) {
-        if (event && event.target && event.target.id !== 'contributor-dossier-modal' && !event.target.closest('.pc-dossier-sheet__close')) return;
+        if (event && event.target && event.target.id !== 'contributor-dossier-modal') return;
         var modal = document.getElementById('contributor-dossier-modal');
         if (modal) modal.classList.remove('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
@@ -6172,6 +6186,12 @@
         }
 
         var openSeq = ++_contributorDossierSeq;
+        var heading = modal.querySelector('.pc-dossier-heading');
+        if (!heading) {
+            bodyEl.insertAdjacentHTML('beforebegin', '<div class="pc-dossier-heading"><h2 id="pc-dossier-title"></h2></div>');
+        }
+        modal.querySelector('#pc-dossier-title').textContent = text('pcContributorDossierTitle', 'Tester contribution');
+        bodyEl.scrollTop = 0;
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
@@ -6241,6 +6261,7 @@
     window.renderContributorDossierHtml = renderContributorDossierHtml;
     window.pcRewardEntriesForTester = rewardEntriesForTester;
     window.pcRewardAmountLabel = rewardAmountLabel;
+    window.pcRewardAmountHtml = rewardAmountHtml;
     window.calculateTesterControlActivityAssessment = calculateTesterControlActivityAssessment;
     window.calculateTesterControlRisk = calculateTesterControlActivityAssessment;
 })();

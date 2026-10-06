@@ -1278,12 +1278,8 @@
 .pc-activity--workspace .pc-person__device { color:var(--text-tertiary,#8493a7); font-size:10px; font-weight:400; }
 
 /* Award badges on activity cards */
-.pc-reward-history-chip {
-    display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:3px 9px;
-    border:1px dashed rgba(148,163,184,.3); border-radius:8px;
-    background:rgba(148,163,184,.055); color:var(--text-tertiary,#94a3b8);
-    font-family:inherit; font-weight:500; font-size:11px; line-height:1.35; cursor:pointer;
-}
+.pc-reward-amount-karma { display:inline-flex; align-items:center; gap:4px; vertical-align:middle; white-space:nowrap; }
+.pc-reward-amount-karma .karma-yin-icon { width:12px; height:12px; flex-shrink:0; }
 .pc-today-reward { display:flex; gap:10px; margin:10px 0 0; align-items:center; }
 .pc-today-reward__check { color:#74bd9e; font-size:14px; width:20px; flex-shrink:0; text-align:center; }
 .pc-today-reward__body { display:flex; flex-wrap:wrap; align-items:center; gap:5px 12px; width:100%; text-align:left; border:1px solid rgba(74,163,128,.25); border-radius:12px; background:rgba(74,163,128,.07); padding:11px 13px; color:#dceee7; cursor:pointer; font-family:inherit; }
@@ -1852,7 +1848,9 @@
     width: 100%;
     max-width: 520px;
     max-height: 90vh;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     border-radius: 24px 24px 0 0;
@@ -1872,6 +1870,7 @@
 }
 
 .pc-dossier-sheet__handle {
+    flex-shrink: 0;
     width: 38px;
     height: 4px;
     margin: 0 auto 12px;
@@ -1880,33 +1879,7 @@
     cursor: grab;
 }
 
-.pc-dossier-sheet__close {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.05);
-    color: #94a3b8;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    padding: 0;
-}
-
-.pc-dossier-sheet__close:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
-    transform: scale(1.05);
-}
-
-.pc-dossier-sheet__close:active {
-    transform: scale(0.95);
-}
+.pc-dossier-body { min-height:0; overflow-y:auto; flex:1 1 auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 
 /* --- Hero: Avatar & Names --- */
 .pc-dossier-hero {
@@ -2172,27 +2145,34 @@
     font-size: 12px;
 }
 
-.pc-dossier-heading { display:flex; align-items:center; gap:14px; margin:0 0 18px; padding:7px 0; position:sticky; top:0; z-index:5; background:#151e2e; border-bottom:1px solid rgba(148,163,184,.14); }
-.pc-dossier-heading h2 { font-size:15px; line-height:1.35; font-weight:650; margin:0; flex:1; color:#cbd5e1; }
-.pc-dossier-heading .pc-dossier-sheet__close { position:static; flex-shrink:0; }
-.pc-dossier-reward-help { font-size:11px; line-height:1.5; color:#8493a7; margin:0 0 10px; }
-.pc-dossier-reward { border:1px solid rgba(148,163,184,.16); border-radius:11px; padding:11px 12px; margin:7px 0; background:rgba(148,163,184,.035); scroll-margin:64px; }
-#pc-dossier-current-rewards { scroll-margin:64px; }
-.pc-dossier-reward--today { border-color:rgba(52,211,153,.25); background:rgba(52,211,153,.055); }
-.pc-dossier-reward.is-focused { border-color:#a8b7d1; box-shadow:0 0 0 2px rgba(148,163,184,.14); }
-.pc-dossier-reward__head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; font-size:12px; line-height:1.45; }
-.pc-dossier-reward__amount { color:#b9d5f4; font-weight:650; white-space:nowrap; }
-.pc-dossier-reward__date { font-size:10px; color:#94a3b8; margin-top:5px; }
-.pc-dossier-reward__today { color:#7ecbae; }
-.pc-dossier-reward__reason { font-size:11px; line-height:1.5; color:#a7b5c9; margin:7px 0 0; overflow-wrap:anywhere; }
+.pc-dossier-heading { flex-shrink:0; margin:0 0 14px; padding:2px 0 12px; border-bottom:1px solid rgba(148,163,184,.1); }
+.pc-dossier-heading h2 { font-size:15px; line-height:1.35; font-weight:600; margin:0; color:#cbd5e1; text-align:left; }
+.pc-dossier-rewards-current, .pc-dossier-previous-rewards { margin:10px 0 0; border-top:1px solid rgba(148,163,184,.1); padding-top:4px; }
+.pc-dossier-rewards-current > summary, .pc-dossier-previous-rewards > summary { display:flex; align-items:center; gap:8px; padding:8px 0; font-size:11px; line-height:1.4; color:#94a3b8; cursor:pointer; list-style:none; }
+.pc-dossier-rewards-current > summary::after, .pc-dossier-previous-rewards > summary::after { content:'›'; font-size:14px; margin-left:2px; }
+.pc-dossier-rewards-current[open] > summary::after, .pc-dossier-previous-rewards[open] > summary::after { transform:rotate(90deg); }
+.pc-dossier-rewards-count { color:#8493a7; margin-left:auto; }
+.pc-dossier-reward { border-bottom:1px solid rgba(148,163,184,.07); margin:0; scroll-margin:8px; }
+.pc-dossier-reward:last-child { border-bottom:0; }
+.pc-dossier-reward.is-focused { background:rgba(148,163,184,.045); }
+.pc-dossier-reward > summary, .pc-dossier-reward__summary { display:grid; grid-template-columns:minmax(0,1fr) auto 8px; align-items:center; gap:8px; padding:8px 0; list-style:none; }
+.pc-dossier-reward > summary { cursor:pointer; }
+.pc-dossier-reward > summary::after { content:'›'; color:#8493a7; font-size:12px; }
+.pc-dossier-reward[open] > summary::after { transform:rotate(90deg); }
+.pc-dossier-reward > summary::-webkit-details-marker, .pc-dossier-rewards-current > summary::-webkit-details-marker, .pc-dossier-previous-rewards > summary::-webkit-details-marker { display:none; }
+.pc-dossier-reward__main { min-width:0; display:flex; flex-direction:column; gap:2px; }
+.pc-dossier-reward__label { color:#a7b5c9; font-size:11px; line-height:1.35; }
+.pc-dossier-reward__amount { color:#a7b5c9; font-size:11px; font-weight:500; white-space:nowrap; }
+.pc-dossier-reward__date { font-size:10px; line-height:1.35; color:#8493a7; }
+.pc-dossier-reward__detail { padding:0 0 10px; }
+.pc-dossier-reward__reason { font-size:11px; line-height:1.5; color:#94a3b8; margin:0; overflow-wrap:anywhere; }
 .pc-dossier-reward__open, .pc-dossier-reward-note { border:0; background:transparent; color:#9ebfe6; cursor:pointer; font:inherit; padding:6px 0 0; text-align:left; }
 .pc-dossier-reward__open { font-size:11px; }
-.pc-dossier-reward-note { flex:1 0 100%; font-size:10px; }
-.pc-dossier-previous-rewards { margin:18px 0; padding:12px; border:1px dashed rgba(148,163,184,.22); border-radius:12px; background:rgba(148,163,184,.025); }
-.pc-dossier-previous-rewards summary { cursor:pointer; color:#a3afc2; font-size:12px; font-weight:600; }
-.pc-dossier-previous-rewards[open] summary { margin-bottom:10px; }
-.pc-dossier-reward-run { font-size:11px; color:#8493a7; margin:14px 0 5px; }
+.pc-dossier-reward-note { flex:1 0 100%; font-size:10px; color:#94a3b8; }
+.pc-dossier-reward-run { font-size:10px; font-weight:500; color:#8493a7; margin:12px 0 2px; }
 .karma-select-run-meta { color:var(--text-tertiary,#8493a7); font-size:11px; line-height:1.45; margin-top:5px; }
+.karma-select-note__amount { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; color:var(--text-secondary,#b5c0d0); }
+.karma-option-card.is-issued:disabled { opacity:.8; }
 
 .pc-dossier-detail-row strong,
 .pc-dossier-row-label {
