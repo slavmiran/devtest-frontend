@@ -7828,7 +7828,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
         if (testerPools.canReward) {
             actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         } else if (testerPools.rewardedToday) {
-            actionBtnHtml = `<span class="karma-awarded-summary"><span class="karma-awarded-summary__label">${window.escapeHTML(window.t('karmaAwardIssuedLabel', {}, lang) || 'Награда')}</span><span class="karma-awarded-summary__value">${window.escapeHTML(window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today')}</span></span>`;
+            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled title="${window.escapeHTML(window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Уже награждён сегодня')}">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         } else {
             actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         }
@@ -7839,7 +7839,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
                 <div class="karma-dist-tester-meta">${window.escapeHTML(metaStr)}</div>
             </div>
             <div class="karma-dist-row-actions">
-                ${testerPools.canReward ? usedBadges.join('') : ''}
+                ${usedBadges.join('')}
                 ${actionBtnHtml}
             </div>
         </div>`;

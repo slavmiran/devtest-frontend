@@ -1142,10 +1142,51 @@
 .pc-reward-accent-btn:active { transform:scale(0.95); }
 .pc-reward-accent-btn__core { display:flex; align-items:center; justify-content:center; width:18px; height:18px; z-index:2; position:relative; }
 .pc-reward-accent-btn__core svg { width:18px; height:18px; }
-.pc-reward-accent-btn.is-tester-rewarded-today { border-color:rgba(100,116,139,.42); background:rgba(100,116,139,.13); color:rgba(203,213,225,.75); box-shadow:none; }
+.pc-reward-accent-btn.is-tester-rewarded-today {
+    border-color: rgba(52, 211, 153, 0.45);
+    background: radial-gradient(circle at 35% 35%, rgba(52, 211, 153, 0.24), rgba(16, 185, 129, 0.1) 65%, rgba(6, 78, 59, 0.16) 100%);
+    color: #a7f3d0;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
 .pc-reward-accent-btn:disabled { cursor:default; }
-.pc-reward-accent-btn.is-tester-rewarded-today .pc-reward-accent-btn__core { opacity:.55; }
-.pc-reward-accent-btn__complete { position:absolute; right:-3px; bottom:-3px; display:grid; place-items:center; width:15px; height:15px; border:2px solid var(--bg-surface-2,#1b2635); border-radius:50%; background:#4f8c70; color:#f0fdf4; font-size:10px; font-weight:900; line-height:1; z-index:4; }
+.pc-reward-accent-btn.is-tester-rewarded-today .pc-reward-accent-btn__core {
+    opacity: 0.95;
+    filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.5));
+}
+.pc-reward-accent-btn__complete {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    display: grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    border: 2px solid var(--bg-surface-2, #1b2635);
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #f0fdf4;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+    z-index: 4;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+.pc-reward-accent-btn__complete::after {
+    content: '✦';
+    position: absolute;
+    top: -6px;
+    right: -5px;
+    font-size: 9px;
+    line-height: 1;
+    color: #a7f3d0;
+    text-shadow: 0 0 6px #34d399, 0 0 10px #10b981;
+    animation: pc-reward-sparkle-glint 2.6s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes pc-reward-sparkle-glint {
+    0%, 100% { opacity: 0.35; transform: scale(0.8) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.25) rotate(45deg); filter: drop-shadow(0 0 4px #6ee7b7); }
+}
 .pc-reward-accent-btn__orbit { position:absolute; inset:-7px; border-radius:50%; pointer-events:none; perspective:160px; transform-style:preserve-3d; z-index:3; transform:rotate(var(--orbit-tilt, 0deg)); }
 .pc-reward-accent-btn__sparkle { position:absolute; top:50%; left:50%; width:14px; height:14px; margin-top:-7px; margin-left:-7px; display:flex; align-items:center; justify-content:center; animation:pc-reward-orbit-3d 3.8s cubic-bezier(0.4, 0, 0.6, 1) 1 forwards; transform-style:preserve-3d; will-change:transform, opacity; }
 .pc-reward-accent-btn__sparkle.is-mode-orbit { animation-name: pc-reward-orbit-3d; }
@@ -2140,7 +2181,154 @@
 
 .pc-dossier-heading { flex-shrink:0; margin:0 0 14px; padding:2px 0 12px; border-bottom:1px solid rgba(148,163,184,.1); }
 .pc-dossier-heading h2 { font-size:15px; line-height:1.35; font-weight:600; margin:0; color:#cbd5e1; text-align:left; }
+/* ── Unified Contributor Rewards Section ── */
+.pc-dossier-rewards-unified {
+    margin: 12px 0 0;
+    border: 1px solid rgba(148, 163, 184, .12);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.45);
+    overflow: hidden;
+    transition: border-color .18s ease, background-color .18s ease;
+}
+
+.pc-dossier-rewards-unified[open] {
+    border-color: rgba(148, 163, 184, .2);
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.pc-dossier-rewards-unified > summary,
+.pc-dossier-rewards-unified__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 13px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background-color .15s ease;
+}
+
+.pc-dossier-rewards-unified > summary::-webkit-details-marker {
+    display: none;
+}
+
+.pc-dossier-rewards-unified > summary::after {
+    display: none !important;
+    content: none !important;
+}
+
+.pc-dossier-rewards-unified.pc-dossier-rewards-current {
+    border-top: 1px solid rgba(148, 163, 184, .12);
+    padding-top: 0;
+}
+
+.pc-dossier-rewards-unified > summary:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.pc-dossier-rewards-unified__main {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.pc-dossier-rewards-unified__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.14);
+    border: 1px solid rgba(129, 140, 248, 0.22);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.pc-dossier-rewards-unified__title {
+    font-size: 12.5px;
+    font-weight: 650;
+    color: #e2e8f0;
+    line-height: 1.25;
+}
+
+.pc-dossier-rewards-unified__subtitle {
+    font-size: 10.5px;
+    color: #8493a7;
+    margin-top: 2px;
+    line-height: 1.2;
+}
+
+.pc-dossier-rewards-unified__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.pc-dossier-reward-sum-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.pc-dossier-reward-sum-chip.is-karma {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    color: #7dd3fc;
+}
+
+.pc-dossier-reward-sum-chip.is-bust {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    color: #fcd34d;
+}
+
+.pc-dossier-rewards-unified__arrow {
+    color: #8493a7;
+    font-size: 14px;
+    transition: transform .18s ease;
+    margin-left: 2px;
+}
+
+.pc-dossier-rewards-unified[open] .pc-dossier-rewards-unified__arrow {
+    transform: rotate(90deg);
+}
+
+.pc-dossier-rewards-unified__body {
+    padding: 8px 13px 13px;
+    border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.pc-dossier-rewards-group {
+    margin-top: 8px;
+}
+
+.pc-dossier-rewards-group:first-child {
+    margin-top: 2px;
+}
+
+.pc-dossier-rewards-group__title {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 0 2px;
+    margin-bottom: 4px;
+}
+
 .pc-dossier-rewards-current, .pc-dossier-previous-rewards { margin:10px 0 0; border-top:1px solid rgba(148,163,184,.1); padding-top:4px; }
+.pc-dossier-rewards-unified .pc-dossier-previous-rewards { border-top: 1px solid rgba(148,163,184,.08); margin: 8px 0 0; }
 .pc-dossier-rewards-current > summary, .pc-dossier-previous-rewards > summary { display:flex; align-items:center; gap:8px; padding:8px 0; font-size:11px; line-height:1.4; color:#94a3b8; cursor:pointer; list-style:none; }
 .pc-dossier-rewards-current > summary::after, .pc-dossier-previous-rewards > summary::after { content:'›'; font-size:14px; margin-left:2px; }
 .pc-dossier-rewards-current[open] > summary::after, .pc-dossier-previous-rewards[open] > summary::after { transform:rotate(90deg); }

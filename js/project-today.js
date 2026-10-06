@@ -5756,29 +5756,83 @@
         if (!project) return '';
         var current = rewardEntriesForTester(project, testerId);
         var previous = rewardEntriesForTester(project, testerId, 'previous');
-        var html = current.length ? '<section id="pc-dossier-current-rewards" class="pc-dossier-section"><details class="pc-dossier-rewards-current"' + (focus ? ' open' : '') + '><summary>' +
-            '<span>' + esc(text('pcRewardsRunTitle', 'Appreciation in the current run')) + '</span><span class="pc-dossier-rewards-count">' + current.length + '</span></summary>' +
-            dossierRewardEntriesHtml(project, current, focus) + '</details></section>' : '';
+        var allEntries = current.concat(previous);
+        if (!allEntries.length) return '';
+
+        var totalKarma = 0;
+        var totalBust = 0;
+        allEntries.forEach(function (entry) {
+            totalKarma += Number(entry.karma_amount || 0);
+            totalBust += Number(entry.bust_amount || 0);
+        });
+
+        var karmaChipHtml = totalKarma > 0
+            ? '<span class="pc-dossier-reward-sum-chip is-karma">' + rewardKarmaIconHtml() + '<span>+' + totalKarma.toFixed(1) + ' ' + esc(text('karmaWord', 'кармы')) + '</span></span>'
+            : '';
+        var bustChipHtml = totalBust > 0
+            ? '<span class="pc-dossier-reward-sum-chip is-bust">⚡ <span>+' + Number(totalBust.toFixed(1)) + ' $BUST</span></span>'
+            : '';
+
+        var runsNote = previous.length
+            ? (current.length ? text('pcDossierUnifiedRunsBoth', 'текущий и прошлые запуски') : text('pcDossierUnifiedRunsPast', 'прошлые запуски'))
+            : text('pcDossierUnifiedRunsCurrent', 'текущий запуск');
+
+        var currentHtml = current.length
+            ? '<div id="pc-dossier-current-rewards" class="pc-dossier-rewards-group">' +
+                (previous.length
+                    ? '<div class="pc-dossier-rewards-group__title">' + esc(text('pcRewardsRunTitle', 'Благодарности за текущий запуск')) + '</div>'
+                    : '') +
+                dossierRewardEntriesHtml(project, current, focus) +
+              '</div>'
+            : '<div id="pc-dossier-current-rewards"></div>';
+
+        var previousHtml = '';
         if (previous.length) {
             var runs = Array.from(new Set(previous.map(function (entry) { return Number(entry.run_iteration || 1); }))).sort(function (a, b) { return b - a; });
-            html += '<details class="pc-dossier-previous-rewards"><summary><span>' + esc(text('pcRewardsPreviousRuns', 'Previous runs')) + '</span><span class="pc-dossier-rewards-count">' + previous.length + '</span></summary>' +
+            previousHtml = '<details class="pc-dossier-previous-rewards"><summary><span>' + esc(text('pcRewardsPreviousRuns', 'Предыдущие запуски')) + '</span><span class="pc-dossier-rewards-count">' + previous.length + '</span></summary>' +
                 runs.map(function (oldRun) { return '<h4 class="pc-dossier-reward-run">' + esc(text('pcLaunchNumber', 'Run {run}', { run: oldRun })) + '</h4>' + dossierRewardEntriesHtml(project, previous.filter(function (entry) { return Number(entry.run_iteration || 1) === oldRun; }), ''); }).join('') + '</details>';
         }
-        return html;
+
+        return '<section class="pc-dossier-section pc-dossier-rewards-section">' +
+            '<details class="pc-dossier-rewards-unified pc-dossier-rewards-current"' + (focus ? ' open' : '') + '>' +
+                '<summary class="pc-dossier-rewards-unified__head">' +
+                    '<div class="pc-dossier-rewards-unified__main">' +
+                        '<span class="pc-dossier-rewards-unified__icon" aria-hidden="true">🎁</span>' +
+                        '<div>' +
+                            '<div class="pc-dossier-rewards-unified__title">' + esc(text('pcDossierUnifiedRewardsTitle', 'Ваши выданные награды участнику')) + '</div>' +
+                            '<div class="pc-dossier-rewards-unified__subtitle">' + esc(runsNote) + ' · ' + esc(text('pcDossierUnifiedRewardsCount', '{count} поощр.', { count: allEntries.length })) + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="pc-dossier-rewards-unified__meta">' +
+                        karmaChipHtml +
+                        bustChipHtml +
+                        '<span class="pc-dossier-rewards-unified__arrow" aria-hidden="true">›</span>' +
+                    '</div>' +
+                '</summary>' +
+                '<div class="pc-dossier-rewards-unified__body">' +
+                    currentHtml +
+                    previousHtml +
+                '</div>' +
+            '</details>' +
+        '</section>';
     }
 
     window.pcFocusContributorRewards = function (category) {
-        var section = document.getElementById('pc-dossier-current-rewards');
+        var section = document.getElementById('pc-dossier-current-rewards') || document.querySelector('.pc-dossier-rewards-unified');
         if (!section) return;
-        var list = section.querySelector('.pc-dossier-rewards-current');
-        if (list) list.open = true;
+        var unified = section.closest('.pc-dossier-rewards-unified') || section.querySelector('.pc-dossier-rewards-unified');
+        if (unified) unified.open = true;
         var first = null;
-        section.querySelectorAll('.pc-dossier-reward').forEach(function (node) {
+        var root = section.closest('.pc-dossier-rewards-section') || section;
+        root.querySelectorAll('.pc-dossier-reward').forEach(function (node) {
             var match = category === 'earlier' ? node.getAttribute('data-reward-earlier') === 'true' : node.getAttribute('data-reward-category') === category;
             node.classList.toggle('is-focused', match);
             if (match && !first) first = node;
         });
-        (first || section).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (first) {
+            first.open = true;
+            try { first.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+        }
     };
 
     function renderContributorDossierHtml(opts) {

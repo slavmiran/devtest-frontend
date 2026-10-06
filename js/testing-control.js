@@ -1442,16 +1442,19 @@
                 }
             } catch (_) {}
 
-            var label = rewardedToday
-                ? (text('pcProofRewardDoneBtn', 'Благодарность') || 'Благодарность')
-                : (text('pcProofRewardBtn', 'Благодарность') || 'Благодарность');
-            var icon = rewardedToday ? '✓ ' : '';
+            var karmaIcon = typeof window.karmaIconHtml === 'function'
+                ? window.karmaIconHtml('karma-yin-icon--inline')
+                : '<svg class="karma-yin-icon karma-yin-icon--inline" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false" style="width:18px;height:18px;"><circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle><path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path><circle r="5.5" cy="19" fill="#ffffff"></circle><circle r="5.5" cy="-19" fill="#000000"></circle></svg>';
             var title = rewardedToday
                 ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
-                : text('karmaSelectTitle', 'Tester Appreciation');
+                : (text('karmaSelectTitle', 'Благодарность Тестировщику') || 'Благодарность Тестировщику');
+            var completeMarkHtml = rewardedToday
+                ? '<span class="pc-reward-accent-btn__complete" aria-hidden="true">✓</span>'
+                : '';
 
-            rewardBtnHtml = '<button class="checkin-proof-overview-reward' + (rewardedToday ? ' is-rewarded-today' : '') + '" type="button" title="' + escape(title) + '" onclick="if(typeof pcRewardTester===\'function\'){pcRewardTester(' + appId + ',' + testerId + ');}else if(typeof openKarmaSelectPopup===\'function\'){openKarmaSelectPopup(' + appId + ',' + testerId + ');}">' +
-                icon + escape(label) +
+            rewardBtnHtml = '<button class="checkin-proof-overview-reward pc-reward-accent-btn' + (rewardedToday ? ' is-tester-rewarded-today is-rewarded-today' : '') + '" type="button" title="' + escape(title) + '" aria-label="' + escape(title) + '" onclick="if(typeof pcRewardTester===\'function\'){pcRewardTester(' + appId + ',' + testerId + ');}else if(typeof openKarmaSelectPopup===\'function\'){openKarmaSelectPopup(' + appId + ',' + testerId + ');}">' +
+                '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
+                completeMarkHtml +
             '</button>';
         }
 
@@ -1814,10 +1817,13 @@
         if (!btn) return;
         var ctx = state.previewProofId ? resolveProofContext(state.previewProofId) : null;
         if (ctx && Number(ctx.appId) === safeAppId && Number(ctx.testerId) === safeTesterId) {
-            btn.classList.add('is-rewarded-today');
-            var doneLabel = text('pcProofRewardDoneBtn', 'Благодарность');
-            btn.innerHTML = '✓ ' + escape(doneLabel);
+            btn.classList.add('is-rewarded-today', 'is-tester-rewarded-today');
+            var karmaIcon = typeof window.karmaIconHtml === 'function'
+                ? window.karmaIconHtml('karma-yin-icon--inline')
+                : '<svg class="karma-yin-icon karma-yin-icon--inline" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false" style="width:18px;height:18px;"><circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle><path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path><circle r="5.5" cy="19" fill="#ffffff"></circle><circle r="5.5" cy="-19" fill="#000000"></circle></svg>';
+            btn.innerHTML = '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span><span class="pc-reward-accent-btn__complete" aria-hidden="true">✓</span>';
             btn.title = text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today');
+            btn.setAttribute('aria-label', btn.title);
         }
     });
 })();
