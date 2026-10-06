@@ -5770,12 +5770,15 @@
             ? '<span class="pc-dossier-reward-sum-chip is-karma">' + rewardKarmaIconHtml() + '<span>+' + totalKarma.toFixed(1) + ' ' + esc(text('karmaWord', 'кармы')) + '</span></span>'
             : '';
         var bustChipHtml = totalBust > 0
-            ? '<span class="pc-dossier-reward-sum-chip is-bust">⚡ <span>+' + Number(totalBust.toFixed(1)) + ' $BUST</span></span>'
+            ? '<span class="pc-dossier-reward-sum-chip is-bust">💎 <span>+' + Number(totalBust.toFixed(1)) + ' $BUST</span></span>'
             : '';
 
+        var fromYou = text('pcDossierUnifiedFromYou', 'От вас тестеру');
         var runsNote = previous.length
             ? (current.length ? text('pcDossierUnifiedRunsBoth', 'текущий и прошлые запуски') : text('pcDossierUnifiedRunsPast', 'прошлые запуски'))
             : text('pcDossierUnifiedRunsCurrent', 'текущий запуск');
+        var countStr = text('pcDossierUnifiedRewardsCount', '{count} поощр.', { count: allEntries.length });
+        var subtitleStr = fromYou + ' · ' + runsNote + ' · ' + countStr;
 
         var currentHtml = current.length
             ? '<div id="pc-dossier-current-rewards" class="pc-dossier-rewards-group">' +
@@ -5796,17 +5799,19 @@
         return '<section class="pc-dossier-section pc-dossier-rewards-section">' +
             '<details class="pc-dossier-rewards-unified pc-dossier-rewards-current"' + (focus ? ' open' : '') + '>' +
                 '<summary class="pc-dossier-rewards-unified__head">' +
-                    '<div class="pc-dossier-rewards-unified__main">' +
-                        '<span class="pc-dossier-rewards-unified__icon" aria-hidden="true">🎁</span>' +
-                        '<div>' +
-                            '<div class="pc-dossier-rewards-unified__title">' + esc(text('pcDossierUnifiedRewardsTitle', 'Ваши выданные награды участнику')) + '</div>' +
-                            '<div class="pc-dossier-rewards-unified__subtitle">' + esc(runsNote) + ' · ' + esc(text('pcDossierUnifiedRewardsCount', '{count} поощр.', { count: allEntries.length })) + '</div>' +
+                    '<div class="pc-dossier-rewards-unified__head-row">' +
+                        '<div class="pc-dossier-rewards-unified__title-group">' +
+                            '<span class="pc-dossier-rewards-unified__icon" aria-hidden="true">🎁</span>' +
+                            '<div class="pc-dossier-rewards-unified__title">' + esc(text('pcDossierUnifiedRewardsTitle', 'Выданные награды')) + '</div>' +
                         '</div>' +
-                    '</div>' +
-                    '<div class="pc-dossier-rewards-unified__meta">' +
-                        karmaChipHtml +
-                        bustChipHtml +
                         '<span class="pc-dossier-rewards-unified__arrow" aria-hidden="true">›</span>' +
+                    '</div>' +
+                    '<div class="pc-dossier-rewards-unified__sub-row">' +
+                        '<div class="pc-dossier-rewards-unified__subtitle">' + esc(subtitleStr) + '</div>' +
+                        '<div class="pc-dossier-rewards-unified__meta">' +
+                            karmaChipHtml +
+                            bustChipHtml +
+                        '</div>' +
                     '</div>' +
                 '</summary>' +
                 '<div class="pc-dossier-rewards-unified__body">' +
@@ -6177,9 +6182,6 @@
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="pc-dossier-rank-badge pc-dossier-rank-badge' + rankClass + '">' +
-                esc(rankText) +
-            '</div>' +
             '<section class="pc-dossier-section">' +
                 '<div class="pc-dossier-section__title">' +
                     '<span class="pc-dossier-section__title-ico" aria-hidden="true">🏆</span>' +
@@ -6219,13 +6221,7 @@
                 '</div>' +
                 projectContributionsHtml +
             '</section>' +
-            dossierRewardHistoryHtml(project, safeTesterId, opts.rewardFocus) +
-            '<section class="pc-dossier-section" style="margin-bottom: 0;">' +
-                '<div class="pc-dossier-summary-card pc-dossier-summary-card' + summaryClass + '">' +
-                    '<div class="pc-dossier-summary-card__head">' + esc(text('pcDossierSecSummary', 'Резюме по тестеру')) + '</div>' +
-                    '<div class="pc-dossier-summary-card__text">' + esc(summaryText) + '</div>' +
-                '</div>' +
-            '</section>';
+            dossierRewardHistoryHtml(project, safeTesterId, opts.rewardFocus);
     }
 
     window.closeContributorDossierModal = function (event) {
