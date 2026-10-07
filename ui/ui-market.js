@@ -7828,7 +7828,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
         if (testerPools.canReward) {
             actionBtnHtml = `<button type="button" class="karma-action-btn" onclick="event.stopPropagation(); openKarmaSelectPopup(${project.id}, ${tester.tester_id})">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         } else if (testerPools.rewardedToday) {
-            actionBtnHtml = `<span class="karma-awarded-summary"><span class="karma-awarded-summary__label">${window.escapeHTML(window.t('karmaAwardIssuedLabel', {}, lang) || 'Награда')}</span><span class="karma-awarded-summary__value">${window.escapeHTML(window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today')}</span></span>`;
+            actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled title="${window.escapeHTML(window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Уже награждён сегодня')}">${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         } else {
             actionBtnHtml = `<button type="button" class="karma-action-btn is-disabled" disabled>${window.escapeHTML(window.t('karmaRewardBtn', {}, lang) || '+ Отметить')}</button>`;
         }
@@ -7839,7 +7839,7 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
                 <div class="karma-dist-tester-meta">${window.escapeHTML(metaStr)}</div>
             </div>
             <div class="karma-dist-row-actions">
-                ${testerPools.canReward ? usedBadges.join('') : ''}
+                ${usedBadges.join('')}
                 ${actionBtnHtml}
             </div>
         </div>`;
@@ -10901,6 +10901,11 @@ function openKarmaSelectPopup(appId, testerId) {
         : null;
     const pools = getProjectKarmaPools(project, testerId);
     const badge = document.getElementById('karma-select-icon-badge');
+    const todayRewards = typeof window.pcRewardEntriesForTester === 'function'
+        ? window.pcRewardEntriesForTester(project, testerId).filter(entry => entry.reward_local_date && project.reward_owner_local_date ? entry.reward_local_date === project.reward_owner_local_date : entry.is_today)
+        : [];
+    const todayKarma = todayRewards.find(entry => Number(entry.karma_amount || 0) > 0);
+    const todayType = todayKarma ? (Number(todayKarma.karma_amount) === 1.5 ? 'good' : Number(todayKarma.karma_amount) === 3 ? 'bug' : 'overtime') : '';
     if (badge && typeof window.karmaIconHtml === 'function') {
         badge.innerHTML = window.karmaIconHtml('karma-yin-icon--lg');
     }
@@ -10921,29 +10926,34 @@ function openKarmaSelectPopup(appId, testerId) {
     const bugBtn = document.getElementById('karma-btn-bug') || document.querySelector('#karma-select-popup .popup-btn.bug');
     const goodStatus = document.getElementById('karma-status-good');
     const bugStatus = document.getElementById('karma-status-bug');
-    const testerLimitNote = document.getElementById('karma-select-tester-limit');
     const testerRewardedToday = pools.rewardedToday;
-
-    if (testerLimitNote) {
-        testerLimitNote.hidden = !testerRewardedToday;
-        testerLimitNote.textContent = testerRewardedToday
-            ? (window.t('karmaTesterRewardedToday', {}, lang) || 'A reward has already been issued to this tester today. The next reward can be issued tomorrow.')
-            : '';
+    const note = document.getElementById('karma-select-note') || document.querySelector('#karma-select-popup .karma-select-note');
+    if (note) {
+        if (testerRewardedToday && todayKarma) {
+            const rewardName = window.t(todayType === 'good' ? 'karmaSelectGood' : todayType === 'bug' ? 'karmaSelectBug' : 'pcRewardOvertime', {}, lang);
+            const karmaOnlyReward = Object.assign({}, todayKarma, { bust_amount: 0 });
+            const amount = typeof window.pcRewardAmountHtml === 'function' ? window.pcRewardAmountHtml([karmaOnlyReward]) : ('+' + Number(todayKarma.karma_amount || 0).toFixed(1));
+            note.innerHTML = window.escapeHTML(window.t('karmaTodayIssuedType', { reward: rewardName }, lang)) + ' <span class="karma-select-note__amount">' + amount + '</span><br>' + window.escapeHTML(window.t('karmaNextRewardTomorrow', {}, lang));
+        } else {
+            note.textContent = window.t(testerRewardedToday ? 'karmaTesterRewardedToday' : !pools.canReward ? 'karmaProjectPoolNote' : 'karmaSelectNote', {}, lang);
+        }
     }
 
     if (goodBtn) {
         goodBtn.disabled = !pools.canGiveThanks;
         goodBtn.classList.toggle('is-disabled', !pools.canGiveThanks);
+        goodBtn.classList.toggle('is-issued', testerRewardedToday && todayType === 'good');
     }
     if (bugBtn) {
         bugBtn.disabled = !pools.canGiveSpecial;
         bugBtn.classList.toggle('is-disabled', !pools.canGiveSpecial);
+        bugBtn.classList.toggle('is-issued', testerRewardedToday && todayType === 'bug');
     }
 
     if (goodStatus) {
         if (testerRewardedToday) {
-            goodStatus.textContent = window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today';
-            goodStatus.className = 'karma-option-status is-given';
+            goodStatus.textContent = window.t(todayType === 'good' ? 'karmaIssuedTodayStatus' : 'karmaUnavailableTodayStatus', {}, lang);
+            goodStatus.className = 'karma-option-status ' + (todayType === 'good' ? 'is-given' : 'is-exhausted');
         } else if (pools.thanksAvailable <= 0) {
             goodStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
             goodStatus.className = 'karma-option-status is-exhausted';
@@ -10955,8 +10965,8 @@ function openKarmaSelectPopup(appId, testerId) {
 
     if (bugStatus) {
         if (testerRewardedToday) {
-            bugStatus.textContent = window.t('karmaTesterRewardedTodayShort', {}, lang) || 'Already rewarded today';
-            bugStatus.className = 'karma-option-status is-given';
+            bugStatus.textContent = window.t(todayType === 'bug' ? 'karmaIssuedTodayStatus' : 'karmaUnavailableTodayStatus', {}, lang);
+            bugStatus.className = 'karma-option-status ' + (todayType === 'bug' ? 'is-given' : 'is-exhausted');
         } else if (pools.specialAvailable <= 0) {
             bugStatus.textContent = window.t('karmaPoolExhausted', {}, lang) || 'Лимит наград исчерпан';
             bugStatus.className = 'karma-option-status is-exhausted';

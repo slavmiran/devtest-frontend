@@ -580,12 +580,12 @@ button.pc-subtitle-chip--reviews:active {
     transform: scale(1);
 }
 
-.no-username-overlay__desc,
-    z-index: 260;
+#karma-select-popup,
+#karma-select-popup.modal-overlay,
+#karma-distribution-modal,
+#karma-distribution-modal.modal-overlay {
+    z-index: 1200;
 }
-
-.guest-tester-status-chip.is-late,
-
 
 .form-group { margin-bottom: 20px; }
 
