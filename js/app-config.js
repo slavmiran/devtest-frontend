@@ -2,6 +2,8 @@
 /* TG init, constants, language system, state vars, route parsing */
 
 window.App = window.App || {};
+// Unknown is not the same as an explicitly disabled server feature.
+window.App.runtimeConfigStatus = 'unknown';
 window.App.checkinProofMode = window.App.checkinProofMode || 'off';
 window.App.screenshotProofUploadEnabled = window.App.screenshotProofUploadEnabled === true;
 window.App.testingControlEnabled = window.App.testingControlEnabled === true;
@@ -193,50 +195,105 @@ function _normalizeBotUsername(rawValue) {
     return normalized || BOT_USERNAME;
 }
 
-async function loadRuntimeConfig() {
+var _runtimeConfigRequest = null;
+var _runtimeConfigLastAttemptAt = 0;
+
+function isRuntimeConfigReady() {
+    return window.App.runtimeConfigStatus === 'ready' && window.App.runtimeConfigApiBase === API_BASE;
+}
+
+function _refreshRuntimeConfigViews() {
     try {
-        var response = await fetch(`${API_BASE}/runtime-config`);
-        if (!response.ok) {
-            return;
+        if (typeof markTestsViewDirty === 'function') markTestsViewDirty();
+        if (typeof markProjectsViewDirty === 'function') markProjectsViewDirty();
+        if (typeof myTests !== 'undefined' && myTests.length
+            && typeof renderTests === 'function'
+            && (typeof isTabCurrentlyActive !== 'function' || isTabCurrentlyActive('tests'))) {
+            renderTests(true);
         }
-        var payload = await response.json();
-        var runtimeBotUsername = _normalizeBotUsername(
-            TELEGRAM_RUNTIME_BOT_USERNAME
-            || (payload && payload.bot_username)
-            || (window.App && window.App.botUsername)
-            || BOT_USERNAME
-        );
-        if (runtimeBotUsername) {
-            window.App.botUsername = runtimeBotUsername;
-        }
-        var runtimeShortname = String((payload && payload.webapp_shortname) || '').trim().replace(/^\/+|\/+$/g, '');
-        if (runtimeShortname) {
-            window.App.webappShortname = runtimeShortname;
-        }
-        var runtimeGroupUrl = String((payload && payload.public_group_url) || '').trim().replace(/\/+$/, '');
-        if (runtimeGroupUrl) {
-            window.App.publicGroupUrl = runtimeGroupUrl;
-            window.FEEDBACK_PUBLIC_LINK_BASE = runtimeGroupUrl;
-        }
-        var runtimeProofsTopicUrl = String((payload && payload.proofs_topic_url) || '').trim().replace(/\/+$/, '');
-        if (runtimeProofsTopicUrl) {
-            window.App.proofsTopicUrl = runtimeProofsTopicUrl;
-        }
-        var runtimeGroupId = String((payload && payload.frontend_group_id) || '').trim();
-        if (runtimeGroupId) {
-            window.App.frontendGroupId = runtimeGroupId;
-        }
-        var runtimeTesterTopic = Number((payload && payload.tester_feedback_topic_id) || 0);
-        if (runtimeTesterTopic > 0) {
-            window.App.testerFeedbackTopicId = runtimeTesterTopic;
-        }
-        window.App.checkinProofMode = String((payload && payload.checkin_proof_mode) || 'off').trim().toLowerCase();
-        window.App.screenshotProofUploadEnabled = !!(payload && payload.screenshot_proof_upload_enabled === true);
-        window.App.testingControlEnabled = !!(payload && payload.testing_control_enabled === true);
-        window.App.checkinProofGalleryEnabled = !!(payload && payload.checkin_proof_gallery_enabled === true);
+        if (typeof myProjects !== 'undefined' && myProjects.length && typeof renderProjects === 'function'
+            && typeof isTabCurrentlyActive === 'function' && isTabCurrentlyActive('projects')) renderProjects(true);
     } catch (error) {
-        console.warn('Runtime config fetch failed:', error);
+        // A view error must not invalidate a successfully fetched configuration.
+        console.warn('Runtime config view refresh failed:', error);
     }
+}
+
+function loadRuntimeConfig(options) {
+    if (_runtimeConfigRequest) return _runtimeConfigRequest;
+    if (options && options.onResume && Date.now() - _runtimeConfigLastAttemptAt < 60000) {
+        return Promise.resolve(isRuntimeConfigReady());
+    }
+    _runtimeConfigLastAttemptAt = Date.now();
+    // Keep a confirmed configuration usable during routine refreshes.
+    if (!isRuntimeConfigReady()) window.App.runtimeConfigStatus = 'loading';
+    _runtimeConfigRequest = (async function() {
+        var requestBase = API_BASE;
+        for (var attempt = 0; attempt < 3; attempt++) {
+            var controller = new AbortController();
+            var timeout = setTimeout(function() { controller.abort(); }, 5000);
+            try {
+                var response = await fetch(`${requestBase}/runtime-config`, { signal: controller.signal, cache: 'no-store' });
+                if (!response.ok) throw new Error('Runtime config HTTP ' + response.status);
+                var payload = await response.json();
+                if (!payload || typeof payload.screenshot_proof_upload_enabled !== 'boolean'
+                    || typeof payload.testing_control_enabled !== 'boolean'
+                    || typeof payload.checkin_proof_gallery_enabled !== 'boolean') {
+                    throw new Error('Invalid runtime config');
+                }
+                if (requestBase !== API_BASE) throw new Error('Runtime config environment changed');
+                _applyRuntimeConfig(payload);
+                window.App.runtimeConfigApiBase = requestBase;
+                window.App.runtimeConfigStatus = 'ready';
+                _refreshRuntimeConfigViews();
+                return true;
+            } catch (error) {
+                if (attempt === 2) console.warn('Runtime config fetch failed:', error);
+            } finally {
+                clearTimeout(timeout);
+            }
+            if (attempt < 2) await new Promise(function(resolve) { setTimeout(resolve, 300 * (attempt + 1)); });
+        }
+        if (!isRuntimeConfigReady()) window.App.runtimeConfigStatus = 'error';
+        _refreshRuntimeConfigViews();
+        return isRuntimeConfigReady();
+    })().finally(function() { _runtimeConfigRequest = null; });
+    return _runtimeConfigRequest;
+}
+
+async function ensureRuntimeConfigReady() {
+    if (isRuntimeConfigReady()) return true;
+    if (typeof showToast === 'function') showToast(window.t('runtimeConfigChecking', {}, lang));
+    var ready = await loadRuntimeConfig();
+    if (!ready && typeof showToast === 'function') showToast(window.t('runtimeConfigUnavailable', {}, lang));
+    return ready;
+}
+
+function _applyRuntimeConfig(payload) {
+    var runtimeBotUsername = _normalizeBotUsername(
+        TELEGRAM_RUNTIME_BOT_USERNAME
+        || (payload && payload.bot_username)
+        || (window.App && window.App.botUsername)
+        || BOT_USERNAME
+    );
+    if (runtimeBotUsername) window.App.botUsername = runtimeBotUsername;
+    var runtimeShortname = String(payload.webapp_shortname || '').trim().replace(/^\/+|\/+$/g, '');
+    if (runtimeShortname) window.App.webappShortname = runtimeShortname;
+    var runtimeGroupUrl = String(payload.public_group_url || '').trim().replace(/\/+$/, '');
+    if (runtimeGroupUrl) {
+        window.App.publicGroupUrl = runtimeGroupUrl;
+        window.FEEDBACK_PUBLIC_LINK_BASE = runtimeGroupUrl;
+    }
+    var runtimeProofsTopicUrl = String(payload.proofs_topic_url || '').trim().replace(/\/+$/, '');
+    if (runtimeProofsTopicUrl) window.App.proofsTopicUrl = runtimeProofsTopicUrl;
+    var runtimeGroupId = String(payload.frontend_group_id || '').trim();
+    if (runtimeGroupId) window.App.frontendGroupId = runtimeGroupId;
+    var runtimeTesterTopic = Number(payload.tester_feedback_topic_id || 0);
+    if (runtimeTesterTopic > 0) window.App.testerFeedbackTopicId = runtimeTesterTopic;
+    window.App.checkinProofMode = String(payload.checkin_proof_mode || 'off').trim().toLowerCase();
+    window.App.screenshotProofUploadEnabled = payload.screenshot_proof_upload_enabled === true;
+    window.App.testingControlEnabled = payload.testing_control_enabled === true;
+    window.App.checkinProofGalleryEnabled = payload.checkin_proof_gallery_enabled === true;
 }
 
 var GUEST_PROJECTS_PAGE_SIZE = 5;

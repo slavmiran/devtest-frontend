@@ -1085,6 +1085,20 @@ async function openTodayCheckinReport(proofId, event) {
     openTelegramDeepLink(resolveProofsTopicUrl());
 }
 
+async function openCheckpointReminderAction(appId, ownerUsername, event) {
+    if (event) event.stopPropagation();
+    var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(appId) : null;
+    var external = !!(test && (test.is_external || test.is_guest || String(test.flow || '') === 'external'));
+    if (!external && typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) {
+        if (!await ensureRuntimeConfigReady()) return;
+    }
+    if (!external && typeof isInternalScreenshotProofUploadEnabled === 'function' && isInternalScreenshotProofUploadEnabled(test)) {
+        return openTodayCheckinReport(Number(test && test.today_proof_id || 0), event);
+    }
+    // This is a reminder for an already completed check-in, not a new check-in.
+    openTelegramProfile(ownerUsername, event);
+}
+
 function getScreenshotReminderHtml(test) {
     const testingDay = getResolvedTestingDay(test);
     if (!isMandatoryScreenshotDay(testingDay)) {
@@ -1093,6 +1107,8 @@ function getScreenshotReminderHtml(test) {
 
     const currentLang = (typeof lang !== 'undefined' && lang) ? lang : 'ru';
     const accTitle = (typeof window.t === 'function' ? window.t('checkpointAccordionTitle', {}, currentLang) : null) || 'Контрольный день';
+    const isExternal = !!(test && (test.is_external || test.is_guest || String(test.flow || '') === 'external'));
+    const configPending = !isExternal && typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady();
     const usesProofUpload = typeof window.isInternalScreenshotProofUploadEnabled === 'function'
         ? window.isInternalScreenshotProofUploadEnabled(test)
         : false;
@@ -1112,10 +1128,13 @@ function getScreenshotReminderHtml(test) {
     const actionButton = usesProofUpload
         ? `<button type="button" class="btn checkpoint-accordion__topic-btn" onclick="openTodayCheckinReport(${todayProofId}, event)"><span class="checkpoint-accordion__btn-icon" aria-hidden="true">↗</span> ${window.escapeHTML(reportBtnLabel)}</button>`
         : (safeOwner
-            ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openTelegramProfile('${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
+            ? `<button type="button" class="btn btn-primary checkpoint-accordion__dm-btn" onclick="openCheckpointReminderAction(${Number(test.id)}, '${safeOwner}', event)"><span class="checkpoint-accordion__btn-icon">💬</span> ${window.escapeHTML(btnLabel.replace(/^💬\s*/, ''))}</button>`
             : '');
 
-    const bodyHtml = usesProofUpload
+    const bodyHtml = configPending
+        ? `<div class="checkpoint-accordion__status-desc">${window.escapeHTML(window.t(window.App.runtimeConfigStatus === 'error' ? 'runtimeConfigUnavailable' : 'runtimeConfigChecking', {}, currentLang))}</div>
+           <button type="button" class="btn checkpoint-accordion__topic-btn" onclick="ensureRuntimeConfigReady()">${window.escapeHTML(window.t('runtimeConfigRetry', {}, currentLang))}</button>`
+        : usesProofUpload
         ? `<div class="checkpoint-accordion__status-box">
                         <div class="checkpoint-accordion__status-title">✅ <strong>${window.escapeHTML(doneTitle)}</strong></div>
                         <div class="checkpoint-accordion__status-desc">${window.escapeHTML(doneHint)}</div>
