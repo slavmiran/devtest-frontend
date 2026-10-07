@@ -69,7 +69,7 @@ function collectPipelineProjectsByPhase() {
             return id && String(current.id || current.app_id || '') === id;
         })) return;
         if (resolvePipelineProjectPhase(project) !== 'moderation') return;
-        moderation.push({
+        moderation.push(Object.assign({}, project, {
             id: project.app_id || project.id,
             app_status: project.status || 'completed',
             status: project.status || 'completed',
@@ -81,7 +81,7 @@ function collectPipelineProjectsByPhase() {
             testers: project.testers || [],
             created_at: project.created_at || null,
             google_sync_day: project.google_sync_day || 0,
-        });
+        }));
     });
 
     return { testing: testing, moderation: moderation, live: live };

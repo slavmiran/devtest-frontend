@@ -253,10 +253,13 @@
     opacity: 0.75;
 }
 
-/* Match the current project card: distinct identity, results and decision panels. */
-#tab-projects .card.card-moderation .pc-state-unified.moderation-overview {
+/* One shell owns the card; internal sections use separators, not separate cards. */
+#tab-projects .card.card-moderation[data-project-phase="moderation"] .pc-state-unified.moderation-overview {
     border-color: rgba(255, 176, 55, 0.26);
+    border-bottom: 1px solid rgba(255, 176, 55, 0.26);
+    border-radius: 18px;
     padding-bottom: 0;
+    margin-bottom: 0;
 }
 
 #tab-projects .card.card-moderation .card-subtitle .moderation-stage-badge {
@@ -316,19 +319,22 @@
 }
 
 #tab-projects .card.card-moderation .moderation-results .pc-results-card {
-    margin: 0 0 12px;
-    border: 1px solid rgba(171, 194, 231, 0.12);
-    border-radius: 18px;
-    background: #182332;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+    margin: 0;
+    padding: 16px;
+    border: 0;
+    border-top: 1px solid rgba(171, 194, 231, 0.12);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .card-moderation .moderation-decision-panel {
     padding: 16px;
-    border: 1px solid rgba(171, 194, 231, 0.12);
-    border-radius: 18px;
-    background: #182332;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+    border: 0;
+    border-top: 1px solid rgba(171, 194, 231, 0.12);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .card-moderation .moderation-decision-heading {

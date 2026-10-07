@@ -1592,7 +1592,7 @@ function renderProjects(force) {
         })
         .map(function(p) {
             // Normalize archived projects properties to match myProjects schema
-            return {
+            return Object.assign({}, p, {
                 id: p.app_id || p.id,
                 status: p.status || 'completed',
                 app_status: p.status || 'completed',
@@ -1642,7 +1642,7 @@ function renderProjects(force) {
                 consumed_pending_hours: Number(p.consumed_pending_hours || 0),
                 pending_completion_started_at: p.pending_completion_started_at || null,
                 phase: 'moderation'
-            };
+            });
         });
 
     const moderationProjects = moderationFromActive.concat(moderationFromArchived).filter(function(project, index, list) {

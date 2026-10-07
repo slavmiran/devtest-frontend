@@ -98,8 +98,6 @@ function buildModerationCard(project) {
                 </div>
                 ${testerListHtml}
             </div>
-        </section>
-
         <div class="pc-results-block-slot moderation-results">${resultsHtml}</div>
 
         <section class="moderation-decision-panel" aria-label="${window.escapeHTML(actionsTitle)}">
@@ -147,6 +145,7 @@ function buildModerationCard(project) {
                     🗑️ ${window.escapeHTML(deleteLabel)}
                 </button>
             </div>
+        </section>
         </section>
     `;
 
