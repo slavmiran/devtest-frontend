@@ -416,13 +416,16 @@
     }
 
     function resultCollapsedMetric(key, value, newCount, label) {
+        var countStr = newCount > 0 ? '+' + Number(newCount) : Number(value || 0);
         return '<span class="pc-results-collapsed__metric is-' + key + (newCount > 0 ? ' has-new' : '') + '">' +
-            resultMiniIcon(key) + '<strong>' + (newCount > 0 ? '+' + Number(newCount) : Number(value || 0)) + '</strong>' +
+            resultMiniIcon(key) +
             '<span class="pc-results-collapsed__metric-label">' + window.escapeHTML(label) + '</span>' +
+            '<strong>' + window.escapeHTML(countStr) + '</strong>' +
         '</span>';
     }
 
     function buildProjectResultsCollapsed(project) {
+        if (!project) return '';
         var lang = _getLang();
         var appId = Number(project.app_id || project.id || 0);
         var summary = project.results_summary || {};
@@ -438,24 +441,19 @@
             { key: 'ideas', count: Number(project.ideas_total_count || summary.ideas_total_count || project.ideas_count || summary.ideas_count || 0), newCount: unseen.newIdeas, label: window.t('pcResultsIdea', {}, lang) },
             { key: 'reviews', count: Number(project.reviews_total_count || summary.reviews_total_count || project.reviews_count || summary.reviews_count || 0), newCount: unseen.newReviews, label: window.t('pcResultsReviews', {}, lang) }
         ];
-        var visibleMetrics = metrics.filter(function (metric) { return metric.count > 0 || metric.newCount > 0; });
 
+        // Collapsed mode: if no новинки, do NOT display the block at all.
+        // If there are новинки, display ONLY the section(s) in which there is a новинка.
+        var visibleMetrics = metrics.filter(function (metric) { return metric.newCount > 0; });
         if (!visibleMetrics.length) {
-            return (
-                '<button type="button" class="pc-results-collapsed" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
-                    '<span class="pc-results-collapsed__label">' + window.escapeHTML(collapsedTitle) + '</span>' +
-                    '<span class="pc-results-collapsed__text">' +
-                        window.escapeHTML(window.t('pcResultsEmpty', {}, lang) || 'Результаты появятся по мере тестирования') +
-                    '</span><span class="pc-results-collapsed__arrow" aria-hidden="true">›</span>' +
-                '</button>'
-            );
+            return '';
         }
 
         var metricHtml = visibleMetrics.map(function (metric) {
             return resultCollapsedMetric(metric.key, metric.count, metric.newCount, metric.label);
         }).join('');
         var metricSummary = visibleMetrics.map(function (metric) {
-            return metric.label + ': ' + (metric.newCount > 0 ? '+' + metric.newCount : metric.count);
+            return metric.label + ': +' + metric.newCount;
         }).join(', ');
         return (
             '<button type="button" class="pc-results-collapsed pc-results-collapsed--badges" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" aria-label="' + window.escapeHTML(openLabel + ': ' + metricSummary) + '">' +
@@ -3047,8 +3045,11 @@
         var subParts = [day ? ('D' + day) : '', osPart, testerName].filter(Boolean);
 
         // If openCheckinProofOverview is available and not in coverage screenshot mode
+        var coverageTesterId = Number(foundScreenshot && foundScreenshot.tester_id || tObj && tObj.tester_id || 0);
         if (typeof window.openCheckinProofOverview === 'function' && !document.getElementById('coverage-screenshot-modal')) {
             window.openCheckinProofOverview(targetProofId, {
+                appId: Number(_activeCoverageAppId || 0),
+                testerId: coverageTesterId,
                 imageCount: Number(imageCount || 1),
                 modelName: modelName,
                 title: modelName || (testerName || (day ? ('D' + day) : 'Скриншот')),
@@ -3091,10 +3092,17 @@
         // If no images found in coverage payload, fallback to legacy viewer if available
         if (images.length === 0) {
             if (typeof window.openCheckinProofOverview === 'function') {
-                window.openCheckinProofOverview(targetProofId, { imageCount: Number(imageCount || 1) });
+                window.openCheckinProofOverview(targetProofId, {
+                    appId: Number(_activeCoverageAppId || 0),
+                    testerId: coverageTesterId,
+                    imageCount: Number(imageCount || 1)
+                });
                 return;
             } else if (typeof window.openCheckinProofPreview === 'function') {
-                window.openCheckinProofPreview(targetProofId, 0);
+                window.openCheckinProofPreview(targetProofId, 0, {
+                    appId: Number(_activeCoverageAppId || 0),
+                    testerId: coverageTesterId
+                });
                 return;
             }
             return;

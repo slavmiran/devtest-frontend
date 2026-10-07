@@ -31,7 +31,8 @@ function isInternalScreenshotProofUploadEnabled(testOrAppId) {
 }
 
 function tInternalCheckinCopy(legacyKey, proofKey, params, language) {
-    return window.t(isScreenshotProofUploadEnabled() ? proofKey : legacyKey, params || {}, language || lang);
+    var unconfirmed = typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady();
+    return window.t((unconfirmed || isScreenshotProofUploadEnabled()) ? proofKey : legacyKey, params || {}, language || lang);
 }
 
 function _checkinProofTest(appId) {

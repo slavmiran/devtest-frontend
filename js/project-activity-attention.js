@@ -70,8 +70,9 @@
             // A departed tester needs a decision, not check-in reminders.
             if (state.testerLeft) item.reasons = [];
             var code = state.testerLeft ? 'tester_left' : 'broken_link';
-            if (!item.reasons.some(function (reason) { return reason.code === code; })) {
-                item.reasons.push({
+            var relationshipReason = item.reasons.find(function (reason) { return reason.code === code; });
+            if (!relationshipReason) {
+                relationshipReason = {
                     code: code,
                     label: state.testerLeft
                         ? (ru ? 'Тестер вышел' : 'Tester left')
@@ -81,8 +82,15 @@
                     action: state.testerLeft ? 'left_status' : 'link_status',
                     actionLabel: state.testerLeft
                         ? (ru ? 'Решить' : 'Review') : (ru ? 'Связь' : 'Link'),
-                });
+                };
+                item.reasons.push(relationshipReason);
             }
+            // Keep the two legs explicit for presentation. In a project roster
+            // left is the tester testing this project; right is the owner testing
+            // the tester's reciprocal project. A broken right leg must never be
+            // presented as if the tester left this project.
+            relationshipReason.testerLeft = state.testerLeft;
+            relationshipReason.viewerLeft = state.viewerLeft;
             byId.set(id, item);
         });
         return Array.from(byId.values()).map(function (item) {

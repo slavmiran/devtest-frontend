@@ -526,6 +526,69 @@
         '</button>';
     }
 
+    function rewardEntriesForTester(project, testerId, scope) {
+        var run = Number(project && project.run_iteration || 1);
+        return (Array.isArray(project && project.reward_history) ? project.reward_history : []).filter(function (entry) {
+            if (Number(entry.tester_id) !== Number(testerId)) return false;
+            var current = Number(entry.run_iteration || 1) === run;
+            return scope === 'previous' ? Number(entry.run_iteration || 1) < run : current;
+        });
+    }
+
+    function rewardIsToday(project, entry) {
+        if (entry.reward_local_date && project && project.reward_owner_local_date) {
+            return entry.reward_local_date === project.reward_owner_local_date;
+        }
+        return entry.is_today === true;
+    }
+
+    function rewardAmountLabel(entries) {
+        var karma = 0, bust = 0;
+        entries.forEach(function (entry) { karma += Number(entry.karma_amount || 0); bust += Number(entry.bust_amount || 0); });
+        return (karma > 0 ? '+' + karma.toFixed(1) + ' ' + text('pcRewardKarmaUnit', 'karma') : '') + (karma > 0 && bust > 0 ? ' · ' : '') + (bust > 0 ? '$BUST ' + Number(bust.toFixed(1)) : '');
+    }
+
+    function rewardKarmaIconHtml() {
+        if (typeof window.karmaIconHtml === 'function') return window.karmaIconHtml('karma-yin-icon--inline');
+        return '<svg class="karma-yin-icon karma-yin-icon--inline" viewBox="-40 -40 80 80" aria-hidden="true" focusable="false"><circle r="38" fill="#000000" stroke="#ffffff" stroke-width="2"></circle><path fill="#ffffff" d="M0,38a38,38 0 0 1 0,-76a19,19 0 0 1 0,38a19,19 0 0 0 0,38"></path><circle r="5.5" cy="19" fill="#ffffff"></circle><circle r="5.5" cy="-19" fill="#000000"></circle></svg>';
+    }
+
+    function rewardAmountHtml(entries) {
+        var karma = 0, bust = 0;
+        entries.forEach(function (entry) { karma += Number(entry.karma_amount || 0); bust += Number(entry.bust_amount || 0); });
+        return (karma > 0 ? '<span class="pc-reward-amount-karma">' + rewardKarmaIconHtml() + '<span>+' + karma.toFixed(1) + '</span></span>' : '') +
+            (karma > 0 && bust > 0 ? '<span aria-hidden="true"> · </span>' : '') +
+            (bust > 0 ? '<span>$BUST ' + Number(bust.toFixed(1)) + '</span>' : '');
+    }
+
+    function rewardReasonLabel(entry, brief) {
+        if (entry.kind === 'feedback') {
+            var kind = String(entry.feedback_type || '');
+            var label = kind === 'bug' ? text('pcProofBug', 'Bug') : (kind === 'idea' ? text('pcContributionIdea', 'Recommendation') : text('pcProofReview', 'Review'));
+            return label + ' #' + Number(entry.feedback_id || 0);
+        }
+        if (brief && entry.type === 'good') return text('karmaSelectGood', 'Thanks');
+        return entry.type === 'good' ? text('pcRewardGeneralThanks', 'Thanks for overall contribution') :
+            (entry.type === 'overtime' ? text('pcRewardOvertime', 'Testing beyond the required period') : text('pcRewardGeneralSpecial', 'Special contribution'));
+    }
+
+    function todayRewardBadgesHtml(appId, item, context) {
+        var project = context.project;
+        var entries = rewardEntriesForTester(project, item.testerId).filter(function (entry) {
+            return Number(entry.karma_amount || 0) > 0 && rewardIsToday(project, entry) && !(entry.feedback_id && (item.reasons || []).some(function (reason) { return Number(reason.feedbackId) === Number(entry.feedback_id); }));
+        });
+        return entries.map(function (entry) {
+            var click = entry.feedback_id ? 'pcOpenFeedback(' + Number(appId) + ',' + Number(entry.feedback_id) + ')' : 'pcRewardTester(' + Number(appId) + ',' + Number(item.testerId) + ')';
+            var amount = Number(entry.karma_amount || 0);
+            var amountText = '+' + amount.toFixed(1);
+            var title = rewardReasonLabel(entry) + ' · ' + text('pcRewardIssuedToday', 'Issued today') + ' · ' + amountText;
+            return '<button type="button" class="pc-award-badge pc-award-badge--karma pc-award-badge--today" onclick="event.stopPropagation(); ' + click + '" title="' + esc(title) + '">' +
+                rewardKarmaIconHtml() +
+                '<span class="pc-award-badge__value">' + esc(amountText) + '</span>' +
+            '</button>';
+        }).join('');
+    }
+
     function awardedRewardBadgeHtml(context, testerId, item) {
         var rewards = (context && context.rewardTypesByTester && context.rewardTypesByTester[Number(testerId)]) || [];
         var karmaIcon = typeof window.karmaIconHtml === 'function'
@@ -1471,6 +1534,12 @@
             }
         }
         var targetTesterId = Number((item && item.testerId) || (opts && opts.testerId) || 0);
+        var rewardProject = opts.context && opts.context.project;
+        var linkedReward = feedbackId > 0 ? rewardEntriesForTester(rewardProject, targetTesterId).find(function (entry) { return Number(entry.feedback_id) === feedbackId; }) : null;
+        if (linkedReward) {
+            itemKarma = rewardIsToday(rewardProject, linkedReward) ? Number(linkedReward.karma_amount || 0) : 0;
+            itemBust = rewardIsToday(rewardProject, linkedReward) ? Number(linkedReward.bust_amount || 0) : 0;
+        }
         // A reward belongs to one feedback record, not to every later report
         // from the same tester. Do not infer it from the tester's reward history:
         // that showed yesterday's reward on today's new ticket.
@@ -1507,7 +1576,8 @@
         if (feedbackId > 0) {
             mainClick = 'pcOpenFeedback(' + safeAppId + ',' + feedbackId + ')';
         } else if (proofId > 0) {
-            mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount ? ',' + imageCount : '') + ')';
+            var proofOptStr = targetTesterId > 0 ? ('{testerId:' + targetTesterId + '}') : '';
+            mainClick = 'pcOpenProofOverview(' + safeAppId + ',' + proofId + (imageCount || proofOptStr ? ',' + (imageCount || 1) : '') + (proofOptStr ? ',' + proofOptStr : '') + ')';
         }
 
         var feedbackStatus = String(item && (item.feedbackStatus || item.status) || '').toLowerCase();
@@ -1527,6 +1597,7 @@
             }
         }
 
+        var todayRewardBadges = String(opts.todayRewardBadgesHtml || '');
         var awardsRowHtml = '';
         if (isRejected) {
             var rReason = typeof resolveFeedbackRejectReasonLabel === 'function'
@@ -1543,8 +1614,9 @@
                 '<span class="pc-award-badge pc-award-badge--rejected" title="' + esc(chipLabel) + '">' +
                     badgeContentHtml +
                 '</span>' +
+                todayRewardBadges +
             '</div>';
-        } else if (itemKarma > 0 || itemBust > 0 || boostBust > 0) {
+        } else if (itemKarma > 0 || itemBust > 0 || boostBust > 0 || todayRewardBadges) {
             var kBadge = '';
             if (itemKarma > 0) {
                 var kVal = '+' + (itemKarma % 1 === 0 ? itemKarma.toFixed(1) : itemKarma.toFixed(1));
@@ -1577,7 +1649,7 @@
             }
             awardsRowHtml = '<div class="pc-proof-album-card__awards-row"' +
                 (mainClick ? ' onclick="event.stopPropagation(); ' + mainClick + '"' : '') +
-                '>' + kBadge + bBadge + '</div>';
+                '>' + kBadge + bBadge + todayRewardBadges + '</div>';
         }
 
         var topHtml = '<button type="button" class="pc-proof-album-card__main" onclick="event.stopPropagation(); ' + mainClick + '">' +
@@ -1638,13 +1710,14 @@
         list = list.filter(Boolean);
         if (!list.length) return '';
         var stepOpts = Object.assign({}, opts, { reasons: opts.reasons || list });
-        var stepsHtml = list.map(function (item) {
+        var stepsHtml = list.map(function (item, index) {
             var type = String(item && (item.kind || item.proofType) || '');
             if (type === 'screenshots') type = 'screenshot';
             if (!type && item && item.proofId > 0) type = 'screenshot';
             if (!type) type = 'screenshot';
             var isDone = isItemActionDone(item);
-            var cardHtml = activityCardHtml(appId, item, stepOpts);
+            var itemOpts = index === 0 ? stepOpts : Object.assign({}, stepOpts, { todayRewardBadgesHtml: '' });
+            var cardHtml = activityCardHtml(appId, item, itemOpts);
             var nodeIcon = isDone
                 ? '<svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
                 : '';
@@ -2429,6 +2502,18 @@
             if (row.proofType === 'idea' && !item.idea) item.idea = row;
             if (row.proofType === 'play_review' && !item.play_review) item.play_review = row;
         });
+        (project && project.testers || []).forEach(function (tester) {
+            var testerId = Number(tester.tester_id || tester.id || 0);
+            if (!testerId || byTester[testerId]) return;
+            var rewards = rewardEntriesForTester(project, testerId).filter(function (entry) { return rewardIsToday(project, entry); });
+            if (!rewards.length) return;
+            byTester[testerId] = {
+                testerId: testerId, tester: tester, progressId: Number(tester.progress_id || 0),
+                screenshotCount: 0, screenshotSeriesCount: 0, screenshotRow: null,
+                bug: null, idea: null, play_review: null, latestCreatedAt: rewards[0].created_at || '',
+            };
+            order.push(testerId);
+        });
         return order.map(function (testerId) {
             var item = byTester[testerId];
             var reasons = [];
@@ -2652,7 +2737,7 @@
         });
         if (hasUnprocessed) return 1;
 
-        var isRewarded = context && context.rewardedTesterIds && context.rewardedTesterIds.indexOf(Number(item.testerId)) !== -1;
+        var isRewarded = context && context.rewardedTodayTesterIds && context.rewardedTodayTesterIds.indexOf(Number(item.testerId)) !== -1;
         var hasFeedback = reasons.some(function (r) { return r.feedbackId > 0; });
         var allFeedbackProcessed = hasFeedback && reasons.every(function (r) {
             return r.feedbackId > 0 ? isProcessed(r) : true;
@@ -2821,7 +2906,7 @@
         return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' + (rewardedToday ? ' is-tester-rewarded-today' : '') + '" ' +
             'title="' + esc(label) + '" ' +
             'aria-label="' + esc(label) + '" ' +
-            (rewardedToday ? 'disabled ' : 'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')" ') + '>' +
+            'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')" >' +
             '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
             completeMarkHtml +
             orbitHtml +
@@ -3008,8 +3093,6 @@
         return '<ul class="pc-act-list">' + sorted.map(function (item) {
             var rewardState = rewardStateForTester(context, item.testerId);
             var headerActionsHtml = '';
-            var boostBust = getTesterBoostBust(context, item.testerId, item);
-            var boostBustHtml = boostRewardBadgeHtml(boostBust);
             if (rewardState.canReward || rewardState.rewardedToday) {
                 var isInitialTarget = rewardState.canReward && Number(item.testerId) === initialSparkleTesterId;
                 headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
@@ -3021,17 +3104,21 @@
                 });
             }
 
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons, { testerId: item.testerId, context: context, reasons: item.reasons, item: item });
+            var subrowsHtml = activityTimelineHtml(appId, item.reasons, {
+                testerId: item.testerId,
+                context: context,
+                reasons: item.reasons,
+                item: item,
+                todayRewardBadgesHtml: todayRewardBadgesHtml(appId, item, context),
+            });
             var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
-            var issuedTypes = (context.rewardTypesByTester && context.rewardTypesByTester[Number(item.testerId)]) || [];
-            var issuedBadgeHtml = issuedTypes.length ? awardedRewardBadgeHtml(context, item.testerId, item) : '';
 
             return personRowHtml({
                 appId: appId,
                 tester: item.tester,
                 tone: rewardState.rewardedToday ? 'green' : 'sky',
                 rowClass: 'pc-person--contribution',
-                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context) + issuedBadgeHtml,
+                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
                 actionsHtml: headerActionsHtml,
                 avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
                 extraHtml: subrowsHtml,
@@ -3122,7 +3209,7 @@
         missed_control_received: '📸',
         direct_invite: '🔗',
         tester_left: '🚫',
-        broken_link: '🚫',
+        broken_link: '💔',
         not_opened: '👀',
     };
 
@@ -3150,14 +3237,22 @@
         var isBrokenLink = reason.action === 'link_status' || code === 'broken_link';
 
         if (isLeftAction || isBrokenLink) {
-            priorityLevel = 'p1';
-            reasonIcon = ATTENTION_GLYPHS.tester_left;
-            title = text('pcAttentionLeftTitle', 'Тестер прервал участие');
+            var viewerLeftReciprocal = isBrokenLink && reason.viewerLeft === true && reason.testerLeft !== true;
+            priorityLevel = viewerLeftReciprocal ? 'p2' : 'p1';
+            reasonIcon = viewerLeftReciprocal ? ATTENTION_GLYPHS.broken_link : ATTENTION_GLYPHS.tester_left;
+            title = viewerLeftReciprocal
+                ? text('pcAttentionViewerLeftTitle', 'Вы вышли из проекта партнёра')
+                : text('pcAttentionLeftTitle', 'Тестер прервал участие');
             hasAccordion = true;
             isDone = false;
 
             var hasReciprocalApp = Number(tester && tester.reciprocal_app_id || 0) > 0;
-            if (hasReciprocalApp) {
+            if (viewerLeftReciprocal) {
+                subtitle = text('pcAttentionViewerLeftSubtitle', 'Взаимная связь разорвана\nТестер остаётся в вашем проекте');
+                spoilerText = text('pcAttentionViewerLeftDrawer', 'Вы прекратили тестирование проекта партнёра, но ваш проект по-прежнему остаётся у тестера. Он видит, что взаимная связь разорвана, и может продолжить тестирование или выйти самостоятельно. При необходимости вы можете исключить его из проекта.');
+                actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); openKickTesterModal(' + safeAppId + ',' + safeTesterId + ', event, {forceUnlink:false,unlinkReciprocal:false})">' +
+                    esc(text('pcAttentionExcludeTester', 'Исключить из проекта')) + '</button>');
+            } else if (hasReciprocalApp) {
                 subtitle = text('pcAttentionLeftSubtitle', 'Штраф нарушителю начислен\nВы можете выйти из его теста');
                 spoilerText = text('pcAttentionLeftDrawer', 'Участник покинул проект или исключён платформой со штрафом к Карме. Вы больше не обязаны тестировать его приложение: перейдите в проект партнёра, чтобы закрыть тест без штрафа и удалить приложение, либо скройте тестера из списка.');
                 actions.push('<button type="button" class="pc-attention-btn pc-attention-btn--danger" onclick="event.stopPropagation(); openLeftTesterLinkStatus(' + safeAppId + ',' + safeTesterId + ', event)">' +
@@ -5519,8 +5614,11 @@
         }
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
+        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
         if (typeof openCheckinProofPreview !== 'function') return;
         return openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
+            appId: Number(appId || 0),
+            testerId: safeTesterId,
             imageCount: Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || 1),
             title: fallbackTitle,
             subtitle: fallbackSubtitle,
@@ -5552,9 +5650,12 @@
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
         var fallbackImageCount = Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || fallbackCount || 1);
+        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
 
         if (typeof openCheckinProofOverview === 'function') {
             return openCheckinProofOverview(Number(proofId), {
+                appId: Number(appId || 0),
+                testerId: safeTesterId,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
@@ -5562,6 +5663,8 @@
         }
         if (typeof openCheckinProofPreview === 'function') {
             return openCheckinProofPreview(Number(proofId || 0), 0, {
+                appId: Number(appId || 0),
+                testerId: safeTesterId,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
@@ -5574,9 +5677,11 @@
        ========================================================================== */
 
     var _contributorDossierSeq = 0;
+    var _contributorDossierProfiles = new Map();
 
     function setupDossierSwipeDown(modalEl) {
         var sheet = modalEl ? modalEl.querySelector('.pc-dossier-sheet') : null;
+        var body = modalEl ? modalEl.querySelector('.pc-dossier-body') : null;
         if (!sheet || sheet._hasSwipeListener) return;
         sheet._hasSwipeListener = true;
         var startY = 0;
@@ -5584,8 +5689,9 @@
         var isDragging = false;
 
         sheet.addEventListener('touchstart', function (e) {
-            if (sheet.scrollTop > 5) return;
+            if (body && body.contains(e.target) && body.scrollTop > 5) return;
             startY = e.touches[0].clientY;
+            currentY = startY;
             isDragging = true;
         }, { passive: true });
 
@@ -5593,7 +5699,7 @@
             if (!isDragging) return;
             currentY = e.touches[0].clientY;
             var delta = currentY - startY;
-            if (delta > 0 && sheet.scrollTop <= 0) {
+            if (delta > 0) {
                 sheet.style.transform = 'translateY(' + delta + 'px)';
             }
         }, { passive: true });
@@ -5607,13 +5713,139 @@
                 window.closeContributorDossierModal();
             }
         });
+        sheet.addEventListener('touchcancel', function () {
+            isDragging = false;
+            sheet.style.transform = '';
+        });
     }
+
+    function rewardCategory(entry) {
+        if (entry.kind !== 'feedback') return 'general';
+        var kind = String(entry.feedback_type || '');
+        return kind === 'bug' ? 'bug' : (kind === 'idea' ? 'idea' : 'review');
+    }
+
+    function dossierRewardCategoryHtml(project, testerId, category) {
+        var entries = rewardEntriesForTester(project, testerId).filter(function (entry) { return rewardCategory(entry) === category; });
+        if (!entries.length) return '';
+        return '<button type="button" class="pc-dossier-reward-note" onclick="pcFocusContributorRewards(\'' + category + '\')">' +
+            esc(text('pcRewardsCategoryLabel', 'Appreciation')) + ': ' + rewardAmountHtml(entries) + ' <span aria-hidden="true">›</span></button>';
+    }
+
+    function dossierRewardEntriesHtml(project, entries, focus) {
+        return entries.map(function (entry) {
+            var today = rewardIsToday(project, entry) && Number(entry.run_iteration || 1) === Number(project.run_iteration || 1);
+            var focused = focus === 'earlier' ? !today : (focus && rewardCategory(entry) === focus);
+            var day = entry.reward_local_date || '';
+            var dateLabel = day ? new Date(day + 'T12:00:00Z').toLocaleDateString(typeof lang !== 'undefined' && lang === 'ru' ? 'ru-RU' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : text('pcRewardDateUnknown', 'Date not recorded');
+            var action = entry.feedback_id ? '<button type="button" class="pc-dossier-reward__open" onclick="closeContributorDossierModal(); pcOpenFeedback(' + Number(project.id || project.app_id) + ',' + Number(entry.feedback_id) + ')">' + esc(text('pcRewardOpenReport', 'Open report')) + ' ›</button>' : '';
+            var row = '<span class="pc-dossier-reward__main"><span class="pc-dossier-reward__label">' + esc(rewardReasonLabel(entry, true)) + '</span>' +
+                '<span class="pc-dossier-reward__date">' + (today ? esc(text('pcRewardTodayShort', 'Today')) + ' · ' : '') + esc(dateLabel) + '</span></span>' +
+                '<span class="pc-dossier-reward__amount" aria-label="' + esc(rewardAmountLabel([entry])) + '">' + rewardAmountHtml([entry]) + '</span>';
+            if (!entry.reason && !action) {
+                return '<div class="pc-dossier-reward' + (focused ? ' is-focused' : '') + '" data-reward-category="' + rewardCategory(entry) + '" data-reward-earlier="' + (!today) + '" title="' + esc(rewardReasonLabel(entry)) + '"><div class="pc-dossier-reward__summary">' + row + '</div></div>';
+            }
+            return '<details class="pc-dossier-reward' + (focused ? ' is-focused' : '') + '" data-reward-category="' + rewardCategory(entry) + '" data-reward-earlier="' + (!today) + '">' +
+                '<summary>' + row + '</summary>' +
+                '<div class="pc-dossier-reward__detail">' +
+                (entry.reason ? '<p class="pc-dossier-reward__reason">' + esc(entry.reason) + '</p>' : '') + action + '</div></details>';
+        }).join('');
+    }
+
+    function dossierRewardHistoryHtml(project, testerId, focus) {
+        if (!project) return '';
+        var current = rewardEntriesForTester(project, testerId);
+        var previous = rewardEntriesForTester(project, testerId, 'previous');
+        var allEntries = current.concat(previous);
+        if (!allEntries.length) return '';
+
+        var totalKarma = 0;
+        var totalBust = 0;
+        allEntries.forEach(function (entry) {
+            totalKarma += Number(entry.karma_amount || 0);
+            totalBust += Number(entry.bust_amount || 0);
+        });
+
+        var karmaChipHtml = totalKarma > 0
+            ? '<span class="pc-dossier-reward-sum-chip is-karma">' + rewardKarmaIconHtml() + '<span>+' + totalKarma.toFixed(1) + ' ' + esc(text('karmaWord', 'кармы')) + '</span></span>'
+            : '';
+        var bustChipHtml = totalBust > 0
+            ? '<span class="pc-dossier-reward-sum-chip is-bust">💎 <span>+' + Number(totalBust.toFixed(1)) + ' $BUST</span></span>'
+            : '';
+
+        var fromYou = text('pcDossierUnifiedFromYou', 'От вас тестеру');
+        var runsNote = previous.length
+            ? (current.length ? text('pcDossierUnifiedRunsBoth', 'текущий и прошлые запуски') : text('pcDossierUnifiedRunsPast', 'прошлые запуски'))
+            : text('pcDossierUnifiedRunsCurrent', 'текущий запуск');
+        var countStr = text('pcDossierUnifiedRewardsCount', '{count} поощр.', { count: allEntries.length });
+        var subtitleStr = fromYou + ' · ' + runsNote + ' · ' + countStr;
+
+        var currentHtml = current.length
+            ? '<div id="pc-dossier-current-rewards" class="pc-dossier-rewards-group">' +
+                (previous.length
+                    ? '<div class="pc-dossier-rewards-group__title">' + esc(text('pcRewardsRunTitle', 'Благодарности за текущий запуск')) + '</div>'
+                    : '') +
+                dossierRewardEntriesHtml(project, current, focus) +
+              '</div>'
+            : '<div id="pc-dossier-current-rewards"></div>';
+
+        var previousHtml = '';
+        if (previous.length) {
+            var runs = Array.from(new Set(previous.map(function (entry) { return Number(entry.run_iteration || 1); }))).sort(function (a, b) { return b - a; });
+            previousHtml = '<details class="pc-dossier-previous-rewards"><summary><span>' + esc(text('pcRewardsPreviousRuns', 'Предыдущие запуски')) + '</span><span class="pc-dossier-rewards-count">' + previous.length + '</span></summary>' +
+                runs.map(function (oldRun) { return '<h4 class="pc-dossier-reward-run">' + esc(text('pcLaunchNumber', 'Run {run}', { run: oldRun })) + '</h4>' + dossierRewardEntriesHtml(project, previous.filter(function (entry) { return Number(entry.run_iteration || 1) === oldRun; }), ''); }).join('') + '</details>';
+        }
+
+        return '<section class="pc-dossier-section pc-dossier-rewards-section">' +
+            '<details class="pc-dossier-rewards-unified pc-dossier-rewards-current"' + (focus ? ' open' : '') + '>' +
+                '<summary class="pc-dossier-rewards-unified__head">' +
+                    '<div class="pc-dossier-rewards-unified__head-row">' +
+                        '<div class="pc-dossier-rewards-unified__title-group">' +
+                            '<span class="pc-dossier-rewards-unified__icon" aria-hidden="true">🎁</span>' +
+                            '<div class="pc-dossier-rewards-unified__title">' + esc(text('pcDossierUnifiedRewardsTitle', 'Выданные награды')) + '</div>' +
+                        '</div>' +
+                        '<span class="pc-dossier-rewards-unified__arrow" aria-hidden="true">›</span>' +
+                    '</div>' +
+                    '<div class="pc-dossier-rewards-unified__sub-row">' +
+                        '<div class="pc-dossier-rewards-unified__subtitle">' + esc(subtitleStr) + '</div>' +
+                        '<div class="pc-dossier-rewards-unified__meta">' +
+                            karmaChipHtml +
+                            bustChipHtml +
+                        '</div>' +
+                    '</div>' +
+                '</summary>' +
+                '<div class="pc-dossier-rewards-unified__body">' +
+                    currentHtml +
+                    previousHtml +
+                '</div>' +
+            '</details>' +
+        '</section>';
+    }
+
+    window.pcFocusContributorRewards = function (category) {
+        var section = document.getElementById('pc-dossier-current-rewards') || document.querySelector('.pc-dossier-rewards-unified');
+        if (!section) return;
+        var unified = section.closest('.pc-dossier-rewards-unified') || section.querySelector('.pc-dossier-rewards-unified');
+        if (unified) unified.open = true;
+        var first = null;
+        var root = section.closest('.pc-dossier-rewards-section') || section;
+        root.querySelectorAll('.pc-dossier-reward').forEach(function (node) {
+            var match = category === 'earlier' ? node.getAttribute('data-reward-earlier') === 'true' : node.getAttribute('data-reward-category') === category;
+            node.classList.toggle('is-focused', match);
+            if (match && !first) first = node;
+        });
+        if (first) {
+            first.open = true;
+            try { first.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+        }
+    };
 
     function renderContributorDossierHtml(opts) {
         var profile = opts.profile || {};
         var tester = opts.tester || {};
         var appId = opts.appId;
         var testerId = opts.testerId;
+        var safeTesterId = Number(testerId || 0);
         var project = opts.project || (typeof projectById === 'function' ? projectById(appId) : null);
         var username = opts.username || profile.username || tester.username || '';
         var cleanUsername = String(username || '').replace(/^@+/, '');
@@ -5803,6 +6035,8 @@
             var pRevs = 0, pRevsAcc = 0, pRevsPend = 0;
             window._activeProjectFeedbackItems.forEach(function (f) {
                 if (!f || Number(f.tester_id || f.user_id || 0) !== safeTesterId) return;
+                if (Number(f.app_id || 0) !== Number(appId || 0)) return;
+                if (Number(f.run_iteration || 1) !== Number(project && project.run_iteration || 1)) return;
                 var t = String(f.type || '').toLowerCase();
                 var st = String(f.status || '').toLowerCase();
                 var isAcc = st === 'accepted' || st === 'approved' || st === 'processed' || st === 'tipped';
@@ -5853,6 +6087,7 @@
         projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
             '<span style="color: #94a3b8;">' + esc(text('pcDossierPlayReview', 'Отзыв в Google Play')) + '</span>' +
             '<span class="pc-dossier-badge-status ' + playReviewBadgeClass + '">' + esc(playReviewLabel) + '</span>' +
+            (projectReviewsTotal > 0 ? '' : dossierRewardCategoryHtml(project, safeTesterId, 'review')) +
         '</div>';
 
         // 3. Screenshot series row (rendered if > 0)
@@ -5875,6 +6110,7 @@
                 esc(text('pcDossierSentCount', '{count} отправлено', { count: projectBugsTotal })) + bAccHtml + bPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + bugsProjHtml + '</span>' +
+                dossierRewardCategoryHtml(project, safeTesterId, 'bug') +
             '</div>';
         }
 
@@ -5890,6 +6126,7 @@
                 esc(text('pcDossierSentCount', '{count} отправлено', { count: projectIdeasTotal })) + iAccHtml + iPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + ideasProjHtml + '</span>' +
+                dossierRewardCategoryHtml(project, safeTesterId, 'idea') +
             '</div>';
         }
 
@@ -5905,6 +6142,7 @@
                 esc(text('pcDossierSentCount', '{count} отправлено', { count: projectReviewsTotal })) + rAccHtml + rPendHtml;
             projectContributionsHtml += '<div class="pc-dossier-detail-row">' +
                 '<span>' + revsProjHtml + '</span>' +
+                dossierRewardCategoryHtml(project, safeTesterId, 'review') +
             '</div>';
         }
 
@@ -5944,9 +6182,6 @@
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="pc-dossier-rank-badge pc-dossier-rank-badge' + rankClass + '">' +
-                esc(rankText) +
-            '</div>' +
             '<section class="pc-dossier-section">' +
                 '<div class="pc-dossier-section__title">' +
                     '<span class="pc-dossier-section__title-ico" aria-hidden="true">🏆</span>' +
@@ -5982,25 +6217,22 @@
                 '<div class="pc-dossier-section__title">' +
                     '<span class="pc-dossier-section__title-ico" aria-hidden="true">📱</span>' +
                     '<span>' + esc(text('pcDossierSecProject', 'Вклад в ваш проект')) + '</span>' +
+                    '<span class="pc-dossier-section__subtitle">' + esc(text('pcCurrentLaunch', 'Current run')) + '</span>' +
                 '</div>' +
                 projectContributionsHtml +
             '</section>' +
-            '<section class="pc-dossier-section" style="margin-bottom: 0;">' +
-                '<div class="pc-dossier-summary-card pc-dossier-summary-card' + summaryClass + '">' +
-                    '<div class="pc-dossier-summary-card__head">' + esc(text('pcDossierSecSummary', 'Резюме по тестеру')) + '</div>' +
-                    '<div class="pc-dossier-summary-card__text">' + esc(summaryText) + '</div>' +
-                '</div>' +
-            '</section>';
+            dossierRewardHistoryHtml(project, safeTesterId, opts.rewardFocus);
     }
 
     window.closeContributorDossierModal = function (event) {
-        if (event && event.target && event.target.id !== 'contributor-dossier-modal' && !event.target.closest('.pc-dossier-sheet__close')) return;
+        if (event && event.target && event.target.id !== 'contributor-dossier-modal') return;
         var modal = document.getElementById('contributor-dossier-modal');
         if (modal) modal.classList.remove('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     };
 
-    window.openContributorDossierModal = async function (username, testerId, appId) {
+    window.openContributorDossierModal = async function (username, testerId, appId, options) {
+        options = options || {};
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
             try { window.Telegram.WebApp.HapticFeedback.selectionChanged(); } catch (_) {}
         }
@@ -6014,6 +6246,12 @@
         }
 
         var openSeq = ++_contributorDossierSeq;
+        var heading = modal.querySelector('.pc-dossier-heading');
+        if (!heading) {
+            bodyEl.insertAdjacentHTML('beforebegin', '<div class="pc-dossier-heading"><h2 id="pc-dossier-title"></h2></div>');
+        }
+        modal.querySelector('#pc-dossier-title').textContent = text('pcContributorDossierTitle', 'Tester contribution');
+        bodyEl.scrollTop = 0;
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 
@@ -6027,6 +6265,13 @@
             });
         }
         var cachedProfile = (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache && _dossierProfilesCache[String(safeTesterId)]) || null;
+        var profileKey = safeTesterId + ':' + safeAppId + ':' + Number(project && project.run_iteration || 1);
+        if (_contributorDossierProfiles.has(profileKey)) {
+            cachedProfile = _contributorDossierProfiles.get(profileKey);
+        } else if (cachedProfile) {
+            cachedProfile = Object.assign({}, cachedProfile);
+            Object.keys(cachedProfile).forEach(function (key) { if (key.indexOf('project_') === 0) delete cachedProfile[key]; });
+        }
 
         bodyEl.innerHTML = renderContributorDossierHtml({
             username: username || (rosterTester && rosterTester.username) || '',
@@ -6035,8 +6280,11 @@
             project: project,
             tester: rosterTester || {},
             profile: cachedProfile || rosterTester || {},
-            isLoading: !cachedProfile
+            isLoading: !cachedProfile,
+            rewardFocus: options.rewardFocus,
         });
+
+        if (options.rewardFocus) window.pcFocusContributorRewards(options.rewardFocus);
 
         setupDossierSwipeDown(modal);
 
@@ -6046,6 +6294,7 @@
             if (resp.ok) {
                 var freshProfile = await resp.json();
                 if (openSeq !== _contributorDossierSeq) return;
+                _contributorDossierProfiles.set(profileKey, freshProfile);
                 if (typeof _dossierProfilesCache !== 'undefined' && _dossierProfilesCache) {
                     _dossierProfilesCache[String(safeTesterId)] = Object.assign({}, cachedProfile || {}, freshProfile);
                 }
@@ -6056,8 +6305,10 @@
                     project: project,
                     tester: rosterTester || {},
                     profile: freshProfile,
-                    isLoading: false
+                    isLoading: false,
+                    rewardFocus: options.rewardFocus,
                 });
+                if (options.rewardFocus) window.pcFocusContributorRewards(options.rewardFocus);
             }
         } catch (fetchErr) {
             console.warn('[ContributorDossier] profile fetch error:', fetchErr);
@@ -6068,6 +6319,9 @@
     window.controlActivitySignalChipHtml = controlActivitySignalChipHtml;
     window.controlRowHtml = controlRowHtml;
     window.renderContributorDossierHtml = renderContributorDossierHtml;
+    window.pcRewardEntriesForTester = rewardEntriesForTester;
+    window.pcRewardAmountLabel = rewardAmountLabel;
+    window.pcRewardAmountHtml = rewardAmountHtml;
     window.calculateTesterControlActivityAssessment = calculateTesterControlActivityAssessment;
     window.calculateTesterControlRisk = calculateTesterControlActivityAssessment;
 })();
