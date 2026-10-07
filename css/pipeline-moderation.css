@@ -30,7 +30,7 @@
 }
 
 .card-moderation .moderation-overview::before {
-    content: '';
+    content: none;
     position: absolute;
     top: 0;
     left: 0;
@@ -378,4 +378,46 @@
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* Numbered journey: results belong to testing; decisions lead to growth. */
+.card-moderation .moderation-timeline { padding: 4px 16px 0; }
+.card-moderation .moderation-phase { position: relative; padding: 0 0 24px 30px; }
+.card-moderation .moderation-phase:not(:last-child)::before {
+    content: ''; position: absolute; left: 10px; top: 30px; bottom: 0;
+    width: 1px; background: rgba(160, 179, 202, .22);
+}
+.card-moderation .moderation-phase-heading { display: flex; align-items: center; min-height: 38px; margin-bottom: 12px; }
+.card-moderation .moderation-phase-number {
+    position: absolute; left: -2px; top: 7px; width: 25px; height: 25px;
+    display: grid; place-items: center; border: 1px solid rgba(160,179,202,.3);
+    border-radius: 50%; color: #a4b0c0; background: #192533; font-size: 12px; font-weight: 700;
+}
+.card-moderation .is-done .moderation-phase-number { color: #6ed4ac; border-color: #437968; }
+.card-moderation .is-current .moderation-phase-number { color: #f4b552; border-color: #a0783b; background: #302c27; }
+.card-moderation .moderation-phase-status { color: var(--hint-color, #91a0b2); font-size: 10px; line-height: 1.4; }
+.card-moderation .is-current .moderation-phase-status { color: #f4b552; }
+.card-moderation .moderation-phase-heading h3 { margin: 2px 0 0; font-size: 15px; line-height: 1.3; font-weight: 650; }
+#tab-projects .card.card-moderation .moderation-results .pc-results-card { padding: 0; border: 0; }
+.card-moderation .moderation-info-block { padding: 12px; background: rgba(244,181,82,.045); border-color: rgba(244,181,82,.18); }
+.card-moderation .moderation-info-title { font-size: 13px; color: var(--text-color,#fff); margin-bottom: 6px; }
+.card-moderation .moderation-duration { display: inline-block; font-size: 10px; color: #c5ad88; margin-bottom: 10px; }
+.card-moderation .moderation-info-text { font-size: 12px; color: var(--hint-color,#9aa7bb); opacity: 1; }
+.card-moderation .moderation-return-hint { font-size: 12px; line-height: 1.5; margin-top: 10px; color: var(--text-color,#fff); }
+.card-moderation .moderation-decision-panel { padding: 14px 0 0; border: 0; }
+.card-moderation .moderation-decision-heading { font-size: 11px; font-weight: 500; color: var(--hint-color,#9aa7bb); margin-bottom: 10px; }
+.card-moderation .btn-moderation-live, .card-moderation .btn-moderation-retest {
+    justify-content: space-between; text-align: left; padding: 12px; gap: 8px;
+    font-size: 13px; line-height: 1.35; border-radius: 12px; letter-spacing: 0; box-shadow: none;
+}
+.card-moderation .btn-moderation-live { background: #efb354; }
+.card-moderation .btn-moderation-retest { color: #bbc9da; background: rgba(147,174,209,.04); border-color: rgba(147,174,209,.18); }
+.card-moderation .moderation-button-copy { display: flex; flex-direction: column; gap: 3px; }
+.card-moderation .moderation-button-copy small { font-size: 11px; font-weight: 400; opacity: .75; }
+.card-moderation .moderation-growth-text { font-size: 12px; line-height: 1.5; margin: 0; color: var(--hint-color,#9aa7bb); }
+.card-moderation .btn-moderation-delete { padding: 0 16px 18px; }
+@media (max-width: 360px) {
+    .card-moderation .moderation-timeline { padding-left: 12px; padding-right: 12px; }
+    .card-moderation .moderation-phase { padding-left: 26px; }
+    #tab-projects .card.card-moderation .moderation-results .pc-results-grid { gap: 4px; }
 }

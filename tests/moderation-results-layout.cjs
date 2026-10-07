@@ -33,7 +33,7 @@ const styles = [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([^"?
                 window.myProjects = [];
                 window.archivedProjects = [{app_id:30, name:'Newbotadd garant', package_name:'com.slavmiran.quickchatnewonemore',
                     status:'completed', phase:'moderation', run_iteration:2, icon_url:'icon-test',
-                    bugs_total_count:1, bugs_new_count:1, feedback_total_count:1, feedback_new_count:1,
+                    bugs_total_count:1, bugs_new_count:1, reviews_total_count:1, feedback_total_count:2, feedback_new_count:1,
                     results_summary:{models_count:2, countries_count:1, screenshots_count:10, checkins_count:3,
                         coverage_tuples:[['nothing a142',16], ['nothing phone 2a',16]], countries_list:['VN'], bugs_total_count:1, bugs_new_count:1}}];
             }, language);
@@ -60,7 +60,9 @@ const styles = [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([^"?
                         return rect.left >= boundary.left && rect.right <= boundary.right + 1 && rect.bottom <= boundary.bottom + 1;
                     }),
                     overflow: document.documentElement.scrollWidth > window.innerWidth,
-                    gap: actions.getBoundingClientRect().top - results.getBoundingClientRect().bottom,
+                    phases: card.querySelectorAll('.moderation-phase').length,
+                    packageHidden: !card.textContent.includes(project.package),
+                    resultsFirst: results.getBoundingClientRect().bottom < card.querySelector('.moderation-info-block').getBoundingClientRect().top,
                 };
             });
             assert.equal(check.shells, 1, 'One outer shell, not three disconnected cards');
@@ -69,10 +71,27 @@ const styles = [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([^"?
             assert.equal(check.resultRadius, '0px'); assert.equal(check.actionRadius, '0px');
             assert(parseFloat(check.shellRadius.split(' ').at(-1)) > 0, JSON.stringify(check));
             assert(parseFloat(check.shellBottom) > 0, 'The card must have a closed bottom border');
-            assert(Math.abs(check.gap) <= 1, 'Internal sections must join seamlessly');
+            assert.equal(check.phases, 3);
+            assert(check.packageHidden && check.resultsFirst);
             assert(!check.overflow, 'No horizontal overflow on narrow screens');
             assert.deepEqual(errors, []);
             await page.screenshot({path: path.join(output, `moderation-${language}-${width}.png`), fullPage: true});
+            await page.evaluate(() => {
+                const card = document.getElementById('project-card-30');
+                const fresh = key => card.querySelector('.pc-results-tile--' + key).classList.contains('has-new');
+                if (!fresh('models') || !fresh('countries')) throw new Error('Fixture must start unseen');
+                markProjectCoverageSeen(30, {coverage_tuples: [['nothing a142',16], ['nothing phone 2a',16]]});
+                if (fresh('models') || !fresh('countries')) throw new Error('Archive model view must update immediately and preserve country badge');
+                markProjectCoverageSeen(30, {countries_list:['VN']});
+                if (fresh('countries') || !fresh('bugs')) throw new Error('Country view must update immediately without clearing feedback');
+                // Same shared refresh path for active testing and live cards.
+                window.myProjects = [Object.assign({}, archivedProjects[0], {id:30, phase:'live'})];
+                window.archivedProjects = [];
+                localStorage.clear();
+                card.querySelector('.pc-results-block-slot').innerHTML = buildProjectResultsBlock(myProjects[0]);
+                markProjectCoverageSeen(30, myProjects[0].results_summary);
+                if (fresh('models') || fresh('countries')) throw new Error('Active project refresh regressed');
+            });
             await page.close();
         }
         console.log('Moderation results: archive data and unified geometry passed in RU/EN at 320/390/430px');

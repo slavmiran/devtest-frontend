@@ -58,10 +58,6 @@ function buildModerationCard(project) {
     }
 
     var safeProjectName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang));
-    var safeProjectPackage = window.escapeHTML(project.package || '');
-
-    // Step indicator HTML
-    var stepsHtml = _buildModerationSteps();
 
     // Info block text
     var infoText = window.t('moderationInfoText', {}, lang);
@@ -89,17 +85,20 @@ function buildModerationCard(project) {
                     <div class="card-subtitle"><span class="pc-stage-badge moderation-stage-badge">${window.escapeHTML(window.t('moderationStepModeration', {}, lang))}</span></div>
                 </div>
             </div>
-            <div class="moderation-overview-body">
-                ${safeProjectPackage ? `<div class="moderation-package notranslate">${safeProjectPackage}</div>` : ''}
-                ${stepsHtml}
-                <div class="moderation-info-block">
-                    <div class="moderation-info-title">🛂 ${window.escapeHTML(window.t('moderationInfoTitle', {}, lang))}</div>
-                    <div class="moderation-info-text">${window.escapeHTML(infoText)}</div>
-                </div>
+            <div class="moderation-timeline">
+            <section class="moderation-phase is-done">
+                ${_buildModerationPhaseHeading(1, 'moderationStepTesting', 'moderationTestingDone')}
+                <div class="pc-results-block-slot moderation-results">${resultsHtml}</div>
                 ${testerListHtml}
-            </div>
-        <div class="pc-results-block-slot moderation-results">${resultsHtml}</div>
-
+            </section>
+            <section class="moderation-phase is-current" aria-current="step">
+                ${_buildModerationPhaseHeading(2, 'moderationStepModeration', 'moderationCurrentStep')}
+                <div class="moderation-info-block">
+                    <div class="moderation-info-title">${window.escapeHTML(window.t('moderationInfoTitle', {}, lang))}</div>
+                    <span class="moderation-duration">${window.escapeHTML(window.t('moderationDuration', {}, lang))}</span>
+                    <div class="moderation-info-text">${window.escapeHTML(infoText)}</div>
+                    <div class="moderation-return-hint">${window.escapeHTML(window.t('moderationReturnHint', {}, lang))}</div>
+                </div>
         <section class="moderation-decision-panel" aria-label="${window.escapeHTML(actionsTitle)}">
             <div class="moderation-decision-heading">${window.escapeHTML(actionsTitle)}</div>
             <div class="moderation-actions">
@@ -109,7 +108,7 @@ function buildModerationCard(project) {
                     id="moderation-live-btn-${project.id}"
                     onclick="handleModerationRequestLive(${project.id}, event)"
                 >
-                    🚀 ${window.escapeHTML(liveLabel)}
+                    <span class="moderation-button-copy"><span>${window.escapeHTML(liveLabel)}</span><small>${window.escapeHTML(window.t('moderationLiveSubtitle', {}, lang))}</small></span><span aria-hidden="true">↗</span>
                 </button>
 
                 <div class="moderation-error-block" id="moderation-error-${project.id}">
@@ -123,8 +122,8 @@ function buildModerationCard(project) {
                     >${window.escapeHTML(supportLabel)}</a>
                     <div class="moderation-error-hint">
                         ${lang === 'ru' 
-                            ? 'Если модерация Google отклонила проект, используйте кнопку «Нужен ретест» ниже для повторного запуска тестирования.' 
-                            : 'If Google moderation rejected the project, use the "Need Retest" button below to restart testing.'}
+                            ? 'Если Google отклонил заявку, ниже можно запустить повторное тестирование.'
+                            : 'If Google rejected the submission, you can restart testing below.'}
                     </div>
                 </div>
 
@@ -134,9 +133,16 @@ function buildModerationCard(project) {
                     id="moderation-retest-btn-${project.id}"
                     onclick="handleModerationRequestRetest(${project.id}, event)"
                 >
-                    🔄 ${window.escapeHTML(retestLabel)}
+                    <span class="moderation-button-copy"><span>${window.escapeHTML(retestLabel)}</span><small>${window.escapeHTML(window.t('moderationRetestSubtitle', {}, lang))}</small></span><span aria-hidden="true">↶</span>
                 </button>
-
+            </div>
+        </section>
+            </section>
+            <section class="moderation-phase is-upcoming">
+                ${_buildModerationPhaseHeading(3, 'moderationGrowthTitle', 'moderationNextStep')}
+                <p class="moderation-growth-text">${window.escapeHTML(window.t('moderationGrowthText', {}, lang))}</p>
+            </section>
+            </div>
                 <button
                     type="button"
                     class="btn-moderation-delete"
@@ -144,8 +150,6 @@ function buildModerationCard(project) {
                 >
                     🗑️ ${window.escapeHTML(deleteLabel)}
                 </button>
-            </div>
-        </section>
         </section>
     `;
 
@@ -153,17 +157,12 @@ function buildModerationCard(project) {
 }
 
 /** Build the 3-step pipeline indicator HTML. */
-function _buildModerationSteps() {
-    var stepTesting    = window.t('moderationStepTesting', {}, lang);
-    var stepModeration = window.t('moderationStepModeration', {}, lang);
-    var stepLive       = window.t('moderationStepLive', {}, lang);
+function _buildModerationPhaseHeading(number, titleKey, statusKey) {
     return `
-        <div class="moderation-steps">
-            <div class="moderation-step is-done">✓ ${window.escapeHTML(stepTesting)}</div>
-            <div class="moderation-step-arrow">➔</div>
-            <div class="moderation-step is-current">🛂 ${window.escapeHTML(stepModeration)}</div>
-            <div class="moderation-step-arrow">➔</div>
-            <div class="moderation-step is-upcoming">🚀 ${window.escapeHTML(stepLive)}</div>
+        <div class="moderation-phase-heading">
+            <span class="moderation-phase-number" aria-hidden="true">${number}</span>
+            <div><span class="moderation-phase-status">${window.escapeHTML(window.t(statusKey, {}, lang))}</span>
+            <h3>${window.escapeHTML(window.t(titleKey, {}, lang))}</h3></div>
         </div>
     `;
 }

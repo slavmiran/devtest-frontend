@@ -135,8 +135,9 @@
 
         // Refresh Results blocks on visible project card
         var card = document.getElementById('project-card-' + appId);
-        if (card && typeof window.myProjects !== 'undefined') {
-            var prj = window.myProjects.find(function (p) {
+        if (card) {
+            // Completed/moderation projects live in the archive, not myProjects.
+            var prj = (window.myProjects || []).concat(window.archivedProjects || []).find(function (p) {
                 return Number(p.app_id || p.id) === Number(appId);
             });
             if (prj) {
