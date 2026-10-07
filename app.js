@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function _resumeMassInviteSafely() {
+            loadRuntimeConfig({ onResume: true });
             if (typeof resumeMassInviteIfNeeded === 'function') {
                 resumeMassInviteIfNeeded().catch(function () {});
             }

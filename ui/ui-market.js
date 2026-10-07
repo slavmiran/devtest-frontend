@@ -2970,8 +2970,8 @@ function showScreenshotCompleteModal(ownerUsername) {
         closeEl.innerText = t.screenshotCompleteClose || t.btnClose;
     }
     var hideOwnerDm = !isExternal
-        && typeof window.isScreenshotProofUploadEnabled === 'function'
-        && window.isScreenshotProofUploadEnabled();
+        && ((typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady())
+            || (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled()));
     if (cleanUsername && !hideOwnerDm) {
         const safe = escapeInlineJsString(cleanUsername);
         actionEl.innerHTML = `<button class="btn" style="width: 100%; background-color: var(--button-color, #007aff); color: var(--button-text-color, #fff); border: none; margin-bottom: 8px;" onclick="openTelegramProfile('${safe}', event); closeScreenshotCompleteModal();">${t.screenshotReminderBtn}</button>`;
@@ -4517,7 +4517,12 @@ function setReportMessageLanguage(nextLang) {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function openReportModal(appId, ownerUsername, options) {
+async function openReportModal(appId, ownerUsername, options) {
+    var reportTest = typeof _checkinProofTest === 'function' ? _checkinProofTest(appId) : null;
+    var isExternalReport = !!(reportTest && (reportTest.is_external || reportTest.is_guest || String(reportTest.flow || '') === 'external'));
+    if (!isExternalReport && typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) {
+        if (!await ensureRuntimeConfigReady()) return false;
+    }
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
     _reportTextExpanded = false;
@@ -4526,9 +4531,9 @@ function openReportModal(appId, ownerUsername, options) {
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
     var safeAppId = Number(appId || 0);
     var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
-    var usesProofUpload = typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+    var usesProofUpload = !isExternalReport && (typeof window.isInternalScreenshotProofUploadEnabled === 'function'
         ? window.isInternalScreenshotProofUploadEnabled(test)
-        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled());
+        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled()));
     var reportModal = document.getElementById('report-modal');
     if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
     if (usesProofUpload) {
@@ -7652,8 +7657,8 @@ function showTestDayPopup(day, isExternal) {
     const icon = isControl ? '📸' : '📅';
     const dayProgress = window.t('testDayModalTestingProgress', { day: numDay }, currentLang)
         || `Вы тестируете это приложение <b>${numDay}-й день из 14</b>.`;
-    const useProofCopy = !isExternal && typeof window.isScreenshotProofUploadEnabled === 'function'
-        && window.isScreenshotProofUploadEnabled();
+    const useProofCopy = !isExternal && ((typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady())
+        || (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled()));
     const scheduleDesc = isControl
         ? (window.t(useProofCopy ? 'testDayModalControlScheduleProof' : 'testDayModalControlSchedule', {}, currentLang)
             || 'Контрольные дни: <b>1, 4, 7, 10 и 14</b>.<br>В эти дни необходимо отправить разработчику скриншот запущенного приложения в личные сообщения (также можно приложить найденный баг или рекомендацию).')

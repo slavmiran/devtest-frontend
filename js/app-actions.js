@@ -172,7 +172,7 @@ function openOwnerCheckpointChat(ownerUsername, text, options) {
     return true;
 }
 
-function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
+async function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
     var safeAppId = Number(appId || 0);
     var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
     var isExternal = !!(test && (test.is_external || test.is_guest || String(test.flow || '') === 'external'));
@@ -181,6 +181,9 @@ function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
             window.sendExternalScreenshotAndConfirmFromUi(safeAppId, ownerUsername || (test && test.owner_username) || '');
             return;
         }
+    }
+    if (!isExternal && typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) {
+        if (!await ensureRuntimeConfigReady()) return;
     }
     if (
         typeof window.isInternalScreenshotProofUploadEnabled === 'function'
@@ -191,6 +194,8 @@ function sendCheckpointScreenshotAndConfirm(appId, ownerUsername) {
             window.openCheckinProofUploadModal(appId);
             return;
         }
+        if (typeof showToast === 'function') showToast(window.t('runtimeConfigUnavailable', {}, lang));
+        return;
     }
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(appId, ownerUsername);
     confirmStart(appId, { proofKind: 'checkpoint_screenshot' });
@@ -2909,6 +2914,13 @@ async function sendReport() {
     const text = document.getElementById('report-text').value.trim();
     const ownerUsername = (_reportOwnerUsername || '').replace('@', '').trim();
     const appId = _reportAppId;
+    var reportTest = typeof _checkinProofTest === 'function' ? _checkinProofTest(appId) : null;
+    var externalReport = !!(reportTest && (reportTest.is_external || reportTest.is_guest || String(reportTest.flow || '') === 'external'));
+    if (appId && !externalReport && typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) {
+        if (!await ensureRuntimeConfigReady()) return;
+        // Do not send a form that was closed or replaced while loading.
+        if (_reportAppId !== appId) return;
+    }
 
     _reportAppId = null;
     _reportOwnerUsername = null;
@@ -2923,11 +2935,9 @@ async function sendReport() {
             ? window.isInternalScreenshotProofUploadEnabled(test || safeAppId)
             : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())
         );
-        if (
-            usesProofUpload
-            && typeof window.openCheckinProofUploadModal === 'function'
-        ) {
-            window.openCheckinProofUploadModal(appId);
+        if (usesProofUpload) {
+            if (typeof window.openCheckinProofUploadModal === 'function') window.openCheckinProofUploadModal(appId);
+            else if (typeof showToast === 'function') showToast(window.t('runtimeConfigUnavailable', {}, lang));
             return;
         }
         if (isExternal) {
@@ -5008,6 +5018,8 @@ async function confirmStart(id, options) {
                         || errorCode === 'project_pending_completion') {
                         _handleInactiveCheckinCard(id, errorCode);
                     } else if (errorCode === 'screenshot_upload_required') {
+                        // Recover stale feature flags before retrying the upload UI.
+                        if (typeof loadRuntimeConfig === 'function') await loadRuntimeConfig();
                         if (
                             typeof window.isInternalScreenshotProofUploadEnabled === 'function'
                             && window.isInternalScreenshotProofUploadEnabled()
