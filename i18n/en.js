@@ -3196,7 +3196,7 @@
             moderationNextStep: "After publication · Live",
             moderationDuration: "Estimate: 1–7 days",
             moderationReturnHint: "Once published, return here to start promoting your app.",
-            moderationLiveSubtitle: "Start promotion",
+            moderationLiveSubtitle: "Start scaling",
             moderationRetestSubtitle: "Restart testing",
             moderationGrowthTitle: "Growth and promotion",
             moderationGrowthText: "Keep growing your published app and reaching new users.",

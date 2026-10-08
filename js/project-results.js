@@ -255,7 +255,13 @@
         var newReviews = Number(unseen.newReviews || 0);
 
         var totalWord = window.t('pcResultsTotalShort', {}, lang) || (lang === 'ru' ? 'всего' : 'total');
-        var resultsTitle = lang === 'ru' ? 'Результаты тестирования' : 'Testing results';
+        var resolvedPhase = typeof resolvePipelineProjectPhase === 'function'
+            ? resolvePipelineProjectPhase(project)
+            : String(project.phase || '');
+        var isModerationCard = String(resolvedPhase || '').toLowerCase() === 'moderation';
+        var resultsTitle = isModerationCard
+            ? (lang === 'ru' ? 'Результаты' : 'Results')
+            : (lang === 'ru' ? 'Результаты тестирования' : 'Testing results');
         var resultsSubtitle = lang === 'ru' ? 'Покрытие и полезные находки' : 'Coverage and useful findings';
         var overviewLabel = lang === 'ru' ? 'Сводка' : 'Overview';
         var allFeedbackLabel = window.t('pcResultsAllFeedback', {}, lang);

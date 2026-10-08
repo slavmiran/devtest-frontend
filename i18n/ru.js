@@ -3202,7 +3202,7 @@
             moderationNextStep: "После публикации · Live",
             moderationDuration: "Ориентир: 1–7 дней",
             moderationReturnHint: "После публикации вернитесь сюда, чтобы начать продвижение.",
-            moderationLiveSubtitle: "Начать продвижение",
+            moderationLiveSubtitle: "Начать масштибирование",
             moderationRetestSubtitle: "Запустить ретест",
             moderationGrowthTitle: "Рост и продвижение",
             moderationGrowthText: "Продолжайте развивать опубликованное приложение и привлекать пользователей.",
