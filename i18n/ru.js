@@ -3194,7 +3194,7 @@
             moderationStepModeration: "Модерация",
             moderationStepLive: "Live",
             moderationInfoTitle: "Модерация в Google Play",
-            moderationInfoText: "Отправьте приложение на проверку в Google Play Console и дождитесь решения. Проверка может занять больше недели.",
+            moderationInfoText: "Отправьте приложение на проверку в Google Play Console и дождитесь решения. Проверка может занять больше недели. Проверяйте вашу электнонную почту, на наличие дозапросов от модерации. ",
             moderationBtnLive: "Опубликовано в Google Play",
             moderationBtnRetest: "Модерация не пройдена",
             moderationTestingDone: "Этап завершён",

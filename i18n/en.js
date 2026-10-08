@@ -3188,7 +3188,7 @@
             moderationStepModeration: "Moderation",
             moderationStepLive: "Live",
             moderationInfoTitle: "Google Play review",
-            moderationInfoText: "Submit your app for review in Google Play Console and wait for the decision. Review may take longer than a week.",
+            moderationInfoText: "Submit your app for review in Google Play Console and wait for the decision. Review may take longer than a week. Check your email for follow-up requests from the moderation team. ",
             moderationBtnLive: "Published on Google Play",
             moderationBtnRetest: "Review not approved",
             moderationTestingDone: "Stage completed",
