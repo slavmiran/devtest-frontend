@@ -4078,10 +4078,17 @@ async function ensureFullProjectFeedbackLoaded(options) {
 
 async function openProjectFeedback(appId, isArchived, options) {
     options = options || {};
-    const project = (isArchived ? archivedProjects : myProjects).find(function(item) {
+    const matchProject = function(item) {
         return Number(item.app_id || item.id) === Number(appId);
-    });
+    };
+    // Results and proof viewers can outlive the move from testing to moderation.
+    // Resolve the actual collection rather than trusting a caller's stale flag.
+    const active = Array.isArray(myProjects) ? myProjects : [];
+    const archived = Array.isArray(archivedProjects) ? archivedProjects : [];
+    const preferred = (isArchived ? archived : active).find(matchProject);
+    const project = preferred || (isArchived ? active : archived).find(matchProject);
     if (!project) return;
+    isArchived = archived.indexOf(project) !== -1;
 
     var explicitUnprocessed = typeof options.preferUnprocessed === 'boolean';
     var forceUnprocessed = options.preferUnprocessed === true;
