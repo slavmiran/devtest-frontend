@@ -37,6 +37,7 @@ function getProjectPipelineAlertType(project) {
     });
     if (project.status === 'access_error' && pendingIssueTesters.length > 0) return 'danger';
     if (Number(project.feedback_new_count || 0) > 0) return 'feedback';
+    if (resolvePipelineProjectPhase(project) === 'live') return null;
     var projectStatus = String(project.app_status || project.status || 'active').toLowerCase();
     var isPendingCompletion = projectStatus === 'pending_completion';
     var platformDays = typeof getProjectPlatformDay === 'function'

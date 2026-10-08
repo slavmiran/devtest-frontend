@@ -1708,7 +1708,7 @@ function renderProjects(force) {
         const currentGoogleDay = Math.max(1, Number.isFinite(rawGoogleDay) ? rawGoogleDay : 1);
 
         const isOvertime = platformDays > 14;
-        const needsSyncAttention = isPendingCompletion || projectNeedsConsoleSync(project, { platformDays: platformDays });
+        const needsSyncAttention = phase !== 'live' && (isPendingCompletion || projectNeedsConsoleSync(project, { platformDays: platformDays }));
         const hasNewFeedback = (project.feedback_new_count || 0) > 0;
         const requiresAttention = needsSyncAttention || hasNewFeedback;
         let cardClass = isInactive ? 'card card-inactive' : 'card';
@@ -2184,15 +2184,15 @@ function renderProjects(force) {
             + (project.mode === 'bounty' || project.mode === 'hybrid' ? Number(project.limit_bounty || 0) : 0);
 
         const extraDaysRunning = extraPaidDays > 0 && !isPendingCompletion && (hasSync ? (platformDays > 14 || currentGoogleDay > 14) : platformDays > 14);
-        const needSyncPrompt = !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
-        const closedTestStage = isPendingCompletion
+        const needSyncPrompt = phase !== 'live' && !hasSync && projectNeedsConsoleSync(project, { platformDays: platformDays });
+        const closedTestStage = phase === 'live' ? 'live' : isPendingCompletion
             ? 'buffer'
             : extraDaysRunning
                 ? 'extension'
                 : hasSync
                     ? 'active'
                     : (needSyncPrompt ? 'need_sync' : 'recruiting');
-        const closedTestStageLabel = closedTestStage === 'buffer'
+        const closedTestStageLabel = closedTestStage === 'live' ? window.t('pipelinePhaseLive', {}, lang) : closedTestStage === 'buffer'
             ? window.t('pcStatusBuffer', {}, lang)
             : closedTestStage === 'extension'
                 ? window.t('pcStatusExtension', {}, lang)
@@ -2348,7 +2348,7 @@ function renderProjects(force) {
                         <div class="pc-metric-footer">${termFooterHtml}</div>
                     </section>
                     <section class="pc-metric-card pc-metric-card--testers">
-                        <div class="pc-metric-title">${window.escapeHTML(window.t('pcTestersShortLabel', {}, lang))}</div>
+                        <div class="pc-metric-title">${window.escapeHTML(window.t(phase === 'live' ? 'liveUsersLabel' : 'pcTestersShortLabel', {}, lang))}</div>
                         <button type="button" class="pc-metric-num-btn pc-metric-main" onclick="toggleProjectRecruitDetails(${project.id}, event);" aria-expanded="${isRecruitExpanded ? 'true' : 'false'}" aria-label="${recruitToggleAria}" title="${recruitToggleAria}">
                             <span class="${testersValueClass}">${window.escapeHTML(String(teamTesterCount))}</span>
                             ${testersMicrobarHtml}
@@ -2410,7 +2410,7 @@ function renderProjects(force) {
                 <button type="button" class="pc-alltesters" onclick="toggleProjectTestersList(${project.id}, event)">
                     <span class="pc-alltesters__mark" aria-hidden="true">👥</span>
                     <span class="pc-alltesters__body">
-                        <span class="pc-alltesters__title">${window.escapeHTML(window.t('pcAllTestersTitle', {}, lang))}<span class="pc-alltesters__count">${window.escapeHTML(String(totalTesters))}</span></span>
+                        <span class="pc-alltesters__title">${window.escapeHTML(window.t(phase === 'live' ? 'liveAllUsersLabel' : 'pcAllTestersTitle', {}, lang))}<span class="pc-alltesters__count">${window.escapeHTML(String(totalTesters))}</span></span>
                         ${summary}
                     </span>
                     <span class="pc-alltesters__chev${isTestersCollapsed ? '' : ' is-open'}" aria-hidden="true">›</span>
@@ -2545,7 +2545,7 @@ function renderProjects(force) {
                 <div id="pc-roster-source-${project.id}" class="pc-roster-source" hidden>
                     <div class="testers-section">
                         ${leftSoftCount > 0 || guestTesters.length > 0 ? `<div class="testers-title-row" style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-                            <div class="testers-title">${window.escapeHTML(t.testersList)}${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
+                            <div class="testers-title">${window.escapeHTML(phase === 'live' ? window.t('liveUsersLabel', {}, lang) : t.testersList)}${leftSoftCount > 0 ? `<span class="testers-count-delta" title="${window.escapeHTML(window.t('testerLeftSoftCountHint', { count: leftSoftCount }, lang))}">−${window.escapeHTML(String(leftSoftCount))}</span>` : ''}${guestTesters.length > 0 ? `<span class="testers-breakdown">${window.escapeHTML(String(activeRegularTesters.length))}+${window.escapeHTML(String(guestTesters.length))}</span>` : ''}</div>
                         </div>` : ''}
                         ${testersHtml}
                     </div>
@@ -3853,7 +3853,7 @@ function renderArchivedProjects(force) {
         return String(project.package || '').trim().toLowerCase();
     }).filter(Boolean));
     const visibleArchivedProjects = (archivedProjects || []).filter(function(project) {
-        if (project.phase === 'moderation') return false;
+        if (project.phase === 'moderation' || project.phase === 'live') return false;
         const packageName = String(project.package_name || '').trim().toLowerCase();
         return !packageName || !activePackages.has(packageName);
     });

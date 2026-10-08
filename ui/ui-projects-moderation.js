@@ -230,6 +230,13 @@ async function handleModerationRequestLive(projectId, event) {
             var proj = (myProjects || []).find(function(p) { return Number(p.id) === Number(projectId); });
             if (proj) proj.phase = 'live';
 
+            // Moderation cards normally originate from the archive. Reload the
+            // dashboard so the published project arrives with its full roster.
+            if (typeof loadProjects === 'function') {
+                try { await loadProjects(true); }
+                catch (refreshError) { console.warn('[moderation] Published project refresh failed:', refreshError); }
+            }
+
             // Full re-render to move card to live section
             if (window.renderProjects) window.renderProjects(true);
 

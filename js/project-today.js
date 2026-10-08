@@ -4647,7 +4647,7 @@
     function collapsedTeamHtml(project, data) {
         var appId = Number(project.id || 0);
         var team = representativeTeam(project, data);
-        var teamLabel = text('pcTeamLabel', 'Команда');
+        var teamLabel = project.phase === 'live' ? text('liveUsersLabel', 'Users') : text('pcTeamLabel', 'Команда');
         var quickTabs = [
             { key: 'attention', warn: hasCriticalAttentionIssue(data.attention) },
             { key: 'control', warn: false },
@@ -4731,7 +4731,7 @@
                 esc(text('pcTodayRetry', 'Retry')) + '</button></div>'
             : '';
 
-        var participantsTitle = text('pcTeamLabel', 'Команда');
+        var participantsTitle = project.phase === 'live' ? text('liveUsersLabel', 'Users') : text('pcTeamLabel', 'Команда');
 
         var headerHtml = '<div class="pc-participants-header" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
             '<span class="pc-participants-title">' + esc(participantsTitle) + '</span>' +
