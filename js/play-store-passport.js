@@ -245,6 +245,7 @@
                 return;
             } else {
                 remember(id, data);
+                window.dispatchEvent(new CustomEvent('play-store:synced', { detail: { appId: id } }));
             }
             versions.set(id, (versions.get(id) || 0) + 1);
             if (current && current.id === id) { current.data = cache.get(id); renderContent(); }

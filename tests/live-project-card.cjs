@@ -20,8 +20,8 @@ fs.mkdirSync(artifacts, {recursive:true});
                 return route.fulfill({contentType:'text/html',body:'<section id="tab-projects"><div id="projects-list"></div></section><div id="archived-projects-list"></div>'});
             });
             await page.goto('http://fixture.local/');
-            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css']) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['i18n/ru.js','i18n/en.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css']) await page.addStyleTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(language => {
                 window.lang = language;
                 Object.assign(window.t,language==='ru' ? I18NRU : I18NEN);
@@ -38,7 +38,8 @@ fs.mkdirSync(artifacts, {recursive:true});
                 window.fetchWithRetry=async()=>({ok:true,json:async()=>({status:'success',items:[]})});
                 window.myProjects=[{id:30,name:'Published App',phase:'live',status:'completed',is_visible:true,
                     created_at:'2026-09-10T12:00:00Z',last_sync_date:'2026-09-24',google_sync_day:14,
-                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',testers:[],results_summary:{},live_balance_bust:137.5,protection_bust_pool:999}];
+                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',testers:[],results_summary:{},live_balance_bust:137.5,protection_bust_pool:999,
+                    live_metrics:{source:'devtesthub_live',as_of:new Date().toISOString(),boundary_available:true, reviews:{total:68,rating:4.3,per_day:.5,trend_available:true,trend_percent:-1.2},installs:{total:332,per_day:3.5,trend_available:true,trend_percent:3},active_users:112,avg_retention_days:23,days_since_update:79,keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]}}];
                 window.archivedProjects=[{app_id:30,name:'Published App',phase:'live',status:'completed'}];
                 localStorage.setItem('hideDeleteReminder','true');
                 localStorage.setItem('project_card_collapsed_30','false');
@@ -53,15 +54,21 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await page.locator('#project-card-30 .live-project-details').count(),1);
             await page.locator('#project-card-30 .card-header').screenshot({path:path.join(artifacts, 'live-header-' + language + '-360.png')});
             assert.deepEqual(errors,[]);
-            assert.equal(await page.locator('#project-card-30 .pc-participants-title').innerText(),language==='ru'?'Пользователи':'Users');
-            assert.equal(await page.locator('#project-card-30 .pc-team-label').count(),0); // expanded team has one heading
+            assert.equal(await page.locator('#project-card-30 .pc-participants-title').count(),0); // Phase 1 roster is not a Live metric
+            assert.equal(await page.locator('#project-card-30 .pc-team-label').count(),0);
             assert.equal(await page.locator('#project-card-30 .pc-results-card').count(),1);
-            assert.equal(await page.locator('#project-card-30 .pc-metrics-grid').count(),1);
+            assert.equal(await page.locator('#project-card-30 .pc-metrics-grid').count(),0);
+            assert.equal(await page.locator('#project-card-30 .live-metrics').count(),1);
+            assert.equal(await page.locator('#project-card-30 .live-phase1-history-label').count(),1);
+            await page.locator('#project-card-30 .pc-state-unified').screenshot({path:path.join(artifacts, 'live-metrics-' + language + '-360.png')});
+            assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
             assert.equal(await page.evaluate(()=>collectPipelineProjectsByPhase().live.length),1);
             assert.deepEqual(errors,[]);
             // Existing testing cards retain their original team label and section.
             await page.evaluate(()=>{myProjects[0].phase='testing';myProjects[0].status='active';renderProjects(true);});
             assert.equal(await page.locator('#pipeline-section-testing #project-card-30').count(),1);
+            assert.equal(await page.locator('#project-card-30 .live-metrics').count(),0);
+            assert.equal(await page.locator('#project-card-30 .pc-metrics-grid').count(),1);
             assert.equal(await page.locator('#project-card-30 .pc-participants-title').innerText(),language==='ru'?'Команда':'Team');
             // Publication refresh must bring the archive-backed card into the live dashboard.
             await page.evaluate(async()=>{

@@ -2424,6 +2424,8 @@ function _mapProjectsFromApi(data) {
             live_daily_burn_bust: Number(project.live_daily_burn_bust || 0),
             play_store_raw: project.play_store_raw || null,
             play_store_synced_at: project.play_store_synced_at || null,
+            live_metrics: project.live_metrics || null,
+            live_activated_at: project.live_activated_at || null,
             screenshot_boost_campaign: project.screenshot_boost_campaign || null,
             smart_ping_sent_at: project.smart_ping_sent_at || null,
         };

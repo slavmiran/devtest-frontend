@@ -2532,15 +2532,15 @@ function renderProjects(force) {
             ${accessOverlayHtml}
 
             ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
-            ${stateBlockHtml}
-            <div class="pc-team-collapsed-slot">${typeof window.buildProjectTeamCollapsedBar === 'function' ? window.buildProjectTeamCollapsedBar(project) : ''}</div>
-            <div class="pc-results-collapsed-slot">${typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>
+            ${phase === 'live' && window.LiveProjectMetrics ? `<div class="live-metrics-slot" data-app-id="${Number(project.id)}">${window.LiveProjectMetrics.render(project)}</div>` : stateBlockHtml}
+            <div class="pc-team-collapsed-slot">${phase !== 'live' && typeof window.buildProjectTeamCollapsedBar === 'function' ? window.buildProjectTeamCollapsedBar(project) : ''}</div>
+            <div class="pc-results-collapsed-slot">${phase !== 'live' && typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>
             </section>
 
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->
             <div class="pc-dashboard-body">
-                ${proofPingHtml}
-                ${todaySectionHtml}
+                ${phase === 'live' ? `<div class="live-phase1-history-label">${window.escapeHTML(lang === 'ru' ? 'История закрытого теста' : 'Closed test history')}</div>` : proofPingHtml}
+                ${phase === 'live' ? '' : todaySectionHtml}
                 <div class="pc-results-block-slot">${typeof window.buildProjectResultsBlock === 'function' ? window.buildProjectResultsBlock(project) : ''}</div>
 
                 <div id="pc-roster-source-${project.id}" class="pc-roster-source" hidden>
@@ -2552,8 +2552,8 @@ function renderProjects(force) {
                     </div>
                 </div>
 
-                ${actionBarHtml}
-                ${platformDays >= 15 ? `
+                ${phase === 'live' ? '' : actionBarHtml}
+                ${phase !== 'live' && platformDays >= 15 ? `
                     <button type="button" class="pc-finish-link" onclick="openDeleteModal(${project.id}); event.stopPropagation();">
                         ${window.escapeHTML(window.t('pcFinishTestingLink', {}, lang))}
                     </button>
@@ -2583,7 +2583,8 @@ function renderProjects(force) {
         requestAnimationFrame(function () {
             fitClosedTestAttractButton(card.querySelector('.pc-cta--testers'));
         });
-        if (window.ProjectToday) window.ProjectToday.mount(card, project);
+        if (phase === 'live' && window.LiveProjectMetrics) window.LiveProjectMetrics.mount(card, project);
+        if (phase !== 'live' && window.ProjectToday) window.ProjectToday.mount(card, project);
         } catch (e) {
             console.error('Project card render error:', e);
             if (window.reportSystemError) window.reportSystemError('renderProjects: ' + e.message, e.stack);
