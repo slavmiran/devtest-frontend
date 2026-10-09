@@ -2420,6 +2420,10 @@ function _mapProjectsFromApi(data) {
             consumed_pending_hours: Number(project.consumed_pending_hours || 0),
             pending_completion_started_at: project.pending_completion_started_at || null,
             phase: project.phase || 'testing',
+            live_balance_bust: Number(project.live_balance_bust || 0),
+            live_daily_burn_bust: Number(project.live_daily_burn_bust || 0),
+            play_store_raw: project.play_store_raw || null,
+            play_store_synced_at: project.play_store_synced_at || null,
             screenshot_boost_campaign: project.screenshot_boost_campaign || null,
             smart_ping_sent_at: project.smart_ping_sent_at || null,
         };

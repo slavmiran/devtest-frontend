@@ -2477,12 +2477,13 @@ function renderProjects(force) {
                 </div>
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
-                    <div class="card-subtitle notranslate">${stageBadgeHtml}</div>
+                    <div class="card-subtitle notranslate${phase === 'live' ? ' card-subtitle--live' : ''}">${phase === 'live' ? window.renderLiveProjectBalance(project) : stageBadgeHtml}</div>
                 </div>
-                <div class="project-header-actions">
+                <div class="project-header-actions${phase === 'live' ? ' project-header-actions--live' : ''}">
                     <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
                         <img class="project-icon-btn__glyph project-icon-btn__glyph--asset" src="./images/Icons/settings-svgrepo-com.svg" alt="" aria-hidden="true">
                     </button>
+                    ${phase === 'live' ? window.renderPlayStoreDetailsButton(project.id) : ''}
                 </div>
             </div>
             

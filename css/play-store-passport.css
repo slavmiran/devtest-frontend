@@ -1,0 +1,60 @@
+.live-project-balance { font-size: 11px; line-height: 1.6; color: var(--text-secondary); display: block; }
+.live-project-balance strong { color: var(--accent-primary); font-weight: 650; white-space: nowrap; }
+.live-project-balance > span { white-space: nowrap; }
+.live-project-details { border: 0; background: none; color: var(--accent-primary); font-size: 12px; padding: 8px 0 0 8px; cursor: pointer; white-space: nowrap; }
+.card-header .project-header-actions--live { flex-direction: column; align-items: flex-end; align-self: flex-start; gap: 0; }
+.card-subtitle.card-subtitle--live { white-space: normal; overflow: visible; }
+#play-store-passport { position: fixed; inset: 0; padding: 0; z-index: 1100; display: flex; align-items: stretch; justify-content: center; background: var(--bg-app); }
+.play-passport-page { width: 100%; max-width: 720px; height: 100%; height: 100dvh; min-height: 0; display: flex; flex-direction: column; background: var(--bg-app); color: var(--text-primary); font-size: 14px; }
+.play-passport-page * { box-sizing: border-box; }
+.play-passport-topbar { flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; border-bottom: 1px solid var(--border-subtle); }
+.play-passport-topbar strong { font-size: 16px; }
+.play-passport-topbar button { width: 36px; height: 36px; font-size: 32px; border: 0; color: var(--text-primary); background: var(--bg-surface-2); border-radius: 10px; cursor: pointer; }
+.play-passport-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); }
+#play-passport-refresh, #play-passport-retry { border: 1px solid var(--accent-primary-border); color: var(--accent-primary); background: var(--accent-primary-surface); padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+#play-passport-refresh:disabled { color: var(--text-tertiary); background: var(--bg-surface-1); border-color: var(--border-subtle); cursor: default; }
+#play-passport-refresh[aria-busy="true"] { opacity: .65; }
+#play-passport-timer { font-size: 12px; color: var(--text-secondary); }
+.play-passport-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.play-passport-hero { display: flex; align-items: flex-start; gap: 16px; }
+.play-passport-hero > div { min-width: 0; }
+.play-passport-icon { width: 80px; height: 80px; border-radius: 20px; object-fit: cover; flex-shrink: 0; background: var(--bg-surface-2); }
+.play-passport-icon-fallback { display: grid; place-items: center; font-size: 36px; }
+.play-passport-page h1 { font-size: 23px; line-height: 1.2; margin: 0 0 7px; overflow-wrap: anywhere; }
+.play-passport-page h2 { font-size: 16px; margin: 0 0 12px; }
+.play-passport-page h3 { font-size: 13px; margin: 16px 0 8px; color: var(--text-secondary); }
+.play-passport-page p { line-height: 1.65; margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.play-passport-page a { color: var(--accent-primary); text-decoration: none; line-height: 1.7; overflow-wrap: anywhere; }
+.play-passport-muted, .play-passport-footnote { color: var(--text-secondary); font-size: 12px; }
+.play-passport-metrics { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 20px 0 14px; font-size: 13px; color: var(--text-secondary); }
+.play-passport-metrics strong { color: var(--text-primary); }
+.play-passport-links { font-size: 13px; margin-bottom: 16px; }
+.play-passport-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.play-passport-badges > span { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 11px; }
+.play-passport-badges strong { font-weight: 500; color: var(--text-primary); }
+.play-passport-section { position: relative; border-top: 1px solid var(--border-subtle); padding: 22px 0; }
+.play-passport-carousel { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; padding-bottom: 10px; }
+.play-passport-carousel img { flex-shrink: 0; width: auto; max-width: min(280px, 75vw); height: 280px; object-fit: contain; border-radius: 12px; scroll-snap-align: start; background: var(--bg-surface-1); }
+.play-passport-description.is-collapsed { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.play-passport-text-button { color: var(--accent-primary); background: none; border: 0; padding: 10px 0 0; cursor: pointer; font-size: 13px; }
+.play-passport-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 10px; font-size: 13px; }
+.play-passport-row > span { color: var(--text-secondary); }
+.play-passport-row strong { font-weight: 500; text-align: right; max-width: 62%; overflow-wrap: anywhere; }
+.play-passport-section--safety h2 { padding-right: 40px; }
+.play-passport-info { margin-bottom: 18px; }
+.play-passport-info summary { position: absolute; right: 0; top: 14px; width: 36px; height: 36px; display: grid; place-items: center; font-size: 18px; cursor: pointer; list-style: none; color: var(--text-secondary); }
+.play-passport-info summary::-webkit-details-marker { display: none; }
+.play-passport-info p { background: var(--bg-surface-2); padding: 12px; margin-top: 10px; border-radius: 10px; font-size: 12px; color: var(--text-secondary); }
+.play-passport-safety-list { margin: 0; padding: 0; list-style: none; }
+.play-passport-safety-list li { padding: 10px 12px; margin-bottom: 8px; background: var(--bg-surface-1); border-radius: 10px; font-size: 13px; }
+.play-passport-safety-list span { display: block; color: var(--text-secondary); margin-top: 5px; line-height: 1.5; }
+.play-passport-empty { padding: 50px 10px; text-align: center; color: var(--text-secondary); }
+.play-passport-empty > span { font-size: 38px; display: block; margin-bottom: 18px; }
+.play-passport-error { padding: 12px; border-radius: 10px; background: var(--danger-surface); color: var(--danger); margin-bottom: 16px; font-size: 13px; }
+.play-passport-page [hidden] { display: none !important; }
+@media (max-width: 380px) {
+    .live-project-balance { font-size: 10px; }
+    .live-project-details { font-size: 11px; }
+    .play-passport-icon { width: 68px; height: 68px; border-radius: 16px; }
+    .play-passport-page h1 { font-size: 21px; }
+}

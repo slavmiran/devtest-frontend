@@ -1,2 +1,6 @@
 # devtest-frontend
 12 testers
+
+Live-шапка и полноэкранный паспорт Google Play: `js/play-store-passport.js`,
+`css/play-store-passport.css`. Контракт API, хранение и проверки описаны в
+[LIVE_PLAY_STORE_PASSPORT.md](../docs/LIVE_PLAY_STORE_PASSPORT.md).

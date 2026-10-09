@@ -229,11 +229,28 @@ async function handleModerationRequestLive(projectId, event) {
             // Optimistic: update phase in myProjects
             var proj = (myProjects || []).find(function(p) { return Number(p.id) === Number(projectId); });
             if (proj) proj.phase = 'live';
+            var archived = (typeof archivedProjects !== 'undefined' ? archivedProjects : []).find(function(p) {
+                return Number(p.app_id || p.id) === Number(projectId);
+            });
+            if (archived) {
+                archived.phase = 'live';
+                if (!proj) myProjects.push(Object.assign({}, archived, {
+                    id: Number(projectId), app_status: archived.status,
+                    package: archived.package_name || archived.package || '', testers: archived.testers || [],
+                }));
+            }
+            if (window.renderProjects) window.renderProjects(true);
 
             // Moderation cards normally originate from the archive. Reload the
             // dashboard so the published project arrives with its full roster.
             if (typeof loadProjects === 'function') {
-                try { await loadProjects(true); }
+                try {
+                    // A fetch started before publication may still contain the old phase.
+                    if (typeof _projectsInFlight !== 'undefined' && _projectsInFlight) {
+                        try { await _projectsInFlight; } catch (_) {}
+                    }
+                    await loadProjects(true, true);
+                }
                 catch (refreshError) { console.warn('[moderation] Published project refresh failed:', refreshError); }
             }
 
