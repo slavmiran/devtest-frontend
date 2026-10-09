@@ -11,7 +11,7 @@
             empty: 'Данные ещё не загружены, нажмите «Получить данные».', error: 'Не удалось загрузить данные. Попробуйте ещё раз.',
             marketError: 'Google Play временно недоступен. Сохранённые данные не изменены.',
             missing: 'Приложение не найдено в Google Play для региона Россия.', unknown: 'Не указано в Google Play',
-            developer: 'Разработчик', app: 'Открыть в Google Play', reviews: 'отзывов', installs: 'скачиваний',
+            developer: 'Разработчик', app: 'Открыть в Google Play', reviews: 'отзывов', ratings: 'оценок', installs: 'скачиваний',
             size: 'Размер', android: 'Мин. Android', age: 'Возрастной рейтинг', summary: 'Краткое описание',
             screenshots: 'Скриншоты', screenshot: 'Скриншот', description: 'О приложении', more: 'Развернуть полностью', less: 'Свернуть',
             updates: 'Версия и обновления', version: 'Версия', updated: 'Обновлено', released: 'Дата релиза', news: 'Что нового',
@@ -30,7 +30,7 @@
             empty: 'No data yet. Press “Get data”.', error: 'Could not load data. Please try again.',
             marketError: 'Google Play is temporarily unavailable. Saved data has been preserved.',
             missing: 'The app was not found on Google Play in Russia.', unknown: 'Not provided by Google Play',
-            developer: 'Developer', app: 'Open in Google Play', reviews: 'reviews', installs: 'downloads',
+            developer: 'Developer', app: 'Open in Google Play', reviews: 'reviews', ratings: 'ratings', installs: 'downloads',
             size: 'Size', android: 'Min. Android', age: 'Age rating', summary: 'Summary',
             screenshots: 'Screenshots', screenshot: 'Screenshot', description: 'About this app', more: 'Read more', less: 'Show less',
             updates: 'Version and updates', version: 'Version', updated: 'Updated', released: 'Released', news: 'What’s new',
@@ -47,6 +47,15 @@
     function esc(value) { return window.escapeHTML(String(value == null ? '' : value)); }
     function value(item) { return item == null || item === '' ? text('unknown') : String(item); }
     function number(item) { return item == null ? text('unknown') : Number(item).toLocaleString(window.lang === 'ru' ? 'ru-RU' : 'en-US'); }
+    function compact(item) {
+        return Number(item).toLocaleString(window.lang === 'ru' ? 'ru-RU' : 'en-US', { notation: 'compact', maximumSignificantDigits: 3 });
+    }
+    function available(item) {
+        return item != null && String(item).trim() !== '' && !/^(varies with device|зависит от устройства|не указано.*|not provided.*)$/i.test(String(item).trim());
+    }
+    function metric(kind, item, label, tooltip) {
+        return '<div class="play-passport-metric" data-metric="' + kind + '"' + (tooltip ? ' title="' + esc(tooltip) + '"' : '') + '><strong>' + item + '</strong><span>' + esc(label) + '</span></div>';
+    }
     function amount(item) { return Math.max(0, Number(item) || 0).toLocaleString(window.lang === 'ru' ? 'ru-RU' : 'en-US', { maximumFractionDigits: 2 }); }
     function safeUrl(raw, kind) {
         try {
@@ -99,10 +108,15 @@
         var entry = current.data, cooldown = remaining(entry, 'retry_after_seconds');
         var lease = remaining(entry, 'sync_retry_after_seconds'), busy = syncing.has(current.id);
         button.disabled = current.loading || busy || cooldown > 0 || lease > 0;
-        button.setAttribute('aria-busy', String(busy));
-        button.textContent = busy ? text('updating') : current.loading ? text('loading') : '↻ ' + text(entry.play_store_raw ? 'refresh' : 'obtain');
+        button.setAttribute('aria-busy', String(busy || current.loading));
+        var label = busy ? text('updating') : current.loading ? text('loading') : text(entry.play_store_raw ? 'refresh' : 'obtain');
+        button.setAttribute('aria-label', label); button.title = label;
+        button.textContent = busy || current.loading ? '…' : '↻';
         var seconds = cooldown || lease, minutes = Math.ceil(seconds / 60);
-        hint.textContent = seconds ? text(cooldown ? 'cooldown' : 'busy').replace('{h}', Math.floor(minutes / 60)).replace('{m}', minutes % 60) : '';
+        var fullHint = seconds ? text(cooldown ? 'cooldown' : 'busy').replace('{h}', Math.floor(minutes / 60)).replace('{m}', minutes % 60) : '';
+        hint.textContent = seconds ? Math.floor(minutes / 60) + (window.lang === 'ru' ? 'ч ' : 'h ') + minutes % 60 + (window.lang === 'ru' ? 'м' : 'm') : '';
+        hint.title = fullHint; hint.setAttribute('aria-label', fullHint);
+        hint.hidden = !seconds;
         if (!lease && Number(entry.sync_retry_after_seconds) > 0 && !busy && !current.loading) {
             // Another worker may have finished. Read its snapshot when the
             // lease expires instead of leaving this screen on an old cache.
@@ -152,19 +166,28 @@
         var ads = typeof data.containsAds === 'boolean' ? data.containsAds : data.adSupported;
         var price = data.free === true || data.price === 0 ? text('free') : data.price != null ? [data.price, data.currency].filter(Boolean).join(' ') : null;
         var iap = data.offersIAP === false ? text('noIap') : data.inAppProductPrice || (data.offersIAP === true ? text('iap') : null);
+        var ratingCount = data.ratings != null ? data.ratings : data.reviews;
+        var ratingLabel = text(data.ratings != null ? 'ratings' : 'reviews');
+        var score = data.scoreText || (data.score != null ? Number(data.score).toFixed(1) : null);
+        var locale = data.storeLocale && data.storeLocale.country || 'ru';
+        var metrics = available(score) ? metric('rating', esc(score) + ' <span class="play-passport-star" aria-hidden="true">★</span>',
+            ratingCount != null ? compact(ratingCount) + ' ' + ratingLabel : ratingLabel,
+            (ratingCount != null ? number(ratingCount) + ' ' + ratingLabel + ' · ' : '') + 'Google Play · ' + String(locale).toUpperCase()) : '';
+        var installs = data.minInstalls != null ? compact(data.minInstalls) + '+' : data.installs;
+        if (available(installs)) metrics += metric('installs', esc(installs), text('installs'));
+        if (available(data.size)) metrics += metric('size', esc(data.size), text('size'));
+        if (available(data.contentRating)) metrics += metric('age', '<span class="play-passport-age">' + esc(data.contentRating) + '</span>', text('age'));
         node.innerHTML = '<div class="play-passport-hero">' +
             (icon ? '<img class="play-passport-icon" src="' + esc(icon) + '" alt="">' : '<div class="play-passport-icon play-passport-icon-fallback">📱</div>') +
             '<div><h1 class="notranslate">' + esc(data.title || current.project.name) + '</h1><p class="play-passport-muted">' + esc(Array.from(new Set(categories)).join(' · ') || text('unknown')) + '</p>' +
             link(data.developerUrl, data.developer || text('developer'), 'market') + '</div></div>' +
-            '<div class="play-passport-metrics"><span>⭐ <strong>' + esc(value(data.scoreText || (data.score != null ? Number(data.score).toFixed(1) : null))) + '</strong> (' + esc(number(data.reviews)) + ' ' + esc(text('reviews')) + ')</span><span>📥 <strong>' + esc(value(data.installs)) + '</strong> ' + esc(text('installs')) + '</span></div>' +
+            '<div class="play-passport-metrics" tabindex="0" aria-label="Google Play">' + metrics + '</div>' +
             '<div class="play-passport-links">' + link(appUrl, text('app'), 'market') + '</div>' +
-            '<div class="play-passport-badges">' + [ ['size', data.size], ['android', data.androidVersionText], ['age', data.contentRating] ].map(function (pair) {
-                return '<span>' + esc(text(pair[0])) + ': <strong>' + esc(value(pair[1])) + '</strong></span>';
-            }).join('') + '</div>' +
             section(text('summary'), '<p>' + esc(value(data.summary)) + '</p>') +
             section(text('screenshots'), images ? '<div class="play-passport-carousel" tabindex="0" aria-label="' + esc(text('screenshots')) + '">' + images + '</div>' : '<p class="play-passport-muted">' + esc(text('unknown')) + '</p>') +
             section(text('description'), '<p id="play-passport-description" class="play-passport-description is-collapsed">' + esc(value(data.description)) + '</p>' + (data.description ? '<button type="button" id="play-passport-expand" class="play-passport-text-button" aria-expanded="false">' + esc(text('more')) + '</button>' : '')) +
-            section(text('updates'), row(text('version'), data.version) + row(text('updated'), date(data.updated)) + row(text('released'), date(data.released)) + '<h3>' + esc(text('news')) + '</h3><p>' + esc(value(data.recentChangesText || data.recentChanges)) + '</p>') +
+            section(text('updates'), row(text('version'), data.version) + row(text('updated'), date(data.updated || data.lastUpdatedOn)) + row(text('released'), date(data.released)) +
+                (available(data.androidVersionText) ? row(text('android'), data.androidVersionText) : '') + '<h3>' + esc(text('news')) + '</h3><p>' + esc(value(data.recentChangesText || data.recentChanges)) + '</p>') +
             section(text('monetization'), '<p>' + esc(typeof ads === 'boolean' ? text(ads ? 'ads' : 'noAds') : text('unknown')) + '</p>' + row(text('iap'), iap) + row(text('price'), price)) +
             section(text('safety'), safetyBody, 'play-passport-section--safety') +
             '<p class="play-passport-footnote">' + esc(text('saved')) + ': ' + esc(date(current.data.play_store_synced_at)) + '</p>';
@@ -253,8 +276,8 @@
         var overlay = document.createElement('div');
         overlay.id = 'play-store-passport'; overlay.className = 'modal-overlay active';
         overlay.innerHTML = '<div class="play-passport-page" role="dialog" aria-modal="true" aria-labelledby="play-passport-title">' +
-            '<header class="play-passport-topbar"><button type="button" id="play-passport-back" aria-label="' + esc(text('close')) + '">‹</button><strong id="play-passport-title">' + esc(text('title')) + '</strong></header>' +
-            '<div class="play-passport-toolbar"><button type="button" id="play-passport-refresh"></button><span id="play-passport-timer" role="status"></span></div>' +
+            '<header class="play-passport-topbar"><button type="button" id="play-passport-back" aria-label="' + esc(text('close')) + '">‹</button><strong id="play-passport-title">' + esc(text('title')) + '</strong>' +
+            '<div class="play-passport-controls"><button type="button" id="play-passport-refresh"></button><span id="play-passport-timer" role="status"></span></div></header>' +
             '<div class="play-passport-scroll"><div class="play-passport-error" id="play-passport-error" role="alert" hidden></div><button type="button" id="play-passport-retry" hidden>' + esc(text('retry')) + '</button><main id="play-passport-content"></main></div></div>';
         document.body.appendChild(overlay);
         overlay.onclick = function (e) { if (e.target === overlay) close(); };

@@ -8,7 +8,7 @@ fs.mkdirSync(artifacts, { recursive: true });
 
 const raw = {
     title: 'Orbit Notes', appId: 'com.example.orbit', genre: 'Продуктивность',
-    categories: [{ name: 'Заметки' }], scoreText: '4.8', reviews: 12500, installs: '100 000+',
+    categories: [{ name: 'Заметки' }], scoreText: '4.8', ratings: 798958, reviews: 142, installs: '100 000+', minInstalls: 100000,
     icon: 'https://play-lh.googleusercontent.com/icon',
     developer: 'Orbit Studio', developerUrl: 'https://play.google.com/store/apps/dev?id=12345',
     url: 'https://play.google.com/store/apps/details?id=com.example.orbit',
@@ -83,6 +83,18 @@ const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at:
                 hold = false; pendingGet();
                 await page.waitForFunction(() => !document.querySelector('#play-passport-refresh').textContent.includes('…'));
                 assert.match(await page.locator('#play-passport-timer').innerText(), /72/);
+                assert.match(await page.locator('#play-passport-timer').getAttribute('aria-label'), language === 'ru' ? /Обновление через/ : /Refresh in/);
+                const header = await page.locator('.play-passport-topbar').boundingBox();
+                assert.ok(header.height <= 60, 'Compact header must fit one row');
+                for (const selector of ['#play-passport-title', '#play-passport-refresh', '#play-passport-timer']) {
+                    const box = await page.locator(selector).boundingBox();
+                    assert.ok(box.y >= header.y && box.y + box.height <= header.y + header.height);
+                }
+                assert.deepEqual(await page.locator('.play-passport-metric').evaluateAll(nodes => nodes.map(n => n.dataset.metric)), ['rating', 'installs', 'size', 'age']);
+                assert.match(await page.locator('[data-metric="rating"]').innerText(), /799/);
+                assert.doesNotMatch(await page.locator('[data-metric="rating"]').innerText(), /142/);
+                assert.match(await page.locator('[data-metric="rating"]').getAttribute('title'), /798.*958/);
+                if (width === 360) assert.equal(await page.locator('.play-passport-metrics').evaluate(n => n.scrollWidth > n.clientWidth), true);
                 const bounds = await page.locator('.play-passport-page').boundingBox();
                 assert.equal(bounds.y, 0); assert.equal(bounds.height, 844); assert.equal(bounds.width, width);
                 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
@@ -140,6 +152,20 @@ const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at:
                 await page.waitForFunction(() => document.querySelector('#play-passport-content h1')?.textContent === 'Orbit Notes');
                 assert.equal(gets, getsBeforeLease + 2);
                 assert.equal(posts, postsBeforeLease);
+                await page.evaluate(() => closePlayStorePassport());
+                // Missing size / Android are omitted; cached textual date remains usable.
+                const sparseRaw = { ...raw, size: null, androidVersionText: 'Varies with device', updated: null, lastUpdatedOn: '22 июл. 2026 г.' };
+                pendingGet = null; hold = true;
+                await page.evaluate(sparseRaw => {
+                    myProjects.push({ id: 45, name: 'Sparse app', play_store_raw: sparseRaw });
+                    openPlayStorePassport(45);
+                }, sparseRaw);
+                assert.deepEqual(await page.locator('.play-passport-metric').evaluateAll(nodes => nodes.map(n => n.dataset.metric)), ['rating', 'installs', 'age']);
+                assert.equal(await page.locator('.play-passport-row').filter({ hasText: language === 'ru' ? 'Мин. Android' : 'Min. Android' }).count(), 0);
+                assert.match(await page.locator('.play-passport-row').filter({ hasText: language === 'ru' ? 'Обновлено' : 'Updated' }).innerText(), /22 июл. 2026/);
+                while (!pendingGet) await new Promise(resolve => setTimeout(resolve, 10));
+                hold = false; pendingGet(); pendingGet = null;
+                await page.waitForFunction(() => !document.querySelector('#play-passport-refresh').textContent.includes('…'));
                 await page.evaluate(() => closePlayStorePassport());
                 assert.deepEqual(errors, []);
                 assert.ok(gets >= 4);
