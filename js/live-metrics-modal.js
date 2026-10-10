@@ -44,6 +44,46 @@
             insufficient_review_history:'Needs two completed weeks, a nonzero baseline and ≥5 internal reviews in those days.', incomplete_attribution_or_small_sample:'Needs ≥20 installs and ≥80% attributed sources.', missing_update_date:'Fetch the update date through the Google Play passport.',
         },
     };
+    Object.assign(words.ru, {
+        tree:'Древо', detailed:'Подробно', treeBrowser:'Веб', declineZone:'Зона спада (−)', growthZone:'Зона роста (+)',
+        treeInstalls:'Установки', treeRetention:'Удержание', treeReviews:'Отзывы', treeFreshness:'Свежесть',
+        earlyCalibration:'Ранняя калибровка', minimum:'Индекс рассчитывается от 5 подтверждённых установок.',
+        historyToggle:'Развернуть историю и когорты (14 дней)', recent:'за 30 дней', departures:'удалений',
+        actions:'Сигналы к действию', allClear:'Все метрики в норме, рисков не обнаружено.', collecting:'Наблюдения продолжаются — часть сигналов ещё не измерена.',
+        retention_observed:'Наблюдаемая активность слотов',
+        retention_d7:'Исходы D7 за 30 дней',
+        immature_cohort:'Нужно ≥10 исходов D7 за последние 30 дней: достигшие D7 или завершённые раньше.',
+        insufficient_install_history:'Нужны две полные недели, ненулевая база и ≥5 установок за эти дни.',
+        incomplete_attribution_or_small_sample:'Нужно ≥5 установок и ≥80% размеченных источников.',
+        actionInstall:'Установки: темп снизился на {p}% за 7 дней. Проверьте активность Live-кампаний.',
+        actionReviews:'Отзывы: темп снизился на {p}% за 7 дней. Активируйте сбор внутренней обратной связи.',
+        actionEarly:'Удержание: {n} ранних удалений за 30 дней, {d} — до D3. Проверьте первый запуск и обратную связь.',
+        actionActive:'Активны {p}% наблюдаемых слотов. Проверьте набор и активность аудитории.',
+        actionSource:'Баланс: {channel} — {p}% установок. Распределите кампании между ключами, ссылками и веб-поиском.',
+        actionConcentration:'Баланс: один канал даёт {p}% установок. Проверьте распределение кампаний.',
+        actionAging:'Версии {n} дн. Оцените необходимость обновления.',
+        actionStale:'Обновление было {n} дн. назад. Проверьте актуальность сборки.',
+    });
+    Object.assign(words.en, {
+        tree:'Tree', detailed:'Detailed', treeBrowser:'Web', declineZone:'Decline (−)', growthZone:'Growth (+)',
+        treeInstalls:'Installs', treeRetention:'Retention', treeReviews:'Reviews', treeFreshness:'Freshness',
+        earlyCalibration:'Early calibration', minimum:'The index needs at least 5 verified installs.',
+        historyToggle:'Expand history & cohorts (14 days)', recent:'last 30 days', departures:'departures',
+        actions:'Action signals', allClear:'All measured metrics are healthy; no risks detected.', collecting:'Observation continues — some signals are not measured yet.',
+        retention_observed:'Observed active slots',
+        retention_d7:'D7 outcomes over 30 days',
+        immature_cohort:'Needs ≥10 D7 outcomes in the last 30 days: reached D7 or ended earlier.',
+        insufficient_install_history:'Needs two completed weeks, a nonzero baseline and ≥5 installs in those days.',
+        incomplete_attribution_or_small_sample:'Needs ≥5 installs and ≥80% attributed sources.',
+        actionInstall:'Installs: pace fell {p}% over 7 days. Check Live campaign activity.',
+        actionReviews:'Reviews: pace fell {p}% over 7 days. Activate internal feedback collection.',
+        actionEarly:'Retention: {n} early departures in 30 days, {d} before D3. Review first launch and feedback.',
+        actionActive:'{p}% of observed slots are active. Review audience acquisition and activity.',
+        actionSource:'Balance: {channel} represents {p}% of installs. Add other acquisition channels.',
+        actionConcentration:'Balance: one channel brings {p}% of installs. Review campaign distribution.',
+        actionAging:'The build is {n} days old. Consider whether an update is needed.',
+        actionStale:'Last update was {n} days ago. Check build relevance.',
+    });
     function t(key) { return words[window.lang === 'ru' ? 'ru' : 'en'][key] || key; }
     function esc(value) { return window.escapeHTML(String(value == null ? '' : value)); }
     function n(value, digits) { return value == null ? '—' : Number(value).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{maximumFractionDigits:digits==null?1:digits}); }
@@ -52,15 +92,17 @@
     function finite(value) { return Number.isFinite(Number(value)) ? Number(value) : 0; }
     function width(value,max) { return Math.max(0,Math.min(100,finite(value)/max*100)); }
     function badge(value, available) { return '<span class="la-badge is-'+(!available?'unknown':value>0?'good':value<0?'risk':'unknown')+'">'+esc(available?signed(value):t('noTrend'))+'</span>'; }
-    function track(left,right,baseline,tone) {
-        return '<div class="la-track" aria-hidden="true"><div class="la-negative"><span style="width:'+width(left,100)+'%"></span></div><div class="la-positive">'+(baseline?'<span class="la-baseline" style="width:'+width(baseline,140)+'%"></span>':'')+'<span class="la-fill is-'+(tone||'good')+'" style="width:'+width(right,140)+'%"></span></div></div>';
+    function track(left,right,baseline,tone,positiveMax) {
+        positiveMax=positiveMax||140;
+        return '<div class="la-track" aria-hidden="true"><div class="la-negative"><span style="width:'+width(left,100)+'%"></span></div><div class="la-positive">'+(baseline?'<span class="la-baseline" style="width:'+width(baseline,positiveMax)+'%"></span>':'')+'<span class="la-fill is-'+(tone||'good')+'" style="width:'+width(right,positiveMax)+'%"></span></div></div>';
     }
     function row(title,value,bars,body) { return '<section class="la-chart-row"><div class="la-row-head"><h3>'+esc(title)+'</h3><strong>'+value+'</strong></div>'+bars+'<div class="la-row-details">'+body+'</div></section>'; }
     function sample() {
-        return {source:'devtesthub_live',is_demo:true,model_version:'live-health-v1',as_of:new Date().toISOString(),data_status:'ready',health_score:82,health_status:'good',coverage_percent:100,
-            components:[{code:'install_momentum',weight:20,points:76.1,available:true},{code:'retention_d7',weight:30,points:95,available:true},{code:'review_momentum',weight:15,points:25,available:true},{code:'source_balance',weight:15,points:100,available:true},{code:'freshness',weight:20,points:100,available:true}],
+        return {source:'devtesthub_live',is_demo:true,model_version:'live-health-v2',as_of:new Date().toISOString(),data_status:'ready',health_score:95,health_status:'good',coverage_percent:100,calibration_status:'stable',
+            components:[{code:'install_momentum',weight:20,points:100,available:true},{code:'retention_d7',weight:30,points:95,available:true},{code:'review_momentum',weight:15,points:75,available:true},{code:'source_balance',weight:15,points:100,available:true},{code:'freshness',weight:20,points:100,available:true}],
+            action_summary:{status:'attention',signals:[{code:'REVIEW_TREND_DOWN',percent:-25},{code:'EARLY_DROPOFFS',count:5,toxic_count:0,days:30}]},
             install_velocity:{total:332,per_day:3.6,trend_wma_percent:26.1,trend_available:true,sources_breakdown:{key_percent:44.9,link_percent:34.9,browser_percent:20.2,unknown_percent:0},source_counts:{key:149,link:116,browser:67,unknown:0},dominant_source_warning:false,source_sample_ready:true},
-            retention:{avg_days:38,d30_target_percent:126.7,early_uninstalls_count:5,toxic_dropoffs_d1_d3:0,early_rate_percent:5,resolved_d7:100,d7:{percent:95,eligible:100,retained:95},d30:{percent:85,eligible:40,retained:34}},
+            retention:{avg_days:38,d30_target_percent:126.7,early_uninstalls_count:5,toxic_dropoffs_d1_d3:0,early_rate_percent:5,resolved_d7:100,recent_window_available:true,window_days:30,d7:{percent:95,eligible:100,retained:95},d14:{percent:90,eligible:80,retained:72},d21:{percent:88,eligible:50,retained:44},d30:{percent:85,eligible:40,retained:34}},
             reviews_health:{target_baseline_count:100,actual_reviews_count:56,baseline_ratio_percent:56,velocity_trend_percent:-25,trend_available:true},
             update_freshness:{days_since_update:18,status:'fresh',lifecycle_percent:100},risk_triggers:[{code:'DOMINANT_SOURCE',status:'ok'},{code:'EARLY_UNINSTALL',status:'ok'},{code:'POLICY_CHECK',status:'unknown',snapshot_age_days:18},{code:'BOT_FARM_SHIELD',status:'not_connected'}],
             daily:Array.from({length:14},function(_,i){var date=new Date();date.setUTCDate(date.getUTCDate()-14+i);return {day:date.toISOString().slice(0,10),installs:[1,2,3,2,4,3,4,2,3,4,3,4,4,5][i],reviews:i%3===0?1:0};}),keywords:[]};
@@ -75,8 +117,8 @@
         });
         var installBody='<div class="la-source-stack '+(i.dominant_source_warning?'is-warning':'')+'" aria-hidden="true">'+stack+'</div><div class="la-sources">'+labels+'</div><p>'+esc(n(i.total,0)+' '+t('installsUnit')+' · '+n(i.per_day)+' '+t('perDay'))+'</p>'+
             (i.dominant_source_warning?'<p class="la-alert">'+esc(t('skew'))+'</p>':!i.source_sample_ready?'<p class="la-muted">'+esc(t('sample'))+'</p>':'');
-        var retentionBody='<p>'+esc(t('average'))+': '+esc(n(r.avg_days))+'d · '+esc(t('reference'))+'</p><div class="la-cohorts">'+['d7','d30'].map(function(key){var c=r[key]||{};return '<span><strong>'+key.toUpperCase()+' '+esc(c.percent==null?'—':pct(c.percent))+'</strong><small>'+esc(n(c.eligible,0))+' '+esc(t('eligible'))+'</small></span>';}).join('')+'</div>'+
-            '<p class="'+(r.toxic_dropoffs_d1_d3?'la-alert':'la-muted')+'">'+esc(n(r.early_uninstalls_count,0))+' '+esc(t('early'))+' · '+esc(n(r.toxic_dropoffs_d1_d3,0))+' '+esc(t('toxic'))+'</p>';
+        var retentionBody='<p>'+esc(t('average'))+': '+esc(n(r.avg_days))+'d · '+esc(t('reference'))+'</p>'+cohorts(data)+
+            '<p class="'+(r.toxic_dropoffs_d1_d3?'la-alert':'la-muted')+'">'+esc(n(r.early_uninstalls_count,0))+' '+esc(t('early'))+' · '+esc(n(r.toxic_dropoffs_d1_d3,0))+' '+esc(t('toxic'))+' · '+esc(t('recent'))+'</p>';
         var reviewBody='<p>'+esc(n(v.actual_reviews_count,0))+' / '+esc(n(v.target_baseline_count,0))+' · '+esc(t('reviewRef'))+'</p><div class="la-review-impulse"><span>'+esc(t('momentum'))+'</span>'+badge(v.velocity_trend_percent,v.trend_available)+'</div>';
         var freshBody='<p>'+esc(f.days_since_update==null?t('noDate'):n(f.days_since_update,0)+' '+t('days'))+'</p>';
         return '<div class="la-axis-labels"><span>'+esc(t('risk'))+'</span><b class="la-zero-label">0</b><b class="la-target-label">100</b><span>'+esc(t('growth'))+'</span></div><div class="la-diverging-chart">'+
@@ -87,12 +129,10 @@
             '</div><p class="la-caption">'+esc(t('scale'))+'</p>';
     }
     function checks(data) {
-        return (data.risk_triggers||[]).map(function(check){
+        return (data.risk_triggers||[]).filter(function(check){return check.code==='DOMINANT_SOURCE'||check.code==='EARLY_UNINSTALL';}).map(function(check){
             var status=check.status,warning=status==='warning'||status==='needs_review',ok=status==='ok',msg='';
             if(check.code==='DOMINANT_SOURCE') msg=warning?t('skew'):ok?t('sourceOk'):t('sample');
             if(check.code==='EARLY_UNINSTALL') msg=warning?n(data.retention.early_uninstalls_count,0)+' '+t('early')+' · '+n(data.retention.toxic_dropoffs_d1_d3,0)+' '+t('toxic'):ok?t('churnOk'):t('churnUnknown');
-            if(check.code==='POLICY_CHECK') msg=status==='needs_review'?t('safetyOld'):check.snapshot_age_days!=null?t('safety').replace('{n}',n(check.snapshot_age_days,0)):t('safetyMissing');
-            if(check.code==='BOT_FARM_SHIELD') msg=t('fraud');
             return '<li class="la-check is-'+(warning?'risk':ok?'good':'unknown')+'"><span aria-hidden="true">'+(warning?'!':ok?'✓':'—')+'</span><div><strong>'+esc(t(check.code))+'</strong><small>'+esc(msg)+'</small></div></li>';
         }).join('');
     }
@@ -102,21 +142,59 @@
             return '<div class="la-day '+(index<7?'is-previous':'is-current')+'" title="'+esc(day.day+': '+n(day[key],0))+'"><small>'+esc(n(day[key],0))+'</small><div><span style="height:'+width(day[key],max)+'%"></span></div><time>'+esc((day.day||'').slice(8,10))+'</time></div>';
         }).join('')+'</div><p class="la-caption">'+esc(t('completed'))+(rows.length?' '+esc(rows[0].day+' — '+rows[rows.length-1].day):'')+'</p>';
     }
+    function cohorts(data) {
+        return '<div class="la-cohorts">'+['d7','d14','d21','d30'].map(function(key){var c=data.retention[key]||{};return '<span><strong>'+key.toUpperCase()+' '+esc(c.percent==null?'—':pct(c.percent))+'</strong><small>'+esc(n(c.eligible,0))+' '+esc(t('eligible'))+'</small></span>';}).join('')+'</div>';
+    }
+    function tree(data) {
+        var i=data.install_velocity,r=data.retention,v=data.reviews_health,f=data.update_freshness;
+        function branch(key,title,value,left,right,body,loss,tone,baseline) {
+            return '<section class="la-tree-row'+(tone==='warning'?' is-source-warning':'')+'" data-branch="'+key+'"'+(key==='retention'?' role="button" tabindex="0" aria-controls="la-tree-cohorts" aria-expanded="'+String(current.cohortsExpanded)+'"':'')+'>'+(loss?'<span class="la-tree-loss">'+loss+'</span>':'')+
+                '<header><span>'+esc(title)+'</span><strong>'+value+'</strong></header>'+track(left,right,baseline,tone,100)+'<div class="la-tree-note">'+body+'</div></section>';
+        }
+        var sourceNote=['key','link','browser','unknown'].filter(function(key){return key!=='unknown'||(i.sources_breakdown||{}).unknown_percent>0;}).map(function(key){
+            var p=(i.sources_breakdown||{})[key+'_percent'];return '<span class="la-tree-chip is-'+key+'">'+esc(t(key==='browser'?'treeBrowser':key))+' '+esc(p==null?'—':pct(p))+'</span>';
+        }).join('');
+        var trend=i.trend_available?i.trend_wma_percent:0;
+        var early=r.recent_window_available?r.early_uninstalls_count:0,toxic=r.recent_window_available?r.toxic_dropoffs_d1_d3:0;
+        var loss=early?'<b>'+esc(n(toxic||early,0))+' &lt;D'+(toxic?'3':'7')+'</b><small>'+esc(t('departures')+' · '+t('recent'))+'</small>':'';
+        var cohortTip='<span class="la-tree-cohort-link">'+esc(t('cohorts'))+' ⓘ</span><div id="la-tree-cohorts"'+(current.cohortsExpanded?'':' hidden')+'>'+['d7','d14','d21','d30'].map(function(key){var c=r[key]||{};return '<span>'+key.toUpperCase()+': '+esc(c.percent==null?'—':pct(c.percent))+' ('+esc(n(c.eligible,0))+')</span>';}).join(' · ')+'</div>';
+        var retValue=esc(r.avg_days==null?'—':'~'+n(r.avg_days)+'d')+' <small>'+esc(r.d30_target_percent==null?'':pct(r.d30_target_percent))+'</small>'+(r.d30_target_percent>100?' <span class="la-over">OVER</span>':'');
+        var reviewTrend=v.trend_available?v.velocity_trend_percent:0;
+        var freshValue=f.days_since_update==null?'—':n(f.days_since_update,0)+'d';
+        return '<div class="la-tree-axis"><span>'+esc(t('declineZone'))+'</span><b>0</b><span>'+esc(t('growthZone'))+'</span></div><div class="la-tree">'+
+            branch('installs',t('treeInstalls'),badge(i.trend_wma_percent,i.trend_available),trend<0?-trend:0,trend>0?trend:0,sourceNote,trend<0?'<b>'+esc(signed(trend))+'</b>':'',i.dominant_source_warning?'warning':'good')+
+            branch('retention',t('treeRetention'),retValue,early?Math.max(8,finite(r.early_rate_percent)):0,r.d30_target_percent,cohortTip,loss,'good',100)+
+            branch('reviews',t('treeReviews'),esc(n(v.actual_reviews_count,0)+' / '+n(v.target_baseline_count,0)),reviewTrend<0?-reviewTrend:0,v.baseline_ratio_percent,
+                '<div class="la-tree-impulse">'+(reviewTrend>0?'<span class="la-growth-impulse" style="width:'+width(reviewTrend,100)+'%"></span>':'')+badge(v.velocity_trend_percent,v.trend_available)+'</div>',reviewTrend<0?'<b>▼ '+esc(signed(reviewTrend))+'</b>':'','good',100)+
+            branch('freshness',t('treeFreshness'),esc(freshValue),f.lifecycle_percent<0?-f.lifecycle_percent:0,f.lifecycle_percent>0?f.lifecycle_percent:0,
+                esc(f.status==='unknown'?t('noDate'):t(f.status)),f.lifecycle_percent<0?'<b>'+esc(signed(f.lifecycle_percent))+'</b>':'',f.status==='aging'?'watch':'good')+'</div>';
+    }
+    function actions(data) {
+        var summary=data.action_summary||{status:'collecting',signals:[]};
+        var messages=summary.signals.map(function(signal){
+            var key={INSTALL_TREND_DOWN:'actionInstall',REVIEW_TREND_DOWN:'actionReviews',EARLY_DROPOFFS:'actionEarly',ACTIVE_SLOTS_LOW:'actionActive',SOURCE_IMBALANCE:'actionSource',SOURCE_CONCENTRATION:'actionConcentration',UPDATE_AGING:'actionAging',UPDATE_STALE:'actionStale'}[signal.code];
+            if(!key)return '';
+            return '<li data-signal="'+esc(signal.code)+'">'+esc(t(key).replace('{p}',n(Math.abs(signal.percent))).replace('{n}',n(signal.count==null?signal.days:signal.count,0)).replace('{d}',n(signal.toxic_count,0)).replace('{channel}',t(signal.channel)))+'</li>';
+        }).join('');
+        return '<section class="la-actions"><h2>💡 '+esc(t('actions'))+'</h2>'+(messages?'<ul>'+messages+'</ul>':'<p>'+esc(t(summary.status==='clear'?'allClear':'collecting'))+'</p>')+'</section>';
+    }
     function render() {
         if(!current) return;
         var data=current.demo?sample():current.data,body=document.getElementById('live-analytics-content'),scroll=document.querySelector('.live-analytics-scroll');
         var position=scroll.scrollTop,opened=Array.from(body.querySelectorAll('details[open]')).map(function(el){return el.id;});
         document.getElementById('la-demo-note').hidden=!current.demo;
         document.getElementById('la-actual').setAttribute('aria-pressed',String(!current.demo));document.getElementById('la-demo').setAttribute('aria-pressed',String(current.demo));
+        document.getElementById('la-tree-view').setAttribute('aria-pressed',String(current.view==='tree'));document.getElementById('la-detailed-view').setAttribute('aria-pressed',String(current.view==='detailed'));
+        document.querySelector('.live-analytics-page').classList.toggle('la-view-tree',current.view==='tree');
         document.getElementById('la-refresh').disabled=current.loading;document.getElementById('la-refresh').setAttribute('aria-busy',String(current.loading));
         var error=document.getElementById('la-error');error.hidden=!current.error;error.textContent=current.error?t(current.errorAccess?'noAccess':'error'):'';
         if(!data) {body.innerHTML='<div class="la-empty" role="status"><p>'+esc(current.loading?t('loading'):t(current.errorAccess?'noAccess':'error'))+'</p><button type="button" data-retry>'+esc(t('retry'))+'</button></div>';}
         else {
             var status=data.health_status==='good'?'good':data.health_status==='watch'?'watch':data.health_status==='risk'?'risk':'unknown';
-            body.innerHTML='<section class="la-score-section"><div class="la-score-ring is-'+status+'" style="--score:'+width(data.health_score,100)+'%"><div><strong>'+esc(n(data.health_score,0))+'</strong><span>/ 100</span></div></div><div class="la-score-copy"><h2>'+esc(t('index'))+'</h2><p>'+esc(t('internal'))+'</p><strong>'+esc(t('coverage'))+': '+esc(pct(data.coverage_percent))+'</strong>'+(data.health_score==null?'<small>'+esc(t('minimum'))+'</small>':'')+'</div></section>'+
+            body.innerHTML='<section class="la-score-section"><div class="la-score-ring is-'+status+'" style="--score:'+width(data.health_score,100)+'%"><div><strong>'+esc(n(data.health_score,0))+'</strong><span>/ 100</span></div></div><div class="la-score-copy"><h2>'+esc(t('index'))+'</h2><p>'+esc(t('internal'))+'</p><strong>'+esc(t('coverage'))+': '+esc(pct(data.coverage_percent))+'</strong>'+(data.calibration_status==='early'?'<small class="la-calibration">'+esc(t('earlyCalibration'))+'</small>':'')+(data.health_score==null?'<small>'+esc(t('minimum'))+'</small>':'')+'</div></section>'+
                 (data.data_status==='no_activity'?'<section class="la-empty"><h2>'+esc(t('empty'))+'</h2><p>'+esc(t('emptyText'))+'</p></section>':'')+
-                '<section><h2>'+esc(t('signals'))+'</h2>'+chart(data)+'</section><section class="la-checks-section"><h2>'+esc(t('checks'))+'</h2><ul class="la-checks">'+checks(data)+'</ul><button type="button" class="la-text-button" data-passport>'+esc(t('passport'))+' ↗</button></section>'+
-                '<section><h2>'+esc(t('timeline'))+'</h2>'+timeline(data)+'</section><details id="la-method" class="la-method"><summary>'+esc(t('methodology'))+'</summary><p>'+esc(t('formula'))+'</p><ul>'+data.components.map(function(component){return '<li><span>'+esc(t(component.code))+' <small>'+esc(t('weight'))+' '+esc(n(component.weight,0))+'%</small>'+(!component.available&&component.reason?'<small>'+esc(t(component.reason))+'</small>':'')+'</span><strong>'+esc(component.points==null?t('unavailable'):n(component.points)+' / 100')+'</strong></li>';}).join('')+'</ul><p>'+esc(t('minimum'))+'</p><p>'+esc(t('scope'))+'</p><p>'+esc(t('noBaseline'))+'</p></details><p class="la-caption">'+esc(current.demo?t('demo'):t('snapshot')+': '+new Date(data.as_of).toLocaleString(window.lang==='ru'?'ru-RU':'en-US'))+'</p>';
+                (current.view==='tree'?'<section class="la-tree-section">'+tree(data)+'</section>'+actions(data):'<section><h2>'+esc(t('signals'))+'</h2>'+chart(data)+'</section><section class="la-checks-section"><h2>'+esc(t('checks'))+'</h2><ul class="la-checks">'+checks(data)+'</ul></section>')+
+                '<details id="la-history" class="la-history"'+(current.view==='detailed'?' open':'')+'><summary>'+esc(t('historyToggle'))+'</summary>'+cohorts(data)+'<h2>'+esc(t('timeline'))+'</h2>'+timeline(data)+'</details><details id="la-method" class="la-method"><summary>'+esc(t('methodology'))+'</summary><p>'+esc(t('formula'))+'</p><ul>'+data.components.map(function(component){return '<li><span>'+esc(t(component.code))+' <small>'+esc(t('weight'))+' '+esc(n(component.weight,0))+'%</small>'+(!component.available&&component.reason?'<small>'+esc(t(component.reason))+'</small>':'')+'</span><strong>'+esc(component.points==null?t('unavailable'):n(component.points)+' / 100')+'</strong></li>';}).join('')+'</ul><p>'+esc(t('minimum'))+'</p><p>'+esc(t('scope'))+'</p><p>'+esc(t('noBaseline'))+'</p></details><p class="la-caption">'+esc(current.demo?t('demo'):t('snapshot')+': '+new Date(data.as_of).toLocaleString(window.lang==='ru'?'ru-RU':'en-US'))+'</p>';
         }
         opened.forEach(function(id){var el=document.getElementById(id);if(el)el.open=true;});scroll.scrollTop=position;
     }
@@ -143,14 +221,16 @@
         var project=(window.myProjects||[]).concat(window.archivedProjects||[]).find(function(p){return Number(p.id||p.app_id)===id;})||{};
         var initData='';try{initData=window.getTelegramInitDataRaw();}catch(_){}
         var cacheKey=id+':'+initData;
-        current={id:id,initData:initData,cacheKey:cacheKey,data:cache.get(cacheKey)||null,demo:false,series:'installs',loading:true,error:false,errorAccess:false};
+        current={id:id,initData:initData,cacheKey:cacheKey,data:cache.get(cacheKey)||null,demo:false,view:'tree',cohortsExpanded:false,series:'installs',loading:true,error:false,errorAccess:false};
         var overlay=document.createElement('div');overlay.id='live-analytics-modal';overlay.className='modal-overlay active live-analytics-modal';
-        overlay.innerHTML='<div class="live-analytics-page" role="dialog" aria-modal="true" aria-labelledby="la-title"><header class="la-topbar"><button type="button" id="la-back" aria-label="'+esc(t('back'))+'">‹</button><div><h1 id="la-title">'+esc(t('title'))+'</h1><span>'+esc(project.name||t('subtitle'))+'</span></div><button type="button" id="la-refresh" aria-label="'+esc(t('refresh'))+'" title="'+esc(t('refresh'))+'">↻</button></header><div class="la-mode"><button type="button" id="la-actual">'+esc(t('actual'))+'</button><button type="button" id="la-demo">'+esc(t('demo'))+'</button><span>ASO & Live</span></div><p id="la-demo-note" class="la-demo-note" hidden>'+esc(t('demoNote'))+'</p><div class="live-analytics-scroll"><p id="la-error" class="la-error" role="alert" hidden></p><main id="live-analytics-content"></main></div></div>';
+        overlay.innerHTML='<div class="live-analytics-page" role="dialog" aria-modal="true" aria-labelledby="la-title"><header class="la-topbar"><button type="button" id="la-back" aria-label="'+esc(t('back'))+'">‹</button><div><h1 id="la-title">'+esc(t('title'))+'</h1><span>'+esc(project.name||t('subtitle'))+'</span></div><button type="button" id="la-refresh" aria-label="'+esc(t('refresh'))+'" title="'+esc(t('refresh'))+'">↻</button></header><div class="la-mode"><button type="button" id="la-actual">'+esc(t('actual'))+'</button><button type="button" id="la-demo">'+esc(t('demo'))+'</button><div class="la-view-switch"><button type="button" id="la-tree-view">'+esc(t('tree'))+'</button><button type="button" id="la-detailed-view">'+esc(t('detailed'))+'</button></div></div><p id="la-demo-note" class="la-demo-note" hidden>'+esc(t('demoNote'))+'</p><div class="live-analytics-scroll"><p id="la-error" class="la-error" role="alert" hidden></p><main id="live-analytics-content"></main></div></div>';
         document.body.appendChild(overlay);overlay.onclick=function(event){if(event.target===overlay)close();};
         document.getElementById('la-back').onclick=close;document.getElementById('la-refresh').onclick=function(){read(current);};
         document.getElementById('la-demo').onclick=function(){current.demo=true;render();document.querySelector('.live-analytics-scroll').scrollTop=0;};
         document.getElementById('la-actual').onclick=function(){current.demo=false;render();document.querySelector('.live-analytics-scroll').scrollTop=0;};
+        ['tree','detailed'].forEach(function(view){document.getElementById('la-'+view+'-view').onclick=function(){current.view=view;if(view==='tree'){document.querySelectorAll('#live-analytics-content details').forEach(function(el){el.open=false;});current.cohortsExpanded=false;}render();document.querySelector('.live-analytics-scroll').scrollTop=0;};});
         overlay.addEventListener('click',function(event){
+            if(event.target.closest('[data-branch="retention"]')){current.cohortsExpanded=!current.cohortsExpanded;render();return;}
             var button=event.target.closest('button');if(!button)return;
             if(button.hasAttribute('data-retry'))read(current);
             if(button.hasAttribute('data-series')){current.series=button.dataset.series;render();}
@@ -158,8 +238,9 @@
         });
         overlay.addEventListener('keydown',function(event){
             if(event.key==='Escape'){event.stopPropagation();close();return;}
+            if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-branch="retention"]')){event.preventDefault();current.cohortsExpanded=!current.cohortsExpanded;render();document.querySelector('[data-branch="retention"]').focus();return;}
             if(event.key!=='Tab')return;
-            var nodes=Array.from(overlay.querySelectorAll('button:not(:disabled),summary,a')).filter(function(el){return !el.hidden&&el.getClientRects().length;});
+            var nodes=Array.from(overlay.querySelectorAll('button:not(:disabled),summary,a,[role="button"]')).filter(function(el){return !el.hidden&&el.getClientRects().length;});
             if(event.shiftKey&&document.activeElement===nodes[0]){event.preventDefault();nodes[nodes.length-1].focus();}
             else if(!event.shiftKey&&document.activeElement===nodes[nodes.length-1]){event.preventDefault();nodes[0].focus();}
         });
