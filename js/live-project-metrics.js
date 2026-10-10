@@ -182,7 +182,7 @@
         details: function (id, event) {
             if (event) event.stopPropagation();
             window.dispatchEvent(new CustomEvent('live-metrics:details', { detail: { appId: id } }));
-            if (window.showToast) window.showToast(t('future'));
+            if (!window.LiveMetricsAnalytics && window.showToast) window.showToast(t('future'));
         },
     };
     window.addEventListener('play-store:synced', function (event) {

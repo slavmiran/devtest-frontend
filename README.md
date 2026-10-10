@@ -7,3 +7,7 @@ Live-шапка и полноэкранный паспорт Google Play: `js/pl
 
 Внутренние Live-метрики: `js/live-project-metrics.js`, `css/live-project-metrics.css`.
 Формулы, ключевики, API и проверки: [LIVE_PROJECT_METRICS.md](../docs/LIVE_PROJECT_METRICS.md).
+
+Экран «Пульс проекта»: `js/live-metrics-modal.js`, `css/live-metrics-modal.css`.
+Шкалы, формулы, режим примера и проверки:
+[LIVE_METRICS_ANALYTICS.md](../docs/LIVE_METRICS_ANALYTICS.md).
