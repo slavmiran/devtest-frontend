@@ -1,53 +1,568 @@
-/* The same quiet surface and hairline separators as the testing dashboard. */
-.live-metrics { padding: 10px 12px 8px; border-top: 1px solid var(--border-subtle); min-width: 0; }
-.live-metrics-head { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 8px; margin-bottom: 4px; }
-.live-metrics-head > strong { font-size: 12px; font-weight: 650; }
-.live-metrics-head > span { font-size: 9px; color: var(--text-tertiary); margin-left: auto; }
-.live-metric-row { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(0,.85fr) minmax(0,.8fr); align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border-subtle); gap: 8px; }
-.live-metric-total, .live-metric-rate, .live-metric-change { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.live-metric-rate { border-left: 1px solid var(--border-subtle); padding-left: 10px; }
-.live-metric-change { align-items: flex-end; }
-.live-metric-total > strong, .live-metric-rate > strong { font-size: 14px; font-weight: 650; line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.live-metric-label { color: var(--text-secondary); font-size: 10px; line-height: 1.25; }
-.live-metric-star { color: #f5c15b; font-size: 12px; }
-.live-metric-count { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
-.live-metric-trend { color: var(--text-secondary); background: rgba(148,163,184,.07); border: 1px solid rgba(148,163,184,.12); padding: 3px 6px; border-radius: 6px; font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; text-align: right; }
-.live-metric-trend.is-up { color: #56dfaa; border-color: rgba(16,185,129,.22); background: linear-gradient(115deg,rgba(16,185,129,.18),rgba(34,197,94,.04)); }
-.live-metric-trend.is-down { color: #ff8c96; border-color: rgba(239,68,68,.22); background: linear-gradient(115deg,rgba(239,68,68,.18),rgba(244,63,94,.04)); }
-.live-metrics-health { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 12px 0 10px; }
-.live-health-active { font-size: 11px; color: var(--text-secondary); margin-right: auto; }
-.live-health-active strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.live-health-badge { display: inline-block; border: 1px solid var(--health-border,rgba(148,163,184,.16)); border-radius: 6px; padding: 4px 6px; color: var(--health-color,var(--text-secondary)); background: linear-gradient(115deg,var(--health-bg,rgba(148,163,184,.08)),transparent); font-size: 10px; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.live-health-badge.is-risk, .live-health-badge.is-stale { --health-color: #ff8c96; --health-bg: rgba(239,68,68,.20); --health-border: rgba(239,68,68,.25); }
-.live-health-badge.is-basic { --health-color: #88baff; --health-bg: rgba(59,130,246,.20); --health-border: rgba(59,130,246,.25); }
-.live-health-badge.is-good { --health-color: #cd9aff; --health-bg: rgba(168,85,247,.20); --health-border: rgba(168,85,247,.25); }
-.live-health-badge.is-excellent, .live-health-badge.is-fresh { --health-color: #55ddb0; --health-bg: rgba(16,185,129,.20); --health-border: rgba(16,185,129,.25); }
-.live-health-badge.is-superb { --health-color: #79f596; --health-bg: rgba(34,197,94,.30); --health-border: rgba(34,197,94,.35); }
-.live-health-badge.is-aging { --health-color: #f5d16e; --health-bg: rgba(234,179,8,.20); --health-border: rgba(234,179,8,.25); }
-.live-metrics-aso { min-width: 0; }
-.live-keywords { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; padding: 6px 0; min-width: 0; }
-.live-keyword-chip, .live-keyword-add { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--border-subtle); border-radius: 20px; font-size: 11px; color: var(--text-secondary); background: var(--bg-surface-1); }
-.live-keyword-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.live-keyword-chip strong { font-size: 10px; font-weight: 600; color: var(--text-primary); border-left: 1px solid var(--border-subtle); padding-left: 6px; }
-.live-keyword-add { color: var(--accent-primary); cursor: pointer; white-space: nowrap; }
-.live-metrics-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 4px; }
-.live-metrics-status { font-size: 10px; color: var(--text-secondary); overflow-wrap: anywhere; }
-.live-metrics-more, .live-metrics-status button { border: 0; padding: 4px 0; background: none; color: var(--accent-primary); font-size: 11px; cursor: pointer; }
-.live-metrics-more { white-space: nowrap; margin-left: auto; }
-.live-metrics-legend summary { list-style: none; cursor: pointer; color: var(--text-secondary); font-size: 16px; padding: 2px 3px; }
-.live-metrics-legend summary::-webkit-details-marker { display: none; }
-.live-metrics-legend[open] { display: contents; }
-.live-metrics-legend[open] summary { grid-column: 3; grid-row: 1; }
-.live-metrics-legend-body { grid-column: 1 / -1; width: 100%; box-sizing: border-box; padding: 12px; background: var(--bg-surface-1); border: 1px solid var(--border-subtle); border-radius: 10px; font-size: 11px; color: var(--text-secondary); }
-.live-metrics-legend-body p { margin: 0 0 8px; line-height: 1.5; }
-.live-metrics-legend-body > strong { font-size: 11px; color: var(--text-primary); }
-.live-metrics-legend-bands { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 10px; }
-.live-keyword-dialog { width: min(360px,calc(100vw - 32px)); max-width: 100%; padding: 20px; color: var(--text-primary); background: var(--bg-surface-1); border: 1px solid var(--border-subtle); border-radius: 16px; }
-.live-keyword-dialog::backdrop { background: rgba(0,0,0,.65); }
-.live-keyword-dialog h2 { margin: 0 0 18px; font-size: 17px; }
-.live-keyword-dialog label { display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 6px; }
-.live-keyword-dialog input { width: 100%; box-sizing: border-box; padding: 12px; background: var(--bg-surface-2); color: var(--text-primary); border: 1px solid var(--border-subtle); border-radius: 8px; font: inherit; }
-.live-keyword-dialog p { color: var(--danger); font-size: 12px; }
-.live-keyword-dialog form > div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-.live-keyword-dialog button { padding: 9px 12px; border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--accent-primary); background: var(--bg-surface-2); cursor: pointer; }
-.live-phase1-history-label { color: var(--text-secondary); font-size: 11px; margin: 6px 0 12px; }
+/* ==========================================================================
+   LIVE PROJECT METRICS — PHASE 2 DASHBOARD COMPONENT
+   Strict, elegant, compact composition tuned to the application design tokens.
+   ========================================================================== */
+
+.live-metrics {
+    padding: 10px 12px 8px;
+    border-top: 1px solid var(--border-subtle);
+    min-width: 0;
+}
+
+/* ─────────────────────────── 1. Header ─────────────────────────────────── */
+
+.live-metrics-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.live-metrics-head > strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.live-metrics-head > span {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-left: auto;
+}
+
+/* ─────────────────────────── 2. Metric cards grid (2 cols) ─────────────── */
+
+.live-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.live-metric-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 8px 9px;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.live-metric-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.live-metric-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    min-width: 0;
+    margin-bottom: 4px;
+}
+
+.live-metric-card-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.live-metric-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    padding: 1.5px 4.5px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.live-metric-trend.is-up {
+    color: var(--success);
+    border-color: var(--success-border);
+    background: var(--success-surface);
+}
+
+.live-metric-trend.is-down {
+    color: var(--danger);
+    border-color: var(--danger-border);
+    background: var(--danger-surface);
+}
+
+.live-metric-card-main {
+    font-size: 16.5px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+
+.live-metric-star {
+    color: #f5c15b;
+    font-size: 12.5px;
+    vertical-align: baseline;
+}
+
+.live-metric-count {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.live-metric-unit {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.live-metric-card-sub {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.live-metric-card-speed-label {
+    color: var(--text-tertiary);
+    font-weight: 450;
+}
+
+.live-metric-card-speed-val {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.live-metric-card-speed-unit {
+    color: var(--text-tertiary);
+    font-weight: 450;
+}
+
+/* ─────────────────────────── 3. Health & Status Bar (3 cols) ───────────── */
+
+.live-metrics-health {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 7px 0;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+}
+
+.live-metrics-health > *:not(:last-child) {
+    border-right: 1px solid var(--border-subtle);
+}
+
+.live-health-col,
+.live-metrics-health > .live-health-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 2px;
+    padding: 0 4px;
+    min-width: 0;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+.live-health-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.live-health-val {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--health-color, var(--text-primary));
+}
+
+.live-health-active .live-health-val {
+    color: var(--text-primary);
+}
+
+/* Dynamic status colors by phase / threshold band */
+.live-health-badge.is-risk,
+.live-health-badge.is-stale {
+    --health-color: var(--danger);
+    --health-bg: var(--danger-surface);
+    --health-border: var(--danger-border);
+}
+
+.live-health-badge.is-basic {
+    --health-color: var(--accent-primary);
+    --health-bg: var(--accent-primary-surface);
+    --health-border: var(--accent-primary-border);
+}
+
+.live-health-badge.is-good {
+    --health-color: var(--reward);
+    --health-bg: var(--reward-surface);
+    --health-border: var(--reward-border);
+}
+
+.live-health-badge.is-excellent,
+.live-health-badge.is-fresh {
+    --health-color: var(--success);
+    --health-bg: var(--success-surface);
+    --health-border: var(--success-border);
+}
+
+.live-health-badge.is-superb {
+    --health-color: #34d399;
+    --health-bg: rgba(52, 211, 153, 0.14);
+    --health-border: rgba(52, 211, 153, 0.28);
+}
+
+.live-health-badge.is-aging {
+    --health-color: var(--warning);
+    --health-bg: var(--warning-surface);
+    --health-border: var(--warning-border);
+}
+
+.live-health-badge.is-unknown {
+    --health-color: var(--text-tertiary);
+    --health-bg: rgba(255, 255, 255, 0.05);
+    --health-border: var(--border-subtle);
+}
+
+/* ─────────────────────────── 4. ASO Keywords Rail ──────────────────────── */
+
+.live-metrics-aso {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin-bottom: 4px;
+}
+
+.live-keywords-lead {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.live-keywords-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    font-size: 9.5px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+}
+
+.live-keywords {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 2px 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+}
+
+.live-keywords::-webkit-scrollbar {
+    display: none;
+}
+
+.live-keyword-chip {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 5px;
+    padding: 3.5px 7px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    transition: border-color 0.15s ease;
+}
+
+.live-keyword-chip:hover {
+    border-color: var(--border-strong);
+}
+
+.live-keyword-hash {
+    color: var(--text-tertiary);
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.live-keyword-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 11px;
+}
+
+.live-keyword-divider {
+    width: 1px;
+    height: 10px;
+    background: var(--border-subtle);
+    flex: 0 0 auto;
+}
+
+.live-keyword-installs {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--success);
+    font-variant-numeric: tabular-nums;
+}
+
+.live-keyword-add {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 3.5px 8px;
+    background: var(--accent-primary-surface);
+    border: 1px dashed var(--accent-primary-border);
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.live-keyword-add:hover {
+    background: rgba(76, 141, 255, 0.2);
+    border-color: var(--accent-primary);
+}
+
+/* ─────────────────────────── 5. Footer & Status ────────────────────────── */
+
+.live-metrics-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.live-metrics-status {
+    font-size: 10px;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.live-metrics-more,
+.live-metrics-status button {
+    border: 0;
+    padding: 4px 0;
+    background: none;
+    color: var(--accent-primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.live-metrics-more {
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+/* ─────────────────────────── 6. Legend ─────────────────────────────────── */
+
+.live-metrics-legend summary {
+    list-style: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    padding: 2px 4px;
+    line-height: 1;
+    transition: color 0.15s ease;
+}
+
+.live-metrics-legend summary:hover {
+    color: var(--text-primary);
+}
+
+.live-metrics-legend summary::-webkit-details-marker {
+    display: none;
+}
+
+.live-metrics-legend[open] {
+    display: contents;
+}
+
+.live-metrics-legend[open] summary {
+    grid-column: 3;
+    grid-row: 1;
+}
+
+.live-metrics-legend-body {
+    grid-column: 1 / -1;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.live-metrics-legend-body p {
+    margin: 0 0 8px;
+    line-height: 1.5;
+}
+
+.live-metrics-legend-body > strong {
+    font-size: 11px;
+    color: var(--text-primary);
+}
+
+.live-metrics-legend-bands {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 6px 0 10px;
+}
+
+.live-metrics-legend-bands .live-health-badge {
+    display: inline-block;
+    border: 1px solid var(--health-border, rgba(148, 163, 184, 0.16));
+    border-radius: 6px;
+    padding: 3px 6px;
+    color: var(--health-color, var(--text-secondary));
+    background: var(--health-bg, rgba(148, 163, 184, 0.08));
+    font-size: 10px;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────── 7. Keyword Dialog ─────────────────────────── */
+
+.live-keyword-dialog {
+    width: min(360px, calc(100vw - 32px));
+    max-width: 100%;
+    padding: 20px;
+    color: var(--text-primary);
+    background: var(--bg-surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+}
+
+.live-keyword-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.65);
+}
+
+.live-keyword-dialog h2 {
+    margin: 0 0 18px;
+    font-size: 17px;
+}
+
+.live-keyword-dialog label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.live-keyword-dialog input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    background: var(--bg-surface-2);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    font: inherit;
+}
+
+.live-keyword-dialog p {
+    color: var(--danger);
+    font-size: 12px;
+}
+
+.live-keyword-dialog form > div {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.live-keyword-dialog button {
+    padding: 9px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--accent-primary);
+    background: var(--bg-surface-2);
+    cursor: pointer;
+}
+
+.live-phase1-history-label {
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin: 6px 0 12px;
+}

@@ -3,10 +3,13 @@
     'use strict';
     var cache = new Map(), requests = new Map(), revisions = new Map();
     var copy = {
-        ru: { title: 'Метрики', phase: 'Фаза 2', reviews: 'Отзывы', installs: 'Установки', installUnit: 'уст.', day: '/день',
+        ru: { title: 'Метрики', phase: 'Фаза 2', reviews: 'Отзывы', installs: 'Установки', installUnit: 'уст.', day: '/ день',
+            speedLabel: 'Скорость:',
+            activeLabel: 'Активность', retentionLabel: 'Удержание', updateLabel: 'Обновление', daysUnit: 'дн.',
+            keywordLead: 'Ключевики',
             active: 'Активных', update: 'дн. с апдейта', unknownUpdate: 'Нет даты апдейта',
             keyword: 'Ключевики ASO', add: 'Добавить ключевик для ASO', more: 'Подробнее', future: 'Графики Live-метрик появятся здесь позже.',
-            loading: 'Загружаем Live-метрики…', error: 'Метрики временно недоступны', retry: 'Повторить',
+            loading: 'Загружаем Live-метрик…', error: 'Метрики временно недоступны', retry: 'Повторить',
             save: 'Добавить', cancel: 'Отмена', placeholder: 'Например, калькулятор', saving: 'Сохраняем…',
             saveError: 'Не удалось сохранить ключевик. Попробуйте ещё раз.', limit: 'Можно добавить не больше 20 ключевиков.',
             invalid: 'Введите ключевик длиной от 1 до 80 символов.',
@@ -18,7 +21,10 @@
             retentionHint: 'Удержание — средняя длительность периодов установки, включая завершённые и текущие.',
             boundary: 'Дата активации Live пока не определена.',
         },
-        en: { title: 'Metrics', phase: 'Phase 2', reviews: 'Reviews', installs: 'Installs', installUnit: 'installs', day: '/day',
+        en: { title: 'Metrics', phase: 'Phase 2', reviews: 'Reviews', installs: 'Installs', installUnit: 'installs', day: '/ day',
+            speedLabel: 'Speed:',
+            activeLabel: 'Activity', retentionLabel: 'Retention', updateLabel: 'Update', daysUnit: 'd',
+            keywordLead: 'Keywords',
             active: 'Active', update: 'days since update', unknownUpdate: 'No update date',
             keyword: 'ASO keywords', add: 'Add an ASO keyword', more: 'Details', future: 'Live metrics charts will be available here later.',
             loading: 'Loading Live metrics…', error: 'Metrics temporarily unavailable', retry: 'Retry',
@@ -44,12 +50,23 @@
         var pct = metric && metric.trend_available ? Number(metric.trend_percent) || 0 : 0;
         var direction = pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral';
         var hint = metric && metric.trend_reason === 'zero_baseline' ? t('baseline') : metric && metric.trend_reason === 'insufficient_history' ? t('history') : t('windows');
-        return '<span class="live-metric-trend is-' + direction + '" title="' + esc((pct > 0 ? '+' : '') + num(pct,1) + '% · ' + hint) + '">' + (pct > 0 ? '+' : '') + esc(Math.abs(pct) < 10000 ? num(pct, 1) : compact(pct)) + '%</span>';
+        var glyph = pct > 0 ? '↗ ' : pct < 0 ? '↘ ' : '→ ';
+        return '<span class="live-metric-trend is-' + direction + '" title="' + esc((pct > 0 ? '+' : '') + num(pct,1) + '% · ' + hint) + '">' + glyph + (pct > 0 ? '+' : '') + esc(Math.abs(pct) < 10000 ? num(pct, 1) : compact(pct)) + '%</span>';
     }
-    function row(label, main, metric) {
-        return '<div class="live-metric-row"><div class="live-metric-total"><span class="live-metric-label">' + esc(label) + '</span><strong' + (metric ? ' title="' + esc(num(metric.total)) + '"' : '') + '>' + main + '</strong></div>' +
-            '<div class="live-metric-rate"><strong>' + (metric ? esc(num(metric.per_day, 1)) : '—') + '</strong><span class="live-metric-label">' + esc(t('day')) + '</span></div>' +
-            '<div class="live-metric-change">' + trend(metric) + '<span class="live-metric-label">WMA · 7d</span></div></div>';
+    function metricCard(label, main, metric) {
+        var rate = metric ? esc(num(metric.per_day, 1)) : '—';
+        return '<div class="live-metric-card live-metric-row">' +
+            '<div class="live-metric-card-head">' +
+                '<span class="live-metric-card-label">' + esc(label) + '</span>' +
+                trend(metric) +
+            '</div>' +
+            '<div class="live-metric-card-main">' + main + '</div>' +
+            '<div class="live-metric-card-sub">' +
+                '<span class="live-metric-card-speed-label">' + esc(t('speedLabel')) + '</span> ' +
+                '<strong class="live-metric-card-speed-val">' + rate + '</strong> ' +
+                '<span class="live-metric-card-speed-unit">' + esc(t('day')) + '</span>' +
+            '</div>' +
+        '</div>';
     }
     function legend() {
         return '<details class="live-metrics-legend"><summary aria-label="' + esc(t('legend')) + '" title="' + esc(t('legend')) + '">ⓘ</summary><div class="live-metrics-legend-body"><p>' + esc(t('source')) + '</p><p>' + esc(t('windows')) + '</p><p>' + esc(t('activeHint')) + '</p><p>' + esc(t('retentionHint')) + '</p>' +
@@ -63,20 +80,43 @@
         if (metrics && metrics.source !== 'devtesthub_live') metrics = null;
         var reviews = metrics && metrics.reviews, installs = metrics && metrics.installs;
         var rating = reviews && reviews.rating != null ? num(reviews.rating, 1) : '—';
-        var reviewMain = esc(rating) + ' <span class="live-metric-star" aria-hidden="true">★</span> <span class="live-metric-count">(' + (reviews ? esc(compact(reviews.total)) : '—') + ')</span>';
-        var installMain = installs ? esc(compact(installs.total)) + ' <span class="live-metric-count">' + esc(t('installUnit')) + '</span>' : '—';
+        var reviewMain = esc(rating) + '&nbsp;<span class="live-metric-star" aria-hidden="true">★</span>&nbsp;<span class="live-metric-count">(' + (reviews ? esc(compact(reviews.total)) : '—') + ')</span>';
+        var installMain = (installs ? esc(compact(installs.total)) : '—') + '&nbsp;<span class="live-metric-unit">' + esc(t('installUnit')) + '</span>';
         var retention = metrics && metrics.avg_retention_days, freshness = metrics && metrics.days_since_update;
         var keywords = metrics && metrics.keywords || [];
-        var health = '<span class="live-health-active" title="' + esc(t('activeHint') + (metrics ? ' · ' + num(metrics.active_users) : '')) + '">' + esc(t('active')) + ': <strong>' + (metrics ? esc(compact(metrics.active_users)) : '—') + '</strong></span>' +
-            '<span class="live-health-badge is-' + (retention == null ? 'unknown' : bandRetention(retention)) + '" title="' + esc(t('retentionHint')) + '">' + (retention == null ? '—d' : '~' + esc(num(retention, Number.isInteger(retention) ? 0 : 1)) + 'd') + '</span>' +
-            '<span class="live-health-badge live-health-freshness is-' + (freshness == null ? 'unknown' : bandFreshness(freshness)) + '">' + (freshness == null ? esc(t('unknownUpdate')) : esc(num(freshness)) + ' ' + esc(t('update'))) + '</span>';
+        var retentionVal = retention == null ? '—d' : '~' + esc(num(retention, Number.isInteger(retention) ? 0 : 1)) + 'd';
+        var freshnessVal = freshness == null ? '—' : esc(num(freshness)) + '&nbsp;' + esc(t('daysUnit'));
+        var health = '<div class="live-health-col live-health-active" title="' + esc(t('activeHint') + (metrics ? ' · ' + num(metrics.active_users) : '')) + '">' +
+                '<span class="live-health-label">' + esc(t('activeLabel')) + '</span>' +
+                '<strong class="live-health-val">' + (metrics ? esc(compact(metrics.active_users)) : '—') + '</strong>' +
+            '</div>' +
+            '<div class="live-health-badge is-' + (retention == null ? 'unknown' : bandRetention(retention)) + '" title="' + esc(t('retentionHint')) + '">' +
+                '<span class="live-health-label">' + esc(t('retentionLabel')) + '</span>' +
+                '<strong class="live-health-val">' + retentionVal + '</strong>' +
+            '</div>' +
+            '<div class="live-health-badge live-health-freshness is-' + (freshness == null ? 'unknown' : bandFreshness(freshness)) + '" title="' + esc(freshness == null ? t('unknownUpdate') : esc(num(freshness)) + ' ' + esc(t('update'))) + '">' +
+                '<span class="live-health-label">' + esc(t('updateLabel')) + '</span>' +
+                '<strong class="live-health-val">' + freshnessVal + '</strong>' +
+            '</div>';
         var chips = keywords.map(function (entry) {
-            return '<span class="live-keyword-chip" title="' + esc(entry.keyword) + '"><span aria-hidden="true">🏷</span><span class="live-keyword-name notranslate">' + esc(entry.keyword) + '</span><strong>' + esc(num(entry.installs)) + '</strong></span>';
+            return '<span class="live-keyword-chip" title="' + esc(entry.keyword) + '">' +
+                '<span class="live-keyword-hash" aria-hidden="true">#</span>' +
+                '<span class="live-keyword-name notranslate">' + esc(entry.keyword) + '</span>' +
+                '<span class="live-keyword-divider" aria-hidden="true"></span>' +
+                '<strong class="live-keyword-installs">' + esc(num(entry.installs)) + '</strong>' +
+            '</span>';
         }).join('');
         chips += '<button type="button" class="live-keyword-add" onclick="LiveProjectMetrics.addKeyword(' + id + ',event)" aria-label="' + esc(t('add')) + '">+ ' + (keywords.length ? '' : esc(t('add'))) + '</button>';
+        var aso = '<div class="live-metrics-aso">' +
+            '<div class="live-keywords-lead">' +
+                '<span class="live-keywords-title">' + esc(t('keywordLead')) + '</span>' +
+                (keywords.length ? '<span class="live-keywords-count">' + esc(keywords.length) + '</span>' : '') +
+            '</div>' +
+            '<div class="live-keywords" tabindex="0">' + chips + '</div>' +
+        '</div>';
         return '<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
-            row(t('reviews'), reviewMain, reviews) + row(t('installs'), installMain, installs) +
-            '<div class="live-metrics-health">' + health + '</div><div class="live-metrics-aso"><span class="live-metric-label">' + esc(t('keyword')) + '</span><div class="live-keywords" tabindex="0">' + chips + '</div></div>' +
+            '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs) + '</div>' +
+            '<div class="live-metrics-health">' + health + '</div>' + aso +
             '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>';
     }
     function remember(id, metrics) {
