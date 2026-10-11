@@ -1632,21 +1632,26 @@ function refreshLanguageUi() {
     }
 }
 
+var _profilePreferencesReadSequence = 0;
+
 async function loadUserProfilePreferences() {
+    var readSequence = ++_profilePreferencesReadSequence;
+    var autoAcceptRevision = _autoAcceptPreferenceRevision;
+    var masterRevision = window.ProofPing && typeof window.ProofPing.captureMasterRevision === 'function'
+        ? window.ProofPing.captureMasterRevision() : undefined;
     try {
-        var response = await fetchWithRetry(API_BASE + '/users/' + userId + '/profile');
+        var response = await fetchWithRetry(API_BASE + '/users/' + userId + '/profile', { cache: 'no-store' });
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var profile = await response.json();
+        if (readSequence !== _profilePreferencesReadSequence) return;
         if (profile && profile.is_banned) {
             showBanScreen(profile);
             return;
         }
-        _autoAcceptMutualEnabled = !!profile.auto_accept_mutual;
-        _autoAcceptMutualAvailable = (typeof profile.auto_accept_available === 'undefined')
-            ? true
-            : !!profile.auto_accept_available;
-        if (!_autoAcceptMutualAvailable) {
-            _autoAcceptMutualEnabled = false;
+        if (!_autoAcceptToggleInFlight && autoAcceptRevision === _autoAcceptPreferenceRevision &&
+            typeof profile.auto_accept_mutual === 'boolean' && typeof profile.auto_accept_available === 'boolean') {
+            _autoAcceptMutualAvailable = profile.auto_accept_available;
+            _autoAcceptMutualEnabled = profile.auto_accept_mutual && _autoAcceptMutualAvailable;
         }
         window._autoAcceptBountyEnabled = !!profile.auto_accept_bounty;
         window._autoAcceptBountyAvailable = (typeof profile.auto_accept_bounty_available === 'undefined')
@@ -1670,9 +1675,8 @@ async function loadUserProfilePreferences() {
         window.App.defaultGroupJoined = _defaultGroupJoined;
         if (window.ProofPing && typeof window.ProofPing.applyMasterFromProfile === 'function') {
             window.ProofPing.applyMasterFromProfile(
-                typeof profile.proof_ping_master_enabled === 'undefined'
-                    ? true
-                    : profile.proof_ping_master_enabled
+                profile.proof_ping_master_enabled,
+                masterRevision
             );
         }
         if ((!wasReady || previousJoined !== _defaultGroupJoined) && typeof window.renderTests === 'function') {

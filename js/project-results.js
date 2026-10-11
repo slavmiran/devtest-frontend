@@ -1594,9 +1594,26 @@
             '</div>'
         );
         var brandFilterHtml = _activeCoverageModelFilter === 'archive' ? '' : renderCoverageBrandFilter(aggregatedModels, lang);
+        var unknownDeviceHtml = '';
+        if (_activeCoverageModelFilter === 'all' && !_activeCoverageAndroid && _activeBrandFilter === 'all') {
+            var unknownTesters = (data.testers_without_device || []).filter(function(tester) {
+                return !_activeCoverageCountry || String(tester.country_code || 'unknown').toUpperCase() === _activeCoverageCountry;
+            });
+            if (unknownTesters.length) {
+                unknownDeviceHtml = '<section class="coverage-unknown-devices">' + unknownTesters.map(function(tester) {
+                    var username = String(tester.username || '').replace(/^@+/, '');
+                    var name = tester.full_name || (username ? '@' + username : window.t('idLabel', {id:tester.tester_id}, lang));
+                    return '<div class="coverage-unknown-device"><span class="notranslate">' + window.escapeHTML(name) +
+                        (tester.full_name && username ? '<small>@' + window.escapeHTML(username) + '</small>' : '') +
+                        '</span><span class="coverage-unknown-device__hint">' + window.escapeHTML(window.t('coverageDeviceDataMissing', {}, lang)) + '</span></div>';
+                }).join('') + '</section>';
+            }
+        }
         var deviceCardsHtml = _activeCoverageModelFilter === 'archive'
             ? renderCoverageArchive(data.archived_screenshots || [], lang)
             : renderCoverageDeviceCards(aggregatedModels, lang);
+        if (unknownDeviceHtml && !aggregatedModels.some(coverageModelMatchesDimensions)) deviceCardsHtml = '';
+        deviceCardsHtml += unknownDeviceHtml;
 
         container.innerHTML = (
             '<div class="coverage-body"><div class="coverage-header">' +
@@ -1689,11 +1706,15 @@
         var scrollTop = scroller ? scroller.scrollTop : 0;
         var details = body.querySelector('.coverage-distribution');
         var wasOpen = !!(details && details.open);
+        var countryStrip = body.querySelector('.coverage-cockpit-countries__list');
+        var countryScrollLeft = countryStrip ? countryStrip.scrollLeft : 0;
         renderCoverageScreen(body, _activeCoverageData);
         var nextDetails = body.querySelector('.coverage-distribution');
         if (nextDetails && wasOpen) nextDetails.open = true;
         var nextScroller = body.querySelector('.coverage-body');
         if (nextScroller) nextScroller.scrollTop = scrollTop;
+        var nextCountryStrip = body.querySelector('.coverage-cockpit-countries__list');
+        if (nextCountryStrip) nextCountryStrip.scrollLeft = countryScrollLeft;
     }
 
     function selectCoverageCountry(code) {

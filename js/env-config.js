@@ -1,4 +1,4 @@
 /* Local cache from backend .env — optional. Vercel discovers API via staging DB.
  * Source: WEBHOOK_URL in devtest-backend/.env (origin + /api).
  */
-window.__TEST_API_BASE__ = 'https://router-discussed-inc-spaces.trycloudflare.com/api';
+window.__TEST_API_BASE__ = 'https://edition-presented-nyc-cartridges.trycloudflare.com/api';

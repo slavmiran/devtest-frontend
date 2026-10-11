@@ -25,6 +25,8 @@
             mutualEmpty: "В этом разделе пока нет проектов",
             bountyEmpty: "Контракты пока не найдены",
             mutualJoinBtn: "🤝 Предложить взаимный тест",
+            mutualNoAvailableProjectBtn: "Нет доступного проекта для обмена",
+            coverageDeviceDataMissing: "Нет данных устройства",
             takeDirectBtn: "🆓 Взять на тестирование",
             prelaunchJoinBtn: "🔓 Войти в Pre-Launch",
             prelaunchJoinModalTitle: "Вход в Pre-Launch",

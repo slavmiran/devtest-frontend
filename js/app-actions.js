@@ -574,6 +574,9 @@ function openAccessProblemGroupLink(appId) {
     handleJoinGoogleGroupClick(appId, groupUrl, { rerender: true });
 }
 
+// A profile GET may finish after this explicit preference write.
+var _autoAcceptPreferenceRevision = 0;
+
 async function handleAutoAcceptMutualToggle(input) {
     if (!input || _autoAcceptToggleInFlight) {
         syncAutoAcceptToggleUi();
@@ -595,6 +598,7 @@ async function handleAutoAcceptMutualToggle(input) {
     }
 
     _autoAcceptToggleInFlight = true;
+    ++_autoAcceptPreferenceRevision;
     _autoAcceptMutualEnabled = nextValue;
     syncAutoAcceptToggleUi();
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
@@ -636,6 +640,7 @@ async function handleAutoAcceptMutualToggle(input) {
         handleApiError('network_error');
     } finally {
         _autoAcceptToggleInFlight = false;
+        ++_autoAcceptPreferenceRevision;
         syncAutoAcceptToggleUi();
     }
 }
@@ -882,12 +887,11 @@ function _loadCustomGroupWaitState() {
     } catch (error) {
         _customGroupWaitState = {};
     }
-    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
-    var now = Date.now();
     var cleaned = {};
     Object.keys(_customGroupWaitState || {}).forEach(function(key) {
         var startedAt = Number(_customGroupWaitState[key] || 0);
-        if (startedAt > 0 && (now - startedAt) < waitMs) {
+        // Keep the timestamp after expiry: it also records that the wait ran once.
+        if (startedAt > 0) {
             cleaned[key] = startedAt;
         }
     });
@@ -903,9 +907,8 @@ function _persistCustomGroupWaitState() {
 function startCustomGroupAccessWait(appId) {
     var key = String(Number(appId) || 0);
     if (key === '0') return;
-    var waitMs = Number(CUSTOM_GROUP_ACCESS_WAIT_MS) || (15 * 60 * 1000);
     var existing = Number((_customGroupWaitState && _customGroupWaitState[key]) || 0);
-    if (existing > 0 && (Date.now() - existing) < waitMs) {
+    if (existing > 0) {
         if (typeof syncCustomGroupAccessWaitUi === 'function') syncCustomGroupAccessWaitUi();
         return;
     }
@@ -1747,11 +1750,15 @@ function toggleLanguage() {
     if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+function rememberConfirmedTestCheckin(test) {
+    if (test) test.confirmed_checkin_view_date = getLocalDate();
+}
+
 function recomputeLocalTestState(test) {
     if (!test) return test;
     var today = getLocalDate();
     var nextStatus = 'new';
-    if (test.last_check_date === today) {
+    if (test.last_check_date === today || test.confirmed_checkin_view_date === today) {
         nextStatus = 'done';
     } else if (test.last_check_date && test.last_check_date < today) {
         nextStatus = 'daily';
@@ -1763,6 +1770,8 @@ function recomputeLocalTestState(test) {
     var appStatus = String(test.app_status || 'active').toLowerCase();
     var isExternal = !!test.is_external;
     var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
+    var isAppClosed = !isExternal && appStatus !== 'active' && !isPendingCompletion;
+    var isTestClosed = !isExternal && progressStatus !== 'active';
     var isArchivedOrCompleted = !isExternal && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
     if (test.status === 'opened' && nextStatus !== 'done' && !isArchivedOrCompleted && !isPendingCompletion) {
         nextStatus = 'opened';
@@ -2226,6 +2235,7 @@ async function _continueMutualOffer(targetAppId, targetOwnerId, sourceButton) {
                 return project && (project.mode === 'mutual' || project.mode === 'hybrid') && project.id;
             }));
     const blockedProjects = await fetchBlockedOfferProjects(targetOwnerId, true);
+    if (typeof renderMutualFeed === 'function') renderMutualFeed(true);
     var target = (typeof window.getMarketCandidateByAppId === 'function') ? window.getMarketCandidateByAppId(targetAppId) : null;
     var targetOwnerHasEmail = !!(target && target.owner_has_email);
     showProjectSelectModal(projectChoices, targetAppId, targetOwnerId, {
@@ -5100,6 +5110,7 @@ async function confirmStart(id, options) {
                 return Number(item.id) === Number(id);
             });
             if (updatedTest) {
+                rememberConfirmedTestCheckin(updatedTest);
                 var wasFirstCheckin = Number(prevTestSnapshot && prevTestSnapshot.checkins_count || 0) <= 0
                     || String(prevTestSnapshot && prevTestSnapshot.status || '') === 'new';
                 if (result.already_checked_today) {
