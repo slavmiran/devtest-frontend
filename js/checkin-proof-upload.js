@@ -459,6 +459,7 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     var test = _checkinProofTest(appId);
     var wasFirstCheckin = Number(test && test.checkins_count || 0) <= 0 || String(test && test.status || '') === 'new';
     if (test) {
+        if (typeof rememberConfirmedTestCheckin === 'function') rememberConfirmedTestCheckin(test);
         delete _checkinProofPendingAppIds[Number(appId || 0)];
         test.status = 'done';
         test.last_check_date = checkin.last_check_date || (typeof getLocalDate === 'function' ? getLocalDate() : '');

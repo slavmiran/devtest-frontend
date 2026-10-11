@@ -25,6 +25,8 @@
             mutualEmpty: "No projects in this section yet",
             bountyEmpty: "No contracts found yet",
             mutualJoinBtn: "🤝 Join mutual",
+            mutualNoAvailableProjectBtn: "No project available for exchange",
+            coverageDeviceDataMissing: "Device details unavailable",
             takeDirectBtn: "🆓 Take for testing",
             prelaunchJoinBtn: "🔓 Join pre-launch",
             prelaunchJoinModalTitle: "Join pre-launch",

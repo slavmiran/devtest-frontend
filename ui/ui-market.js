@@ -840,6 +840,30 @@ function openMarketAccessIssue(appId, isOwnProject, ownerUsername, accessMode, e
     return false;
 }
 
+function getMutualFeedJoinUnavailableLabel(item) {
+    var test = getActiveMyTestForApp(item.app_id);
+    if (test && !test.is_external && String(test.progress_status || 'active') === 'active'
+        && String(test.app_status || 'active') === 'active') {
+        return window.t('alreadyTestingBadge', {}, lang);
+    }
+    var choices = typeof window.getMutualOfferProjectChoicesForOwner === 'function'
+        ? window.getMutualOfferProjectChoicesForOwner(item.owner_id) : [];
+    if (!choices.length) return '';
+    var key = String(item.owner_id || '');
+    var known = typeof _blockedOfferProjectsFetchedAt !== 'undefined'
+        && Date.now() - Number(_blockedOfferProjectsFetchedAt[key] || 0) < 30000;
+    var blocked = known && typeof _blockedOfferProjectsByOwner !== 'undefined'
+        ? (_blockedOfferProjectsByOwner[key] || {}) : {};
+    var allUnavailable = choices.every(function(project) {
+        return !!_getProjectOwnerLinkMeta(project, item.owner_id, item.name)
+            || !!blocked[String(project.id)]
+            || String(project.status || 'active') !== 'active'
+            || project.is_accepting_new_testers === false
+            || (String(project.test_mode || '') === 'email_list' && item.owner_has_email === false);
+    });
+    return allUnavailable ? window.t('mutualNoAvailableProjectBtn', {}, lang) : '';
+}
+
 function renderFeedCard(item, kind) {
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
@@ -976,6 +1000,16 @@ function renderFeedCard(item, kind) {
             if (typeof window.registerJoinBountyContext === 'function') {
                 window.registerJoinBountyContext(item);
             }
+        }
+    }
+    if (kind === 'mutual-seeking' && clickAction.indexOf('createMutualOffer(') === 0) {
+        var unavailableLabel = getMutualFeedJoinUnavailableLabel(item);
+        if (unavailableLabel) {
+            buttonText = unavailableLabel;
+            clickAction = 'void(0)';
+            buttonClass = 'btn btn-secondary disabled';
+            buttonDisabledAttr = 'disabled';
+            buttonExtraAttrs = '';
         }
     }
     if (hasAccessIssue && !isOwnProject) {
