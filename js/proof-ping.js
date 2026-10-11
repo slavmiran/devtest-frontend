@@ -5,11 +5,14 @@
     'use strict';
 
     var DISMISS_PREFIX = 'pc_ping_dismissed_';
-    var PENDING_PREFIX = 'pc_ping_pending_';
     var MASTER_STORAGE_KEY = 'pc_ping_master_v1';
     var FALLBACK_GROUP_URL = 'https://t.me/googleplay_console_12testers';
     var masterEnabled = true;
     var masterReady = false;
+    var masterWriteRevision = 0;
+    var masterWritePending = false;
+    var projectWriteRevision = 0;
+    var projectWrites = new Map();
 
     function uiLang() {
         return typeof lang !== 'undefined' ? lang : 'ru';
@@ -119,19 +122,11 @@
        The server value wins, except while an optimistic write is in flight. */
 
     function pendingValue(appId) {
-        try {
-            var raw = sessionStorage.getItem(PENDING_PREFIX + Number(appId || 0));
-            if (raw === '1') return true;
-            if (raw === '0') return false;
-        } catch (_) {}
+        // Pending is process-local: a reload must read the saved server value,
+        // not inherit an unfinished write from a previous page instance.
+        var write = projectWrites.get(Number(appId || 0));
+        if (write && write.pending) return write.value;
         return null;
-    }
-
-    function rememberPending(appId, value) {
-        try {
-            if (value === null) sessionStorage.removeItem(PENDING_PREFIX + Number(appId || 0));
-            else sessionStorage.setItem(PENDING_PREFIX + Number(appId || 0), value ? '1' : '0');
-        } catch (_) {}
     }
 
     function isEnabled(project) {
@@ -213,8 +208,10 @@
         '</svg>';
 
     function switchHtml(appId, enabled, extraClass) {
+        var busy = !!(projectWrites.get(Number(appId)) || {}).pending;
         return '<label class="toggle-switch pc-ping-switch' + (extraClass ? ' ' + extraClass : '') + '" onclick="event.stopPropagation();">' +
             '<input type="checkbox"' + (enabled ? ' checked' : '') +
+            (busy ? ' disabled aria-busy="true"' : '') +
             ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
             ' onchange="pcProofPingToggle(' + Number(appId) + ', this)">' +
             '<span class="toggle-slider"></span>' +
@@ -222,8 +219,10 @@
     }
 
     function dotSwitchHtml(appId, enabled) {
+        var busy = !!(projectWrites.get(Number(appId)) || {}).pending;
         return '<button type="button" class="pc-switch-toggle pc-dotswitch' + (enabled ? ' is-on' : '') + '"' +
             ' role="switch"' +
+            (busy ? ' disabled aria-busy="true"' : '') +
             ' aria-checked="' + (enabled ? 'true' : 'false') + '"' +
             ' aria-pressed="' + (enabled ? 'true' : 'false') + '"' +
             ' aria-label="' + esc(text('pcPingToggleAria', 'Screenshot notifications')) + '"' +
@@ -380,7 +379,6 @@
 
     async function persist(appId, enabled) {
         var safeId = Number(appId || 0);
-        rememberPending(safeId, enabled);
         try {
             var response = await fetch(apiBase() + '/projects/' + safeId + '/proof-ping', {
                 method: 'POST',
@@ -393,10 +391,8 @@
             }
             var project = projectById(safeId);
             if (project) project.proof_ping_enabled = !!enabled;
-            rememberPending(safeId, null);
             return true;
         } catch (error) {
-            rememberPending(safeId, null);
             if (typeof window.showToast === 'function') {
                 window.showToast(text('settingsProofPingSaveError', 'Could not save the setting'));
             }
@@ -407,6 +403,7 @@
     function syncSwitches(appId, enabled) {
         var safeId = Number(appId || 0);
         var on = !!enabled;
+        var busy = !!(projectWrites.get(safeId) || {}).pending;
         var selectors = [
             '[data-pc-ping="' + safeId + '"] input[type="checkbox"]',
             '[data-pc-ping-row="' + safeId + '"] input[type="checkbox"]',
@@ -415,6 +412,7 @@
         selectors.forEach(function (selector) {
             Array.prototype.slice.call(document.querySelectorAll(selector)).forEach(function (input) {
                 input.checked = on;
+                input.disabled = busy;
             });
         });
         Array.prototype.slice.call(document.querySelectorAll('[data-pc-ping="' + safeId + '"]')).forEach(function (block) {
@@ -424,6 +422,8 @@
                 btn.classList.toggle('is-on', on);
                 btn.classList.toggle('is-off', !on);
                 if (btn.classList.contains('pc-ping-icon-btn--info')) return;
+                btn.disabled = busy;
+                btn.setAttribute('aria-busy', String(busy));
                 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
                 btn.setAttribute('aria-checked', on ? 'true' : 'false');
             });
@@ -445,6 +445,8 @@
             tile.classList.toggle('is-on', on);
             tile.classList.toggle('is-off', !on);
             Array.prototype.slice.call(tile.querySelectorAll('.pc-quick-tile__toggle')).forEach(function (toggle) {
+                toggle.disabled = busy;
+                toggle.setAttribute('aria-busy', String(busy));
                 toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
                 toggle.setAttribute('aria-checked', on ? 'true' : 'false');
             });
@@ -466,12 +468,37 @@
 
     async function setEnabled(appId, enabled) {
         var safeId = Number(appId || 0);
+        var project = projectById(safeId);
+        if (!project || (projectWrites.get(safeId) || {}).pending) {
+            if (project) syncSwitches(safeId, isEnabled(project));
+            return;
+        }
+        var previous = isEnabled(project);
+        var write = { value: !!enabled, pending: true, revision: ++projectWriteRevision };
+        projectWrites.set(safeId, write);
+        project.proof_ping_enabled = !!enabled;
         syncSwitches(safeId, enabled);
         var saved = await persist(safeId, enabled);
-        if (!saved) {
-            var project = projectById(safeId);
-            syncSwitches(safeId, project ? project.proof_ping_enabled !== false : true);
-        }
+        write.value = saved ? !!enabled : previous;
+        write.pending = false;
+        // Also reject reads that started during the save, not just before it.
+        write.revision = ++projectWriteRevision;
+        project = projectById(safeId);
+        if (project) project.proof_ping_enabled = write.value;
+        syncSwitches(safeId, write.value);
+        if (typeof persistProjectsCacheSnapshot === 'function') persistProjectsCacheSnapshot();
+    }
+
+    function reconcileProjects(records, readRevision) {
+        if (typeof readRevision !== 'number') return;
+        records.forEach(function (project) {
+            var appId = Number(project.id || project.app_id || 0);
+            var write = projectWrites.get(appId);
+            if (!write) return;
+            if (write.pending || readRevision < write.revision) {
+                project.proof_ping_enabled = write.value;
+            }
+        });
     }
 
     /* ── settings sheet ─────────────────────────────────────────────────── */
@@ -486,9 +513,15 @@
     function syncMasterSwitch() {
         var on = isMasterEnabled();
         var master = document.getElementById('proof-ping-master-toggle');
-        if (master) master.checked = on;
+        if (master) {
+            master.checked = on;
+            master.disabled = masterWritePending;
+        }
         var settingsRow = document.getElementById('settings-proof-ping-toggle');
-        if (settingsRow) settingsRow.checked = on;
+        if (settingsRow) {
+            settingsRow.checked = on;
+            settingsRow.disabled = masterWritePending;
+        }
         var sheet = document.getElementById('proof-ping-sheet');
         if (sheet) {
             sheet.classList.toggle('is-master-off', !on);
@@ -571,20 +604,28 @@
     }
 
     async function setMasterEnabled(enabled) {
+        if (masterWritePending) {
+            syncMasterSwitch();
+            return;
+        }
         var previous = isMasterEnabled();
+        masterWritePending = true;
+        ++masterWriteRevision;
         setMasterLocal(enabled);
         syncMasterSwitch();
         var saved = await persistMaster(enabled);
         if (!saved) {
             setMasterLocal(previous);
-            syncMasterSwitch();
         }
+        masterWritePending = false;
+        ++masterWriteRevision;
+        syncMasterSwitch();
     }
 
     window.pcProofPingToggle = function (appId, input) {
         var enabled = !!(input && input.checked);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
-        setEnabled(appId, enabled);
+        return setEnabled(appId, enabled);
     };
 
     window.pcProofPingToggleDot = function (appId, button) {
@@ -594,7 +635,7 @@
         }
         var enabled = !(source && source.classList.contains('is-on'));
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
-        setEnabled(appId, enabled);
+        return setEnabled(appId, enabled);
     };
 
     function syncExplainExpanded(appId, isOpen) {
@@ -639,7 +680,7 @@
     window.pcProofPingMasterToggle = function (input) {
         var enabled = !!(input && input.checked);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
-        setMasterEnabled(enabled);
+        return setMasterEnabled(enabled);
     };
 
     window.pcProofPingOpenChat = function (event) {
@@ -734,7 +775,12 @@
         isMasterEnabled: isMasterEnabled,
         setCommunityMember: setCommunityMember,
         isCommunityMember: isCommunityMember,
-        applyMasterFromProfile: function (value) {
+        captureProjectRevision: function () { return projectWriteRevision; },
+        reconcileProjects: reconcileProjects,
+        captureMasterRevision: function () { return masterWriteRevision; },
+        applyMasterFromProfile: function (value, readRevision) {
+            if (typeof value !== 'boolean' || masterWritePending ||
+                (typeof readRevision === 'number' && readRevision !== masterWriteRevision)) return;
             setMasterLocal(value !== false);
             syncSettingsRow();
         },

@@ -3,6 +3,16 @@
    ========================================================================== */
 
 /* ── Card Results 5-Column Dashboard (Quiet, Premium UX/UI) ── */
+.coverage-unknown-devices { margin: 12px 0; }
+.coverage-unknown-device {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px 16px; border-bottom: 1px solid rgba(160,180,205,.12);
+    font-size: 13px; line-height: 1.5;
+}
+.coverage-unknown-device > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.coverage-unknown-device small { display: block; color: var(--hint-color,#93a0b2); font-size: 11px; }
+.coverage-unknown-device__hint { color: var(--hint-color,#93a0b2); font-size: 12px; }
+
 .pc-results-card {
     margin: 8px 8px 10px 8px;
     padding: 10px 10px 12px 10px;

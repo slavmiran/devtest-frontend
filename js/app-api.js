@@ -603,7 +603,7 @@ function _normalizeCachedTests(tests) {
         }
 
         // Recalculate status for current date (if checked in yesterday, today it needs testing)
-        if (t.last_check_date === today) {
+        if (t.last_check_date === today || t.confirmed_checkin_view_date === today) {
             t.status = 'done';
         } else if (t.last_check_date && t.last_check_date < today) {
             t.status = (Number(t.checkins_count || 0) <= 0) ? 'new' : 'daily';
@@ -1025,10 +1025,13 @@ function startOffersPolling() {
     }, 30000);
 }
 
+var _blockedOfferProjectsFetchedAt = {};
+
 async function fetchBlockedOfferProjects(targetOwnerId, forceRefresh) {
     var ownerKey = String(targetOwnerId || '');
     if (!ownerKey) return {};
-    if (!forceRefresh && _blockedOfferProjectsByOwner[ownerKey]) {
+    if (!forceRefresh && _blockedOfferProjectsByOwner[ownerKey]
+        && Date.now() - Number(_blockedOfferProjectsFetchedAt[ownerKey] || 0) < 30000) {
         return _blockedOfferProjectsByOwner[ownerKey];
     }
     try {
@@ -1041,6 +1044,7 @@ async function fetchBlockedOfferProjects(targetOwnerId, forceRefresh) {
             map[String(item.proposer_app_id)] = item;
         });
         _blockedOfferProjectsByOwner[ownerKey] = map;
+        _blockedOfferProjectsFetchedAt[ownerKey] = Date.now();
         return map;
     } catch (error) {
         console.error('Error loading blocked offer projects:', error);
@@ -1615,10 +1619,13 @@ function _mapTestsFromApi(data) {
         var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
         var isArchivedOrCompleted = !isExternal && !isSoftTail && ((appStatus !== 'active' && !isPendingCompletion) || progressStatus !== 'active');
         var existingTest = myTests.find(function(test) { return Number(test.id) === Number(mappedId); });
+        var sameParticipation = !!(existingTest
+            && Number(existingTest.progress_id || 0) === Number(app.progress_id || 0)
+            && Number(existingTest.run_iteration || 1) === Number(app.run_iteration || 1));
         var shouldPreserveLocalDoneToday = !!(
-            existingTest
+            sameParticipation
             && existingTest.status === 'done'
-            && String(existingTest.last_check_date || '') === today
+            && (String(existingTest.last_check_date || '') === today || existingTest.confirmed_checkin_view_date === today)
             && String(app.last_check_date || '') !== today
         );
         if (shouldPreserveLocalDoneToday) {
@@ -1644,16 +1651,16 @@ function _mapTestsFromApi(data) {
             : (isExternal && existingTest ? Math.max(apiTestingDays, Number(existingTest.testing_days || 0)) : apiTestingDays);
         var skipsCount = countGrantSkips(app);
         if (shouldPreserveLocalDoneToday) {
-            skipsCount = Math.max(skipsCount, Number(existingTest.skips_count || 0));
+            skipsCount = Number(existingTest.skips_count || 0);
         }
         var resolvedCheckinsCount = shouldPreserveLocalDoneToday
             ? Math.max(Number(app.checkins_count || 0), Number(existingTest.checkins_count || 0))
             : Number(app.checkins_count || 0);
         var resolvedSkipsCount = shouldPreserveLocalDoneToday
-            ? Math.max(Number(app.skips_count || 0), Number(existingTest.skips_count || 0))
+            ? Number(existingTest.skips_count || 0)
             : Number(app.skips_count || 0);
         var resolvedDailyTimeline = shouldPreserveLocalDoneToday
-            ? (app.daily_timeline || existingTest.daily_timeline || '')
+            ? (existingTest.daily_timeline || app.daily_timeline || '')
             : (app.daily_timeline || '');
         var resolvedLastCheckDate = shouldPreserveLocalDoneToday
             ? (existingTest.last_check_date || today)
@@ -1686,6 +1693,7 @@ function _mapTestsFromApi(data) {
             google_group_url: app.google_group_url,
             instructions: app.instructions,
             status: status,
+            confirmed_checkin_view_date: sameParticipation ? (existingTest.confirmed_checkin_view_date || '') : '',
             start_date: app.start_date,
             owner_id: Number(app.owner_id || 0),
             owner_username: app.owner_username,
@@ -1884,6 +1892,7 @@ async function _loadTasksImpl(options) {
                 if (typeof window.renderShowcaseActiveTests === 'function') window.renderShowcaseActiveTests(true);
             }
             if (testsChanged && typeof renderBountyFeed === 'function') renderBountyFeed(true);
+            if (testsChanged && typeof renderMutualFeed === 'function') renderMutualFeed(true);
         } else if (typeof clearCompletedPendingFeedbackCheckins === 'function') {
             clearCompletedPendingFeedbackCheckins();
         }
@@ -2303,8 +2312,8 @@ async function publishProjectToMarket(projectId) {
     }
 }
 
-function _mapProjectsFromApi(data) {
-    return (data.projects || []).map(function(project) {
+function _mapProjectsFromApi(data, proofPingReadRevision) {
+    var mappedProjects = (data.projects || []).map(function(project) {
         var testers = Array.isArray(project.testers) ? project.testers : [];
         var hasAccessError = testers.some(function(tester) {
             return !!tester.issue_reported_at && !tester.issue_fixed_at;
@@ -2377,6 +2386,7 @@ function _mapProjectsFromApi(data) {
             accepts_email_testers: !!project.accepts_email_testers,
             target_lang: project.target_lang || 'ALL',
             request_reviews: project.request_reviews !== false,
+            proof_ping_enabled: project.proof_ping_enabled !== false,
             min_android_version: Number(project.min_android_version || 0),
             limit_mutual: project.limit_mutual || 0,
             limit_bounty: project.limit_bounty || 0,
@@ -2422,6 +2432,10 @@ function _mapProjectsFromApi(data) {
             smart_ping_sent_at: project.smart_ping_sent_at || null,
         };
     });
+    if (window.ProofPing && typeof window.ProofPing.reconcileProjects === 'function') {
+        window.ProofPing.reconcileProjects(mappedProjects, proofPingReadRevision);
+    }
+    return mappedProjects;
 }
 
 function _mapStatsFromApi(data) {
@@ -2490,6 +2504,8 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
     });
 
     try {
+        var proofPingReadRevision = window.ProofPing && typeof window.ProofPing.captureProjectRevision === 'function'
+            ? window.ProofPing.captureProjectRevision() : undefined;
         var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
         var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ, { timeoutMs: 12000 }, 1);
         if (!response.ok) {
@@ -2501,7 +2517,7 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
             throw new Error('Invalid project sync confirmation payload');
         }
 
-        var freshProjects = _mapProjectsFromApi(data);
+        var freshProjects = _mapProjectsFromApi(data, proofPingReadRevision);
         var freshStats = _mapStatsFromApi(data);
         var confirmedProject = freshProjects.find(function(project) {
             return Number(project.id) === normalizedAppId;
@@ -2538,6 +2554,8 @@ function _markPostSyncRefreshCooldown() {
 
 async function _loadProjectsImpl(options) {
     var parametersRequestedAt = Date.now();
+    var proofPingReadRevision = window.ProofPing && typeof window.ProofPing.captureProjectRevision === 'function'
+        ? window.ProofPing.captureProjectRevision() : undefined;
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
     var wasProjectsLoadedBeforeRequest = _projectsLoadedOnce;
     if (shouldMarkBackgroundSync) {
@@ -2555,7 +2573,7 @@ async function _loadProjectsImpl(options) {
                 window.ProofPing.setCommunityMember(window.isCommunityMember);
             }
         }
-        var nextProjects = _mapProjectsFromApi(data);
+        var nextProjects = _mapProjectsFromApi(data, proofPingReadRevision);
         if (window.ProjectParameters) window.ProjectParameters.reconcile(nextProjects, parametersRequestedAt);
         var nextStats = _mapStatsFromApi(data);
 
@@ -2569,6 +2587,7 @@ async function _loadProjectsImpl(options) {
         if (projectsChanged || statsChanged || !wasProjectsLoadedBeforeRequest) {
             myProjects = nextProjects;
             visibilityStats = nextStats;
+            if (projectsChanged && typeof renderMutualFeed === 'function') renderMutualFeed(true);
             myProjectsLoadError = false;
             markProjectsViewDirty();
             if (projectsChanged) {
