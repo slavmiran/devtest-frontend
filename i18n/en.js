@@ -855,6 +855,7 @@
             checkinProofCardUploading: "Sending screenshot…",
             checkinProofCanTestNextApp: "You can test the next app",
             checkinProofBackgroundRetry: "The card will remain available — try sending it again.",
+            checkinProofSavedRefreshing: "Report saved. Refreshing the card — no need to send it again.",
             checkinProofCounterLabel: "Screenshots:",
             checkinProofOf: "of",
             checkinProofBonusInactive: "Bonus: +0.3 {karmaIcon}",

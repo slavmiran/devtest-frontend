@@ -436,6 +436,7 @@ function removeCheckinProofFile(index) {
 
 function _checkinProofErrorMessage(result) {
     var code = result && (result.code || result.detail);
+    if (code === 'network_error') return window.t('networkError', {}, lang);
     if (code === 'checkin_already_proved') return window.t('checkinProofAlreadyReceived', {}, lang);
     if (code === 'proof_attach_incomplete') return window.t('checkinProofAttachIncomplete', {}, lang);
     if (code === 'catchup_proof_attach_incomplete') return window.t('checkinProofAttachIncomplete', {}, lang);
@@ -517,7 +518,43 @@ function _applyBufferCatchupProofResult(appId, result) {
     }, 250);
 }
 
+async function _postCheckinProofScreenshot(url, form) {
+    // Replay the SAME UUID and files, once. The endpoint resolves the existing
+    // proof first and uses the same-day check-in winner to prevent double credit.
+    for (var attempt = 0; attempt < 2; attempt += 1) {
+        var response;
+        var result;
+        try {
+            response = await fetch(url, { method: 'POST', body: form });
+            result = await response.json();
+        } catch (error) {
+            if (attempt === 1) throw error;
+            await new Promise(function(resolve) { setTimeout(resolve, 1000); });
+            continue;
+        }
+        var unavailableSchema = result && ['proof_media_items_storage_not_ready', 'proof_content_hash_storage_not_ready'].indexOf(result.code) !== -1;
+        var retryable = !unavailableSchema && ([408, 425, 429, 500, 502, 503, 504].indexOf(response.status) !== -1
+            || (result && result.details && result.details.retryable === true));
+        var retryDelay = 1000;
+        var retryAfter = response.headers && response.headers.get('Retry-After');
+        if (retryAfter) {
+            var waitMs = /^\d+(?:\.\d+)?$/.test(retryAfter.trim())
+                ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now();
+            if (Number.isFinite(waitMs)) {
+                retryDelay = Math.max(retryDelay, waitMs);
+                if (retryDelay > 30000) retryable = false; // Never retry before the server permits it.
+            }
+        }
+        if (attempt === 0 && retryable) {
+            await new Promise(function(resolve) { setTimeout(resolve, retryDelay); });
+            continue;
+        }
+        return { response: response, result: result };
+    }
+}
+
 async function _runCheckinProofUploadJob(job) {
+    var confirmedResult = null;
     try {
         var openToken = typeof _getCheckinOpenToken === 'function' ? _getCheckinOpenToken(job.appId) : '';
         if (!openToken && typeof _requestCheckinOpenToken === 'function') {
@@ -534,9 +571,9 @@ async function _runCheckinProofUploadJob(job) {
         job.files.forEach(function(file, index) {
             form.append('files', file, file.name || ('checkin-proof-' + (index + 1)));
         });
-        var response = await fetch(API_BASE + '/testing/' + job.progressId + '/checkin-proof/screenshot', { method: 'POST', body: form });
-        var result = null;
-        try { result = await response.json(); } catch (error) {}
+        var sent = await _postCheckinProofScreenshot(API_BASE + '/testing/' + job.progressId + '/checkin-proof/screenshot', form);
+        var response = sent.response;
+        var result = sent.result;
         if (!response.ok || !result || result.status !== 'success' || !result.proof || result.proof.state !== 'attached') {
             var code = result && result.code;
             if (code === 'checkin_already_proved') {
@@ -549,6 +586,7 @@ async function _runCheckinProofUploadJob(job) {
             if (code === 'proof_source_conflict' || code === 'invalid_idempotency_key') _clearCheckinProofKey(job.progressId);
             throw { isApiError: true, payload: result || { code: 'checkinProofUploadFailed' } };
         }
+        confirmedResult = result;
         _clearCheckinProofKey(job.progressId);
         if (result.buffer_catchup_only === true || job.submissionMode === 'buffer_catchup') {
             _applyBufferCatchupProofResult(job.appId, result);
@@ -557,6 +595,21 @@ async function _runCheckinProofUploadJob(job) {
         }
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
+        if (confirmedResult) {
+            // The server has confirmed attachment. A local rendering/haptics
+            // error must not tell the tester to select and send the files again.
+            console.error('Screenshot proof saved; local UI update failed:', error);
+            delete _checkinProofPendingAppIds[Number(job.appId || 0)];
+            var savedTest = _checkinProofTest(job.appId);
+            if (savedTest && job.submissionMode !== 'buffer_catchup' && !confirmedResult.buffer_catchup_only) {
+                savedTest.status = 'done';
+                savedTest.last_check_date = (confirmedResult.checkin || {}).last_check_date || savedTest.last_check_date;
+                if (typeof rememberConfirmedTestCheckin === 'function') rememberConfirmedTestCheckin(savedTest);
+            }
+            if (typeof showToast === 'function') showToast(window.t('checkinProofSavedRefreshing', {}, lang));
+            setTimeout(function() { if (typeof loadTasks === 'function') loadTasks(true).catch(function() {}); }, 150);
+            return;
+        }
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
         _setCheckinProofBackgroundCard(job.appId, false);
         if (typeof showToast === 'function') {

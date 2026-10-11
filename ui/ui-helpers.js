@@ -123,14 +123,33 @@ function getDayDiffFromToday(dateValue) {
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
 }
 
+function getProjectCalendarDayDiff(dateValue) {
+    // Project lifecycle uses UTC calendar days on the backend. Do not compare
+    // the UTC date prefix of a timestamp to the phone's local calendar date.
+    if (!dateValue) return 0;
+    let source = dateValue;
+    if (!(source instanceof Date)) {
+        source = String(source).trim().replace(' ', 'T');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(source)) source += 'T00:00:00Z';
+        else if (/[+-]\d{2}$/.test(source)) source += ':00';
+        else if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(source)) source += 'Z';
+        source = new Date(source);
+    }
+    if (!Number.isFinite(source.getTime())) return 0;
+    const now = new Date();
+    const sourceDay = Date.UTC(source.getUTCFullYear(), source.getUTCMonth(), source.getUTCDate());
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    return Math.max(0, Math.floor((today - sourceDay) / 86400000));
+}
+
 function getProjectPlatformDay(createdAtOrProject, restartedAt) {
-    if (createdAtOrProject && typeof createdAtOrProject === 'object') {
+    if (createdAtOrProject && typeof createdAtOrProject === 'object' && !(createdAtOrProject instanceof Date)) {
         const p = createdAtOrProject;
         const dateSource = p.restarted_at || p.last_restarted_at || p.created_at;
-        return Math.max(1, getDayDiffFromToday(dateSource) + 1);
+        return Math.max(1, getProjectCalendarDayDiff(dateSource) + 1);
     }
     const dateSource = restartedAt || createdAtOrProject;
-    return Math.max(1, getDayDiffFromToday(dateSource) + 1);
+    return Math.max(1, getProjectCalendarDayDiff(dateSource) + 1);
 }
 const GUEST_LANGUAGE_META = {
     ar: { flag: '🇦🇪', label: 'Arabic' },

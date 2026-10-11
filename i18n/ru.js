@@ -854,6 +854,7 @@
             checkinProofCardUploading: "Отправляем скриншот…",
             checkinProofCanTestNextApp: "Можно тестировать следующее приложение",
             checkinProofBackgroundRetry: "Карточка останется доступной — повторите отправку.",
+            checkinProofSavedRefreshing: "Отчёт сохранён. Обновляем карточку — повторная отправка не нужна.",
             checkinProofCounterLabel: "Скриншоты:",
             checkinProofOf: "из",
             checkinProofBonusInactive: "Бонус: +0,3 {karmaIcon}",

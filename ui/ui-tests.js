@@ -974,7 +974,10 @@ function getProjectCurrentGoogleDay(test, fallbackDay) {
         return 1;
     }
 
-    var syncDiffDays = test && test.last_sync_date ? getDayDiffFromToday(test.last_sync_date) : 0;
+    var syncDiffDays = test && test.last_sync_date
+        ? (typeof getProjectCalendarDayDiff === 'function'
+            ? getProjectCalendarDayDiff(test.last_sync_date) : getDayDiffFromToday(test.last_sync_date))
+        : 0;
     return syncDay + Math.max(0, syncDiffDays);
 }
 
