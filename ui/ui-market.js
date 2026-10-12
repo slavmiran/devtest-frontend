@@ -841,9 +841,13 @@ function openMarketAccessIssue(appId, isOwnProject, ownerUsername, accessMode, e
 }
 
 function getMutualFeedJoinUnavailableLabel(item) {
+    if (typeof getExistingMutualTargetLink === 'function' && getExistingMutualTargetLink(item.app_id, item.owner_id)) {
+        return window.t('mutualTargetLinkedBtn', {}, lang);
+    }
     var test = getActiveMyTestForApp(item.app_id);
     if (test && !test.is_external && String(test.progress_status || 'active') === 'active'
-        && String(test.app_status || 'active') === 'active') {
+        && String(test.app_status || 'active') === 'active'
+        && ['invite', 'direct'].indexOf(String(test.join_type || '').toLowerCase()) === -1) {
         return window.t('alreadyTestingBadge', {}, lang);
     }
     var choices = typeof window.getMutualOfferProjectChoicesForOwner === 'function'
@@ -855,7 +859,7 @@ function getMutualFeedJoinUnavailableLabel(item) {
     var blocked = known && typeof _blockedOfferProjectsByOwner !== 'undefined'
         ? (_blockedOfferProjectsByOwner[key] || {}) : {};
     var allUnavailable = choices.every(function(project) {
-        return !!_getProjectOwnerLinkMeta(project, item.owner_id, item.name)
+        return !!_getProjectOwnerLinkMeta(project, item.owner_id)
             || !!blocked[String(project.id)]
             || String(project.status || 'active') !== 'active'
             || project.is_accepting_new_testers === false
@@ -1005,12 +1009,21 @@ function renderFeedCard(item, kind) {
     if (kind === 'mutual-seeking' && clickAction.indexOf('createMutualOffer(') === 0) {
         var unavailableLabel = getMutualFeedJoinUnavailableLabel(item);
         if (unavailableLabel) {
-            buttonText = unavailableLabel;
-            clickAction = 'void(0)';
-            buttonClass = 'btn btn-secondary disabled';
-            buttonDisabledAttr = 'disabled';
-            buttonExtraAttrs = '';
+            buttonText = typeof getExistingMutualTargetLink === 'function' && getExistingMutualTargetLink(item.app_id, item.owner_id)
+                ? window.t('mutualTargetLinkedDetailsBtn', {}, lang) : unavailableLabel;
+            clickAction = `openMutualExchangeDetails(${item.app_id}, ${item.owner_id}, event)`;
+            buttonClass = 'btn btn-secondary';
+            buttonDisabledAttr = '';
+            buttonExtraAttrs = 'aria-haspopup="dialog"';
         }
+    }
+    if (kind === 'mutual-seeking' && singleIncomingOffer && typeof getExistingMutualTargetLink === 'function'
+        && getExistingMutualTargetLink(singleIncomingOffer.proposer_app_id, singleIncomingOffer.proposer_id)) {
+        buttonText = window.t('mutualTargetLinkedDetailsBtn', {}, lang);
+        clickAction = `openMutualExchangeDetails(${singleIncomingOffer.proposer_app_id}, ${singleIncomingOffer.proposer_id}, event)`;
+        buttonClass = 'btn btn-secondary';
+        buttonDisabledAttr = '';
+        buttonExtraAttrs = 'aria-haspopup="dialog"';
     }
     if (hasAccessIssue && !isOwnProject) {
         buttonText = window.t('accessIssueCta', {}, lang);
@@ -10696,10 +10709,11 @@ window.showTimelineStats = showTimelineStats;
 window.openTimelineStatsSheet = openTimelineStatsSheet;
 window.closeTimelineStatsSheet = closeTimelineStatsSheet;
 
-function _getProjectOwnerLinkMeta(project, targetOwnerId, fallbackOwnerAppName) {
+function _getProjectOwnerLinkMeta(project, targetOwnerId) {
     const testers = Array.isArray(project && project.testers) ? project.testers : [];
     const ownerTester = testers.find(function(tester) {
-        return Number(tester && tester.tester_id || 0) === Number(targetOwnerId);
+        return tester && !tester.is_left_soft && String(tester.progress_status || 'active').toLowerCase() === 'active'
+            && Number(tester.tester_id || 0) === Number(targetOwnerId);
     });
     if (!ownerTester) return null;
 
@@ -10707,18 +10721,15 @@ function _getProjectOwnerLinkMeta(project, targetOwnerId, fallbackOwnerAppName) 
     if (!linkedProjectName) {
         const myLinkedTest = (myTests || []).find(function(test) {
             return Number(test && test.owner_id || 0) === Number(targetOwnerId)
-                && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0);
+                && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0)
+                && String(test.progress_status || 'active').toLowerCase() === 'active' && !test.is_left_soft;
         });
         if (myLinkedTest) {
             linkedProjectName = String(myLinkedTest.name || myLinkedTest.package || '').trim();
         }
     }
-    if (!linkedProjectName) {
-        linkedProjectName = String(fallbackOwnerAppName || '').trim();
-    }
-
     return {
-        linkedProjectName: linkedProjectName || window.t('unknownLabel', {}, lang),
+        linkedProjectName: linkedProjectName,
         joinType: String(ownerTester.join_type || '').toLowerCase(),
     };
 }
@@ -10730,10 +10741,12 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     const footerEl = document.getElementById('project-select-footer');
     if (!listEl) return;
     const modalTitle = modal.querySelector('h3');
+    modal._exchangeDetailsToken = null;
+    const readOnly = !!(options && options.readOnly);
+    modal.classList.toggle('project-select-readonly', readOnly);
     const isPrelaunch = !!(options && options.is_prelaunch);
     const blockedProjects = options && options.blockedProjects ? options.blockedProjects : {};
     const targetOwnerHasEmail = !!(options && options.targetOwnerHasEmail);
-    const fallbackOwnerAppName = options && options.targetAppName ? String(options.targetAppName) : '';
 
     if (isPrelaunch) {
         if (modalTitle) {
@@ -10748,12 +10761,17 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     }
 
     if (modalTitle) {
-        modalTitle.textContent = window.t('offerSelectProject', {}, lang);
+        const titleKey = readOnly ? 'mutualExchangeDetailsTitle' : 'offerSelectProject';
+        modalTitle.setAttribute('data-i18n', titleKey);
+        modalTitle.textContent = window.t(titleKey, {}, lang);
     }
     const availableProjects = Array.isArray(projects) ? projects : [];
+    const targetLink = typeof getExistingMutualTargetLink === 'function' && getExistingMutualTargetLink(targetAppId, targetOwnerId);
+    const targetLinked = !!targetLink;
+    const pairedProject = availableProjects.find(p => Number(p.id) === Number(targetLink && (targetLink.projectId || targetLink.id) || 0));
     listEl.innerHTML = availableProjects.length ? availableProjects.map(p => {
         const safeName = window.escapeHTML(p.name || window.t('unknownLabel'));
-        const ownerLinkMeta = _getProjectOwnerLinkMeta(p, targetOwnerId, fallbackOwnerAppName);
+        const ownerLinkMeta = _getProjectOwnerLinkMeta(p, targetOwnerId);
         const targetAlreadyTesting = !!ownerLinkMeta;
         const blockedEntry = blockedProjects[String(p.id)] || null;
         const blockedReason = String(blockedEntry && blockedEntry.reason_code || '');
@@ -10764,12 +10782,16 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         const isArchived = String(p.status || '').toLowerCase() === 'archived';
         const isInactiveStatus = isInBuffer || isArchived;
         const notAcceptingTesters = p.is_accepting_new_testers === false;
-        const isDisabled = targetAlreadyTesting || !!blockedEntry || emailIncompatible || isInactiveStatus || notAcceptingTesters;
+        const isDisabled = targetLinked || targetAlreadyTesting || !!blockedEntry || emailIncompatible || isInactiveStatus || notAcceptingTesters;
         const disabledClass = isDisabled ? ' disabled' : '';
         const linkedClass = targetAlreadyTesting ? ' is-owner-linked' : '';
         const badges = [];
         if (targetAlreadyTesting) {
-            badges.push(`<span class="meta-chip accent-purple">${window.escapeHTML(window.t('alreadyTestingBadge', {}, lang))}</span>`);
+            const badgeKey = ownerLinkMeta.joinType === 'direct' ? 'projectSelectDirectTestingBadge'
+                : ownerLinkMeta.linkedProjectName ? 'mutualTargetLinkedBtn' : 'alreadyTestingBadge';
+            badges.push(`<span class="meta-chip accent-purple">${window.escapeHTML(window.t(badgeKey, {}, lang))}</span>`);
+        } else if (targetLinked) {
+            badges.push(`<span class="meta-chip">${window.escapeHTML(window.t('projectSelectExchangeUnavailable', {}, lang))}</span>`);
         }
         if (blockedEntry) {
             var blockedBadgeKey = targetProfileMissing
@@ -10792,7 +10814,15 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         const badgeHtml = badges.join('');
         let reasonHtml = '';
         if (targetAlreadyTesting && ownerLinkMeta) {
-            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('projectSelectOwnerLinkedDetails', { owner_app: ownerLinkMeta.linkedProjectName }, lang))}</span>`;
+            var ownerLinkReason = ownerLinkMeta.linkedProjectName
+                ? window.t('projectSelectOwnerLinkedDetails', { owner_app: ownerLinkMeta.linkedProjectName }, lang)
+                : window.t('projectSelectOwnerAlreadyTestingDetails', {}, lang);
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(ownerLinkReason)}</span>`;
+        } else if (targetLinked) {
+            const linkedReason = pairedProject
+                ? window.t('mutualTargetPairedWithDetails', { my_app: pairedProject.name }, lang)
+                : window.t('mutualTargetLinkedDetails', {}, lang);
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(linkedReason)}</span>`;
         } else if (blockedEntry) {
             if (targetProfileMissing) {
                 reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerTargetProfileRequiredDetails', { min_android_version: Number(blockedEntry.min_android_version || 0) }, lang))}</span>`;
@@ -10810,21 +10840,27 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         } else if (notAcceptingTesters) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('offerProjectNotAcceptingDetails', {}, lang))}</span>`;
         }
+        if (readOnly && !reasonHtml) {
+            reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('projectSelectExchangeAvailable', {}, lang))}</span>`;
+        }
 
         const clickHandler = isDisabled
             ? 'event.preventDefault(); event.stopPropagation();'
             : `window._selectProjectForOffer(${p.id}); event.stopPropagation();`;
 
-        return `<button class="project-select-item${disabledClass}${linkedClass}" onclick="${clickHandler}">
+        const openTag = readOnly ? '<div class="project-select-item project-select-info">'
+            : `<button class="project-select-item${disabledClass}${linkedClass}" ${isDisabled ? 'disabled aria-disabled="true"' : ''} onclick="${clickHandler}">`;
+        return `${openTag}
             <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
             <span class="project-select-text">
                 <span class="project-select-name">${safeName}</span>
                 ${reasonHtml}
             </span>
             ${badgeHtml}
-        </button>`;
+        ${readOnly ? '</div>' : '</button>'}`;
     }).join('') : `<div class="details-block"><div style="font-size:13px; color: var(--hint-color);">${window.escapeHTML(window.t('offerNoProjects', {}, lang))}</div></div>`;
     window._selectProjectForOffer = async function(proposerAppId) {
+        if (readOnly) return;
         const selectedProject = availableProjects.find(function(item) { return Number(item.id) === Number(proposerAppId); });
         const proceed = async function() {
             await window.sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, {
@@ -10854,8 +10890,8 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
             ? window.__offerSelectFlags
             : {};
         window.__offerSelectFlags = null;
-        var showAddProjectCta = !!(options && options.showAddProjectCta) || !!flags.showAddProjectCta;
-        var hideDirectJoin = !!(options && options.hideDirectJoin) || !!flags.hideDirectJoin;
+        var showAddProjectCta = !readOnly && (!!(options && options.showAddProjectCta) || !!flags.showAddProjectCta);
+        var hideDirectJoin = readOnly || targetLinked || !!(options && options.hideDirectJoin) || !!flags.hideDirectJoin;
         var footerParts = [];
         if (showAddProjectCta) {
             footerParts.push(
@@ -10876,6 +10912,10 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         }
         footerEl.innerHTML = footerParts.join('');
     }
+    if (readOnly) {
+        const targetName = options && options.targetAppName || window.t('unknownLabel', {}, lang);
+        listEl.insertAdjacentHTML('afterbegin', `<p class="project-select-overview">${window.escapeHTML(window.t('mutualExchangeDetailsIntro', { target_app: targetName }, lang))}</p>`);
+    }
     modal.classList.add('active');
 }
 
@@ -10883,8 +10923,11 @@ function closeProjectSelectModal() {
     const modal = document.getElementById('project-select-modal');
     if (!modal) return;
     modal.classList.remove('active');
+    modal._exchangeDetailsToken = null;
+    modal.classList.remove('project-select-readonly');
     const modalTitle = modal.querySelector('h3');
     if (modalTitle) {
+        modalTitle.setAttribute('data-i18n', 'offerSelectProject');
         modalTitle.textContent = window.t('offerSelectProject', {}, lang);
     }
 }

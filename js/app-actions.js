@@ -2029,13 +2029,22 @@ function _onStoreLinkClickedForIssueFlow(id) {
 }
 
 async function decideOffer(offerId, action, event) {
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var proposedOffer = (Array.isArray(incomingOffers) ? incomingOffers : []).find(function(offer) {
+        return Number(offer.offer_id) === Number(offerId);
+    });
+    if (action === 'accept' && proposedOffer && typeof getExistingMutualTargetLink === 'function'
+        && getExistingMutualTargetLink(proposedOffer.proposer_app_id, proposedOffer.proposer_id)) {
+        if (event) { event.preventDefault(); event.stopPropagation(); }
+        showToast(window.t('err_mutual_target_already_linked', {}, lang));
+        return;
+    }
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
     if (!offerId) return;
 
-    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
     var card = document.querySelector('.offer-card[data-offer-id="' + offerId + '"]');
     var cardBtn = card && card.querySelector(action === 'accept' ? '.bounty-app-accept-btn' : '.bounty-app-reject-btn');
     var clickedBtn = cardBtn || (event && event.currentTarget);
@@ -2140,10 +2149,39 @@ function markBountyApplicationPendingUi(appId) {
     });
 }
 
+async function openMutualExchangeDetails(targetAppId, targetOwnerId, event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const key = String(targetOwnerId || '');
+    const target = typeof window.getMarketCandidateByAppId === 'function'
+        ? window.getMarketCandidateByAppId(targetAppId) : null;
+    const projects = (Array.isArray(myProjects) ? myProjects : []).filter(project =>
+        project && project.id && ['mutual', 'hybrid'].includes(String(project.mode || '').toLowerCase()));
+    const options = {
+        readOnly: true,
+        targetAppName: target && target.name || '',
+        targetOwnerHasEmail: !!(target && target.owner_has_email),
+        blockedProjects: _blockedOfferProjectsByOwner[key] || {},
+    };
+    showProjectSelectModal(projects, targetAppId, targetOwnerId, options);
+    const modal = document.getElementById('project-select-modal');
+    if (!modal) return;
+    const token = {};
+    modal._exchangeDetailsToken = token;
+    await fetchBlockedOfferProjects(targetOwnerId, true);
+    // A late read must not reopen a dismissed sheet or replace a newer one.
+    if (modal._exchangeDetailsToken !== token || !modal.classList.contains('active')) return;
+    options.blockedProjects = _blockedOfferProjectsByOwner[key] || options.blockedProjects;
+    showProjectSelectModal(projects, targetAppId, targetOwnerId, options);
+}
+
 async function createMutualOffer(targetAppId, targetOwnerId, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
+    }
+    if (typeof getExistingMutualTargetLink === 'function' && getExistingMutualTargetLink(targetAppId, targetOwnerId)) {
+        showToast(window.t('err_mutual_target_already_linked', {}, lang));
+        return;
     }
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
@@ -2222,6 +2260,10 @@ async function openPrelaunchJoinModal(targetAppId, targetOwnerId, event) {
 }
 
 async function _continueMutualOffer(targetAppId, targetOwnerId, sourceButton) {
+    if (typeof getExistingMutualTargetLink === 'function' && getExistingMutualTargetLink(targetAppId, targetOwnerId)) {
+        showToast(window.t('err_mutual_target_already_linked', {}, lang));
+        return;
+    }
     if (myProjectsLoadError) {
         if (tg.showAlert) tg.showAlert(window.t('projectsLoadingAlert'));
         loadProjects(true).catch(function() {});
@@ -2249,6 +2291,10 @@ async function _continueMutualOffer(targetAppId, targetOwnerId, sourceButton) {
 }
 
 async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiContext) {
+    if (typeof getExistingMutualTargetLink === 'function' && getExistingMutualTargetLink(targetAppId, targetOwnerId)) {
+        showToast(window.t('err_mutual_target_already_linked', {}, lang));
+        return;
+    }
     var actionKey = 'sendOffer_' + targetAppId + '_' + proposerAppId;
     if (_pendingActions.has(actionKey)) return;
     _pendingActions.add(actionKey);
