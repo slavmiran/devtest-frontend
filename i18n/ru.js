@@ -689,7 +689,7 @@
             geoListEmpty: "Пока нет данных",
             geoLegendActive: "{count} активны сейчас",
             geoLegendAll: "{count} все участники",
-            geoTeaserHint: "Укажите вашу основную страну Google Play, чтобы определить позицию региона и раскрыть полный рейтинг",
+            geoTeaserHint: "Укажите страну Google Play, чтобы увидеть участников из вашего региона и объём по странам",
             geoPickCountryCta: "Указать страну Google Play ▾",
             geoCountries: "{count} стран",
             geoCountriesOne: "{count} страна",

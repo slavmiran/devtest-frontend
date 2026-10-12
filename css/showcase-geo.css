@@ -97,6 +97,10 @@
     gap: 8px;
 }
 
+.showcase-geo-rows--mine {
+    margin-bottom: 8px;
+}
+
 .showcase-geo-row {
     display: grid;
     grid-template-columns: auto minmax(24px, 1fr) auto;

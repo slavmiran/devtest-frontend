@@ -690,7 +690,7 @@
             geoListEmpty: "No data yet",
             geoLegendActive: "{count} active now",
             geoLegendAll: "{count} all participants",
-            geoTeaserHint: "Set your main Google Play country to see your region's position and open the full ranking",
+            geoTeaserHint: "Set your Google Play country to see people from your region and the pool by country",
             geoPickCountryCta: "Set Google Play country ▾",
             geoCountries: "{count} countries",
             geoCountriesOne: "{count} country",

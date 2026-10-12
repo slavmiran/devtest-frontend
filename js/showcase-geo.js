@@ -5,7 +5,6 @@
     var stats = null;
     var saving = false;
     var profileLoaded = false;
-    var listExpanded = false;
     var revealOnNextRender = false;
 
     function langCode() {
@@ -137,17 +136,6 @@
         return null;
     }
 
-    function isRareShare(total, registered) {
-        var count = Number(total) || 0;
-        var base = Number(registered) || 0;
-        if (count <= 0 || base <= 0) return false;
-        return (count * 100 / base) < 1;
-    }
-
-    function collapsedLimit(rank) {
-        return rank && rank > 5 ? 4 : 5;
-    }
-
     function meterHtml(active, total, registered, maxTotal) {
         var outer = maxTotal > 0 ? Math.max(0, Math.min(100, total / maxTotal * 100)) : 0;
         var inner = total > 0 ? Math.max(0, Math.min(100, active / total * 100)) : 0;
@@ -172,7 +160,7 @@
     function rowsHtml(rows, limit, mineCode) {
         var list = Array.isArray(rows) ? rows : [];
         var visible = limit ? list.slice(0, limit) : list;
-        var maxTotal = maxCountryTotal(list);
+        var maxTotal = maxCountryTotal(stats && Array.isArray(stats.countries) ? stats.countries : list);
         var registered = stats ? Number(stats.total_registered) || 0 : 0;
         var mine = String(mineCode || '').toUpperCase();
         return visible.map(function (item) {
@@ -191,9 +179,16 @@
             '</p>';
     }
 
-    function headHtml() {
+    function headHtml(showAll) {
+        var count = stats && Array.isArray(stats.countries) ? stats.countries.length : 0;
+        var all = showAll && count
+            ? '<button type="button" class="showcase-geo-widget__all" onclick="ShowcaseGeo.openCommunityList()">' +
+                esc(pluralLabel(count, 'geoAllCountriesOne', 'geoAllCountriesFew', 'geoAllCountries')) +
+                '</button>'
+            : '';
         return '<div class="showcase-geo-widget__head">' +
             '<div class="showcase-geo-widget__title"><span aria-hidden="true">🌍</span><span id="showcase-geo-title">' + esc(tr('geoWidgetTitle')) + '</span></div>' +
+            all +
             '</div>';
     }
 
@@ -210,52 +205,35 @@
             '<button type="button" class="showcase-geo-cta" onclick="ShowcaseGeo.openPicker()">📍 ' + esc(tr('geoPickCountryCta')) + '</button>';
     }
 
-    function pinHtml(play) {
+    function mineRowHtml(play) {
         var code = String(play.code || '').toUpperCase();
         var found = findCountryRow(code);
-        var item = found ? found.item : null;
-        var total = item ? Math.max(0, Number(item.total_count) || 0) : 0;
-        var active = item ? Math.max(0, Math.min(total, Number(item.active_count) || 0)) : 0;
+        var item = found ? found.item : {
+            country_code: code,
+            flag: play.flag || '',
+            name: play.name_ru || play.name || code,
+            name_en: play.name_en || play.name || code,
+            name_ru: play.name_ru || play.name || code,
+            active_count: 0,
+            total_count: 0,
+        };
         var registered = Number(stats.total_registered) || 0;
-        var source = item || play;
-        var flag = source.flag || play.flag || '';
-        var name = displayName(source) || displayName(play);
-        var label = (flag ? flag + ' ' : '') + name;
-        var title = found
-            ? tr('geoYourRank', { label: label, rank: found.rank })
-            : tr('geoYourUnranked', { label: label });
-        var badge = '';
-        if (found && found.rank <= 5) {
-            badge = '<span class="showcase-geo-badge is-top">' + esc(tr('geoTopTier')) + '</span>';
-        } else if (isRareShare(total, registered)) {
-            badge = '<span class="showcase-geo-badge is-rare">' + esc(tr('geoRareRegion')) + '</span>';
-        }
-        return '<div class="showcase-geo-pin">' +
-            '<div class="showcase-geo-pin__head">' +
-                '<span class="showcase-geo-pin__title">' + esc(title) + '</span>' +
-                badge +
-            '</div>' +
-            '<div class="showcase-geo-pin__meter">' + meterHtml(active, total, registered, maxCountryTotal(stats.countries || [])) + '</div>' +
+        return '<div class="showcase-geo-rows showcase-geo-rows--mine">' +
+            rowHtml(item, maxCountryTotal(stats.countries || []), registered, true) +
             '</div>';
     }
 
-    function rankingHtml(play) {
-        var rows = stats.countries || [];
-        var found = findCountryRow(String(play.code || '').toUpperCase());
-        var limit = collapsedLimit(found ? found.rank : null);
-        var body = rows.length
-            ? '<div class="showcase-geo-rows' + (listExpanded ? ' is-expanded' : '') + '">' +
-                rowsHtml(rows, listExpanded ? null : limit, play.code) + '</div>'
-            : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>';
-        var expand = '';
-        if (rows.length > limit) {
-            var label = listExpanded
-                ? tr('geoCollapseRanking')
-                : pluralLabel(rows.length, 'geoExpandAllOne', 'geoExpandAllFew', 'geoExpandAll');
-            expand = '<button type="button" class="showcase-geo-expand" aria-expanded="' + (listExpanded ? 'true' : 'false') + '" onclick="ShowcaseGeo.toggleRanking()">' +
-                '<span aria-hidden="true">' + (listExpanded ? '▴' : '▾') + '</span> ' + esc(label) + '</button>';
-        }
-        return '<p class="showcase-geo-rank-label">' + esc(tr('geoWorldRanking')) + '</p>' + body + expand;
+    function volumePreviewHtml(play) {
+        var code = String(play.code || '').toUpperCase();
+        var rows = (stats.countries || []).filter(function (item) {
+            return rowCode(item) !== code;
+        }).slice(0, 4);
+        if (!rows.length) return '';
+        var registered = Number(stats.total_registered) || 0;
+        var maxTotal = maxCountryTotal(stats.countries || []);
+        return '<div class="showcase-geo-rows">' + rows.map(function (item) {
+            return rowHtml(item, maxTotal, registered, false);
+        }).join('') + '</div>';
     }
 
     function changeHtml(play) {
@@ -268,7 +246,7 @@
         if (!stats) {
             return '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>';
         }
-        return legendHtml() + pinHtml(play) + rankingHtml(play) + changeHtml(play);
+        return legendHtml() + mineRowHtml(play) + volumePreviewHtml(play) + changeHtml(play);
     }
 
     function renderWidget() {
@@ -277,17 +255,16 @@
         if (!profileLoaded) {
             root.classList.remove('is-locked', 'is-unlocked');
             root.dataset.state = 'loading';
-            root.innerHTML = headHtml() +
+            root.innerHTML = headHtml(false) +
                 '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span></div>';
             return;
         }
         var play = selectedPlay();
         if (!play) {
-            listExpanded = false;
             root.classList.add('is-locked');
             root.classList.remove('is-unlocked');
             root.dataset.state = 'locked';
-            root.innerHTML = headHtml() + teaserHtml();
+            root.innerHTML = headHtml(false) + teaserHtml();
             return;
         }
         root.classList.remove('is-locked');
@@ -296,15 +273,16 @@
         var pendingReveal = revealOnNextRender && !!stats;
         if (pendingReveal) revealOnNextRender = false;
         var revealClass = pendingReveal ? ' is-reveal' : '';
-        root.innerHTML = headHtml() + '<div class="showcase-geo-unlocked' + revealClass + '">' + unlockedHtml(play) + '</div>';
+        root.innerHTML = headHtml(true) + '<div class="showcase-geo-unlocked' + revealClass + '">' + unlockedHtml(play) + '</div>';
     }
 
     function renderCommunityList() {
         var body = document.getElementById('showcase-geo-list-body');
         if (!body) return;
         var rows = stats ? stats.countries : null;
+        var play = selectedPlay();
         var list = Array.isArray(rows) && rows.length
-            ? '<div class="showcase-geo-rows">' + rowsHtml(rows) + '</div>'
+            ? '<div class="showcase-geo-rows">' + rowsHtml(rows, null, play && play.code) + '</div>'
             : (rows === null
                 ? '<div class="showcase-geo-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>'
                 : '<p class="showcase-geo-sheet__hint">' + esc(tr('geoListEmpty')) + '</p>');
@@ -481,7 +459,6 @@
             google_play_country: normalized,
             google_play: item,
         });
-        listExpanded = false;
         revealOnNextRender = true;
         renderWidget();
         try {
@@ -571,10 +548,6 @@
             if (detected) choose(detected.code);
         },
         filterPicker: function (value) { renderPicker(value); },
-        toggleRanking: function () {
-            listExpanded = !listExpanded;
-            renderWidget();
-        },
         _profile: function () { return profile; },
         _stats: function () { return stats; },
     };
