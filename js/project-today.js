@@ -1137,6 +1137,7 @@
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
             createdAt: String(proof && proof.created_at || ''),
+            contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
@@ -1186,6 +1187,7 @@
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
             createdAt: String(proof && proof.created_at || ''),
+            contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
@@ -1218,6 +1220,7 @@
                     row.feedbackStatus = String(fb.status).toLowerCase();
                 }
                 if (fb) {
+                    if (fb.created_at) row.contributionCreatedAt = String(fb.created_at);
                     if (fb.has_media != null) row.hasMedia = Boolean(fb.has_media);
                     if (fb.reward_bust != null) row.rewardBust = Number(fb.reward_bust);
                     if (fb.reward_karma != null) row.rewardKarma = Number(fb.reward_karma);
@@ -2446,11 +2449,22 @@
         return type === 'screenshot' && Number(row.imageCount || 0) >= 3;
     }
 
+    function isTodaysContribution(row) {
+        var raw = String(row.contributionCreatedAt || row.createdAt || '').trim();
+        if (!raw) return true; // Legacy rows already selected by today's API.
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw === todayString();
+        var date = new Date(raw);
+        if (!Number.isFinite(date.getTime())) return false;
+        // Use the owner's UI calendar, not the UTC prefix of the timestamp.
+        var day = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        return day === todayString();
+    }
+
     function collectContribution(control, others, project) {
         var byTester = {};
         var order = [];
         (control || []).concat(others || []).forEach(function (row) {
-            if (!isValuableRow(row)) return;
+            if (!isValuableRow(row) || !isTodaysContribution(row)) return;
             var testerId = Number(row.testerId || 0);
             if (testerId <= 0) return;
             if (!byTester[testerId]) {
@@ -2502,18 +2516,8 @@
             if (row.proofType === 'idea' && !item.idea) item.idea = row;
             if (row.proofType === 'play_review' && !item.play_review) item.play_review = row;
         });
-        (project && project.testers || []).forEach(function (tester) {
-            var testerId = Number(tester.tester_id || tester.id || 0);
-            if (!testerId || byTester[testerId]) return;
-            var rewards = rewardEntriesForTester(project, testerId).filter(function (entry) { return rewardIsToday(project, entry); });
-            if (!rewards.length) return;
-            byTester[testerId] = {
-                testerId: testerId, tester: tester, progressId: Number(tester.progress_id || 0),
-                screenshotCount: 0, screenshotSeriesCount: 0, screenshotRow: null,
-                bug: null, idea: null, play_review: null, latestCreatedAt: rewards[0].created_at || '',
-            };
-            order.push(testerId);
-        });
+        // Rewards describe an existing contribution. Processing an older report
+        // or issuing general thanks must never manufacture a new contributor.
         return order.map(function (testerId) {
             var item = byTester[testerId];
             var reasons = [];
