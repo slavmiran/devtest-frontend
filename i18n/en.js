@@ -1720,6 +1720,8 @@
             bellNotifyTopicMsg_control: "{user_tag} Hi! 👋 Today is a control day for \"{app_name}\" (day {day}). Please submit your testing milestone report 📋\n\nProject: {app_name}\nLink: {deep_link}\n\n#reminder #control #devtest",
             bellNotifyDmMsg_control_bulk: "Hi! 👋 Today is a testing milestone for \"{app_name}\". Please submit your testing milestone report.\n\nProject: {app_name}\nLink: {deep_link}",
             bellNotifyTopicMsg_control_bulk: "{user_tags} Hi! 👋 Today is a control day for \"{app_name}\". Please submit your testing milestone reports 📋\n\nProject: {app_name}\nLink: {deep_link}\n\n#reminder #control #devtest",
+            bellNotifyDmMsg_missed_control: "Hi! 👋 Control day {day} for \"{app_name}\" is still open.\n\nIt's simple: do today's test and upload the confirmation screenshot (a screenshot is required for control days). That counts the missed day and completes the check! 🚀",
+            bellNotifyTopicMsg_missed_control: "{user_tag} Hi! 👋 Control day {day} for \"{app_name}\" is still open.\n\nIt's simple: do today's test and upload the confirmation screenshot (a screenshot is required for control days). That counts the missed day and completes the check! 🚀\n\n#reminder #followup #devtest",
             parityDayChip: "Day {day}/{total}",
             mutualBalanceConsecutiveChip: "{count}/3 in a row",
             mutualBalanceTotalSkipsChip: "{count} total",

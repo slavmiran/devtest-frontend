@@ -1148,6 +1148,8 @@
             key = isTopic ? 'bellNotifyTopicMsg_control' : 'bellNotifyDmMsg_control';
         } else if (reason === 'control_bulk') {
             key = isTopic ? 'bellNotifyTopicMsg_control_bulk' : 'bellNotifyDmMsg_control_bulk';
+        } else if (reason === 'missed_control') {
+            key = isTopic ? 'bellNotifyTopicMsg_missed_control' : 'bellNotifyDmMsg_missed_control';
         }
 
         var skipsCount = Number(state.consecutiveSkips || 0);
