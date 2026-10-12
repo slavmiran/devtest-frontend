@@ -2593,6 +2593,22 @@ input::placeholder,
 
 .project-select-item:active { opacity: 0.7; }
 
+.project-select-info {
+    cursor: default;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+}
+.project-select-info:active { opacity: 1; }
+.project-select-info .project-select-name { white-space: normal; text-align: left; }
+.project-select-info .meta-chip { grid-column: 2; justify-self: start; font-size: 11px; }
+.project-select-overview {
+    margin: 0 0 16px;
+    color: var(--hint-color);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
 .project-select-item.disabled {
     opacity: 0.58;
     cursor: not-allowed;

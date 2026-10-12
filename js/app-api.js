@@ -1292,6 +1292,7 @@ function handleApiError(code, details = {}) {
         offer_proposer_app_locked_owner: 'err_offer_proposer_app_locked_owner',
         offer_no_available_apps: 'err_offer_no_available_apps',
         mutual_contract_active_conflict: 'err_mutual_contract_active_conflict',
+        mutual_target_already_linked: 'err_mutual_target_already_linked',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
         bounty_application_already_pending: 'err_bounty_application_already_pending',
