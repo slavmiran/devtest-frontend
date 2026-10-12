@@ -1294,10 +1294,37 @@ function getAvailableMutualProjectsForOwner(targetOwnerId) {
     });
 }
 
+function getExistingMutualTargetLink(targetAppId, targetOwnerId) {
+    var appId = Number(targetAppId || 0);
+    var ownerId = Number(targetOwnerId || 0);
+    if (!appId) return null;
+    var tasks = Array.isArray(myTests) ? myTests : [];
+    var linkedTask = tasks.find(function(test) {
+        if (!test || Number(test.id) !== appId || test.is_external || test.is_guest || test.is_left_soft) return false;
+        if (String(test.progress_status || 'active').toLowerCase() !== 'active') return false;
+        if (['active', 'pending_completion'].indexOf(String(test.app_status || 'active').toLowerCase()) === -1) return false;
+        var joinType = String(test.join_type || '').toLowerCase();
+        return joinType === 'mutual' || joinType === 'prelaunch' || Number(test.reciprocal_app_id || 0) > 0;
+    });
+    if (linkedTask) return { projectId: Number(linkedTask.reciprocal_app_id || 0) };
+    // My Tests may not have loaded yet. The owner's roster is an independent
+    // source, but only an explicit reciprocal app id proves this exact link.
+    var projects = Array.isArray(myProjects) ? myProjects : [];
+    return projects.find(function(project) {
+        if (!project || ['active', 'pending_completion'].indexOf(String(project.app_status || project.status || 'active').toLowerCase()) === -1) return false;
+        return (Array.isArray(project.testers) ? project.testers : []).some(function(tester) {
+            return tester && Number(tester.tester_id) === ownerId && !tester.is_left_soft
+                && String(tester.progress_status || 'active').toLowerCase() === 'active'
+                && Number(tester.reciprocal_app_id || 0) === appId;
+        });
+    }) || null;
+}
+
 function canProposeMutualFromTest(test) {
     var targetOwnerId = Number(test && test.owner_id || 0);
     var joinType = String(test && test.join_type || '').toLowerCase();
     var appStatus = String(test && test.app_status || 'active').toLowerCase();
+    if (getExistingMutualTargetLink(test && test.id, targetOwnerId)) return false;
 
     if (!targetOwnerId || targetOwnerId === Number(userId || 0)) {
         return false;
@@ -3797,6 +3824,7 @@ Object.assign(window, {
     showOwnerLastSeenToast,
     getAvailableMutualProjectsForOwner,
     getMutualOfferProjectChoicesForOwner,
+    getExistingMutualTargetLink,
     isExternalNormalCheckinDay,
     getExternalConfirmButtonClasses,
     togglePendingReleaseSection,

@@ -24,16 +24,17 @@ const root=path.resolve(__dirname,'..');
             window.myTests=[{id:42,join_type:'mutual',app_status:'active',progress_status:'active'}];
             document.getElementById('feed').innerHTML=renderFeedCard(item,'mutual-seeking');
         });
-        assert.equal(await page.locator('#feed button[disabled]').count(),1);
-        assert.match(await page.locator('#feed button').innerText(),/Already testing/);
+        assert.equal(await page.locator('#feed button[disabled]').count(),0);
+        assert.match(await page.locator('#feed button').innerText(),/Already in a mutual test/);
+        assert.match(await page.locator('#feed button').getAttribute('onclick'),/openMutualExchangeDetails/);
         await page.evaluate(()=>{
             myTests=[];
             _blockedOfferProjectsByOwner['2']={'30':{reason_code:'already_used'}};
             _blockedOfferProjectsFetchedAt['2']=Date.now();
             document.getElementById('feed').innerHTML=renderFeedCard(item,'mutual-seeking');
         });
-        assert.equal(await page.locator('#feed button[disabled]').count(),1);
-        assert.match(await page.locator('#feed button').innerText(),/No project available/);
+        assert.equal(await page.locator('#feed button[disabled]').count(),0);
+        assert.match(await page.locator('#feed button').innerText(),/Exchange unavailable.*Details/);
         await page.evaluate(()=>{
             myProjects.push({id:31,mode:'mutual',status:'active',testers:[],limit_mutual:12});
             document.getElementById('feed').innerHTML=renderFeedCard(item,'mutual-seeking');
