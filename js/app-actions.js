@@ -1087,7 +1087,7 @@ function _persistTimerReadyState() {
     } catch (error) {}
 }
 
-function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
+function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername, deferVisual = false) {
     var key = String(Number(appId) || 0);
     if (key === '0') return;
     if (isReady) {
@@ -1105,7 +1105,7 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername) {
         delete _timerReadyState[key];
     }
     _persistTimerReadyState();
-    _syncExternalTimerReadyVisual(appId, isReady);
+    if (!deferVisual) _syncExternalTimerReadyVisual(appId, isReady);
 }
 
 function _syncExternalTimerReadyVisual(appId, isReady) {
@@ -1511,16 +1511,16 @@ function _ensureEarlyPaperclipSplit(appId, ownerUsername) {
 function _startActiveTimerInterval(id) {
     if (_timerIntervalId) clearInterval(_timerIntervalId);
     _timerIntervalId = setInterval(() => {
-        if (isTestFeedbackCheckinPending(id)) {
-            applyTestFeedbackCheckinPendingUi(id);
-            return;
-        }
         var remaining = Math.ceil((_timerEndTimestamp - Date.now()) / 1000);
-        var liveBtn = document.getElementById('btn-confirm-' + id);
         if (remaining <= 0) {
             _syncActiveTimerState();
             return;
         }
+        if (isTestFeedbackCheckinPending(id)) {
+            applyTestFeedbackCheckinPendingUi(id);
+            return;
+        }
+        var liveBtn = document.getElementById('btn-confirm-' + id);
         if (liveBtn && !liveBtn.getAttribute('data-feedback-pending')) {
             var timerText = t.timerRemaining.replace('{sec}', remaining);
             _setConfirmButtonLabel(liveBtn, timerText);
@@ -1535,7 +1535,12 @@ function _startActiveTimerInterval(id) {
 }
 
 function _syncActiveTimerState() {
-    if (!activeTimerAppId || !_timerEndTimestamp) return false;
+    if (!activeTimerAppId) return false;
+    if (!Number.isFinite(Number(_timerEndTimestamp)) || Number(_timerEndTimestamp) <= 0) {
+        _clearPersistedActiveTimer();
+        if (typeof closeActiveTimerSwitchModal === 'function') closeActiveTimerSwitchModal();
+        return false;
+    }
     if (_timerLocalDate && _timerLocalDate !== getLocalDate()) {
         if (_timerIntervalId) clearInterval(_timerIntervalId);
         _timerIntervalId = null;
@@ -1559,13 +1564,9 @@ function _syncActiveTimerState() {
     const wasScreenshot = !!_timerIsScreenshot;
     const savedOwnerUsername = _timerOwnerUsername || '';
 
-    if (!_setTimerButtonReady(finishedId, wasScreenshot, savedOwnerUsername)) {
-        // Keep expired timer state until the button is rendered after app restore.
-        _persistActiveTimer();
-        return false;
-    }
-
-    setTimerReadyForConfirm(finishedId, true, wasScreenshot, savedOwnerUsername);
+    // Persist readiness independently of the DOM. A completed/hidden card may
+    // have no Confirm button, but must never retain a global navigation lock.
+    setTimerReadyForConfirm(finishedId, true, wasScreenshot, savedOwnerUsername, true);
 
     if (_timerIntervalId) clearInterval(_timerIntervalId);
     _timerIntervalId = null;
@@ -1577,6 +1578,12 @@ function _syncActiveTimerState() {
     _timerLocalDate = '';
 
     _clearPersistedActiveTimer();
+    try {
+        _syncExternalTimerReadyVisual(finishedId, true);
+        _setTimerButtonReady(finishedId, wasScreenshot, savedOwnerUsername);
+    } catch (error) {
+        console.warn('Deferred timer-ready button paint:', error);
+    }
     if (typeof window.syncCheckinOptionsJustConfirmTimer === 'function') {
         window.syncCheckinOptionsJustConfirmTimer(finishedId, 0);
     }
@@ -2432,6 +2439,7 @@ let _activeTimerSwitchModalState = {
 const ACTIVE_TIMER_SWITCH_TIP_KEY = 'last_active_timer_switch_tip_at';
 
 function _getActiveTimerDetails() {
+    _syncActiveTimerState();
     if (!activeTimerAppId) return null;
     var activeTest = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id) === Number(activeTimerAppId);
@@ -2439,7 +2447,8 @@ function _getActiveTimerDetails() {
     var rawName = (activeTest && (activeTest.name || activeTest.package || activeTest.package_name || activeTest.external_package_name)) || 'App';
     var activeAppName = (typeof _cleanDisplayName === 'function' ? _cleanDisplayName(rawName) : rawName) || 'App';
     var activePkg = (activeTest && (activeTest.package || activeTest.package_name || activeTest.pkg || activeTest.external_package_name)) || '';
-    var remainingSec = Math.max(1, Math.ceil((_timerEndTimestamp - Date.now()) / 1000));
+    var remainingSec = Math.max(0, Math.ceil((_timerEndTimestamp - Date.now()) / 1000));
+    if (remainingSec <= 0) return null;
     return {
         appId: activeTimerAppId,
         appName: activeAppName,
@@ -2677,26 +2686,8 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
     if (!Number.isFinite(resolvedDurationSeconds) || resolvedDurationSeconds < 1) {
         resolvedDurationSeconds = 15;
     }
-    // Clean up stale timer (tab suspension / cache restoration scenario)
-    if (activeTimerAppId !== null && _timerLocalDate && _timerLocalDate !== getLocalDate()) {
-        if (_timerIntervalId) clearInterval(_timerIntervalId);
-        _timerIntervalId = null;
-        _timerEndTimestamp = null;
-        activeTimerAppId = null;
-        _activeTimerSwitchAttempts = 0;
-        _timerIsScreenshot = false;
-        _timerOwnerUsername = '';
-        _clearPersistedActiveTimer();
-    } else if (activeTimerAppId !== null && _timerEndTimestamp && Date.now() > _timerEndTimestamp + 2000) {
-        if (_timerIntervalId) clearInterval(_timerIntervalId);
-        _timerIntervalId = null;
-        _timerEndTimestamp = null;
-        activeTimerAppId = null;
-        _activeTimerSwitchAttempts = 0;
-        _timerIsScreenshot = false;
-        _timerOwnerUsername = '';
-        _clearPersistedActiveTimer();
-    }
+    // Same expiry rules for restored, first-day and normal-day timers.
+    _syncActiveTimerState();
 
     if (activeTimerAppId === id) {
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
@@ -2828,6 +2819,7 @@ function advanceFirstDayStepsAfterDownload(id) {
 }
 
 function handleFirstDownload(id, pkg) {
+    _syncActiveTimerState();
     if (activeTimerAppId !== null && Number(activeTimerAppId) !== Number(id)) {
         handleActiveTimerSwitchAttempt(id);
         return;
