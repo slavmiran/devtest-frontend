@@ -871,6 +871,7 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
     campaign = normalizeScreenshotBoostCampaign(campaign, project.id || project.app_id, project.run_iteration);
     var protectionDays = Math.max(0, Number(project.purchased_protection_days || project.paid_protection_days || 0));
     var hasProtectionDays = protectionDays > 0;
+    var isLiveReportBudget = project.phase === 'live';
     var safeName = window.escapeHTML(project.name || window.t('unknownLabel', {}, lang) || 'Project');
     body.innerHTML = `
         <div class="screenshot-boost-sheet__handle" aria-hidden="true"></div>
@@ -917,11 +918,11 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
                 </div>
                 <p id="screenshot-boost-budget-preview" class="screenshot-boost-budget-preview" aria-live="polite"></p>
                 <label class="screenshot-boost-control-row">
-                    <input id="screenshot-boost-control-days" type="checkbox" ${campaign.reward_control_days ? 'checked' : ''}>
+                    <input id="screenshot-boost-control-days" type="checkbox" ${!isLiveReportBudget && campaign.reward_control_days ? 'checked' : ''} ${isLiveReportBudget ? 'disabled' : ''}>
                     <span class="screenshot-boost-control-check" aria-hidden="true"></span>
                     <span>
                         <strong>${window.escapeHTML(window.t('screenshotBoostControlLabel', {}, lang))}</strong>
-                        <small>${window.escapeHTML(window.t('screenshotBoostControlHint', {}, lang))}</small>
+                        <small>${window.escapeHTML(window.t(isLiveReportBudget ? 'lcOptionalReportsOnly' : 'screenshotBoostControlHint', {}, lang))}</small>
                         <small class="screenshot-boost-control-note">${window.escapeHTML(window.t('screenshotBoostControlNote', {}, lang))}</small>
                     </span>
                 </label>
@@ -963,6 +964,7 @@ function renderScreenshotBoostSettings(project, campaign, balanceBust) {
         </div>
     `;
     syncScreenshotBoostSettingsToggle();
+    if (isLiveReportBudget) document.getElementById('screenshot-boost-control-days').disabled = true;
     syncScreenshotBoostBudgetPreview();
 }
 
@@ -1111,6 +1113,11 @@ function syncScreenshotBoostSettingsToggle() {
     }
     // sync wallet highlight whenever main toggle runs
     syncScreenshotBoostWalletToggle();
+    var currentProject = getScreenshotBoostProject(_screenshotBoostModalAppId);
+    if (currentProject && currentProject.phase === 'live') {
+        var controlDays = document.getElementById('screenshot-boost-control-days');
+        if (controlDays) { controlDays.checked = false; controlDays.disabled = true; }
+    }
 }
 
 function syncScreenshotBoostWalletToggle() {

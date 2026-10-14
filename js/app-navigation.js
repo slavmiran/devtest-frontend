@@ -133,6 +133,7 @@
         if (id === 'add-project-chooser-overlay') return callGlobal('closeAddProjectChooser');
         if (id === 'dossier-hybrid-join-overlay') return callGlobal('closeDossierHybridJoinChooser');
         if (id === 'guest-claim-welcome-overlay') return callGlobal('closeGuestClaimWelcomeScreen');
+        if (id === 'live-campaign-wallet-modal' && window.LiveCampaignWallet) { window.LiveCampaignWallet.close(); return true; }
         if (id === 'checkin-proof-upload-modal') return callGlobal('closeCheckinProofUploadModal');
         if (id === 'guaranteed-test-offer-overlay') return callGlobal('hideGuaranteedTestOfferModal');
         if (id === 'project-coverage-modal') return callGlobal('closeProjectCoverageModal');

@@ -21,8 +21,8 @@ fs.mkdirSync(artifacts, {recursive:true});
                 return route.fulfill({contentType:'text/html',body:'<section id="tab-projects"><div id="projects-list"></div></section><div id="archived-projects-list"></div>'});
             });
             await page.goto('http://fixture.local/');
-            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css','css/live-campaigns.css']) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','js/live-campaigns.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css','css/live-campaigns.css','css/project-parameters.css']) await page.addStyleTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaigns.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(language => {
                 window.lang = language;
                 Object.assign(window.t,language==='ru' ? I18NRU : I18NEN);

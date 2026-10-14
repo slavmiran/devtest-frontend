@@ -2425,13 +2425,13 @@ function isBufferOnlyCatchupSubmission(test, testingDay) {
 }
 
 function getScreenshotBoostOffer(test, testingDay) {
-    if(test && test.live_bridge)return null;
     if (!test || test.is_external || test.is_kicked_soft || test.is_unlinked_soft) return null;
     var campaign = test.screenshot_boost_campaign;
     if (!campaign || campaign.enabled !== true) return null;
     var reward = Math.max(0, Number(campaign.reward_bust || 0));
     var pool = Math.max(0, Number(campaign.pool_remaining || 0));
     var day = Math.max(0, Number(testingDay || getResolvedTestingDay(test) || 0));
+    if(test.live_bridge && (day>14 || (test.live_bridge.control_days||[]).includes(day)))return null;
     var run = Math.max(1, Number(test.run_iteration || 1));
     var protectionDays = Math.max(0, Number(test.paid_protection_days || test.purchased_protection_days || 0));
     if (!reward || pool < reward || !day) return null;

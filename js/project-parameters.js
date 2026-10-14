@@ -3,6 +3,7 @@
     'use strict';
 
     var expanded = new Set();
+    var targets = new Map();
     var changes = new Map();
     var emailPending = false;
     var languageProjectKey = '';
@@ -24,12 +25,25 @@
         return window.t(key, params || {}, typeof lang !== 'undefined' ? lang : 'en');
     }
     function esc(value) { return window.escapeHTML(String(value == null ? '' : value)); }
+    function parameterId(project) { return project._parametersRef || Number(project.id || project.app_id); }
+    function target(project) { return targets.get(String(project._parametersRef || '')); }
     function projectKey(project) {
+        if (project._parametersKey) return project._parametersKey;
         return Number(project.id || project.app_id || 0) + ':' + Math.max(1, Number(project.run_iteration || 1));
     }
     function projects() { return typeof myProjects !== 'undefined' && Array.isArray(myProjects) ? myProjects : []; }
-    function projectById(id) { return projects().find(function (project) { return Number(project.id || project.app_id) === Number(id); }); }
-    function projectByKey(key) { return projects().find(function (project) { return projectKey(project) === key; }); }
+    function projectById(id) {
+        var adapter=targets.get(String(id));
+        if(adapter){
+            var value=adapter.get();
+            return value ? Object.assign({},value,{_parametersRef:String(id),_parametersKey:adapter.key}) : null;
+        }
+        return projects().find(function(project){return Number(project.id || project.app_id)===Number(id);});
+    }
+    function projectByKey(key) {
+        for(var entry of targets.entries()){if(entry[1].key===key)return projectById(entry[0]);}
+        return projects().find(function(project){return projectKey(project)===key;});
+    }
     function userEmail() {
         return String(typeof getCurrentUserEmail === 'function' ? getCurrentUserEmail() : (window.App && window.App.userEmail || '')).trim();
     }
@@ -89,6 +103,7 @@
         return text(mod100 >= 11 && mod100 <= 19 ? many : mod10 === 1 ? one : mod10 >= 2 && mod10 <= 4 ? few : many, { count: count });
     }
     function activeCount(project) {
+        var adapter=target(project); if(adapter && adapter.activeCount)return adapter.activeCount(project);
         return Number(project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
             + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list');
     }
@@ -96,6 +111,7 @@
         return '<svg' + (className ? ' class="' + className + '"' : '') + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
     }
     function pending(project, field) {
+        var adapter=target(project); if(adapter)return !!adapter.busy();
         var change = changes.get(projectKey(project) + ':' + field);
         return !!(change && change.pending) || (field === 'accepts_email_testers' && emailPending);
     }
@@ -108,7 +124,9 @@
             (!toggle ? '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' : '') + '</button>';
     }
     function content(project) {
-        var id = Number(project.id || project.app_id);
+        var id = parameterId(project);
+        var argument = esc(JSON.stringify(id));
+        var adapter = target(project);
         var open = expanded.has(projectKey(project));
         var count = activeCount(project);
         var version = androidVersion(project);
@@ -117,7 +135,7 @@
         var depleted = boost.depleted;
         var toggleLabel = text(open ? 'pcParamsCollapse' : 'pcParamsExpand');
         var languageValue = code === 'RU' ? '🇷🇺 RU' : code === 'EN' ? '🇬🇧 EN' : 'ALL';
-        var onLabel = text('pcParamsOn');
+        var onLabel = adapter && adapter.reviewOnKey ? text(adapter.reviewOnKey) : text('pcParamsOn');
         var offLabel = text('pcParamsOff');
         var countLabel = plural(count, 'pcParamsCountOne', 'pcParamsCountFew', 'pcParamsCountMany');
         var campaign = project.screenshot_boost_campaign || {};
@@ -135,28 +153,29 @@
             ? '<span class="pc-project-boost-bust-state">$BUST</span> <span class="pc-project-boost-pool"><span class="pc-project-params__boost-cue-slot pc-project-params__boost-cue-slot--pool">' + (open ? cue : '') + '</span>' + esc(poolAmountText) + '</span> ' + esc(text('pcParamsBoostPoolLead')) + ' • ' + esc(rewardAmountText) + ' ' + esc(text('pcParamsBoostRewardRest'))
             : esc(text('pcParamsBoostNoteInactive'));
         return '<div class="pc-project-params__head">' +
-            '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + id + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '"' + (depleted ? ' aria-description="' + esc(text('pcParamsBoostDepletedHint')) + '"' : '') + '>' +
-                '<span class="pc-project-params__title">' + esc(text('pcParamsTitle')) + '</span>' +
+            '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + argument + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '"' + (depleted ? ' aria-description="' + esc(text('pcParamsBoostDepletedHint')) + '"' : '') + '>' +
+                '<span class="pc-project-params__title">' + esc(text(adapter && adapter.titleKey || 'pcParamsTitle')) + '</span>' +
                 '<span class="pc-project-params__count" title="' + esc(text('pcParamsCountHint')) + '"><i aria-hidden="true"></i>' + esc(countLabel) + '</span>' +
                 '<span class="pc-project-params__boost-cue-slot pc-project-params__boost-cue-slot--head">' + (!open ? cue : '') + '</span>' +
                 '<span class="pc-project-params__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
             '</button>' +
-            (window.SmartPing && typeof window.SmartPing.buttonHtml === 'function'
+            (adapter && adapter.hideActions ? '' : (window.SmartPing && typeof window.SmartPing.buttonHtml === 'function'
                 ? window.SmartPing.buttonHtml(id)
                 : '<button type="button" class="pc-smart-ping-btn" data-smart-ping="' + id + '" onclick="event.stopPropagation(); if(window.SmartPing) SmartPing.open(' + id + ')" aria-label="' + esc(text('smartPingAria')) + '"><span class="pc-smart-ping-btn__bolt" aria-hidden="true">⚡</span><span class="pc-smart-ping-btn__full">' + esc(text('smartPingLabelFull')) + '</span><span class="pc-smart-ping-btn__short">' + esc(text('smartPingLabelShort')) + '</span></button>') +
             '<span class="pc-ping-slot" data-pc-ping-slot="' + id + '">' +
                 '<button type="button" class="telegram-community-chip pc-ping-mini" data-pc-ping-mini="' + id + '" onclick="event.stopPropagation(); if(typeof pcProofPingOpenCommunity===\'function\'){pcProofPingOpenCommunity(event);}else if(typeof openCommunityChat===\'function\'){openCommunityChat(event);}" aria-label="' + esc(text('pulseChat')) + '" title="' + esc(text('pulseChat')) + '">' +
                     '<svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.313 4.674c.459 0 .661-.21.918-.46l2.204-2.143 4.585 3.387c.845.466 1.455.226 1.666-.784l3.007-14.167c.309-1.238-.473-1.8-1.471-1.317z"/></svg>' +
                 '</button>' +
-            '</span>' +
+            '</span>') +
         '</div>' +
         '<div class="pc-project-params__body" id="project-parameters-body-' + id + '"' + (open ? '' : ' inert aria-hidden="true"') + '><div class="pc-project-params__clip"><div class="pc-project-params__content">' +
             '<div class="pc-project-params__grid">' +
-                tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + id + ',event)', true) +
-                tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + id + ',event)', false) +
-                tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
-                tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
-                '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
+                tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', !(adapter && adapter.reviewOnKey)) +
+                tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + argument + ',event)', false) +
+                tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + argument + ',event)', false) +
+                tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + argument + ',event)', false) +
+                (adapter && adapter.extraHtml ? adapter.extraHtml(project) : '') +
+                '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="ProjectParameters.openBoost(' + argument + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
                     '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
                     '<span class="pc-project-param__value">' + boostValueHtml + '</span>' +
                     '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' +
@@ -169,13 +188,13 @@
         return String(project && project.test_mode || '').toLowerCase() === 'email_list';
     }
     function build(project) {
-        return '<section class="pc-project-params' + (expanded.has(projectKey(project)) ? ' is-expanded' : '') + (isEmailList(project) ? ' is-email-list' : '') + (boostMeta(project).depleted ? ' has-boost-depleted' : '') + '" id="project-parameters-' + Number(project.id || project.app_id) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
+        return '<section class="pc-project-params' + (expanded.has(projectKey(project)) ? ' is-expanded' : '') + (isEmailList(project) ? ' is-email-list' : '') + (boostMeta(project).depleted ? ' has-boost-depleted' : '') + '" id="project-parameters-' + parameterId(project) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
     }
     function stop(event) { if (event) { event.preventDefault(); event.stopPropagation(); } }
     function toggle(id, event) {
         stop(event);
         var project = projectById(id);
-        var panel = document.getElementById('project-parameters-' + Number(id));
+        var panel = document.getElementById('project-parameters-' + id);
         if (!project || !panel) return;
         var open = !panel.classList.contains('is-expanded');
         if (open) expanded.add(projectKey(project)); else expanded.delete(projectKey(project));
@@ -190,7 +209,7 @@
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     }
     function update(project) {
-        var panel = document.getElementById('project-parameters-' + Number(project.id || project.app_id));
+        var panel = document.getElementById('project-parameters-' + parameterId(project));
         if (!panel) return;
         var focusKey = panel.contains(document.activeElement) ? document.activeElement.getAttribute('data-project-param') : null;
         panel.classList.toggle('is-expanded', expanded.has(projectKey(project)));
@@ -209,6 +228,7 @@
         changes.set(projectKey(project) + ':' + field, { key: projectKey(project), field: field, value: value, at: Date.now(), pending: !!isPending });
     }
     function recordSaved(project, field) {
+        targets.forEach(function(adapter){if(adapter.appId===Number(project.id || project.app_id) && adapter.onChange)adapter.onChange();});
         remember(project, field, project[field], false);
         update(project);
     }
@@ -226,6 +246,8 @@
         options = options || {};
         var project = projectById(id);
         if (!project || pending(project, field)) return false;
+        var adapter=target(project);
+        if(adapter){var saved=await adapter.save(field,value);if(saved && options.onSuccess)options.onSuccess();return !!saved;}
         var key = projectKey(project);
         var previous = project[field];
         remember(project, field, options.defer ? previous : value, true);
@@ -262,7 +284,32 @@
     function toggleReviews(id, event) {
         stop(event);
         var project = projectById(id);
+        if (project && target(project) && target(project).reviewOnKey) return openReviews(id,event);
         if (project) return save(id, 'request_reviews', project.request_reviews === false);
+    }
+    function showChoice(id,event,field,title,hint,choices,select) {
+        stop(event);
+        var project=projectById(id),modal=document.getElementById('project-language-modal');
+        if(!project || !modal || pending(project,field))return;
+        languageProjectKey=projectKey(project);
+        languageTrigger=event && event.currentTarget || document.activeElement;
+        document.getElementById('project-language-title').textContent=text(title);
+        document.getElementById('project-language-hint').textContent=text(hint);
+        document.getElementById('project-language-options').innerHTML=choices.map(function(choice){
+            var value=field==='request_reviews' ? project.request_reviews!==false : language(project);
+            var selected=value===choice.value;
+            return '<button type="button" class="android-version-option'+(selected?' is-selected':'')+'" aria-pressed="'+selected+'" onclick="ProjectParameters.'+select+'('+esc(JSON.stringify(choice.value))+')"><span>'+esc(text(choice.label))+'</span><span class="android-version-option__mark" aria-hidden="true">'+(selected?'✓':'')+'</span></button>';
+        }).join('');
+        modal.classList.add('active');modal.querySelector('.is-selected').focus({preventScroll:true});
+        if(typeof syncTelegramBackButton==='function')syncTelegramBackButton();
+    }
+    function openReviews(id,event) {
+        showChoice(id,event,'request_reviews','pcParamsReviews','lcReviewHint',[
+            {value:true,label:'lcReviewOn'},{value:false,label:'lcReviewOff'}],'selectReview');
+    }
+    function selectReview(value) {
+        var project=projectByKey(languageProjectKey);closeLanguage();
+        if(project && typeof value==='boolean' && (project.request_reviews!==false)!==value)return save(parameterId(project),'request_reviews',value);
     }
     function openAndroid(id, event) {
         stop(event);
@@ -274,22 +321,9 @@
             if (current && androidVersion(current) !== value) save(id, 'min_android_version', value);
         } });
     }
-    function openLanguage(id, event) {
-        stop(event);
-        var project = projectById(id);
-        var modal = document.getElementById('project-language-modal');
-        if (!project || !modal || pending(project, 'target_lang')) return;
-        languageProjectKey = projectKey(project);
-        languageTrigger = event && event.currentTarget || document.activeElement;
-        document.getElementById('project-language-title').textContent = text('projectLanguageLabel');
-        document.getElementById('project-language-hint').textContent = text('projectLanguageHint');
-        document.getElementById('project-language-options').innerHTML = ['RU', 'EN', 'ALL'].map(function (code) {
-            var selected = language(project) === code;
-            return '<button type="button" class="android-version-option' + (selected ? ' is-selected' : '') + '" aria-pressed="' + selected + '" onclick="ProjectParameters.selectLanguage(\'' + code + '\')"><span>' + esc(text('projectLanguage' + (code === 'RU' ? 'Ru' : code === 'EN' ? 'En' : 'All'))) + '</span><span class="android-version-option__mark" aria-hidden="true">' + (selected ? '✓' : '') + '</span></button>';
-        }).join('');
-        modal.classList.add('active');
-        modal.querySelector('.is-selected').focus({ preventScroll: true });
-        if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+    function openLanguage(id,event) {
+        showChoice(id,event,'target_lang','projectLanguageLabel','projectLanguageHint',[
+            {value:'RU',label:'projectLanguageRu'}, {value:'EN',label:'projectLanguageEn'}, {value:'ALL',label:'projectLanguageAll'}],'selectLanguage');
     }
     function closeLanguage(event) {
         var modal = document.getElementById('project-language-modal');
@@ -303,7 +337,7 @@
         if (!['RU', 'EN', 'ALL'].includes(code)) return;
         var project = projectByKey(languageProjectKey);
         closeLanguage();
-        if (project && language(project) !== code) return save(project.id || project.app_id, 'target_lang', code);
+        if (project && language(project) !== code) return save(parameterId(project), 'target_lang', code);
     }
     function openInstructions(id, event) {
         stop(event);
@@ -351,6 +385,7 @@
         document.getElementById('project-instructions-label').textContent = text('pcParamsInstructionsModalLabel');
         document.getElementById('project-instructions-note').textContent = text('pcParamsInstructionsModalNote');
         document.getElementById('project-instructions-save').textContent = text('pcParamsInstructionsSave');
+        input.maxLength = target(project) && target(project).instructionsMax || 1000;
         input.placeholder = text('instPlaceholder');
         input.value = String(project.instructions || '');
         renderInstructionChips();
@@ -380,7 +415,7 @@
         var next = String(input.value || '');
         if (next.length > 0 && !next.endsWith('\n')) next += '\n';
         next += addition;
-        if (next.length > 1000) next = next.slice(0, 1000);
+        if (next.length > input.maxLength) next = next.slice(0, input.maxLength);
         input.value = next;
         input.focus({ preventScroll: true });
         onInstructionsInput();
@@ -390,7 +425,7 @@
         var input = document.getElementById('project-instructions-input');
         var count = document.getElementById('project-instructions-count');
         if (!input || !count) return;
-        count.textContent = text('pcParamsInstructionsCount', { count: String(input.value || '').length, max: 1000 });
+        count.textContent = text('pcParamsInstructionsCount', { count: String(input.value || '').length, max: input.maxLength });
         setInstructionsError('');
     }
     function closeInstructions(event) {
@@ -409,7 +444,7 @@
         if (!project || !input || !button || pending(project, 'instructions')) return;
         var value = String(input.value || '').trim();
         button.disabled = true;
-        var saved = await save(project.id || project.app_id, 'instructions', value);
+        var saved = await save(parameterId(project), 'instructions', value);
         button.disabled = false;
         if (!saved) {
             setInstructionsError(text('pcParamsSaveError'));
@@ -570,5 +605,16 @@
             }
         }
     });
-    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
+    function registerTarget(ref, adapter) {
+        if (!/^campaign-[0-9]+-[0-9]+$/.test(ref)) throw new Error('Invalid parameter target');
+        targets.set(ref,adapter);
+    }
+    function buildTarget(ref) { var project=projectById(ref); return project ? build(project) : ''; }
+    function openBoost(id,event) {
+        stop(event); var project=projectById(id); if(!project)return;
+        var adapter=target(project);
+        if(adapter && adapter.openBoost)return adapter.openBoost(event);
+        if(typeof openScreenshotBoostSettings==='function')return openScreenshotBoostSettings(Number(project.id || project.app_id),event);
+    }
+    window.ProjectParameters = { registerTarget:registerTarget, buildTarget:buildTarget, openBoost:openBoost, icon:icon, selectReview:selectReview, build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
 })();
