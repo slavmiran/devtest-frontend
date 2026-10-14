@@ -1060,6 +1060,7 @@ function renderFeedCard(item, kind) {
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                     ${langBadge}
+                    ${window.LiveCampaigns ? window.LiveCampaigns.marketBadges(item) : ''}
                     <span class="meta-chip accent-yellow">${typeof window.withKarmaIcon === 'function' ? window.withKarmaIcon(String(item.owner_karma || 0)) : ('☯️ ' + (item.owner_karma || 0))}</span>
                 </div>
             </div>

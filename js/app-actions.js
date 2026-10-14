@@ -1786,12 +1786,12 @@ function recomputeLocalTestState(test) {
     }
     var testingDays = Number(test.testing_days || 0);
     var skipsCount = countGrantSkips(test);
-    var canEverClaim = !isExternal && !test.grant_claimed && skipsCount <= 3 && test.progress_id;
+    var canEverClaim = !isExternal && !test.live_bridge && !test.grant_claimed && skipsCount <= 3 && test.progress_id;
 
     var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
     test.isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
     test.isReadyToClaim = !!(canEverClaim && testingDays >= 15);
-    test.isEarlyFinish = !!((isAppClosed || isTestClosed) && !test.grant_claimed && !hasCompletedFull14Days && qualifiesEarlyFinishGrant(test, testingDays, skipsCount));
+    test.isEarlyFinish = !!(!test.live_bridge && (isAppClosed || isTestClosed) && !test.grant_claimed && !hasCompletedFull14Days && qualifiesEarlyFinishGrant(test, testingDays, skipsCount));
     test.is_pending_completion = isPendingCompletion;
     test.external_control_day_due = !!(isExternal && isMandatoryScreenshotDay(testingDays));
 
@@ -2672,6 +2672,12 @@ function startTimer(id, pkg, isScreenshotDay = false, ownerUsername = '', durati
 }
 
 async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername = '', durationSeconds = 15) {
+    var bridgeTest=typeof getMyTestById==='function'?getMyTestById(id):null;
+    if(bridgeTest && bridgeTest.live_bridge){
+        _openStorePackage(pkg,id);
+        if(isScreenshotDay){_setTimerButtonReady(id,true,ownerUsername||'');}
+        return;
+    }
     var resolvedOwnerUsername = _resolveCheckpointOwnerUsername(id, ownerUsername);
     var resolvedDurationSeconds = Number(durationSeconds || 15);
     if (!Number.isFinite(resolvedDurationSeconds) || resolvedDurationSeconds < 1) {
@@ -5027,7 +5033,7 @@ async function confirmStart(id, options) {
     // --- 3. BACKGROUND NETWORK REQUEST & ROLLBACK ON ERROR ---
     (async function() {
         try {
-            if (!token && proofKind === 'open_token') {
+            if (!token && proofKind === 'open_token' && !(test && test.live_bridge)) {
                 try {
                     var autoToken = await _requestCheckinOpenToken(id);
                     if (autoToken && autoToken.token) {
@@ -5184,7 +5190,7 @@ async function confirmStart(id, options) {
                 }
 
                 var skipsAfter = countGrantSkips(updatedTest);
-                var canEverClaim = !updatedTest.grant_claimed && skipsAfter <= 3 && updatedTest.progress_id;
+                var canEverClaim = !updatedTest.live_bridge && !updatedTest.grant_claimed && skipsAfter <= 3 && updatedTest.progress_id;
                 if (canEverClaim && updatedTest.testing_days === 14) {
                     updatedTest.isGrantAvailableTomorrow = true;
                     window.tg.showAlert(window.t('grantAvailableTomorrowAlert', {}, lang));

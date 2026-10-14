@@ -16,12 +16,13 @@ fs.mkdirSync(artifacts, {recursive:true});
             page.on('console',message => {if(message.type()==='error') errors.push(message.text());});
             await page.route('http://fixture.local/**',route => {
                 const pathname = new URL(route.request().url()).pathname;
+                if (pathname.endsWith('/campaigns')) return route.fulfill({json:{status:'success',campaigns:[{id:99,app_id:30,status:'active',total_slots:7,occupied_slots:8,free_occupied:7,free_available:0,paid_active:1,next_slot:8,next_slot_price:350,pool_available:160,reserved_bust:40,overlimit_cost:40,affordable_overlimit:4,revision:1,control_days:[1,4,7,10,14],request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:'',additional_reports:[]}]}});
                 if (pathname.startsWith('/images/Icons/')) return route.fulfill({contentType:'image/svg+xml',body:fs.readFileSync(path.join(root, pathname))});
                 return route.fulfill({contentType:'text/html',body:'<section id="tab-projects"><div id="projects-list"></div></section><div id="archived-projects-list"></div>'});
             });
             await page.goto('http://fixture.local/');
-            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css']) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['i18n/ru.js','i18n/en.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css','css/live-campaigns.css']) await page.addStyleTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','js/live-campaigns.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(language => {
                 window.lang = language;
                 Object.assign(window.t,language==='ru' ? I18NRU : I18NEN);
@@ -47,6 +48,9 @@ fs.mkdirSync(artifacts, {recursive:true});
                 window.ProjectToday.mount=()=>{}; // No background I/O in this render fixture.
                 renderProjects(true);
             },language);
+            await page.waitForSelector('#project-card-30 .lc-campaign');
+            assert.equal(await page.locator('#project-card-30 .lc-slot-line strong').innerText(),'7 / 7 '+(language==='ru'?'занято':'occupied'));
+            await page.locator('#project-card-30').screenshot({path:path.join(artifacts,'live-card-campaigns-'+language+'-360.png')});
             assert.equal(await page.locator('#pipeline-section-live #project-card-30').count(),1);
             assert.equal(await page.locator('#project-card-30').count(),1);
             assert.equal(await page.locator('#project-card-30 .pc-stage-badge--live').count(),0);
@@ -59,6 +63,8 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await page.locator('#project-card-30 .pc-results-card').count(),1);
             assert.equal(await page.locator('#project-card-30 .pc-metrics-grid').count(),0);
             assert.equal(await page.locator('#project-card-30 .live-metrics').count(),1);
+            assert.equal(await page.locator('#project-card-30 [data-live-campaigns]').count(),1);
+            assert.equal(await page.evaluate(()=>{const a=document.querySelector('.live-metrics-slot'),b=document.querySelector('[data-live-campaigns]');return !!(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);}),true);
             assert.equal(await page.locator('#project-card-30 .live-phase1-history-label').count(),1);
             await page.locator('#project-card-30 .pc-state-unified').screenshot({path:path.join(artifacts, 'live-metrics-' + language + '-360.png')});
             assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -68,6 +74,7 @@ fs.mkdirSync(artifacts, {recursive:true});
             await page.evaluate(()=>{myProjects[0].phase='testing';myProjects[0].status='active';renderProjects(true);});
             assert.equal(await page.locator('#pipeline-section-testing #project-card-30').count(),1);
             assert.equal(await page.locator('#project-card-30 .live-metrics').count(),0);
+            assert.equal(await page.locator('#project-card-30 [data-live-campaigns]').count(),0);
             assert.equal(await page.locator('#project-card-30 .pc-metrics-grid').count(),1);
             assert.equal(await page.locator('#project-card-30 .pc-participants-title').innerText(),language==='ru'?'Команда':'Team');
             // Publication refresh must bring the archive-backed card into the live dashboard.

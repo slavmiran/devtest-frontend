@@ -614,7 +614,7 @@ function _normalizeCachedTests(tests) {
         var isTestedToday = t.status === 'done';
         var testingDays = Number(t.testing_days || 0);
         var skipsCount = (typeof countGrantSkips === 'function') ? countGrantSkips(t) : Number(t.skips_count || 0);
-        var canEverClaim = !isExternal && !t.grant_claimed && skipsCount <= 3 && t.progress_id;
+        var canEverClaim = !isExternal && !t.live_bridge && !t.grant_claimed && skipsCount <= 3 && t.progress_id;
         var progressStatus = String(t.progress_status || 'active').toLowerCase();
         var appStatus = String(t.app_status || 'active').toLowerCase();
         var isPendingCompletion = !isExternal && appStatus === 'pending_completion';
@@ -623,7 +623,7 @@ function _normalizeCachedTests(tests) {
         var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
         t.isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
         t.isReadyToClaim = !!(canEverClaim && testingDays >= 15);
-        t.isEarlyFinish = !!((isArchivedOrCompleted) && !t.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function' ? qualifiesEarlyFinishGrant(t, testingDays, skipsCount) : Number(t.checkins_count || 0) >= 3 && skipsCount <= 3));
+        t.isEarlyFinish = !!(!t.live_bridge && (isArchivedOrCompleted) && !t.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function' ? qualifiesEarlyFinishGrant(t, testingDays, skipsCount) : Number(t.checkins_count || 0) >= 3 && skipsCount <= 3));
         t.is_pending_completion = isPendingCompletion;
         t.external_control_day_due = !!(isExternal && typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDays));
 
@@ -1669,13 +1669,13 @@ function _mapTestsFromApi(data) {
             : (shouldTreatFastTrackFirstDayAsDone ? today : (app.last_check_date || null));
         var isAppClosed = !isExternal && (appStatus !== 'active' && !isPendingCompletion);
         var isTestClosed = !isExternal && (progressStatus !== 'active') && !isSoftTail;
-        var canEverClaim = !isExternal && !isSoftTail && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
+        var canEverClaim = !isExternal && !app.live_bridge && !isSoftTail && !app.grant_claimed && skipsCount <= 3 && app.progress_id;
 
         var hasCompletedFull14Days = (testingDays >= 15) || (testingDays === 14 && isTestedToday);
         var isGrantAvailableTomorrow = !!(canEverClaim && !isPendingCompletion && testingDays === 14 && isTestedToday);
         var isReadyToClaim = !!(canEverClaim && testingDays >= 15);
         var earlyFinishCheckinsSource = { checkins_count: resolvedCheckinsCount };
-        var isEarlyFinish = !!((isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function'
+        var isEarlyFinish = !!(!app.live_bridge && (isAppClosed || isTestClosed) && !isSoftTail && !app.grant_claimed && !hasCompletedFull14Days && (typeof qualifiesEarlyFinishGrant === 'function'
             ? qualifiesEarlyFinishGrant(earlyFinishCheckinsSource, testingDays, skipsCount)
             : (resolvedCheckinsCount >= 3 && skipsCount <= 3)));
 
@@ -1689,6 +1689,8 @@ function _mapTestsFromApi(data) {
             id: mappedId,
             real_app_id: Number(app.app_id || 0) || null,
             progress_id: app.progress_id,
+            phase: app.phase || 'testing',
+            live_bridge: app.live_bridge || null,
             name: app.name,
             package: app.package_name,
             icon_url: app.icon_url,
@@ -2330,6 +2332,7 @@ function _mapProjectsFromApi(data, proofPingReadRevision) {
         var mappedTesters = testers.map(function(tester) {
             return Object.assign({}, tester, {
                 progress_id: Number(tester.progress_id || 0),
+                live_bridge: tester.live_bridge || null,
                 tester_id: Number(tester.tester_id || 0),
                 avatar_url: tester.avatar_url || null,
                 tester_avatar_url: tester.avatar_url || null,

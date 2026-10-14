@@ -773,7 +773,8 @@ function getUserTestingDay(startDate, explicitTestingDays) {
     return Math.floor((today - startedAt) / (1000 * 60 * 60 * 24)) + 1;
 }
 
-function isMandatoryScreenshotDay(testingDay) {
+function isMandatoryScreenshotDay(testingDay, test) {
+    if(test && test.live_bridge)return (test.live_bridge.control_days||[]).includes(Number(testingDay));
     return [1, 4, 7, 10, 14].includes(testingDay);
 }
 
@@ -1068,7 +1069,7 @@ async function openCheckpointReminderAction(appId, ownerUsername, event) {
 
 function getScreenshotReminderHtml(test) {
     const testingDay = getResolvedTestingDay(test);
-    if (!isMandatoryScreenshotDay(testingDay)) {
+    if (!isMandatoryScreenshotDay(testingDay,test)) {
         return '';
     }
 
@@ -1418,7 +1419,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         parts.push(`<button type="button" class="meta-chip" onclick="event.stopPropagation(); if(event.preventDefault)event.preventDefault(); showToast('${tooltip.replace(/'/g, "\\'")}'); return false;">${testerLabel}</button>`);
     }
     if (typeof userTestingDay === 'number' && userTestingDay > 0) {
-        const isScreenshot = isMandatoryScreenshotDay(userTestingDay);
+        const isScreenshot = isMandatoryScreenshotDay(userTestingDay,test);
         // Only control days carry an icon; regular days stay plain to reduce visual noise.
         const dayText = (isScreenshot ? '📸 ' : '') + t.myTestDayShort.replace('{days}', userTestingDay);
         const chipClass = isScreenshot ? 'meta-chip accent-orange' : 'meta-chip';
@@ -1939,7 +1940,7 @@ function isExternalControlDayDue(test) {
     if (!test || !test.is_external) {
         return false;
     }
-    return isMandatoryScreenshotDay(getExternalCurrentTestingDay(test));
+    return isMandatoryScreenshotDay(getExternalCurrentTestingDay(test),test);
 }
 
 function getExternalDisplayTestingDay(record) {
@@ -1973,7 +1974,7 @@ function getNextExternalControlDayMeta(test) {
     var lastCompletedDay = Number(test && test.external_last_completed_control_day || 0);
     var nextControlDay = 0;
 
-    if (isMandatoryScreenshotDay(currentDay) && lastCompletedDay < currentDay) {
+    if (isMandatoryScreenshotDay(currentDay,test) && lastCompletedDay < currentDay) {
         return {
             currentDay: currentDay,
             nextControlDay: currentDay,
@@ -2407,7 +2408,7 @@ function renderControlProofCatchupChip(test, testingDay) {
     const days = getOpenControlProofCatchups(test);
     if (!days.length) return '';
     const count = days.length;
-    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0));
+    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0),test);
     const labelKey = count === 1 ? 'catchupTesterChipOne' : 'catchupTesterChipMany';
     const label = window.t(labelKey, { count: count }, lang);
     return '<button type="button" class="meta-chip control-proof-catchup-chip' + (isOfficialDay ? ' is-disabled' : '') + '"' +
@@ -2416,6 +2417,7 @@ function renderControlProofCatchupChip(test, testingDay) {
 }
 
 function isBufferOnlyCatchupSubmission(test, testingDay) {
+    if(test && test.live_bridge)return Number(testingDay)>14;
     if (!test || String(test.app_status || '').toLowerCase() !== 'pending_completion') return false;
     var paidDays = Math.max(0, Number(test.paid_protection_days || test.purchased_protection_days || 0));
     return Number(testingDay || 0) > 14 + paidDays
@@ -2423,6 +2425,7 @@ function isBufferOnlyCatchupSubmission(test, testingDay) {
 }
 
 function getScreenshotBoostOffer(test, testingDay) {
+    if(test && test.live_bridge)return null;
     if (!test || test.is_external || test.is_kicked_soft || test.is_unlinked_soft) return null;
     var campaign = test.screenshot_boost_campaign;
     if (!campaign || campaign.enabled !== true) return null;
@@ -2448,7 +2451,7 @@ function getScreenshotBoostOffer(test, testingDay) {
     var catchups = Array.isArray(test.control_proof_catchups) ? test.control_proof_catchups : [];
     if (catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
 
-    var isControlDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day);
+    var isControlDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day,test);
     // The first successful check-in always carries the mandatory first-launch
     // proof, even when it is overdue and therefore lands on day 2+. Treat it
     // exactly like a control-day report for screenshot reward eligibility.
@@ -2520,7 +2523,7 @@ function syncScreenshotBoostConfirmButton(btn, appId) {
     var offer = typeof window.getScreenshotBoostOffer === 'function'
         ? window.getScreenshotBoostOffer(test, testingDay)
         : null;
-    var isControlDay = (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDay))
+    var isControlDay = (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(testingDay,test))
         || (Number(test.checkins_count || 0) <= 0 && !String(test.last_check_date || '').trim());
     var showSticker = !!(offer && (isControlDay || offer.isControlDay));
 
@@ -2768,7 +2771,7 @@ window.openControlProofCatchupInfo = function(appId) {
     const days = getOpenControlProofCatchups(test);
     if (!days.length) return;
     const today = getResolvedTestingDay(test);
-    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(today || 0));
+    const isOfficialDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(today || 0),test);
     const bufferOnly = isBufferOnlyCatchupSubmission(test, today);
     const lead = days.length === 1
         ? window.t('catchupTesterLeadOne', { day: days[0] }, lang)
@@ -2840,7 +2843,7 @@ window.openControlProofCatchupScreenshot = function(appId) {
     });
     if (!test) return;
     const testingDay = getResolvedTestingDay(test);
-    if (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0))) {
+    if (typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(Number(testingDay || 0),test)) {
         if (typeof showToast === 'function') showToast(window.t('catchupTesterOfficialNote', {}, lang));
         return;
     }
@@ -3141,7 +3144,7 @@ function renderTests(force) {
         // State A: grant available now (Day >= 15)
         else if (test.isReadyToClaim) {
             const testingDay = userTestingDay || 999;
-            const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
+            const isScreenshotDay = isMandatoryScreenshotDay(testingDay,test);
             const isArchivedClaimCard = isArchivedOrCompleted
                 || String(test.progress_status || 'active').toLowerCase() !== 'active';
             
@@ -3253,7 +3256,9 @@ function renderTests(force) {
             `;
         } else if (test.status === 'daily' || test.status === 'opened') {
             const testingDay = userTestingDay || 999;
-            if (testingDay >= 15) {
+            if(test.live_bridge && window.LiveCampaigns && !isIssueBlocked && !isFeedbackCheckinPending && !window.LiveCampaigns.isControl(test,testingDay)){
+                actionsHtml=window.LiveCampaigns.normalActions(test,testingDay)+window.LiveCampaigns.reports(test);
+            } else if (testingDay >= 15) {
                 const hintHtml = renderCheckinRewardHint(test, testingDay, lang);
                 const extensionBoostOffer = getScreenshotBoostOffer(test, testingDay);
                 // Do NOT show the karma-only hint when pool is empty — it promises a "Protection Bonus" that doesn't exist
@@ -3280,7 +3285,7 @@ function renderTests(force) {
                     ${hintHtml}
                 `;
             } else {
-                const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
+                const isScreenshotDay = isMandatoryScreenshotDay(testingDay,test);
                 const isScreenshotOnlyDay = isScreenshotOnlyControlDay(testingDay);
                 const screenshotBtnText = isScreenshotOnlyDay
                     ? window.t('screenshotBtn', {}, lang)
@@ -3338,6 +3343,7 @@ function renderTests(force) {
             actionsHtml = '';
         }
 
+        if(test.live_bridge && window.LiveCampaigns && window.LiveCampaigns.isControl(test,userTestingDay))actionsHtml+=window.LiveCampaigns.reports(test);
         const headerActions = [];
         if (isExternal) {
             if (safeOwnerUsername) {

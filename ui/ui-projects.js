@@ -2533,6 +2533,7 @@ function renderProjects(force) {
 
             ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
             ${phase === 'live' && window.LiveProjectMetrics ? `<div class="live-metrics-slot" data-app-id="${Number(project.id)}">${window.LiveProjectMetrics.render(project)}</div>` : stateBlockHtml}
+            ${phase === 'live' && window.LiveCampaigns ? window.LiveCampaigns.build(project) : ''}
             <div class="pc-team-collapsed-slot">${phase !== 'live' && typeof window.buildProjectTeamCollapsedBar === 'function' ? window.buildProjectTeamCollapsedBar(project) : ''}</div>
             <div class="pc-results-collapsed-slot">${phase !== 'live' && typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>
             </section>
@@ -2584,6 +2585,7 @@ function renderProjects(force) {
             fitClosedTestAttractButton(card.querySelector('.pc-cta--testers'));
         });
         if (phase === 'live' && window.LiveProjectMetrics) window.LiveProjectMetrics.mount(card, project);
+        if (phase === 'live' && window.LiveCampaigns) window.LiveCampaigns.mount(card, project);
         if (phase !== 'live' && window.ProjectToday) window.ProjectToday.mount(card, project);
         } catch (e) {
             console.error('Project card render error:', e);
