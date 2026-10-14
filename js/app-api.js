@@ -1867,7 +1867,9 @@ async function _loadTasksImpl(options) {
         var response = await fetchWithRetry(API_BASE + '/tasks/' + userId + '?' + initQ);
         if (!response.ok) throw await buildHttpStatusError(response, 'networkError');
         var data = await response.json();
-        _userEmail = String(data.user_email || '').trim();
+        _userEmail = (typeof canonicalizeTesterEmail === 'function')
+            ? canonicalizeTesterEmail(data.user_email)
+            : String(data.user_email || '').trim();
         window.App.userEmail = _userEmail;
         if (typeof data.email_projects_enabled === 'boolean') {
             window.App.emailProjectsEnabled = data.email_projects_enabled;
@@ -3236,6 +3238,46 @@ function _saveProjectAlert(message) {
     else alert(message);
 }
 
+async function _resolveTesterEmailForSave(inputId, required) {
+    var input = document.getElementById(inputId);
+    var value = input ? String(input.value || '').trim() : '';
+    if (!required) return { ok: true, email: null };
+    if (!value) return { ok: false, code: 'required' };
+    if (typeof isValidEmail === 'function' && !isValidEmail(value)) return { ok: false, code: 'invalid' };
+    if (typeof commitTesterEmail !== 'function') return { ok: true, email: value };
+    var committed = await commitTesterEmail(value);
+    if (committed && committed.declined) {
+        var kept = String(committed.email || '').trim();
+        if (input) input.value = kept;
+        if (typeof _updateEditTesterEmailValidIcon === 'function' && inputId === 'edit-app-tester-email') {
+            _updateEditTesterEmailValidIcon();
+        }
+        if (typeof _updateTesterEmailValidIcon === 'function' && inputId === 'app-tester-email') {
+            _updateTesterEmailValidIcon();
+        }
+        return { ok: true, email: kept };
+    }
+    if (!committed || !committed.ok) {
+        return {
+            ok: false,
+            code: 'save',
+            message: String(committed && committed.message || '').trim(),
+        };
+    }
+    var savedEmail = String(committed.email || value).trim();
+    if (input) input.value = savedEmail;
+    return { ok: true, email: savedEmail };
+}
+
+async function _persistEditEmailPreference(enabled) {
+    if (typeof saveEmailProjectsPreference !== 'function') return { ok: true };
+    var preference = await saveEmailProjectsPreference(!!enabled);
+    if (preference && preference.ok && window.App) {
+        window.App.emailProjectsEnabled = !!enabled;
+    }
+    return preference || { ok: false };
+}
+
 async function saveProject() {
     _clearProjectPackageError();
     _clearAddFieldErrors();
@@ -3251,7 +3293,7 @@ async function saveProject() {
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
     const acceptsBox = document.getElementById('app-accepts-email-testers');
     const acceptsEmailTesters = !!(acceptsBox && acceptsBox.checked);
-    const testerEmailInput = (document.getElementById('app-tester-email').value || '').trim();
+    let testerEmailInput = (document.getElementById('app-tester-email').value || '').trim();
 
     // ── Stage 1: valid Google Play link (name is optional) ──
     if (!packageInput.includes('play.google.com/store/apps/details?id=')) {
@@ -3324,20 +3366,20 @@ async function saveProject() {
     }
 
     // ── Stage 3: optional tester email ──
-    if (acceptsEmailTesters) {
-        if (!testerEmailInput) {
-            _markAddFieldError(document.getElementById('app-tester-email'));
-            _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
-            _focusAddError(document.getElementById('app-tester-email'));
-            return;
-        }
-        if (!isValidEmail(testerEmailInput)) {
-            _markAddFieldError(document.getElementById('app-tester-email'));
+    var resolvedAddEmail = await _resolveTesterEmailForSave('app-tester-email', acceptsEmailTesters);
+    if (!resolvedAddEmail.ok) {
+        _markAddFieldError(document.getElementById('app-tester-email'));
+        if (resolvedAddEmail.code === 'invalid') {
             _saveProjectAlert(window.t('invalidEmail', {}, lang));
-            _focusAddError(document.getElementById('app-tester-email'));
-            return;
+        } else if (resolvedAddEmail.code === 'save') {
+            _saveProjectAlert(resolvedAddEmail.message || window.t('emailSaveFailed', {}, lang));
+        } else {
+            _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
         }
+        _focusAddError(document.getElementById('app-tester-email'));
+        return;
     }
+    testerEmailInput = resolvedAddEmail.email || '';
 
     const pricingPayload = buildProjectPricingPayload('add');
     if (!pricingPayload) return;
@@ -3547,17 +3589,26 @@ async function saveProjectEdit() {
 
     const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
     const acceptsEmailTesters = !!(acceptsBox && acceptsBox.checked);
-    const testerEmailInput = (document.getElementById('edit-app-tester-email').value || '').trim();
-
-    if (acceptsEmailTesters) {
-        if (!testerEmailInput) {
-            _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
-            return;
-        }
-        if (!isValidEmail(testerEmailInput)) {
+    var resolvedEditEmail = await _resolveTesterEmailForSave('edit-app-tester-email', acceptsEmailTesters);
+    if (!resolvedEditEmail.ok) {
+        if (resolvedEditEmail.code === 'invalid') {
             _saveProjectAlert(window.t('invalidEmail', {}, lang));
-            return;
+        } else if (resolvedEditEmail.code === 'save') {
+            _saveProjectAlert(resolvedEditEmail.message || window.t('emailSaveFailed', {}, lang));
+        } else {
+            _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
         }
+        var editEmailInput = document.getElementById('edit-app-tester-email');
+        if (editEmailInput && typeof editEmailInput.focus === 'function') {
+            try { editEmailInput.focus(); } catch (e) {}
+        }
+        return;
+    }
+    const testerEmailInput = resolvedEditEmail.email || '';
+    var preferenceResult = await _persistEditEmailPreference(acceptsEmailTesters);
+    if (acceptsEmailTesters && preferenceResult && !preferenceResult.ok && preferenceResult.code !== 'schema_not_ready') {
+        _saveProjectAlert(window.t('emailSaveFailed', {}, lang));
+        return;
     }
 
     if (accessMode === 'custom_group' && !googleGroupUrl) {
@@ -3734,6 +3785,19 @@ function _buildRestartSettingsPayload() {
 
 async function confirmRestartFromSettings() {
     if (!projectToEdit) return null;
+    const restartAcceptsEmail = !!(document.getElementById('edit-app-accepts-email-testers') && document.getElementById('edit-app-accepts-email-testers').checked);
+    var resolvedRestartEmail = await _resolveTesterEmailForSave('edit-app-tester-email', restartAcceptsEmail);
+    if (!resolvedRestartEmail.ok) {
+        if (resolvedRestartEmail.code === 'invalid') {
+            _saveProjectAlert(window.t('invalidEmail', {}, lang));
+        } else if (resolvedRestartEmail.code === 'save') {
+            _saveProjectAlert(resolvedRestartEmail.message || window.t('emailSaveFailed', {}, lang));
+        } else {
+            _saveProjectAlert(window.t('testerEmailRequired', {}, lang));
+        }
+        return null;
+    }
+    await _persistEditEmailPreference(restartAcceptsEmail);
     const settingsPayload = _buildRestartSettingsPayload();
     if (!settingsPayload) return null;
 

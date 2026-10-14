@@ -524,6 +524,7 @@
             completeChecklistError: "Please complete every item in the checklist.",
             customGroupRequired: "Please enter a link to your Google Group.",
             testerEmailRequired: "Please enter your tester email.",
+            testerEmailReplaceConfirm: "Replace your saved email {current} with {next}?",
             invalidEmail: "Please enter a valid email address.",
             invalidEmailCommas: "Enter a single email address without commas.",
             invalidEmailSpaces: "Email must not contain spaces.",

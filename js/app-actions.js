@@ -2875,6 +2875,21 @@ async function submitIssueReport(appId) {
         return;
     }
 
+    if (typeof commitTesterEmail === 'function') {
+        var emailCommit = await commitTesterEmail(email);
+        if (emailCommit && emailCommit.declined) {
+            if (emailEl) emailEl.value = emailCommit.email || '';
+            if (typeof syncIssueReportPauseState === 'function') syncIssueReportPauseState();
+            return;
+        }
+        if (!emailCommit || !emailCommit.ok) {
+            showToast(String(emailCommit && emailCommit.message || '').trim() || window.t('emailSaveFailed', {}, lang));
+            return;
+        }
+        email = String(emailCommit.email || email).trim();
+        if (emailEl) emailEl.value = email;
+    }
+
     try {
         var wait = typeof getIssueAccessWaitState === 'function'
             ? getIssueAccessWaitState(appId)

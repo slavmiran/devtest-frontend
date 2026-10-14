@@ -4382,8 +4382,8 @@ function openIssueReportModal(appId) {
     _setIssueChecklistChecked(false);
     _resetIssueReportScreenshot();
     if (emailInput) {
-        const appState = window.App && typeof window.App.getState === 'function' ? window.App.getState() : {};
-        emailInput.value = String((appState && appState.userEmail) || (window.App && window.App.userEmail) || '').trim();
+        const savedIssueEmail = (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : String((window.App && window.App.userEmail) || '').trim();
+        emailInput.value = (typeof canonicalizeTesterEmail === 'function') ? canonicalizeTesterEmail(savedIssueEmail) : savedIssueEmail;
         emailInput.placeholder = window.t('reportIssueEmailPlaceholder', {}, lang);
     }
     const textarea = document.getElementById('issue-report-text');
@@ -11115,7 +11115,7 @@ function openEmailCollectModal(opts) {
     var skipBtn = document.getElementById('email-collect-skip');
     if (titleEl) titleEl.textContent = opts.title || window.t('emailGateOfferTitle', {}, lang);
     if (textEl) textEl.textContent = opts.text || '';
-    if (input) input.value = _emailCurrentUser() || '';
+    if (input) input.value = (typeof canonicalizeTesterEmail === 'function') ? canonicalizeTesterEmail(_emailCurrentUser()) : (_emailCurrentUser() || '');
     if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
     if (saveBtn) { saveBtn.textContent = opts.primaryLabel || window.t('emailGateSaveContinue', {}, lang); saveBtn.onclick = _submitEmailCollect; }
     if (skipBtn) {
@@ -11142,7 +11142,12 @@ async function _submitEmailCollect() {
         return;
     }
     if (saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('is-locked'); }
-    var res = (typeof saveTesterEmail === 'function') ? await saveTesterEmail(value) : { ok: false };
+    var res = (typeof commitTesterEmail === 'function') ? await commitTesterEmail(value) : { ok: false };
+    if (res && res.declined) {
+        if (input) input.value = res.email || '';
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-locked'); }
+        return;
+    }
     if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-locked'); }
     if (!res || !res.ok) {
         var msg = String(res && res.message || '').trim();

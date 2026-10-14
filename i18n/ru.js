@@ -523,6 +523,7 @@
             completeChecklistError: "Пожалуйста, отметьте все пункты чеклиста.",
             customGroupRequired: "Пожалуйста, укажите ссылку на вашу Google Group.",
             testerEmailRequired: "Пожалуйста, укажите ваш email тестировщика.",
+            testerEmailReplaceConfirm: "Заменить сохранённый email {current} на {next}?",
             invalidEmail: "Пожалуйста, введите корректный email.",
             invalidEmailCommas: "Укажите только один email без запятых.",
             invalidEmailSpaces: "Email не должен содержать пробелы.",
