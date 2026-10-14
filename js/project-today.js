@@ -964,8 +964,8 @@
                 '<button type="button" class="pc-person__handle pc-person__handle--link pc-person__handle--reveal" ' +
                     'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
                     'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
-                timeAgoHtml +
                 (opts.nameSuffixHtml || '') +
+                timeAgoHtml +
             '</span>';
             timeAgoHtml = '';
         } else {
@@ -3127,6 +3127,8 @@
                 avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
                 extraHtml: subrowsHtml,
                 timeAgoText: timeAgo,
+                nameSuffixHtml: testerDayNumber(item.tester) > 0
+                    ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + testerDayNumber(item.tester)) + '</span>' : '',
             });
         }).join('') + '</ul>';
     }
@@ -3536,8 +3538,7 @@
                 : '<span class="pc-person__dot" aria-hidden="true"></span>';
 
             var metaHtml = '<span class="pc-person__reliability">' + esc(testerReliabilityLabel(tester)) + '</span>' +
-                testerKarmaMetaHtml(tester) +
-                '<span class="pc-person__day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>';
+                testerKarmaMetaHtml(tester);
             var manualRemindText = formatManualReminderWhen(safeAppId, safeTesterId);
             if (manualRemindText) {
                 metaHtml += '<span class="pc-reminder-receipt is-manual-remind">🔔 ' +
@@ -3629,6 +3630,8 @@
                 tester: tester,
                 tone: attentionTone(item),
                 rowClass: 'pc-person--attention',
+                nameSuffixHtml: currentDay > 0
+                    ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + currentDay) + '</span>' : '',
                 metaHtml: metaHtml,
                 actionsHtml: '',
                 avatarMarkerHtml: avatarMarkerHtml,
@@ -5148,6 +5151,34 @@
         });
     };
 
+    window.pcApplySmartPingCatchups = function (appId, requests) {
+        var project = projectById(Number(appId));
+        if (!project || !Array.isArray(requests)) return;
+        var entry = getCacheEntry(Number(appId));
+        requests.forEach(function (request) {
+            var tester = (project.testers || []).find(function (row) { return Number(row.tester_id) === Number(request.tester_id); });
+            var day = Number(request.day || 0);
+            if (!tester || day <= 0 || Number(request.request_id || 0) <= 0) return;
+            var current = catchupStateFor(project, tester) || {};
+            var days = (current.requestedDays || []).slice();
+            if (days.indexOf(day) === -1) days.push(day);
+            var rows = (current.requests || []).filter(function (row) { return Number(row.missed_testing_day) !== day; });
+            rows.push({ id: Number(request.request_id), missed_testing_day: day, state: 'requested' });
+            var states = Object.assign({}, current.states || {});
+            states[String(day)] = 'requested';
+            var next = {
+                requestableMissedDays: (current.requestableMissedDays || []).filter(function (value) { return Number(value) !== day; }),
+                requestedDays: days, requests: rows, states: states,
+            };
+            tester.catchup_proof = next;
+            if (entry && Number(tester.progress_id) > 0) {
+                entry.catchupByProgress = entry.catchupByProgress || {};
+                entry.catchupByProgress[Number(tester.progress_id)] = next;
+            }
+        });
+        refreshActivityWorkspace(Number(appId));
+    };
+
     function reminderTime(value) {
         if (!value) return '—';
         return new Date(value).toLocaleTimeString(typeof lang !== 'undefined' && lang === 'ru' ? 'ru-RU' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -6184,6 +6215,7 @@
                             '<span>' + esc(karmaLabel) + '</span>' +
                         '</span>' +
                     '</div>' +
+                    (typeof window.buildDossierActivityHtml === 'function' ? window.buildDossierActivityHtml(profile) : '') +
                 '</div>' +
             '</div>' +
             '<section class="pc-dossier-section">' +

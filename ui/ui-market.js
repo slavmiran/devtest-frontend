@@ -10177,6 +10177,18 @@ function _renderDossierFold(title, count, panelHtml, options) {
     `</div>`;
 }
 
+function buildDossierActivityHtml(profile) {
+    var lastSeen = profile && profile.last_seen;
+    var statusText = typeof getOwnerLastSeenToastText === 'function'
+        ? getOwnerLastSeenToastText(lastSeen) : '—';
+    var timestamp = lastSeen && !isNaN(new Date(lastSeen).getTime())
+        ? new Date(lastSeen).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US') : '';
+    return '<div class="dossier-last-seen" title="' + window.escapeHTML(timestamp) + '">' +
+        '<span class="dossier-last-seen__dot" aria-hidden="true"></span>' +
+        window.escapeHTML(window.t('dossierActivityLabel', {}, lang)) + ': ' + window.escapeHTML(statusText) + '</div>';
+}
+window.buildDossierActivityHtml = buildDossierActivityHtml;
+
 function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState) {
     const karmaRaw = Number(profile && profile.karma || 0);
     const karmaValue = typeof formatUiAmount === 'function'
@@ -10259,6 +10271,7 @@ function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml,
 
     return `<header class="dossier-profile-hero">` +
         identityHtml +
+        buildDossierActivityHtml(profile) +
         `<div class="dossier-stat-strip" role="group" aria-label="${window.escapeHTML(window.t('dossierGlobalTitle', {}, lang))}">` +
             `<div class="dossier-stat">` +
                 `<div class="dossier-stat-value notranslate">${window.escapeHTML(String(karmaValue))}</div>` +
