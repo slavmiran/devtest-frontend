@@ -901,11 +901,17 @@
             }
             var sentAt = payload.sent_at || new Date().toISOString();
             var chargedCount = Number(payload.charged_count || picked.length);
+            var catchupCount = Array.isArray(payload.catchup_requests) ? payload.catchup_requests.length : 0;
+            var queuedSummary = text('smartPingQueuedCount', 'Пинг поставлен в очередь: {count}', { count: chargedCount }) +
+                (catchupCount > 0 ? ' · ' + text('smartPingCatchupCreatedCount', 'Дозапросов создано: {count}', { count: catchupCount }) : '');
             var pingedTesterIds = Array.isArray(payload.tester_ids) && payload.tester_ids.length > 0
                 ? payload.tester_ids.map(Number)
                 : picked.map(function (row) { return row.testerId; });
 
             project.smart_ping_sent_at = sentAt;
+            if (typeof window.pcApplySmartPingCatchups === 'function') {
+                window.pcApplySmartPingCatchups(submittedAppId, payload.catchup_requests || []);
+            }
             setLastPing(submittedAppId, {
                 sentAt: sentAt,
                 count: chargedCount,
@@ -921,7 +927,7 @@
             if (footer) {
                 footer.classList.remove('is-loading');
                 footer.classList.add('is-success');
-                footer.textContent = '✓ ' + text('smartPingDeliveredCount', 'Smart Ping доставлен {count} участникам', { count: chargedCount });
+                footer.textContent = '✓ ' + queuedSummary;
             }
 
             setTimeout(function () {
@@ -932,9 +938,7 @@
                     if (typeof window.ProjectToday.refresh === 'function') window.ProjectToday.refresh(submittedAppId);
                 }
                 if (typeof showToast === 'function') {
-                    showToast(text('smartPingDeliveredCount', 'Smart Ping доставлен {count} участникам', {
-                        count: chargedCount,
-                    }));
+                    showToast(queuedSummary);
                 }
                 close();
                 sync(submittedAppId);

@@ -503,7 +503,7 @@
         document.getElementById('project-email-settings-note-offers').textContent = text('pcParamsEmailSettingsNoteOffers');
         document.getElementById('project-email-settings-note-manual').textContent = text('pcParamsEmailSettingsNoteManual');
         document.getElementById('project-email-settings-save').textContent = text('pcParamsEmailSettingsSave');
-        input.value = userEmail();
+        input.value = (typeof canonicalizeTesterEmail === 'function') ? canonicalizeTesterEmail(userEmail()) : userEmail();
         enabled.checked = emailPreferenceOn();
         setEmailSettingsError('');
     }
@@ -557,8 +557,12 @@
         if (button) button.disabled = true;
         projects().forEach(update);
         try {
-            if (email && email !== userEmail()) {
-                var emailResult = typeof saveTesterEmail === 'function' ? await saveTesterEmail(email) : { ok: false };
+            if (email) {
+                var emailResult = typeof commitTesterEmail === 'function' ? await commitTesterEmail(email, { persistSame: true }) : { ok: false };
+                if (emailResult && emailResult.declined) {
+                    input.value = emailResult.email || userEmail();
+                    return;
+                }
                 if (!emailResult || !emailResult.ok) throw new Error(emailResult && emailResult.message || 'email_save_failed');
                 email = String(emailResult.email || email).trim();
             }

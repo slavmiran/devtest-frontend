@@ -1998,7 +1998,13 @@ async function saveSettingsEmail() {
         return;
     }
     if (btn) btn.classList.add('is-loading');
-    var res = await saveTesterEmail(value);
+    var res = await commitTesterEmail(value, { persistSame: true });
+    if (res && res.declined) {
+        if (btn) btn.classList.remove('is-loading');
+        input.value = res.email || getCurrentUserEmail();
+        _updateSettingsEmailValidIcon();
+        return;
+    }
     if (btn) btn.classList.remove('is-loading');
     if (res && res.ok) {
         syncSettingsEmailRowUi();
@@ -2113,15 +2119,88 @@ async function fetchBountyApplicationEmailPreview(applicationId) {
     }
 }
 
+function canonicalizeTesterEmail(value) {
+    var parts = String(value || '').split(/[,;]+/);
+    var last = '';
+    for (var i = 0; i < parts.length; i++) {
+        var part = String(parts[i] || '').trim();
+        if (part) last = part;
+    }
+    return last;
+}
+
+function testerEmailsMatch(left, right) {
+    return canonicalizeTesterEmail(left).toLowerCase() === canonicalizeTesterEmail(right).toLowerCase();
+}
+
 function getCurrentUserEmail() {
+    var raw = '';
     try {
         if (window.App && typeof window.App.getState === 'function') {
             var st = window.App.getState();
-            if (st && st.userEmail) return String(st.userEmail).trim();
+            if (st && st.userEmail) raw = String(st.userEmail).trim();
         }
     } catch (e) {}
-    if (window.App && window.App.userEmail) return String(window.App.userEmail).trim();
-    return String(typeof _userEmail !== 'undefined' ? _userEmail : '').trim();
+    if (!raw && window.App && window.App.userEmail) raw = String(window.App.userEmail).trim();
+    if (!raw) raw = String(typeof _userEmail !== 'undefined' ? _userEmail : '').trim();
+    return canonicalizeTesterEmail(raw);
+}
+
+function _askReplaceTesterEmail(currentEmail, nextEmail) {
+    var message = window.t('testerEmailReplaceConfirm', {
+        current: currentEmail,
+        next: nextEmail,
+    }, lang);
+    return new Promise(function(resolve) {
+        if (tg && tg.showConfirm) {
+            tg.showConfirm(message, function(ok) { resolve(!!ok); });
+            return;
+        }
+        resolve(window.confirm(message));
+    });
+}
+
+async function commitTesterEmail(nextEmail, options) {
+    var next = canonicalizeTesterEmail(nextEmail);
+    var current = getCurrentUserEmail();
+    var persistSame = !!(options && options.persistSame);
+    if (current && next && !testerEmailsMatch(current, next)) {
+        var confirmed = await _askReplaceTesterEmail(current, next);
+        if (!confirmed) return { ok: false, declined: true, email: current };
+    }
+    if (!next) return { ok: true, email: current, skipped: true };
+    if (current && testerEmailsMatch(current, next) && !persistSame) {
+        return { ok: true, email: current, unchanged: true };
+    }
+    var saved = await saveTesterEmail(next);
+    if (!saved || !saved.ok) return saved || { ok: false, email: current };
+    return { ok: true, email: saved.email || next, unchanged: testerEmailsMatch(current, next) };
+}
+
+async function saveEmailProjectsPreference(enabled) {
+    try {
+        var response = await fetch(`${API_BASE}/users/me/email-projects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                init_data: (tg && tg.initData) || '',
+                enabled: !!enabled,
+            })
+        });
+        var result = null;
+        try { result = await response.json(); } catch (e) { result = null; }
+        if (!response.ok || !result || result.status !== 'success') {
+            return {
+                ok: false,
+                code: (typeof getBackendErrorCode === 'function') ? getBackendErrorCode(result) : 'database_error',
+            };
+        }
+        if (window.App) window.App.emailProjectsEnabled = !!enabled;
+        return { ok: true, enabled: !!enabled, email: result.email || '' };
+    } catch (error) {
+        console.warn('Email project preference save failed:', error);
+        return { ok: false, code: 'network_error' };
+    }
 }
 
 function _openBotDm() {

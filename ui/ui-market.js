@@ -4383,8 +4383,8 @@ function openIssueReportModal(appId) {
     _setIssueChecklistChecked(false);
     _resetIssueReportScreenshot();
     if (emailInput) {
-        const appState = window.App && typeof window.App.getState === 'function' ? window.App.getState() : {};
-        emailInput.value = String((appState && appState.userEmail) || (window.App && window.App.userEmail) || '').trim();
+        const savedIssueEmail = (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : String((window.App && window.App.userEmail) || '').trim();
+        emailInput.value = (typeof canonicalizeTesterEmail === 'function') ? canonicalizeTesterEmail(savedIssueEmail) : savedIssueEmail;
         emailInput.placeholder = window.t('reportIssueEmailPlaceholder', {}, lang);
     }
     const textarea = document.getElementById('issue-report-text');
@@ -4925,6 +4925,7 @@ function openFeedbackModal(typeLabelKey) {
     input.value = '';
     button.disabled = true;
     typeLabel.textContent = window.t(typeLabelKey || 'feedbackTypeBug', {}, lang);
+    if (typeof clearFeedbackScreenshot === 'function') clearFeedbackScreenshot();
 
     input.oninput = () => {
         button.disabled = input.value.trim().length < 3;
@@ -4934,6 +4935,7 @@ function openFeedbackModal(typeLabelKey) {
 function closeFeedbackModal(event) {
     if (event && event.target !== document.getElementById('feedback-modal')) return;
     document.getElementById('feedback-modal').classList.remove('active');
+    if (typeof clearFeedbackScreenshot === 'function') clearFeedbackScreenshot();
 }
 
 function formatFeedbackDate(createdAt) {
@@ -10189,6 +10191,18 @@ function _renderDossierFold(title, count, panelHtml, options) {
     `</div>`;
 }
 
+function buildDossierActivityHtml(profile) {
+    var lastSeen = profile && profile.last_seen;
+    var statusText = typeof getOwnerLastSeenToastText === 'function'
+        ? getOwnerLastSeenToastText(lastSeen) : '—';
+    var timestamp = lastSeen && !isNaN(new Date(lastSeen).getTime())
+        ? new Date(lastSeen).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US') : '';
+    return '<div class="dossier-last-seen" title="' + window.escapeHTML(timestamp) + '">' +
+        '<span class="dossier-last-seen__dot" aria-hidden="true"></span>' +
+        window.escapeHTML(window.t('dossierActivityLabel', {}, lang)) + ': ' + window.escapeHTML(statusText) + '</div>';
+}
+window.buildDossierActivityHtml = buildDossierActivityHtml;
+
 function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml, reliabilityState) {
     const karmaRaw = Number(profile && profile.karma || 0);
     const karmaValue = typeof formatUiAmount === 'function'
@@ -10271,6 +10285,7 @@ function _renderDossierProfileDashboard(profile, identityHtml, projectsFoldHtml,
 
     return `<header class="dossier-profile-hero">` +
         identityHtml +
+        buildDossierActivityHtml(profile) +
         `<div class="dossier-stat-strip" role="group" aria-label="${window.escapeHTML(window.t('dossierGlobalTitle', {}, lang))}">` +
             `<div class="dossier-stat">` +
                 `<div class="dossier-stat-value notranslate">${window.escapeHTML(String(karmaValue))}</div>` +
@@ -11112,7 +11127,7 @@ function openEmailCollectModal(opts) {
     var skipBtn = document.getElementById('email-collect-skip');
     if (titleEl) titleEl.textContent = opts.title || window.t('emailGateOfferTitle', {}, lang);
     if (textEl) textEl.textContent = opts.text || '';
-    if (input) input.value = _emailCurrentUser() || '';
+    if (input) input.value = (typeof canonicalizeTesterEmail === 'function') ? canonicalizeTesterEmail(_emailCurrentUser()) : (_emailCurrentUser() || '');
     if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
     if (saveBtn) { saveBtn.textContent = opts.primaryLabel || window.t('emailGateSaveContinue', {}, lang); saveBtn.onclick = _submitEmailCollect; }
     if (skipBtn) {
@@ -11139,7 +11154,12 @@ async function _submitEmailCollect() {
         return;
     }
     if (saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('is-locked'); }
-    var res = (typeof saveTesterEmail === 'function') ? await saveTesterEmail(value) : { ok: false };
+    var res = (typeof commitTesterEmail === 'function') ? await commitTesterEmail(value) : { ok: false };
+    if (res && res.declined) {
+        if (input) input.value = res.email || '';
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-locked'); }
+        return;
+    }
     if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-locked'); }
     if (!res || !res.ok) {
         var msg = String(res && res.message || '').trim();
