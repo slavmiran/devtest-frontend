@@ -4491,6 +4491,114 @@ async function submitFeedbackReward() {
     }
 }
 
+var _feedbackScreenshot = null;
+
+function pickFeedbackScreenshot() {
+    var input = document.getElementById('feedback-shot-input');
+    if (input) input.click();
+}
+
+function clearFeedbackScreenshot() {
+    if (_feedbackScreenshot && _feedbackScreenshot.url) {
+        try { URL.revokeObjectURL(_feedbackScreenshot.url); } catch (error) {}
+    }
+    _feedbackScreenshot = null;
+    var addBtn = document.getElementById('feedback-shot-add');
+    var chip = document.getElementById('feedback-shot-chip');
+    var thumb = document.getElementById('feedback-shot-thumb');
+    var fileInput = document.getElementById('feedback-shot-input');
+    if (addBtn) addBtn.hidden = false;
+    if (chip) chip.hidden = true;
+    if (thumb) thumb.removeAttribute('src');
+    if (fileInput) fileInput.value = '';
+}
+
+function _showFeedbackScreenshot(prepared) {
+    clearFeedbackScreenshot();
+    _feedbackScreenshot = prepared;
+    var addBtn = document.getElementById('feedback-shot-add');
+    var chip = document.getElementById('feedback-shot-chip');
+    var thumb = document.getElementById('feedback-shot-thumb');
+    var nameEl = document.getElementById('feedback-shot-name');
+    var removeBtn = document.getElementById('feedback-shot-remove');
+    if (thumb) thumb.src = prepared.url;
+    if (nameEl) nameEl.textContent = prepared.name || 'screenshot.jpg';
+    if (removeBtn && typeof window.t === 'function') {
+        removeBtn.setAttribute('aria-label', window.t('feedbackScreenshotRemove', {}, lang));
+    }
+    if (addBtn) addBtn.hidden = true;
+    if (chip) chip.hidden = false;
+}
+
+function _compressFeedbackScreenshot(file) {
+    return new Promise(function (resolve) {
+        var objectUrl = URL.createObjectURL(file);
+        var image = new Image();
+        image.onload = function () {
+            var maxSide = 1600;
+            var longest = Math.max(image.width || 1, image.height || 1);
+            var scale = Math.min(1, maxSide / longest);
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round((image.width || 1) * scale));
+            canvas.height = Math.max(1, Math.round((image.height || 1) * scale));
+            var context = canvas.getContext('2d');
+            if (!context) {
+                URL.revokeObjectURL(objectUrl);
+                resolve(null);
+                return;
+            }
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function (blob) {
+                URL.revokeObjectURL(objectUrl);
+                if (!blob) {
+                    resolve(null);
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var dataUrl = String(reader.result || '');
+                    var comma = dataUrl.indexOf(',');
+                    resolve({
+                        base64: comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl,
+                        name: file.name || 'screenshot.jpg',
+                        url: URL.createObjectURL(blob),
+                    });
+                };
+                reader.onerror = function () { resolve(null); };
+                reader.readAsDataURL(blob);
+            }, 'image/jpeg', 0.72);
+        };
+        image.onerror = function () {
+            URL.revokeObjectURL(objectUrl);
+            resolve(null);
+        };
+        image.src = objectUrl;
+    });
+}
+
+async function onFeedbackScreenshotSelected(event) {
+    var file = event && event.target && event.target.files && event.target.files[0];
+    if (event && event.target) event.target.value = '';
+    if (!file) return;
+    var type = String(file.type || '').toLowerCase();
+    var allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (Number(file.size || 0) <= 0 || (type && allowed.indexOf(type) === -1)) {
+        showToast(window.t('invalid_image_type', {}, lang));
+        return;
+    }
+    if (Number(file.size || 0) > 8 * 1024 * 1024) {
+        showToast(window.t('file_too_large', {}, lang));
+        return;
+    }
+    var prepared = await _compressFeedbackScreenshot(file);
+    if (!prepared || !prepared.base64) {
+        showToast(window.t('invalid_image_type', {}, lang));
+        return;
+    }
+    _showFeedbackScreenshot(prepared);
+    if (tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged) tg.HapticFeedback.selectionChanged();
+}
+
 async function submitFeedback() {
     const input = document.getElementById('feedback-text-input');
     const rawText = input ? input.value : '';
@@ -4500,18 +4608,27 @@ async function submitFeedback() {
         return;
     }
 
+    const button = document.getElementById('send-feedback-btn');
+    const payload = {
+        user_id: userId,
+        type: _feedbackType,
+        text: text,
+    };
+    if (_feedbackScreenshot && _feedbackScreenshot.base64) {
+        payload.screenshot = _feedbackScreenshot.base64;
+        payload.screenshot_mime = 'image/jpeg';
+    }
+    if (button) button.disabled = true;
+
     try {
         const response = await fetch(`${API_BASE}/send_to_topic`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                user_id: userId,
-                type: _feedbackType,
-                text
-            }))
+            body: JSON.stringify(withInitData(payload))
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
+            if (button) button.disabled = text.length < 3;
             showToast(getApiErrorMessage(result, 'genericError'));
             return;
         }
@@ -4521,6 +4638,7 @@ async function submitFeedback() {
         setTimeout(redirectToBotDmAndClose, 250);
     } catch (error) {
         console.error('Send feedback error:', error);
+        if (button) button.disabled = text.length < 3;
         showToast(getApiErrorMessage(error && error.message, 'networkError'));
     }
 }

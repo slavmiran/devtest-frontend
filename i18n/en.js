@@ -1569,6 +1569,8 @@
             feedbackModalPlaceholder: "Describe a bug, idea, or question...",
             feedbackModalSendBtn: "Send",
             feedbackModalCancelBtn: "Cancel",
+            feedbackAttachScreenshot: "Screenshot",
+            feedbackScreenshotRemove: "Remove screenshot",
             feedbackTypeBug: "Type: Bug",
             feedbackTypeIdea: "Type: Idea",
             feedbackTypeQuestion: "Type: Question",

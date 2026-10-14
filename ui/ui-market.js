@@ -4924,6 +4924,7 @@ function openFeedbackModal(typeLabelKey) {
     input.value = '';
     button.disabled = true;
     typeLabel.textContent = window.t(typeLabelKey || 'feedbackTypeBug', {}, lang);
+    if (typeof clearFeedbackScreenshot === 'function') clearFeedbackScreenshot();
 
     input.oninput = () => {
         button.disabled = input.value.trim().length < 3;
@@ -4933,6 +4934,7 @@ function openFeedbackModal(typeLabelKey) {
 function closeFeedbackModal(event) {
     if (event && event.target !== document.getElementById('feedback-modal')) return;
     document.getElementById('feedback-modal').classList.remove('active');
+    if (typeof clearFeedbackScreenshot === 'function') clearFeedbackScreenshot();
 }
 
 function formatFeedbackDate(createdAt) {

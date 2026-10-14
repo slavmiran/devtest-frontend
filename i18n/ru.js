@@ -1568,6 +1568,8 @@
             feedbackModalPlaceholder: "Опишите баг, рекомендацию или вопрос...",
             feedbackModalSendBtn: "Отправить",
             feedbackModalCancelBtn: "Отмена",
+            feedbackAttachScreenshot: "Скриншот",
+            feedbackScreenshotRemove: "Убрать скриншот",
             feedbackTypeBug: "Тип: Баг",
             feedbackTypeIdea: "Тип: Рекомендация",
             feedbackTypeQuestion: "Тип: Вопрос",
