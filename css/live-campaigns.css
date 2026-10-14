@@ -1,5 +1,5 @@
 /* Campaign frames only. Parameter tiles, grids and editors use project-parameters.css. */
-.lc-section{margin:14px 0 0;min-width:0}
+.lc-section{margin:14px 12px 12px;min-width:0}
 .lc-section-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
 .lc-section-head h3{flex:1;margin:0;font-size:13px;font-weight:650;color:var(--text-primary,var(--text-color))}
 .lc-section-head>small{font-size:10px;color:var(--text-secondary,var(--hint-color))}

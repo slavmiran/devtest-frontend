@@ -103,7 +103,7 @@
         return text(mod100 >= 11 && mod100 <= 19 ? many : mod10 === 1 ? one : mod10 >= 2 && mod10 <= 4 ? few : many, { count: count });
     }
     function activeCount(project) {
-        var adapter=target(project); if(adapter && adapter.activeCount)return adapter.activeCount(project);
+        var adapter=target(project); if(adapter && adapter.activeCount){var count=Number(adapter.activeCount(project));return Number.isFinite(count)?Math.max(0,Math.trunc(count)):0;}
         return Number(project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
             + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list');
     }
@@ -135,7 +135,7 @@
         var depleted = boost.depleted;
         var toggleLabel = text(open ? 'pcParamsCollapse' : 'pcParamsExpand');
         var languageValue = code === 'RU' ? '🇷🇺 RU' : code === 'EN' ? '🇬🇧 EN' : 'ALL';
-        var onLabel = adapter && adapter.reviewOnKey ? text(adapter.reviewOnKey) : text('pcParamsOn');
+        var onLabel = text('pcParamsOn');
         var offLabel = text('pcParamsOff');
         var countLabel = plural(count, 'pcParamsCountOne', 'pcParamsCountFew', 'pcParamsCountMany');
         var campaign = project.screenshot_boost_campaign || {};
@@ -170,7 +170,7 @@
         '</div>' +
         '<div class="pc-project-params__body" id="project-parameters-body-' + id + '"' + (open ? '' : ' inert aria-hidden="true"') + '><div class="pc-project-params__clip"><div class="pc-project-params__content">' +
             '<div class="pc-project-params__grid">' +
-                tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', !(adapter && adapter.reviewOnKey)) +
+                tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', false) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + argument + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + argument + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + argument + ',event)', false) +
@@ -282,10 +282,7 @@
         }
     }
     function toggleReviews(id, event) {
-        stop(event);
-        var project = projectById(id);
-        if (project && target(project) && target(project).reviewOnKey) return openReviews(id,event);
-        if (project) return save(id, 'request_reviews', project.request_reviews === false);
+        return openReviews(id,event);
     }
     function showChoice(id,event,field,title,hint,choices,select) {
         stop(event);
@@ -304,8 +301,8 @@
         if(typeof syncTelegramBackButton==='function')syncTelegramBackButton();
     }
     function openReviews(id,event) {
-        showChoice(id,event,'request_reviews','pcParamsReviews','lcReviewHint',[
-            {value:true,label:'lcReviewOn'},{value:false,label:'lcReviewOff'}],'selectReview');
+        showChoice(id,event,'request_reviews','pcParamsReviews','requestReviewsHint',[
+            {value:true,label:'pcParamsOn'},{value:false,label:'pcParamsOff'}],'selectReview');
     }
     function selectReview(value) {
         var project=projectByKey(languageProjectKey);closeLanguage();

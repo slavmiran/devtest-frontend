@@ -21,7 +21,7 @@
     function current(s, id) { return s.actor === actor() && s.rows && s.rows.find(function (row) { return row.id === Number(id); }); }
     function endpoint(id, path) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + Number(id) + '/campaigns' + (path || ''); }
     var errors = { insufficient_bust_balance:'lcBalanceLow', campaign_conflict:'lcConflict', campaign_price_changed:'lcConflict',
-        pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
+        invalid_control_days:'lcMinimumCheckpoint', pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
         slot_limit_reached:'lcSlotLimit', bridge_fixed_terms:'lcTermsFixed', campaign_budget_insufficient:'lcBudgetInsufficient', campaign_paused:'lcPausedError',
         campaign_screenshot_required:'lcScreenshotRequired', campaign_test_complete:'lcSessionClosed', bridge_requires_mutual_offer:'lcBridgeOffer',
         campaign_language_mismatch:'lcFilterMismatch', campaign_android_mismatch:'lcFilterMismatch' };
@@ -57,7 +57,7 @@
     function parameters(c, s) {
         var ref = 'campaign-' + s.id + '-' + c.id;
         ProjectParameters.registerTarget(ref, {
-            key:ref + ':scope-' + s.scope, appId:s.id, titleKey:'lcParams', reviewOnKey:'lcReviewOnCompact',
+            key:ref + ':scope-' + s.scope, appId:s.id, titleKey:'lcParams',
             hideActions:true, instructionsMax:5000,
             get:function () { var value=current(s,c.id); return value && Object.assign({},project(s),value,{id:s.id,test_mode:'google_group'}); },
             busy:function () { return s.pending.has(c.id); },
@@ -67,8 +67,8 @@
             extraHtml:function () { var row=current(s,c.id);return row ? controls(row,s) : ''; },
             activeCount:function (value) {
                 var boost=value.screenshot_boost_campaign || {};
-                return Number(value.request_reviews) + Number(value.target_lang !== 'ALL') + Number(value.min_android_version > 0) +
-                    Number(!!String(value.instructions || '').trim()) + Number(boost.enabled && boost.pool_remaining >= boost.reward_bust && boost.reward_bust > 0);
+                return Number(value.request_reviews !== false) + Number(!!value.target_lang && value.target_lang !== 'ALL') + Number(value.min_android_version > 0) +
+                    Number(!!String(value.instructions || '').trim()) + Number(!!(boost.enabled && boost.pool_remaining >= boost.reward_bust && boost.reward_bust > 0));
             }
         });
         return ProjectParameters.buildTarget(ref);
@@ -156,7 +156,11 @@
             if(action==='pool')return window.LiveCampaignWallet.open({get:function(){return current(s,c.id);},change:function(data){var row=current(s,c.id);return row&&mutate(s,row,'pool','POST',data,true);}},control);
             if(action==='day') {
                 var day=Number(control.dataset.day);if(day===1||![4,7,10,14].includes(day))return;
-                var days=new Set(c.control_days);if(days.has(day))days.delete(day);else days.add(day);
+                var days=new Set(c.control_days);
+                if(days.has(day) && Array.from(days).filter(function(d){return d!==1;}).length===1){
+                    if(window.showToast)window.showToast(tr('lcMinimumCheckpoint'));return;
+                }
+                if(days.has(day))days.delete(day);else days.add(day);
                 var payload=settings(c);payload.control_days=Array.from(days).sort(function(a,b){return a-b;});return mutate(s,c,'settings','PATCH',payload);
             }
         };
