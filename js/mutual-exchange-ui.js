@@ -1210,6 +1210,15 @@
         window.open(topicUrl, '_blank');
     }
 
+    function openReminderTopic() {
+        var topicUrl = 'https://t.me/googleplay_console_12testers/1199';
+        if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+            window.tg.openTelegramLink(topicUrl);
+        } else {
+            window.open(topicUrl, '_blank');
+        }
+    }
+
     function _renderBellRemindOwnerHeader() {
         var lineEl = document.getElementById('bell-remind-owner-line');
         if (!lineEl || !_bellRemindState) return;
@@ -1415,7 +1424,7 @@
             if (typeof showToast === 'function') {
                 showToast(_t('bellRemindSentTopicToast'));
             }
-            openGeneralTopic();
+            openReminderTopic();
             return;
         }
 
@@ -1438,7 +1447,7 @@
                 if (typeof showToast === 'function') {
                     showToast(_t('bellRemindSentTopicToast'));
                 }
-                openGeneralTopic();
+                openReminderTopic();
                 return;
             }
             if (typeof showToast === 'function') {

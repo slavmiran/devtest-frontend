@@ -4599,7 +4599,21 @@ function _getSavedUserTesterEmail() {
     const fromHelper = (typeof getCurrentUserEmail === 'function') ? getCurrentUserEmail() : '';
     const fromApp = String((window.App && window.App.userEmail) || '').trim();
     const fromState = String((window.App && window.App.state && window.App.state._userEmail) || '').trim();
-    return String(fromHelper || fromApp || fromState || '').trim();
+    const raw = String(fromHelper || fromApp || fromState || '').trim();
+    return (typeof canonicalizeTesterEmail === 'function') ? canonicalizeTesterEmail(raw) : raw;
+}
+
+function _editEmailPreferenceChecked(savedEmail) {
+    if (window.App && typeof window.App.emailProjectsEnabled === 'boolean') {
+        return window.App.emailProjectsEnabled;
+    }
+    const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(item) {
+        return Number(item && item.id) === Number(typeof projectToEdit !== 'undefined' ? projectToEdit : 0);
+    });
+    if (project && typeof project.accepts_email_testers === 'boolean') {
+        return project.accepts_email_testers === true;
+    }
+    return !!savedEmail;
 }
 
 function _syncEditEmailTestersBoxVisibility() {
@@ -4608,19 +4622,13 @@ function _syncEditEmailTestersBoxVisibility() {
     const savedEmail = _getSavedUserTesterEmail();
     const acceptsBox = document.getElementById('edit-app-accepts-email-testers');
     const testerEmail = document.getElementById('edit-app-tester-email');
+    const accepts = _editEmailPreferenceChecked(savedEmail);
 
-    if (savedEmail) {
-        editEmailBox.style.display = 'none';
-        editEmailBox.classList.remove('is-expanded');
-        if (acceptsBox) acceptsBox.checked = true;
-        if (testerEmail) testerEmail.value = savedEmail;
-        return;
-    }
-
+    editEmailBox.hidden = false;
     editEmailBox.style.removeProperty('display');
-    if (acceptsBox) acceptsBox.checked = true;
-    if (testerEmail) testerEmail.value = '';
-    editEmailBox.classList.add('is-expanded');
+    if (acceptsBox) acceptsBox.checked = accepts;
+    if (testerEmail) testerEmail.value = savedEmail || '';
+    editEmailBox.classList.toggle('is-expanded', accepts);
     _updateEditTesterEmailValidIcon();
 }
 
@@ -5899,6 +5907,8 @@ function _captureEditModalSnapshot() {
         bountyPerTester: String((document.getElementById('edit-bounty-per-tester') || {}).value || ''),
         requestReviews: !!(document.getElementById('edit-request-reviews') && document.getElementById('edit-request-reviews').checked),
         minAndroidVersion: String((document.getElementById('edit-min-android-version') || {}).value || '0'),
+        acceptsEmailTesters: !!(document.getElementById('edit-app-accepts-email-testers') && document.getElementById('edit-app-accepts-email-testers').checked),
+        testerEmail: String((document.getElementById('edit-app-tester-email') || {}).value || ''),
         emailMode: !!(window.editProjectFlow && window.editProjectFlow.emailMode),
         accessSetup: (window.AccessSetupManager && typeof window.AccessSetupManager.serializeEdit === 'function')
             ? window.AccessSetupManager.serializeEdit()
