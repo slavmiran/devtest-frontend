@@ -148,7 +148,7 @@
         panel.onclick=async function(event) {
             var control=event.target.closest('[data-lc-action]');if(!control)return;
             event.stopPropagation();var action=control.dataset.lcAction,c=current(s,control.dataset.campaign);
-            if(action==='create'){window.dispatchEvent(new CustomEvent('live-campaign:create',{detail:{appId:s.id}}));if(window.showToast)window.showToast(tr('lcSoon'));return;}
+            if(action==='create')return window.LiveCampaignWizard.open(s.id,event);
             if(action==='retry')return read(s);
             if(!c||s.pending.has(c.id))return;
             if(action==='status')return window.LiveCampaignWallet.openStatus({get:function(){return current(s,c.id);},change:function(value){var row=current(s,c.id);return row&&mutate(s,row,'status','PATCH',{revision:row.revision,status:value});}},control);
