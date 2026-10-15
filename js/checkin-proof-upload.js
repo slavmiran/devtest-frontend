@@ -127,11 +127,11 @@ function _renderCheckinProofProgress(count) {
     var displayedMax = safeCount > 3 ? CHECKIN_PROOF_MAX_FILES : maxTarget;
     var countText = safeCount + ' ' + window.t('checkinProofOf', {}, lang) + ' ' + displayedMax;
 
-    var bonusAmountFormatted = (lang === 'ru') ? '0,3' : '0.3';
+    var bonusAmountFormatted = (lang === 'ru') ? '0,2' : '0.2';
     if (safeCount >= 5) {
-        bonusAmountFormatted = (lang === 'ru') ? '0,5' : '0.5';
-    } else if (safeCount === 4) {
         bonusAmountFormatted = (lang === 'ru') ? '0,4' : '0.4';
+    } else if (safeCount === 4) {
+        bonusAmountFormatted = (lang === 'ru') ? '0,3' : '0.3';
     }
 
     var chipClass = 'checkin-proof-bonus-chip is-inactive';
@@ -452,10 +452,8 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     var safeCount = Number(screenshotCount || (result && result.proof && result.proof.media_count) || 1);
     if (safeCount >= 3) {
         checkin.screenshot_count = safeCount;
-        var expectedBonus = safeCount >= 5 ? 0.5 : (safeCount === 4 ? 0.4 : 0.3);
-        if (!checkin.earned_karma || Number(checkin.earned_karma) < expectedBonus) {
-            checkin.earned_karma = expectedBonus;
-        }
+        // The server amount also includes overtime and can legitimately be
+        // zero on a replay or a failed award. Never fabricate a higher reward.
     }
     var test = _checkinProofTest(appId);
     var wasFirstCheckin = Number(test && test.checkins_count || 0) <= 0 || String(test && test.status || '') === 'new';

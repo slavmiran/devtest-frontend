@@ -1690,7 +1690,10 @@ function renderIncomingAccessIssue(item, currentLang) {
         custom_google_group: 'incomingAccessIssueModeCustomGroup',
         google_group: 'incomingAccessIssueModeGoogleGroup',
     }[String(item.access_issue_mode || '').toLowerCase()] || 'incomingAccessIssueModeGoogleGroup';
-    const issueContactUsername = String(item.access_issue_contact_username || item.access_issue_tester_username || item.access_issue_reporter_username || '').trim().replace(/^@+/, '');
+    // A report author cannot fix someone else's Play Console configuration.
+    // Older cached cards may only carry reporter fields: do not use them as
+    // an owner contact while the refreshed inbox is still loading.
+    const issueContactUsername = String(item.access_issue_owner_username || item.access_issue_contact_username || '').trim().replace(/^@+/, '');
     const safeUsername = escapeInlineJsString(issueContactUsername);
     const title = window.escapeHTML(window.t('incomingAccessIssueTitle', {}, langCode));
     const mode = window.escapeHTML(window.t(modeKey, {}, langCode));
