@@ -1835,6 +1835,7 @@ function renderProjects(force) {
                 }
 
                 let statusHtml = '';
+                const testerToday = String(tester.actor_local_date || today).slice(0, 10);
                 if (isLeftSoft) {
                     statusHtml = `<span class="tester-status is-left-soft">${window.escapeHTML(window.t('testerLeftSoftStatus', {}, lang))}</span>`;
                 } else {
@@ -1843,12 +1844,14 @@ function renderProjects(force) {
                     let testerStatusText = t.statusNotOpened;
                     if (!tester.last_check_date) {
                         // keep default red / not opened
-                    } else if (tester.last_check_date === today) {
+                    } else if (tester.last_check_date === testerToday) {
                         testerStatusClass = 'is-green';
                         testerStatusIcon = '🟢';
                         testerStatusText = t.statusToday;
                     } else {
-                        const daysDiff = getDaysDiff(tester.last_check_date);
+                        const daysDiff = tester.actor_local_date
+                            ? Math.max(0, Math.floor((Date.parse(testerToday) - Date.parse(String(tester.last_check_date).slice(0, 10))) / 86400000))
+                            : getDaysDiff(tester.last_check_date);
                         if (daysDiff === 1) {
                             testerStatusClass = 'is-yellow';
                             testerStatusIcon = '🟡';
@@ -1866,7 +1869,7 @@ function renderProjects(force) {
                     statusHtml = `<span class="tester-status ${testerStatusClass}">${testerStatusIcon} ${window.escapeHTML(testerStatusText)}</span>`;
                 }
 
-                // Backend already calculated this in the owner's local day and
+                // Backend already calculated this in the tester's local day and
                 // embedded the same value in exchange_state. Do not derive a
                 // second streak from dates in the browser.
                 const exchangeMetrics = tester.exchange_state

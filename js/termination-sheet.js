@@ -1166,6 +1166,7 @@
     }
 
     async function _loadLeaveStats(appId, body) {
+        var requestState = _termState;
         try {
             var apiBase = (typeof API_BASE !== 'undefined') ? API_BASE : '';
             var actorId = (typeof userId !== 'undefined') ? userId : 0;
@@ -1177,7 +1178,7 @@
                 + '?init_data=' + encodeURIComponent(initDataRaw || '')
             );
             var data = await response.json();
-            if (!_termState || Number(_termState.appId) !== Number(appId)) return;
+            if (_termState !== requestState) return;
             if (!response.ok || data.status !== 'success') {
                 body.innerHTML = '<div class="details-block"><div style="color: var(--hint-color);">' +
                     _esc(_leaveStatsErrorText(data, 'stats_not_available')) +
@@ -1187,6 +1188,7 @@
             window._leaveMutualStats = data;
             body.innerHTML = _renderLeaveBody(data);
         } catch (error) {
+            if (_termState !== requestState) return;
             console.error('Termination leave stats error:', error);
             body.innerHTML = '<div class="details-block"><div style="color: var(--hint-color);">' +
                 _esc(_leaveStatsErrorText(error && error.message, 'networkError')) +
@@ -1578,6 +1580,13 @@
         if (modal) modal.classList.remove('active');
 
         var overlay = _ensureTermProgressOverlay();
+        // The same card previously held the last success result. Replace it
+        // before revealing the overlay, so another project's app never flashes.
+        var card = overlay.querySelector('.term-progress-card');
+        if (card) card.innerHTML =
+            '<div class="term-progress-spinner" aria-hidden="true"></div>' +
+            '<div class="term-progress-title" id="term-progress-title"></div>' +
+            '<div class="term-progress-sub" id="term-progress-sub"></div>';
         var titleEl = document.getElementById('term-progress-title');
         var subEl = document.getElementById('term-progress-sub');
         var mode = _termState ? _termState.mode : 'leave';
