@@ -1475,9 +1475,10 @@ function updateProjectPricing(formKey) {
     bountyPanel.classList.toggle('active', showBounty);
 
     const rewardPerTester = showBounty ? state.bountyPerTester : 0;
-    const dailyShare = rewardPerTester * 0.65;
-    const holdBonus = rewardPerTester * 0.35;
-    const totalCost = showBounty ? state.limitBounty * rewardPerTester : 0;
+    const quote = ProjectContractPricing.quote(showBounty ? state.limitBounty : 0, rewardPerTester);
+    const dailyShare = quote.daily;
+    const holdBonus = quote.hold;
+    const totalCost = quote.total;
     const bustBalance = visibilityStats && typeof visibilityStats.balance_bust !== 'undefined'
         ? visibilityStats.balance_bust
         : 0;

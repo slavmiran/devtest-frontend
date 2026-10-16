@@ -15,12 +15,13 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.route('http://fixture.local/**',async route=>{
    const url=new URL(route.request().url()),request=route.request(),method=request.method(),body=method==='GET'?null:request.postDataJSON();
    const ok=json=>route.fulfill({json:{status:'success',...json}});
-   if(url.pathname.endsWith('/campaigns')&&method==='GET')return ok({campaigns,capacity:capacity(),hud:{last_screenshot_at:new Date(Date.now()-2*3600000).toISOString(),on_schedule_percent:75,active_testers:4}});
+   if(url.pathname.endsWith('/campaigns')&&method==='GET')return ok({campaigns,capacity:capacity(),pace:{needed:1,policies:[]},hud:{last_screenshot_at:new Date(Date.now()-2*3600000).toISOString(),on_schedule_percent:75,active_testers:4}});
    if(url.pathname.endsWith('/campaigns')&&method==='POST'){
     posts.push(body);if(failSave)return route.fulfill({status:503,json:{status:'error',code:'unavailable'}});
     const c={id:nextId++,app_id:42,kind:'custom',status:body.status,revision:1,name:body.definition.name,definition:body.definition,confirmed_installs:0,pool_available:0,keywords:body.definition.keywords.map((k,i)=>({...k,id:i+1,enabled:true,installs:0}))};campaigns.push(c);return ok({campaign:c});
    }
    if(url.pathname.endsWith('/active-slot')){if(!slotKeys.has(body.request_key)){assert.equal(body.expected_price,(limit-1)*1000);assert.equal(body.expected_slot,limit+1);slotKeys.add(body.request_key);limit++;}return ok({capacity:capacity()});}
+   if(url.pathname.endsWith('/contracts')){const c=campaigns.find(c=>c.id===3);c.contracts={enabled:body.enabled,limit:body.limit,reward:body.reward,hired:0,funded_budget:body.limit*body.reward,unassigned_budget:body.limit*body.reward};c.revision++;return ok({campaign:c});}
    const toggle=url.pathname.match(/\/campaigns\/(\d+)\/keywords\/(\d+)$/),status=url.pathname.match(/\/campaigns\/(\d+)\/growth-status$/);
    if(toggle){const c=campaigns.find(c=>c.id===Number(toggle[1])),k=c.keywords.find(k=>k.id===Number(toggle[2]));k.enabled=body.enabled;c.revision++;return ok({campaign:c});}
    if(status){const c=campaigns.find(c=>c.id===Number(status[1]));if(body.status==='active'&&c.status!=='active'&&capacity().active>=limit)return route.fulfill({status:409,json:{status:'error',code:'active_campaign_limit'}});c.status=body.status;c.revision++;return ok({campaign:c});}
@@ -31,8 +32,9 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.goto('http://fixture.local/');
   for(const file of css)if(fs.existsSync(path.join(root,file)))await page.addStyleTag({path:path.join(root,file)});
   await page.addStyleTag({content:'body{padding:8px}#tab-projects{display:block}'});
-  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
-  await page.evaluate(language=>{
+  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
+  await page.evaluate(({language,index})=>{
+   const ref=new DOMParser().parseFromString(index,'text/html').querySelector('#add-bounty-settings');const holder=document.createElement('div');holder.hidden=true;holder.appendChild(ref);document.body.appendChild(holder);
    window.lang=language;window.API_BASE='/api';window.signed='owner-42';window.getTelegramInitDataRaw=()=>signed;
    window.confirmations=[];window.confirmAnswer=false;window.showToast=m=>window.lastToast=m;
    window.tg={initData:'fixture',BackButton:{show(){},hide(){},onClick(fn){this.callback=fn;}},showConfirm(message,cb){confirmations.push(message);cb(confirmAnswer);},openLink(url){window.openedUrl=url;}};
@@ -40,7 +42,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
    window.revoked=[];const revoke=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=url=>{revoked.push(url);revoke(url);};
    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>window.copiedQuery=value}});
    const card=document.createElement('div');card.className='card';card.innerHTML=LiveCampaigns.build(myProjects[0]);document.querySelector('#projects-list').append(card);LiveCampaigns.mount(card,myProjects[0]);initTelegramBackButton();
-  },language);
+  },{language,index});
   const layer=page.locator('#live-campaign-wizard'),open=()=>page.locator('.lc-create').click();
   const field=f=>layer.locator('[data-lcw-input="'+f+'"]'),next=()=>layer.locator('[data-lcw-action="next"]').click();
   const choose=v=>layer.locator('[data-lcw-field="source"][data-value="'+v+'"]').click();
@@ -77,8 +79,22 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await next();await field('retention').fill('35');await field('retention').dispatchEvent('change');assert.equal(await layer.locator('[data-lcw-field="checkpoint"][data-value="35"]').count(),1);
   await layer.locator('[data-lcw-field="retention"][data-value="14"]').click();await next();
   await layer.locator('[data-lcw-field="reviews"]').click();await next();
-  await field('name').fill('Summer ASO');await layer.locator('[data-lcw-field="paced"]').click();await field('target').fill('53');
-  assert.match(await layer.locator('[data-lcw-installs]').innerText(),/53/);await fit();
+  await field('name').fill('Summer ASO');
+  assert.equal(await layer.locator('[data-lcw-field="paced"]').count(),2);
+  for(const hours of [6,18,24,36,48]){await layer.locator('[data-lcw-field="pauseHours"][data-value="'+hours+'"]').click();await fit();}
+  assert.equal(await layer.locator('.lcp-equalizer').getAttribute('data-zone'),'buffer');
+  assert.equal(await layer.locator('.lcp-equalizer input').evaluate(el=>{el.value='18';el.dispatchEvent(new Event('input',{bubbles:true}));el.value='48';el.dispatchEvent(new Event('input',{bubbles:true}));return el.isConnected;}),true,'Dragging the equalizer keeps the same native range alive');
+  assert.equal(await layer.locator('.lcw-counter [data-lcw-input="pauseHours"]').inputValue(),'48');
+  await layer.locator('[data-lcw-field="rampDays"][data-value="14"]').click();assert.equal(await layer.locator('.lcp-ramp-chart>div').count(),14);
+  await layer.locator('[data-lcw-action="learn"]').first().click();await page.locator('#live-campaign-learning').waitFor();
+  assert.equal(await page.locator('#live-campaign-learning .lcp-learning').evaluate(el=>{const b=el.getBoundingClientRect();return !!document.elementFromPoint(b.x+b.width/2,b.y+Math.min(100,b.height/2)).closest('#live-campaign-learning');}),true,'Learning opens above the fullscreen wizard');
+  await page.screenshot({path:path.join(out,'learning-'+language+'-'+width+'.png'),animations:'disabled'});
+  await page.evaluate(()=>tg.BackButton.callback());assert.equal(await page.locator('#live-campaign-learning').count(),0);assert.match(await layer.locator('#lcw-title').innerText(),/4/);
+  await field('target').fill('53');
+  await layer.locator('[data-lcw-field="paced"][data-value="false"]').click();assert.equal(await field('target').inputValue(),'53');
+  await layer.locator('[data-lcw-field="paced"][data-value="true"]').click();
+  await page.setViewportSize({width,height:520});await fit();await page.setViewportSize({width,height:740});
+  assert.match(await layer.locator('[data-lcw-installs]').innerText(),/53/);await fit();await layer.locator('.lcw-scroll').evaluate(el=>el.scrollTop=el.scrollHeight);await page.screenshot({path:path.join(out,'pace-'+language+'-'+width+'.png'),animations:'disabled'});
   await layer.locator('.lcw-heading').click();assert.equal(await layer.locator('[data-lcw-action="step"]').count(),4);
   await layer.locator('[data-step="1"]').click();assert.equal(await layer.locator('[data-keyword-row]').count(),2);
   await layer.locator('.lcw-heading').click();await layer.locator('[data-step="4"]').click();
@@ -91,9 +107,9 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await growth.locator('[data-lc-action="keyword"]').first().click();await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="keyword"][aria-checked="false"]'));
   assert.equal(await growth.locator('[data-lc-action="keyword"][aria-checked="true"]').isDisabled(),true,'Last enabled keyword cannot be switched off');
   assert.equal(await growth.locator('[data-growth-keys]').getAttribute('open'),'','Pool remains expanded after update');
-  await open();await layer.locator('[data-lcw-template="aso"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="11"]').waitFor();assert.equal(posts.at(-1).status,'paused');
+  await open();await layer.locator('[data-lcw-template="aso"]').click();assert.match(await layer.locator('#lcw-title').innerText(),/1.*4/);await next();await next();await next();assert.equal(await layer.locator('[data-lcw-field="rampDays"][data-value="7"]').getAttribute('aria-pressed'),'true');await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="11"]').waitFor();assert.equal(posts.at(-1).status,'active');
   const activate=async id=>{await page.locator('[data-campaign-id="'+id+'"] [data-lc-action="status"]').click();await page.locator('[data-lc-status="active"]').click();await page.waitForFunction(()=>!document.querySelector('#live-campaign-wallet-modal').classList.contains('active'));};
-  await activate(11);await open();await layer.locator('[data-lcw-template="retention"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="12"]').waitFor();await activate(12);
+  await activate(11);await open();await layer.locator('[data-lcw-template="retention"]').click();await next();await next();await next();await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="12"]').waitFor();await activate(12);
   await page.locator('[data-lc-action="buy-active"]').waitFor();assert.equal(capacity().active,3);assert.equal(limit,3);
   await page.evaluate(()=>confirmAnswer=true);await page.locator('[data-lc-action="buy-active"]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="buy-active"]'));assert.equal(limit,4);assert.equal(slotKeys.size,1);
   assert.equal(await page.locator('.lc-section').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Several campaign cards fit mobile width');
@@ -101,6 +117,18 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await open();await layer.locator('[data-lcw-action="manual"]').click();await choose('web');await field('webQuery').fill('unsaved');
   await page.evaluate(()=>confirmAnswer=false);await layer.locator('[data-lcw-action="close"]').click();assert.equal(await layer.isVisible(),true);
   await page.evaluate(()=>confirmAnswer=true);await layer.locator('[data-lcw-action="close"]').click();await layer.waitFor({state:'detached'});
+  await page.locator('[data-lc-action="learn"]').click();await page.locator('[data-learn-close]').click();
+  await page.locator('[data-lc-action="contracts-toggle"]').click();const editor=page.locator('.lc-contract-editor');await editor.waitFor();
+  await editor.locator('[data-contract-field="limit"]').fill('8');await editor.locator('[data-contract-field="reward"]').fill('100');
+  await page.evaluate(()=>dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:42}})));await page.waitForTimeout(300);
+  assert.equal(await editor.locator('[data-contract-field="limit"]').inputValue(),'8','Pace refresh preserves unsubmitted contract terms');
+  assert.match(await editor.locator('[data-contract-result="daily"]').innerText(),/65/);assert.match(await editor.locator('[data-contract-result="hold"]').innerText(),/35/);assert.match(await editor.locator('[data-contract-result="total"]').innerText(),/800/);
+  await page.locator('[data-lc-action="contract-save"]').click();await page.waitForFunction(()=>document.querySelector('[data-lc-action="contracts-toggle"]').getAttribute('aria-checked')==='true');
+  assert.equal(await page.locator('.lc-section').evaluate(el=>el.scrollWidth<=el.clientWidth),true);assert.equal(await editor.locator('[data-i18n="calculatorTitle"]').textContent(),language==='ru'?'Калькулятор $BUST':'$BUST calculator');await page.locator('[data-contract-details] summary').click();await page.screenshot({path:path.join(out,'contracts-'+language+'-'+width+'.png'),fullPage:true});
+  await page.locator('[data-lc-action="contracts-toggle"]').click();await page.waitForFunction(()=>document.querySelector('[data-lc-action="contracts-toggle"]').getAttribute('aria-checked')==='false');
+  if(!await page.locator('[data-lc-action="contract-withdraw"]').isVisible())await page.locator('[data-contract-details] summary').click();
+  await page.locator('[data-lc-action="contract-withdraw"]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="contract-withdraw"]'));
+  assert.equal(campaigns[0].contracts.limit,0,'Return unassigned budget after disabling Contracts');
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('RU/EN 360/390: entry HUD, four steps, source isolation, media persistence, retry identity, templates, keyword guards, active capacity and slot purchase passed.');

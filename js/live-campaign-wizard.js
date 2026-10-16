@@ -52,6 +52,7 @@
         if(!accessible(s)){if(session===s)dispose(s);return;}
         shell(s);
         var balance=s.layer.querySelector('[data-lcw-balance]');if(balance)balance.innerHTML=LiveCampaignSourcesView.balance(s.draft,s.context);
+        var preview=s.layer.querySelector('[data-lcw-pace-preview]');if(preview)preview.innerHTML=LiveCampaignPaceView.preview(s.draft);
         var hud=s.layer.querySelector('[data-lcw-entry-hud]');if(hud)hud.innerHTML=LiveCampaignEntry.hud(s.draft,s.context);
         var validation=s.layer.querySelector('[data-lcw-validation]');
         if(validation)validation.textContent=invalid(s)?text('lcwInvalidCount'):!LiveCampaignDraft.valid(s.draft,1)?text(s.draft.source==='keywords'?'lcgNeedKey':'lcwQueryRequired'):'';
@@ -117,10 +118,11 @@
         if(s.confirming||s.saving)return;
         var field=el.dataset.lcwInput;if(!field)return;
         if(field==='manualKey'){s.context.manualKey=el.value;return;}
-        if(['daily','period','target','retention'].includes(field)){
+        if(['daily','period','target','retention','pauseHours'].includes(field)){
             var min=Number(el.min),max=Number(el.max),value=Number(el.value);
             var ok=/^\d+$/.test(el.value) && Number.isSafeInteger(value) && value>=min && value<=max;
             el.setAttribute('aria-invalid',String(!ok));el.setCustomValidity(ok?'':text('lcwInvalidCount'));
+            if(field==='pauseHours'&&ok){s.draft=LiveCampaignDraft.change(s.draft,field,value);s.edited=true;LiveCampaignPaceView.refreshHours(s.layer,s.draft.volume);refresh(s);return;}
             if(!ok){refresh(s);return;}
             s.draft=LiveCampaignDraft.change(s.draft,field,value);
             // Keep adjacent +/- buttons current while typing without replacing the input/keyboard.
@@ -137,6 +139,7 @@
         if(s.outlineOpen && !event.target.closest('.gtw-header')){s.outlineOpen=false;shell(s);}
         var button=event.target.closest('button');if(!button || button.disabled)return;event.stopPropagation();if(s.confirming||s.saving)return;
         var action=button.dataset.lcwAction,field=button.dataset.lcwField,id=button.dataset.keyword;
+        if(action==='learn'){window.LiveCampaignLearning.open(button.dataset.topic||'pace',button);return;}
         if(action==='close')return close();if(action==='back')return back();
         if(action==='outline'){s.outlineOpen=!s.outlineOpen;shell(s);return;}
         if(action==='estimate'){s.estimateOpen=!s.estimateOpen;shell(s);return;}
@@ -157,9 +160,10 @@
         }
         if(action==='remove-media'){s.media.remove(button.dataset.asset);s.draft=LiveCampaignDraft.media(s.draft,button.dataset.asset,null);s.edited=true;render(s,false);return;}
         if(action==='copy-query'||action==='web-search'){
-            try{await navigator.clipboard.writeText(s.draft.web.query);if(accessible(s))toast('lcwCopied');}
-            catch(_){if(accessible(s)){var query=s.layer.querySelector('#lcw-web-query');if(query){query.focus();query.select();}toast('lcwCopyFailed');}}
-            if(action==='web-search'&&accessible(s)){var url='https://www.google.com/search?q='+encodeURIComponent(s.draft.web.query);var tg=window.Telegram&&window.Telegram.WebApp||window.tg;if(tg&&tg.openLink)tg.openLink(url);else window.open(url,'_blank','noopener,noreferrer');}return;
+            var copying;try{copying=navigator.clipboard.writeText(s.draft.web.query);}catch(error){copying=Promise.reject(error);}
+            if(action==='web-search'&&accessible(s)){var url='https://www.google.com/search?q='+encodeURIComponent(s.draft.web.query);var tg=window.Telegram&&window.Telegram.WebApp||window.tg;if(tg&&tg.openLink)tg.openLink(url);else window.open(url,'_blank','noopener,noreferrer');}
+            try{await copying;if(accessible(s))toast('lcwCopied');}
+            catch(_){if(accessible(s)){var query=s.layer.querySelector('#lcw-web-query');if(query){query.focus();query.select();}toast('lcwCopyFailed');}}return;
         }
         if(action==='add-key' || action==='suggestion'){
             var phrase=action==='suggestion'?button.dataset.keywordText:s.context.manualKey,next=LiveCampaignDraft.addKeyword(s.draft,phrase);
@@ -169,7 +173,7 @@
         var template=button.dataset.lcwTemplate;
         if(template){
             if(s.edited){s.confirming=true;var accepted=await confirm(text('lcwReset'));s.confirming=false;if(!accepted||!accessible(s))return;}
-            s.media.clear();s.draft=LiveCampaignDraft.applyStrategy(s.draft,template);s.draft.name=text({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep'}[template]);if(template==='deep')s.draft.activity.instructions=text('lcgDefaultScenario');s.edited=false;return save(s,'paused');
+            s.media.clear();s.draft=LiveCampaignDraft.applyStrategy(s.draft,template);s.draft.name=text({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep'}[template]);if(template==='deep')s.draft.activity.instructions=text('lcgDefaultScenario');s.edited=false;s.webEdited=false;s.context.manualKey='';s.step=1;s.unlocked=1;render(s,true);return;
         }
         if(field){
             var value=button.dataset.value;value=field==='source'?value:value==='true'?true:value==='false'?false:Number(value);

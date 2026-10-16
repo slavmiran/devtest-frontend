@@ -15,13 +15,13 @@
     function state(id) {
         var key = Number(id) + ':' + actor();
         if (!states.has(key)) states.set(key, { id:Number(id), actor:actor(), scope:++scopeSequence, project:null,
-            rows:null, pending:new Set(), requests:new Map(), error:false, loaded:false, readAt:0, seq:0 });
+            rows:null, contractSetup:new Set(), pending:new Set(), requests:new Map(), error:false, loaded:false, readAt:0, seq:0 });
         return states.get(key);
     }
     function current(s, id) { return s.actor === actor() && s.rows && s.rows.find(function (row) { return row.id === Number(id); }); }
     function endpoint(id, path) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + Number(id) + '/campaigns' + (path || ''); }
     var errors = { insufficient_bust_balance:'lcBalanceLow', campaign_conflict:'lcConflict', campaign_price_changed:'lcConflict',
-        active_campaign_limit:'lcgLimitReached',last_active_keyword:'lcgLastKey',invalid_campaign_image:'lcwInvalidImage',invalid_control_days:'lcMinimumCheckpoint', pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
+        live_pace_paused:'lcpGateError',live_contract_disabled:'lcpContractOff',contract_rate_locked:'lcpContractRateLocked',contract_limit_below_committed:'lcpContractLimit',active_campaign_limit:'lcgLimitReached',last_active_keyword:'lcgLastKey',invalid_campaign_image:'lcwInvalidImage',invalid_control_days:'lcMinimumCheckpoint', pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
         slot_limit_reached:'lcSlotLimit', bridge_fixed_terms:'lcTermsFixed', campaign_budget_insufficient:'lcBudgetInsufficient', campaign_paused:'lcPausedError',
         campaign_screenshot_required:'lcScreenshotRequired', campaign_test_complete:'lcSessionClosed', bridge_requires_mutual_offer:'lcBridgeOffer',
         campaign_language_mismatch:'lcFilterMismatch', campaign_android_mismatch:'lcFilterMismatch' };
@@ -73,13 +73,25 @@
         });
         return ProjectParameters.buildTarget(ref);
     }
+    function contract(c,s){
+        var d=c.contracts||{enabled:false,limit:0,reward:100,hired:0,unassigned_budget:0},busy=s.pending.has(c.id);
+        var channels='<div class="lc-bridge-channels">'+button('status',tr('lcpMutual')+': '+tr(c.status==='active'?'lcActive':'lcOff')+' ▾',c,busy,'lc-status'+(c.status==='active'?' is-on':''))+
+            button('contracts-toggle',tr('lcpContracts')+': '+tr(d.enabled?'lcActive':'pcParamsOff'),c,busy,'lc-status'+(d.enabled?' is-on':''),'role="switch" aria-checked="'+d.enabled+'"')+'</div>';
+        if(!d.enabled&&!d.limit&&!s.contractSetup.has(c.id))return channels;
+        return channels+(!d.enabled?'<small class="lc-note">'+esc(tr('lcpContractOffHint'))+'</small>':'')+'<details class="lc-contract-settings lc-campaign__section" data-contract-details="'+c.id+'"'+(s.contractSetup.has(c.id)?' open':'')+'><summary>'+esc(tr('lcpContractSummary',{used:d.hired,limit:d.limit||12,rate:d.reward}))+'<small class="lc-note">'+esc(tr('lcpContractBudget',{n:d.unassigned_budget}))+'</small></summary>'+ProjectContractPricing.build(c.id,d,c.wallet_balance)+button('contract-save',tr('lcpContractSave'),c,busy,'btn btn-primary')+(!d.enabled&&d.unassigned_budget>0?button('contract-withdraw',tr('lcpContractWithdraw'),c,busy,'lc-link'):'')+'</details>';
+    }
+    function paceNotice(s){
+        var p=s.pace;if(!p)return '';var until=Date.parse(p.pause_until||'');
+        if(until>Date.now())return '<div class="lcp-project-notice">⏸ '+esc(tr('lcpPaused',{date:new Date(until).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}))+'</div>';
+        return p.needed>0?'<div class="lcp-project-notice"><p>⚠️ '+esc(tr('lcpDeficit_'+new Intl.PluralRules(window.lang==='ru'?'ru':'en').select(p.needed),{n:p.needed}))+'</p><div>'+button('showcase',tr('lcpShowcase'),null,false,'meta-chip')+button('guests',tr('lcpGuests'),null,false,'meta-chip')+'</div></div>':'';
+    }
     function campaign(c,s) {
         if(c.definition)return LiveCampaignGrowthCard.build(c,s.pending.has(c.id));
         var busy=s.pending.has(c.id), cost=Number(c.overlimit_cost || 0), covered=cost ? Math.floor(c.pool_available/cost) : null;
         return '<article class="card lc-campaign" data-campaign-id="' + Number(c.id) + '">' +
             '<header class="lc-campaign__head"><div><strong>🤝 ' + esc(c.kind==='closed_bridge' ? tr('lcBridge') : c.name || tr('lcCampaign')) +
             '</strong><small class="lc-note">' + esc(tr('lcBadge')) + '</small></div>' +
-            button('status','● '+tr(c.status==='active'?'lcActive':'lcOff')+' ▾',c,busy,'lc-status'+(c.status==='active'?' is-on':''),'aria-haspopup="dialog"')+'</header>'+
+            '</header>'+(c.kind==='closed_bridge'?contract(c,s):'')+
             '<div class="lc-campaign__section"><div class="lc-slot-line"><span>'+esc(tr('lcSlots'))+'</span><strong>'+
             esc(tr('lcOccupied',{used:amount(c.free_occupied),total:c.total_slots}))+'</strong></div>'+
             '<small class="lc-note">'+esc(tr('lcFreeHint'))+'</small>'+
@@ -100,31 +112,39 @@
         return '<div class="lc-section-head"><h3>'+esc(tr('lcTitle'))+'</h3><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
             (s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
             button('create','+',null,false,'lc-create','aria-label="'+esc(tr('lcCreate'))+'"')+'</div>'+
+            '<button type="button" class="lcp-learning-link" data-lc-action="learn">📚 '+esc(tr('lcpLearn'))+'</button>'+paceNotice(s)+
             (s.error ? '<p class="lc-error" role="alert">'+esc(tr('lcError'))+' '+button('retry',tr('lcRetry'))+'</p>' : '')+
             (!s.rows ? '<p class="lc-note" role="status">'+esc(tr('lcLoading'))+'</p>' : visible.map(function(c){return campaign(c,s);}).join('')+
                 (paused.length ? '<details class="lc-paused"><summary>'+esc(tr('lcPaused',{n:paused.length}))+'</summary>'+paused.map(function(c){return campaign(c,s);}).join('')+'</details>' : ''));
     }
     function build(p) { var s=state(p.id||p.app_id);s.project=p;return '<section class="lc-section" data-live-campaigns="'+s.id+'">'+content(s)+'</section>'; }
-    function repaint(s) {
+    function repaint(s, preserveContractDrafts) {
         if(s.actor!==actor())return;
         var panel=document.querySelector('[data-live-campaigns="'+s.id+'"]');if(!panel)return;
         var focus=panel.contains(document.activeElement)?document.activeElement:null;
         var selector=focus && focus.dataset.projectParam ? '[data-campaign-id="'+focus.closest('[data-campaign-id]').dataset.campaignId+'"] [data-project-param="'+focus.dataset.projectParam+'"]' : null;
+        if(focus&&focus.dataset.contractField)selector='#'+focus.id;
+        var drafts=preserveContractDrafts?Array.from(panel.querySelectorAll('[data-contract-details]')).map(function(el){return {id:el.dataset.contractDetails,fields:Array.from(el.querySelectorAll('[data-contract-field]')).map(function(n){return {field:n.dataset.contractField,value:n.value};})};}):[];
+        var contractOpen=Array.from(panel.querySelectorAll('[data-contract-details][open]')).map(function(el){return el.dataset.contractDetails;});
         var keysOpen=Array.from(panel.querySelectorAll('[data-growth-keys][open]')).map(function(el){return el.dataset.growthKeys;});var pausedOpen=panel.querySelector('.lc-paused[open]');panel.innerHTML=content(s);keysOpen.forEach(function(id){var el=panel.querySelector('[data-growth-keys="'+id+'"]');if(el)el.open=true;});
+        contractOpen.forEach(function(id){var el=panel.querySelector('[data-contract-details="'+id+'"]');if(el)el.open=true;});
+        drafts.forEach(function(d){var el=panel.querySelector('[data-contract-details="'+d.id+'"]');if(el){d.fields.forEach(function(f){var n=el.querySelector('[data-contract-field="'+f.field+'"]');if(n)n.value=f.value;});ProjectContractPricing.update(el);}});
         if(pausedOpen && panel.querySelector('.lc-paused'))panel.querySelector('.lc-paused').open=true;
         if(selector){var next=panel.querySelector(selector);if(next&&!next.disabled)next.focus({preventScroll:true});}
     }
+    function queueRead(s,delay){clearTimeout(s.paceTimer);s.paceTimer=setTimeout(function(){if(s.actor===actor()&&document.querySelector('[data-live-campaigns="'+s.id+'"]'))read(s);},delay);}
     async function read(s) {
-        if(s.pending.size)return;
+        if(s.pending.size){queueRead(s,1000);return;}
         var seq=++s.seq;if(s.controller)s.controller.abort();var controller=s.controller=new AbortController();
         try {
             var data=await parse(await fetch(endpoint(s.id)+'?init_data='+encodeURIComponent(s.actor),{cache:'no-store',signal:controller.signal}));
             if(seq!==s.seq||s.actor!==actor())return;
-            s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;s.error=false;s.loaded=true;s.readAt=Date.now();
+            s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;s.error=false;s.loaded=true;s.readAt=Date.now();
+            clearTimeout(s.paceTimer);if(s.pace&&(s.pace.pause_until||s.pace.policies&&s.pace.policies.length))queueRead(s,Math.max(1000,Math.min(60000,Date.parse(s.pace.pause_until||'')-Date.now()||60000)));
         } catch(error) {
             if(error.name==='AbortError'||seq!==s.seq)return;
             s.error=true;if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
-        } finally {if(s.controller===controller)s.controller=null;if(seq===s.seq)repaint(s);}
+        } finally {if(s.controller===controller)s.controller=null;if(seq===s.seq)repaint(s,true);}
     }
     async function mutate(s,c,path,method,data,financial) {
         if(s.pending.has(c.id)||s.actor!==actor())return false;
@@ -141,7 +161,7 @@
         } catch(error) {
             toastCode(error.message);if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
             if(error.status===409){s.pending.delete(c.id);await read(s);}return false;
-        } finally {s.pending.delete(c.id);repaint(s);}
+        } finally {s.pending.delete(c.id);repaint(s);if(s.rows)queueRead(s,100);}
     }
     async function buyActive(s){
         if(s.pending.has(0)||s.confirmingSlot||s.actor!==actor())return;var limit=s.capacity?s.capacity.limit:3,price=(limit-1)*1000;
@@ -155,14 +175,27 @@
     function mount(card,p) {
         if(p.phase!=='live')return;
         var s=state(p.id||p.app_id);s.project=p;var panel=card.querySelector('[data-live-campaigns]');if(!panel)return;
+        panel.oninput=function(event){var editor=event.target.closest('.lc-contract-editor');if(editor)ProjectContractPricing.update(editor);};
         panel.onclick=async function(event) {
             var control=event.target.closest('[data-lc-action]');if(!control)return;
             event.stopPropagation();var action=control.dataset.lcAction,c=current(s,control.dataset.campaign);
+            if(action==='learn')return window.LiveCampaignLearning.open('spikes',control);
+            if(action==='showcase'||action==='guests'){if(window.switchTab)window.switchTab('market');if(window.switchMarketSubTab)window.switchMarketSubTab('seeking');if(action==='guests'){var guests=document.getElementById('guest-projects-section');if(guests){if(!guests.classList.contains('expanded')&&window.toggleGuestProjectsAccordion)window.toggleGuestProjectsAccordion();guests.scrollIntoView({behavior:'smooth',block:'start'});}}return;}
             if(action==='create')return window.LiveCampaignWizard.open(s.id,event);
             if(action==='retry')return read(s);
             if(action==='buy-active')return buyActive(s);
             if(action==='keyword'&&c)return mutate(s,c,'keywords/'+Number(control.dataset.keyword),'PATCH',{revision:c.revision,enabled:control.dataset.enabled==='true'});
             if(!c||s.pending.has(c.id))return;
+            if(action==='contracts-toggle'||action==='contract-save'||action==='contract-withdraw'){
+                var contract=c.contracts||{enabled:false,limit:0,reward:100,funded_budget:0};
+                if(action==='contracts-toggle'&&!contract.enabled&&(!contract.limit||!contract.unassigned_budget)){s.contractSetup.add(c.id);repaint(s);return;}
+                var terms=action==='contract-withdraw'?{limit:contract.hired,reward:contract.reward}:action==='contract-save'?ProjectContractPricing.read(control.closest('[data-contract-details]')):{limit:contract.limit,reward:contract.reward};
+                if(!terms)return;
+                var enabled=action==='contract-withdraw'?false:action==='contract-save'?true:!contract.enabled,delta=terms.limit*terms.reward-(contract.funded_budget||0);
+                if(delta&& !await confirmBuy(tr('lcpContractConfirm',{n:amount(delta)})))return;
+                if(s.actor!==actor())return;
+                var ok=await mutate(s,c,'contracts','PATCH',{revision:c.revision,enabled:enabled,limit:terms.limit,reward:terms.reward},true);if(ok){s.contractSetup.delete(c.id);var details=panel.querySelector('[data-contract-details="'+c.id+'"]');if(details)details.open=false;}return;
+            }
             if(action==='status')return window.LiveCampaignWallet.openStatus({get:function(){return current(s,c.id);},change:function(value){var row=current(s,c.id);return row&&mutate(s,row,row.definition?'growth-status':'status','PATCH',{revision:row.revision,status:value});}},control);
             if(action==='buy'){if(await confirmBuy(tr('lcBuyConfirm',{price:amount(c.next_slot_price)})))return mutate(s,c,'buy-slot','POST',{expected_slot:c.next_slot,expected_price:c.next_slot_price},true);return;}
             if(action==='pool')return window.LiveCampaignWallet.open({get:function(){return current(s,c.id);},change:function(data){var row=current(s,c.id);return row&&mutate(s,row,'pool','POST',data,true);}},control);

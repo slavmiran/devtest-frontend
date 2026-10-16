@@ -1,17 +1,19 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const scope={};scope.window=scope;
-for(const name of ['live-campaign-keywords','live-campaign-draft','live-campaign-traffic'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../js/'+name+'.js'),'utf8'),scope);
+for(const name of ['live-campaign-keywords','live-campaign-pace','live-campaign-draft','live-campaign-traffic'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../js/'+name+'.js'),'utf8'),scope);
 const model=scope.LiveCampaignDraft,ideas=scope.LiveCampaignKeywords,traffic=scope.LiveCampaignTraffic;
 const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesthub_live',boundary_available:true,installs:{per_day:10}}};
 (async()=>{
  let d=model.applyStrategy(model.create(project),'aso'),q=model.quote(d);
  assert.equal(d.source,'keywords');assert.equal(q.installs,42);assert.equal(q.totalCommitment,840);assert.equal(q.dailyCommitment,60);
+ assert.equal(model.quote(model.change(d,'pauseHours',6)).dailyCommitment,240);
+ assert.equal(model.quote(model.change(d,'pauseHours',48)).dailyCommitment,30);
  assert.deepEqual(JSON.parse(JSON.stringify(model.counts(d))),{link:0,web:0,keywords:42});
  d=model.addKeyword(d,' Travel taxi ');assert.equal(model.quote(d).installs,42,'A keyword is a pool choice, never an installation quota');
  assert.equal(model.addKeyword(d,'travel TAXI'),d);assert.equal(model.addKeyword(d,'x'.repeat(81)),d);assert.equal(model.addKeyword(d,'\u0000bad'),d);
  assert.equal(model.keyword(d,d.keywords[0].id,'installs',9),d);
- d=model.change(d,'daily',5);assert.equal(model.quote(d).installs,70);
- d=model.change(d,'paced',false);assert.equal(model.quote(d).installs,70);assert.equal(model.quote(d).dailyCommitment,null);
+ d=model.change(d,'daily',5);assert.equal(model.quote(d).installs,42);
+ d=model.change(d,'paced',false);assert.equal(model.quote(d).installs,42);assert.equal(model.quote(d).dailyCommitment,null);
  d=model.change(d,'target',53);assert.equal(model.quote(d).totalCommitment,1060);
  d=model.change(d,'checkpoint',7);assert.equal(model.quote(d).totalCommitment,530);
  assert.equal(model.change(d,'checkpoint',14),d,'At least one paid checkpoint remains');assert.equal(model.change(d,'checkpoint',1),d);
@@ -27,6 +29,7 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  for(const key of [...d.keywords])d=model.keyword(d,key.id,'remove');assert.equal(model.valid(d,4),false);
  const base=traffic.baseline({source:'devtesthub_live',install_velocity:{source_counts:{link:90,browser:5,key:5,unknown:0}}});
  const forecast=traffic.mix(model.applyStrategy(model.create(project),'aso'),base);assert.equal(forecast.total,142);assert.equal(forecast.status,'balanced');
+ assert.equal(scope.LiveCampaignPace.quota(5,7,1),1);assert.equal(scope.LiveCampaignPace.quota(5,7,7),5);assert.equal(scope.LiveCampaignPace.risk(18),'risk');assert.equal(scope.LiveCampaignPace.risk(24),'caution');assert.equal(scope.LiveCampaignPace.risk(48),'buffer');
  const custom=model.create(project);assert.equal(traffic.mix(custom,null).status,'warning');
  assert.equal(traffic.baseline({source:'devtesthub_live',is_demo:true,source_counts:{link:90,browser:5,key:5}}),null);
  const unknown=traffic.baseline({source:'devtesthub_live',source_counts:{link:0,browser:0,key:0,unknown:100}});assert.equal(traffic.mix(custom,unknown).status,'uncertain');

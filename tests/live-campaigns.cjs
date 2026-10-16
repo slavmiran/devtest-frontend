@@ -32,15 +32,15 @@ function fixture(id=3){return {id,app_id:42,kind:'closed_bridge',status:'active'
   });
   await page.goto('http://fixture.local/');for(const file of css)if(fs.existsSync(path.join(root,file)))await page.addStyleTag({path:path.join(root,file)});
   await page.addStyleTag({content:'body{padding:8px;background:#111a26;color:#eff4fb}#projects-list{width:100%}.card{width:100%}'});
-  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/core.js','ui/ui-helpers.js','ui/ui-tests.js','ui/ui-projects.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaigns.js'])await page.addScriptTag({path:path.join(root,file)});
+  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-pace.js','i18n/core.js','ui/ui-helpers.js','ui/ui-tests.js','ui/ui-projects.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaigns.js'])await page.addScriptTag({path:path.join(root,file)});
   await page.evaluate(({language,boost})=>{window.lang=language;window.API_BASE='/api';window.App={API_BASE:'/api'};window.visibilityStats={balance_bust:1000};window.getLocalDate=()=> '2026-10-14';window.getTelegramInitDataRaw=()=> 'signed-fixture';window.tg={HapticFeedback:{selectionChanged(){},impactOccurred(){},notificationOccurred(){}}};window.showToast=x=>window.lastToast=x;window.renderProjects=()=>{};window.myProjects=[{id:42,phase:'live',name:'Orbit Notes',run_iteration:1,request_reviews:false,target_lang:'RU',instructions:'Old project instructions',screenshot_boost_campaign:boost}];let card=document.createElement('div');card.className='card';card.innerHTML=LiveCampaigns.build(myProjects[0]);document.querySelector('#projects-list').append(card);LiveCampaigns.mount(card,myProjects[0]);}, {language,boost});
   const card=page.locator('[data-campaign-id="3"]');await card.locator('.lc-buy').waitFor();
   const fit=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await fit();assert.equal(await card.locator('textarea,input,select,form').count(),0);assert.equal(await card.locator('.lc-pool').count(),0);assert.ok(await card.boundingBox().then(b=>b.height<290));
+  await fit();assert.equal(await card.locator('textarea,input,select,form').count(),0);assert.equal(await card.locator('.lc-pool').count(),0);assert.ok(await card.boundingBox().then(b=>b.height<350));
   await page.screenshot({path:path.join(out,`compact-${language}-${width}.png`)});
   await card.locator('.pc-project-params__toggle').click();await card.locator('.pc-project-param[data-project-param="target_lang"]').waitFor();
   assert.equal(await card.locator('.pc-project-params__grid > .pc-project-param').count(),6);assert.equal(await card.locator('.lc-checkpoint[aria-pressed="true"]').count(),5);assert.equal(await card.locator('[data-day="1"]').isDisabled(),true);
-  assert.match(await card.locator('[data-project-param="screenshot_boost_campaign"]').innerText(),/34\$/);assert.ok(await card.boundingBox().then(b=>b.height<610));await fit();
+  assert.match(await card.locator('[data-project-param="screenshot_boost_campaign"]').innerText(),/34\$/);assert.ok(await card.boundingBox().then(b=>b.height<660));await fit();
   await page.waitForFunction(()=>{const p=document.querySelector('[data-campaign-id="3"] .pc-project-params__body'),c=p.querySelector('.pc-project-params__content');return Math.abs(p.getBoundingClientRect().height-c.getBoundingClientRect().height)<2;});
   await page.screenshot({path:path.join(out,`expanded-${language}-${width}.png`)});
   await card.locator('[data-day="4"]').click();await page.waitForFunction(()=>document.querySelector('.lc-budget>strong').textContent.includes('30'));
