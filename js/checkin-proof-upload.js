@@ -127,11 +127,11 @@ function _renderCheckinProofProgress(count) {
     var displayedMax = safeCount > 3 ? CHECKIN_PROOF_MAX_FILES : maxTarget;
     var countText = safeCount + ' ' + window.t('checkinProofOf', {}, lang) + ' ' + displayedMax;
 
-    var bonusAmountFormatted = (lang === 'ru') ? '0,2' : '0.2';
+    var bonusAmountFormatted = (lang === 'ru') ? '0,1' : '0.1';
     if (safeCount >= 5) {
-        bonusAmountFormatted = (lang === 'ru') ? '0,4' : '0.4';
-    } else if (safeCount === 4) {
         bonusAmountFormatted = (lang === 'ru') ? '0,3' : '0.3';
+    } else if (safeCount === 4) {
+        bonusAmountFormatted = (lang === 'ru') ? '0,2' : '0.2';
     }
 
     var chipClass = 'checkin-proof-bonus-chip is-inactive';

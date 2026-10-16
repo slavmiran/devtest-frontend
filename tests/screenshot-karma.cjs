@@ -24,15 +24,16 @@ vm.runInContext(market.slice(start, end), context);
 for (const lang of ['ru', 'en']) {
     context.lang = lang;
     assert.equal(context._renderCheckinProofProgress(0), '');
-    for (const [count, amount] of [[1, '0.2'], [2, '0.2'], [3, '0.2'], [4, '0.3'], [5, '0.4']]) {
+    for (const [count, amount] of [[1, '0.1'], [2, '0.1'], [3, '0.1'], [4, '0.2'], [5, '0.3']]) {
         const formatted = lang === 'ru' ? amount.replace('.', ',') : amount;
         const html = context._renderCheckinProofProgress(count);
-        assert.ok(html.includes('+' + formatted), `${lang}, ${count}: correct bonus`);
-        assert.doesNotMatch(html, /0[.,]5/);
+        const chip = html.match(/<div class="checkin-proof-bonus-chip[^\"]*">([\s\S]*?)<\/div>/);
+        assert.ok(chip && chip[1].includes('+' + formatted), `${lang}, ${count}: correct bonus chip`);
+        assert.doesNotMatch(html, /0[.,][45]/);
         assert.ok(html.includes(count < 3 ? 'is-inactive' : 'is-active'));
     }
     context.renderKarmaHowList();
-    for (const [key, amount] of [['karmaHowScreenshots', '0.2'], ['karmaHowScreenshots4', '0.3'], ['karmaHowScreenshots5', '0.4']]) {
+    for (const [key, amount] of [['karmaHowScreenshots', '0.1'], ['karmaHowScreenshots4', '0.2'], ['karmaHowScreenshots5', '0.3']]) {
         const label = context.t(key, {}, lang);
         assert.ok(guide.innerHTML.includes(label));
         const row = guide.innerHTML.slice(guide.innerHTML.indexOf(label)).split('</div>')[0];
@@ -41,7 +42,7 @@ for (const lang of ['ru', 'en']) {
 }
 let toast;
 context.showCheckinRewardToasts = checkin => { toast = checkin; };
-for (const [count, amount] of [[3, 0.2], [4, 0.3], [5, 0.4], [5, 0], [5, 0.5]]) {
+for (const [count, amount] of [[3, 0.1], [4, 0.2], [5, 0.3], [5, 0], [5, 0.5]]) {
     const result = { checkin: { earned_karma: amount, already_checked_today: false } };
     context._applyScreenshotCheckinResult(123, result, count);
     assert.equal(toast.earned_karma, amount, 'Respect server award, including zero and historical amounts');
