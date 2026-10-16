@@ -83,7 +83,7 @@
         var reviewMain = esc(rating) + '&nbsp;<span class="live-metric-star" aria-hidden="true">★</span>&nbsp;<span class="live-metric-count">(' + (reviews ? esc(compact(reviews.total)) : '—') + ')</span>';
         var installMain = (installs ? esc(compact(installs.total)) : '—') + '&nbsp;<span class="live-metric-unit">' + esc(t('installUnit')) + '</span>';
         var retention = metrics && metrics.avg_retention_days, freshness = metrics && metrics.days_since_update;
-        var keywords = metrics && metrics.keywords || [];
+        var keywords = (metrics && metrics.keywords || []).filter(function(entry){return Number(entry.installs)>0;});
         var retentionVal = retention == null ? '—d' : '~' + esc(num(retention, Number.isInteger(retention) ? 0 : 1)) + 'd';
         var freshnessVal = freshness == null ? '—' : esc(num(freshness)) + '&nbsp;' + esc(t('daysUnit'));
         var health = '<div class="live-health-col live-health-active" title="' + esc(t('activeHint') + (metrics ? ' · ' + num(metrics.active_users) : '')) + '">' +

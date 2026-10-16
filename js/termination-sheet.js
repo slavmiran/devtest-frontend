@@ -188,6 +188,9 @@
     function _setTypeBadge(joinType) {
         var badge = document.getElementById('term-type-badge');
         if (!badge) return;
+        if (_termState && _termState.isLive) {
+            badge.hidden = false; badge.className = 'term-type-badge is-live'; badge.textContent = '🚀 Live'; return;
+        }
         var normalized = _normalizeJoinType(joinType);
         var map = {
             mutual: { cls: 'is-mutual', key: 'termTypeMutual' },
@@ -1008,6 +1011,7 @@
             projectId: Number(options.projectId || options.appId || 0),
             testerId: Number(options.testerId || 0),
             joinType: joinType,
+            isLive: !!(options.isLive || options.testSnapshot && (options.testSnapshot.live_bridge || options.testSnapshot.live_campaign || options.testSnapshot.connection_type === 'live')),
             justifiedAllowed: false,
             karmaBurnPreview: 0,
             grantAvailable: false,
@@ -1141,6 +1145,7 @@
         }
         if (_termState) {
             _termState.joinType = _normalizeJoinType(test.join_type || options.joinType || 'invite');
+            _termState.isLive = !!(_termState.isLive || test.live_bridge || test.live_campaign || test.connection_type === 'live');
             _termState.ownerId = Number(test.owner_id || 0);
         }
         _setTypeBadge(_termState.joinType);
@@ -1277,6 +1282,7 @@
 
         if (_termState) {
             _termState.joinType = joinType;
+            _termState.isLive = !!(_termState.isLive || tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge);
             _termState.isReciprocalActive = isReciprocalActive;
             _termState.grantAvailable = grantStillAvailable && grantTotal > 0;
             _termState.grantTotal = grantTotal;

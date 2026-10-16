@@ -33,13 +33,14 @@ fs.mkdirSync(artifacts, {recursive:true});
                 window.renderGuaranteedOrdersSection=()=>{};
                 window.renderGuaranteedDraftBanner=()=>{};
                 window.getProjectCurrentGoogleDay=()=>14;
+                window.isMandatoryScreenshotDay=day=>[1,4,7,10,14].includes(day);
                 window.buildRunIterationChip=()=>'';
                 window.buildProjectFeedbackButton=()=>'';
                 window.getLangBadge=()=>'';
                 window.fetchWithRetry=async()=>({ok:true,json:async()=>({status:'success',items:[]})});
                 window.myProjects=[{id:30,name:'Published App',phase:'live',status:'completed',is_visible:true,
                     created_at:'2026-09-10T12:00:00Z',last_sync_date:'2026-09-24',google_sync_day:14,
-                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',testers:[],results_summary:{},live_balance_bust:137.5,protection_bust_pool:999,
+                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',testers:[{tester_id:77,username:'live_tester',join_type:'mutual',is_live_tester:true,connection_type:'live',progress_id:777,current_day:2,status:'active'}, {tester_id:78,username:'phase_one_only',join_type:'mutual',progress_id:778,current_day:14,status:'active'}],results_summary:{},live_balance_bust:137.5,protection_bust_pool:999,
                     live_metrics:{source:'devtesthub_live',as_of:new Date().toISOString(),boundary_available:true, reviews:{total:68,rating:4.3,per_day:.5,trend_available:true,trend_percent:-1.2},installs:{total:332,per_day:3.5,trend_available:true,trend_percent:3},active_users:112,avg_retention_days:23,days_since_update:79,keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]}}];
                 window.archivedProjects=[{app_id:30,name:'Published App',phase:'live',status:'completed'}];
                 localStorage.setItem('hideDeleteReminder','true');
@@ -48,7 +49,7 @@ fs.mkdirSync(artifacts, {recursive:true});
                 window.ProjectToday.mount=()=>{}; // No background I/O in this render fixture.
                 renderProjects(true);
             },language);
-            await page.waitForSelector('#project-card-30 .lc-campaign');
+            await page.waitForSelector('#project-card-30 .lc-campaign').catch(e=>{console.error(errors);throw e;});
             assert.equal(await page.evaluate(()=>{const card=document.querySelector('#project-card-30').getBoundingClientRect(), block=document.querySelector('[data-live-campaigns]').getBoundingClientRect();return block.left-card.left>=12 && card.right-block.right>=12;}),true,'Campaign block has side insets inside the actual project card');
             assert.equal(await page.locator('.lc-section-head h3').innerText(),language==='ru'?'Текущие Компании':'Current campaigns');
             assert.equal((await page.locator('.pc-project-params__toggle').first().innerText()).includes('NaN'),false,'Missing report settings must not produce NaN');
@@ -61,7 +62,9 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await page.locator('#project-card-30 .live-project-details').count(),1);
             await page.locator('#project-card-30 .card-header').screenshot({path:path.join(artifacts, 'live-header-' + language + '-360.png')});
             assert.deepEqual(errors,[]);
-            assert.equal(await page.locator('#project-card-30 .pc-participants-title').count(),0); // Phase 1 roster is not a Live metric
+            assert.equal(await page.locator('#project-card-30 .pc-participants-title').count(),1);
+            assert.equal(await page.locator('#project-card-30 .tester-live-prefix').count(),1);
+            assert.equal(await page.locator('#project-card-30').innerText().then(x=>x.includes('@phase_one_only')),false,'Phase 1 testers stay out of Live roster');
             assert.equal(await page.locator('#project-card-30 .pc-team-label').count(),0);
             assert.equal(await page.locator('#project-card-30 .pc-results-card').count(),1);
             assert.equal(await page.locator('#project-card-30 .pc-metrics-grid').count(),0);

@@ -216,6 +216,7 @@
 
     function _linkTypeBadge(joinType, options) {
         options = options || {};
+        if (joinType === 'live' || options.isLive) return { className: 'is-live', label: '🚀 Live' };
         if (options.isDebt) {
             return { className: 'is-debt', label: _t('linkedBadgeDebt') };
         }
@@ -234,6 +235,7 @@
 
     function _linkStatusTitle(joinType, options) {
         options = options || {};
+        if (joinType === 'live' || options.isLive) return '🚀 Live';
         if (options.isDebt) return _t('linkStatusTitleDebt');
         if (options.isBroken) return _t('linkStatusTitleBroken');
         var normalized = _normalizeJoinType(joinType);
@@ -259,6 +261,7 @@
         var fullName = String(data.fullName || '').trim();
         var username = String(data.username || '').replace(/^@+/, '').trim();
         var badge = _linkTypeBadge(data.joinType, {
+            isLive: !!data.isLive,
             isDebt: !!data.isDebt,
             isBroken: !!data.isBroken,
         });
@@ -350,6 +353,7 @@
             context: 'projects',
             projectId: safeProjectId,
             testerId: safeTesterId,
+            isLive: !!(tester && (tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge)),
             joinType: (tester && tester.join_type) || 'invite',
             testerUsername: String((tester && tester.username) || '').replace(/^@+/, ''),
             testerFullName: String((tester && tester.full_name) || '').trim(),
@@ -414,6 +418,7 @@
             context: context,
             projectId: Number(options.projectId || (context === 'projects' ? safeAppId : 0)),
             joinType: joinType,
+            isLive: !!(options.isLive || options.testerSnapshot && (options.testerSnapshot.is_live_tester || options.testerSnapshot.connection_type === 'live' || options.testerSnapshot.live_bridge) || test && (test.live_bridge || test.live_campaign || test.connection_type === 'live')),
             isMutualDebt: !!(options.isMutualDebt || (test && test.is_mutual_debt)),
             mutualDebtHolder: String(options.mutualDebtHolder || (test && test.mutual_debt_holder) || ''),
             leftSoft: !!options.leftSoft,
@@ -429,6 +434,7 @@
 
         if (titleEl) {
             titleEl.textContent = _linkStatusTitle(joinType, {
+                isLive: _balanceState.isLive,
                 isDebt: !!_balanceState.isMutualDebt,
                 isBroken: !!_balanceState.leftSoft || !!options.isBroken || !!options.leftSoft,
             });
@@ -501,6 +507,7 @@
                     || (_balanceState && _balanceState.testerAvatarUrl)
                     || '',
                 userId: Number(options.testerId || (tester && tester.tester_id) || (_balanceState && _balanceState.testerId) || 0),
+                isLive: !!(options.isLive || tester && (tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge)),
                 joinType: _normalizeJoinType(
                     options.joinType
                     || (tester && tester.join_type)
@@ -520,6 +527,7 @@
             username: String(stats.partner_username || (test && test.owner_username) || '').replace(/^@+/, ''),
             avatarUrl: stats.partner_avatar_url || (test && test.owner_avatar_url) || '',
             userId: Number(stats.partner_id || (test && test.owner_id) || 0),
+            isLive: !!(options.isLive || test && (test.live_bridge || test.live_campaign || test.connection_type === 'live')),
             joinType: _normalizeJoinType(options.joinType || (test && test.join_type) || 'mutual'),
             language: String(stats.partner_language || (test && test.owner_language) || '').toLowerCase(),
         };

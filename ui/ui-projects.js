@@ -1741,7 +1741,7 @@ function renderProjects(force) {
             card.setAttribute('data-project-has-alert', 'true');
         }
 
-        const allProjectTesters = Array.isArray(project.testers) ? project.testers : [];
+        const allProjectTesters = (Array.isArray(project.testers) ? project.testers : []).filter(function(tester){return phase !== 'live' || tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge;});
         const guestTesters = allProjectTesters.filter(function(tester) {
             return !!tester.is_guest_tester || !!tester.is_external;
         });
@@ -1797,7 +1797,9 @@ function renderProjects(force) {
                     exchangeState ? !!exchangeState.is_mutual_debt : !!tester.is_mutual_debt
                 );
                 let testerPrefixHtml = '';
-                if (isMutualDebt) {
+                if (tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge) {
+                    testerPrefixHtml = '<span class="tester-live-prefix" title="Live">🚀</span>';
+                } else if (isMutualDebt) {
                     testerPrefixHtml = '<span class="tester-debt-prefix" title="' + window.escapeHTML(window.t('linkedBadgeDebt', {}, lang)) + '">⚖️</span>';
                 } else if (isBrokenReciprocal) {
                     testerPrefixHtml = '<span class="tester-broken-prefix" style="margin-right:2px;" title="' + window.escapeHTML(window.t('barterChipBroken', {}, lang) || '💔 Взаимка') + '">💔</span>';
@@ -1906,7 +1908,7 @@ function renderProjects(force) {
                     '</span>';
                 }
 
-                const joinTypeLabel = isMutualDebt
+                const joinTypeLabel = (tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge) ? '🚀 Live' : isMutualDebt
                     ? window.t('linkedBadgeDebt', {}, lang)
                     : (isContractTester
                     ? window.t('linkedBadgeBounty', {}, lang)
@@ -1927,7 +1929,7 @@ function renderProjects(force) {
                     rowHtml = `
                     <li class="tester-row-left-soft">
                         <div class="tester-row-main">
-                            <span class="tester-name">${leftDayHtml}<span class="tester-left-prefix" aria-hidden="true">💔</span><span class="tester-primary-label notranslate">${leftLabel}</span></span>
+                            <span class="tester-name">${leftDayHtml}${tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge ? testerPrefixHtml : '<span class="tester-left-prefix" aria-hidden="true">💔</span>'}<span class="tester-primary-label notranslate">${leftLabel}</span></span>
                         </div>
                         <div class="tester-row-meta">
                             <button type="button" class="tester-leave-chip" onclick="event.stopPropagation(); openLeftTesterLinkStatus(${Number(project.id)}, ${Number(tester.tester_id)}, event)">${window.escapeHTML(window.t('testerLeftChip', {}, lang))}</button>
@@ -2434,7 +2436,7 @@ function renderProjects(force) {
         // notification block takes its slot instead of rendering an empty section.
         const proofPingState = (window.ProofPing && window.ProofPing.stateFor(project)) || 'mini';
         const proofPingHtml = (window.ProofPing && window.ProofPing.blockHtml(project)) || '';
-        const todaySectionHtml = (proofPingState !== 'expanded' && typeof window.ProjectToday !== 'undefined' && window.ProjectToday)
+        const todaySectionHtml = ((phase === 'live' || proofPingState !== 'expanded') && typeof window.ProjectToday !== 'undefined' && window.ProjectToday)
             ? window.ProjectToday.buildSection(project)
             : '';
 
@@ -2550,8 +2552,9 @@ function renderProjects(force) {
 
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->
             <div class="pc-dashboard-body">
-                ${phase === 'live' ? `<div class="live-phase1-history-label">${window.escapeHTML(lang === 'ru' ? 'История закрытого теста' : 'Closed test history')}</div>` : proofPingHtml}
-                ${phase === 'live' ? '' : todaySectionHtml}
+                ${phase === 'live' ? '' : proofPingHtml}
+                ${todaySectionHtml}
+                ${phase === 'live' ? `<div class="live-phase1-history-label">${window.escapeHTML(lang === 'ru' ? 'История закрытого теста' : 'Closed test history')}</div>` : ''}
                 <div class="pc-results-block-slot">${typeof window.buildProjectResultsBlock === 'function' ? window.buildProjectResultsBlock(project) : ''}</div>
 
                 <div id="pc-roster-source-${project.id}" class="pc-roster-source" hidden>
@@ -2596,7 +2599,7 @@ function renderProjects(force) {
         });
         if (phase === 'live' && window.LiveProjectMetrics) window.LiveProjectMetrics.mount(card, project);
         if (phase === 'live' && window.LiveCampaigns) window.LiveCampaigns.mount(card, project);
-        if (phase !== 'live' && window.ProjectToday) window.ProjectToday.mount(card, project);
+        if (window.ProjectToday) window.ProjectToday.mount(card, project);
         } catch (e) {
             console.error('Project card render error:', e);
             if (window.reportSystemError) window.reportSystemError('renderProjects: ' + e.message, e.stack);
@@ -2694,6 +2697,7 @@ function openKickTesterModal(appId, testerId, event, options) {
             appId: Number(appId || 0),
             projectId: Number(appId || 0),
             testerId: Number(testerId || 0),
+            isLive: !!(tester && (tester.is_live_tester || tester.connection_type === 'live' || tester.live_bridge)),
             joinType: (tester && tester.join_type) || options.joinType || 'invite',
             testerUsername: (tester && tester.username) || options.testerUsername || '',
             testerFullName: (tester && tester.full_name) || options.testerFullName || '',

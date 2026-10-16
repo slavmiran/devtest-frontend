@@ -3757,7 +3757,7 @@
             loading: !!(entry && entry.loading),
             error: !!(entry && entry.error),
             rosterCount: (project && project.testers || []).filter(function (tester) {
-                return tester && !tester.is_left_soft && !tester.is_guest_tester && !tester.is_external;
+                return tester && (!project || project.phase!=='live' || tester.is_live_tester || tester.connection_type==='live' || tester.live_bridge) && !tester.is_left_soft && !tester.is_guest_tester && !tester.is_external;
             }).length,
             controlRows: controlRows,
             regularReportRows: regularReportRows,
@@ -4481,7 +4481,7 @@
 
     function activeTeamRoster(project) {
         return (project && project.testers || []).filter(function (tester) {
-            return tester && !tester.is_left_soft && !tester.is_guest_tester && !tester.is_external;
+            return tester && (!project || project.phase!=='live' || tester.is_live_tester || tester.connection_type==='live' || tester.live_bridge) && !tester.is_left_soft && !tester.is_guest_tester && !tester.is_external;
         });
     }
 

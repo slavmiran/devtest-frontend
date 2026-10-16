@@ -24,3 +24,11 @@
 .lc-wallet-actions{display:flex;gap:8px;margin:12px 0 8px}.lc-wallet-actions>.btn{flex:1;min-width:0;font-size:12px;padding:9px}
 #live-campaign-wallet-modal [data-lc-wallet-close]{width:100%;font-size:12px}#live-campaign-wallet-modal .project-email-settings-switch{margin-top:10px}
 .lc-market-live{color:#6de9b9!important;border:1px solid rgba(16,185,129,.3)!important}.lc-market-days{color:#f5d16e!important;border:1px solid rgba(234,179,8,.2)!important}.lc-report-tasks{padding:9px 0;font-size:11px;color:var(--text-secondary,var(--hint-color))}.lc-report-tasks li{overflow-wrap:anywhere;line-height:1.5}
+
+.lc-section-head{flex-wrap:wrap}.lc-buy-active{font-size:10px;line-height:1.4;padding:5px;border:1px solid var(--reward-border);border-radius:8px;color:var(--reward)}
+.lc-growth .pc-project-param{min-height:65px;color:var(--text-primary);font-size:12px}.lc-growth .pc-project-param small{color:var(--text-secondary);font-size:10px}
+.lc-growth-keys{padding:10px 12px;border-top:1px solid var(--border-subtle)}.lc-growth-keys summary{font-size:11px;color:var(--text-secondary);cursor:pointer}
+.lc-growth-key{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-subtle);font-size:11px}.lc-growth-key>span{min-width:0;overflow-wrap:anywhere}.lc-growth-key small{display:block;color:var(--text-secondary);font-size:10px;margin-top:3px}.lc-growth-key button{flex-shrink:0;padding:6px 9px}
+.lc-growth-budget{font-size:11px;color:var(--text-secondary)}.tester-live-prefix{display:inline-block;margin-right:4px}
+
+.link-status-type-badge.is-live,.term-type-badge.is-live{color:var(--accent-primary);background:var(--accent-primary-surface);border-color:var(--accent-primary-border)}

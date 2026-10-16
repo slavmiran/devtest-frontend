@@ -102,7 +102,8 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             await page.waitForFunction(()=>!document.querySelector('#live-keyword-dialog'));
             hold=false;pendingGet();
             await page.waitForTimeout(100);
-            assert.match(await page.locator('.live-keyword-name').innerText(),/<img src=x> taxi/);
+            assert.equal(await page.locator('.live-keyword-name').count(),0,'New keys stay hidden until confirmed installs exist');
+            assert.match(await page.evaluate(()=>myProjects[0].live_metrics.keywords[0].keyword),/<img src=x> taxi/,'Stale GET must not restore old keyword data');
             assert.equal(await page.locator('.live-keyword-chip img').count(),0);
             assert.equal(posts,1);
             // Keyword limit error leaves the editor usable.
@@ -114,7 +115,7 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             assert.equal(await page.locator('#live-keyword-dialog [type="submit"]').isDisabled(),false);
             await page.keyboard.press('Escape');
             // Refreshing the Play passport immediately refreshes freshness.
-            mode='ready';responseMetrics={...responseMetrics,as_of:'2026-10-09T12:02:00Z',days_since_update:0};
+            mode='ready';responseMetrics={...responseMetrics,as_of:'2026-10-09T12:02:00Z',days_since_update:0,keywords:responseMetrics.keywords.map(k=>({...k,installs:1}))};
             const before=gets;
             await page.evaluate(()=>dispatchEvent(new CustomEvent('play-store:synced',{detail:{appId:42}})));
             await page.waitForFunction(()=>document.querySelector('.live-health-freshness').classList.contains('is-fresh'));

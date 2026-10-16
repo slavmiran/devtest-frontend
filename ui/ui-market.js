@@ -4802,6 +4802,7 @@ function openDropTestModal(appId, event) {
     return window.openTerminationSheet({
         mode: 'drop',
         appId: Number(appId || 0),
+        isLive: !!(test && (test.live_bridge || test.live_campaign || test.connection_type === 'live')),
         joinType: (test && test.join_type) || 'invite',
         testSnapshot: test || null,
         unlinkReciprocal: true,
@@ -4832,6 +4833,7 @@ async function openLeaveMutualModal(appId, event) {
     return window.openTerminationSheet({
         mode: 'leave',
         appId: Number(appId || 0),
+        isLive: !!(test && (test.live_bridge || test.live_campaign || test.connection_type === 'live')),
         joinType: (test && test.join_type) || 'mutual',
         unlinkReciprocal: (typeof window._pendingUnlinkReciprocal === 'boolean')
             ? window._pendingUnlinkReciprocal

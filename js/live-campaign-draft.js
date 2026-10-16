@@ -1,89 +1,78 @@
-/* Exact install counts are canonical. Quotes are estimates, never payment instructions. */
-(function () {
-    'use strict';
-    var LIMIT=100000, MAX_KEYWORDS=20;
-    function clone(value){return JSON.parse(JSON.stringify(value));}
-    function counts(d){return {link:d.sources.link,web:d.sources.web,keywords:d.keywords.reduce(function(n,k){return n+k.installs;},0)};}
-    function total(d){var c=counts(d);return c.link+c.web+c.keywords;}
-    function sync(d){d.pacing.acquisitionDays=Math.ceil(total(d)/d.pacing.dailyInstalls);return d;}
-    function create(project){
-        var m=project.live_metrics,rate=m && m.installs && m.installs.per_day;
-        var title=String(project.play_store_raw && project.play_store_raw.title || project.name || project.package_name || '').trim();
-        return {schemaVersion:2,appId:Number(project.id || project.app_id),appTitle:title,strategy:null,
-            baseline:{available:!!(m && m.source==='devtesthub_live' && m.boundary_available!==false && typeof rate==='number' && Number.isFinite(rate) && rate>=0),perDay:typeof rate==='number' && Number.isFinite(rate) && rate>=0?rate:null,asOf:m && m.as_of || null},
-            sources:{link:7,web:0},web:{query:title.slice(0,200),screenshot:null},keywords:[],nextKeywordId:1,
-            retention:{days:7,checkpoints:[1,7]},activity:{enabled:false,screenshot:false},reviews:{enabled:false,delayDays:7,prompt:'soft'},
-            pacing:{dailyInstalls:1,acquisitionDays:7,rampUp:true},billing:{source:'project',allowWalletFallback:false}};
-    }
-    function distribute(amount,weights){
-        var sum=weights.reduce(function(n,w){return n+w;},0),rows=weights.map(function(w,i){var exact=sum?amount*w/sum:0;return {i:i,n:Math.floor(exact),remainder:exact%1};});
-        var left=amount-rows.reduce(function(n,r){return n+r.n;},0);
-        rows.slice().sort(function(a,b){return b.remainder-a.remainder || a.i-b.i;}).forEach(function(r){if(left>0){r.n++;left--;}});
-        return rows.map(function(r){return r.n;});
-    }
-    function applyStrategy(d,strategy){
-        if(!['aso','retention','deep','custom'].includes(strategy))return d;
-        var next=create({id:d.appId,name:d.appTitle});next.baseline=clone(d.baseline);next.strategy=strategy;
-        var rate=next.baseline.available?next.baseline.perDay:0,weights=[100,0,0],period=7;
-        if(strategy==='aso'){
-            weights=[10,20,70];next.retention={days:14,checkpoints:[1,7,14]};next.reviews.enabled=true;
-            next.pacing.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.3)));period=14;
-        }else if(strategy==='retention'){
-            weights=[34,33,33];next.retention={days:30,checkpoints:[1,7,14,21,30]};
-            next.pacing.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.1)));period=14;
-        }else if(strategy==='deep')next.activity={enabled:true,screenshot:true};
-        var parts=distribute(next.pacing.dailyInstalls*period,weights);
-        next.sources={link:parts[0],web:parts[1]};
-        if(parts[2]){
-            var phrase=LiveCampaignKeywords.suggest({title:d.appTitle})[0];
-            if(phrase){next.keywords=[{id:'k1',keyword:phrase,installs:parts[2],position:'',screenshot:null}];next.nextKeywordId=2;}
-            else next.sources.link+=parts[2];
-        }
-        return sync(next);
-    }
-    function checkpointOptions(days){return {7:[1,4,7],14:[1,4,7,10,14],30:[1,7,14,21,30]}[days] || [];}
-    function change(d,field,value){
-        var next=clone(d);
-        if(['link','web'].includes(field) && Number.isSafeInteger(value) && value>=0 && value<=LIMIT)next.sources[field]=value;
-        else if(field==='webQuery' && typeof value==='string' && value.length<=200)next.web.query=value;
-        else if(field==='retention' && [7,14,30].includes(value))next.retention={days:value,checkpoints:checkpointOptions(value).slice()};
-        else if(field==='checkpoint'){
-            var days=next.retention.checkpoints;if(value===1 || !checkpointOptions(next.retention.days).includes(value))return d;
-            if(days.includes(value)){if(days.length<=2)return d;days.splice(days.indexOf(value),1);}else days.push(value);days.sort(function(a,b){return a-b;});
-        }else if(field==='activity'){next.activity.enabled=!!value;if(!value)next.activity.screenshot=false;}
-        else if(field==='screenshot' && next.activity.enabled)next.activity.screenshot=!!value;
-        else if(field==='reviews')next.reviews.enabled=!!value;
-        else if(field==='daily' && Number.isSafeInteger(value) && value>=1 && value<=500)next.pacing.dailyInstalls=value;
-        else if(field==='ramp')next.pacing.rampUp=!!value;
-        else if(field==='wallet')next.billing.allowWalletFallback=!!value;
-        else return d;
-        return sync(next);
-    }
-    function addKeyword(d,value){
-        var phrase=LiveCampaignKeywords.clean(value);
-        if(!phrase || phrase.length>80 || /[\p{Cc}]/u.test(phrase) || d.keywords.length>=MAX_KEYWORDS || d.keywords.some(function(k){return LiveCampaignKeywords.identity(k.keyword)===LiveCampaignKeywords.identity(phrase);}))return d;
-        var next=clone(d);next.keywords.push({id:'k'+next.nextKeywordId++,keyword:phrase,installs:1,position:'',screenshot:null});return sync(next);
-    }
-    function keyword(d,id,field,value){
-        if(!d.keywords.some(function(k){return k.id===id;}))return d;
-        var next=clone(d),row=next.keywords.find(function(k){return k.id===id;});
-        if(field==='remove')next.keywords=next.keywords.filter(function(k){return k.id!==id;});
-        else if(field==='installs' && Number.isSafeInteger(value) && value>=1 && value<=LIMIT)row.installs=value;
-        else if(field==='position' && typeof value==='string' && value.length<=80)row.position=value;
-        else return d;
-        return sync(next);
-    }
-    function media(d,key,value){
-        var next=clone(d);if(key==='web')next.web.screenshot=value;
-        else {var row=next.keywords.find(function(k){return 'keyword:'+k.id===key;});if(!row)return d;row.screenshot=value;}
-        return next;
-    }
-    function quote(d){
-        var c=counts(d),installs=total(d),unit=(d.retention.checkpoints.length-1)*10,days=Math.ceil(installs/d.pacing.dailyInstalls);
-        var channels=['link','web','keywords'].map(function(k){return {key:k,count:c[k],percent:installs?c[k]*100/installs:0};});
-        return {available:!!d.strategy && installs>0,checkpointUnit:10,perInstall:unit,dailyCommitment:Math.min(d.pacing.dailyInstalls,installs)*unit,totalCommitment:installs*unit,installs:installs,acquisitionDays:days,
-            channels:channels,concentrated:channels.some(function(r){return r.percent>=80;}),completionDays:days?days+d.retention.days-1:0};
-    }
-    function valid(d,step){return !!d.strategy && (step===1 || total(d)>0 && (!d.sources.web || !!d.web.query.trim()));}
-    window.LiveCampaignDraft={create:create,applyStrategy:applyStrategy,change:change,quote:quote,valid:valid,checkpointOptions:checkpointOptions,counts:counts,addKeyword:addKeyword,keyword:keyword,media:media,limit:LIMIT,maxKeywords:MAX_KEYWORDS};
+/* One campaign = one traffic source. Keyword pools have no per-key quotas. */
+(function(){
+ 'use strict';
+ function clone(x){return JSON.parse(JSON.stringify(x));}
+ function create(p){
+  var m=p.live_metrics,r=m&&m.installs&&m.installs.per_day,title=String(p.play_store_raw&&p.play_store_raw.title||p.name||p.package_name||'');
+  return {schemaVersion:3,appId:Number(p.id||p.app_id),appTitle:title,template:'custom',name:'',source:'link',
+   baseline:{available:!!(m&&m.source==='devtesthub_live'&&m.boundary_available!==false&&typeof r==='number'&&Number.isFinite(r)&&r>=0),perDay:r||0},
+   web:{query:title.slice(0,200),screenshot:null},keywords:[],nextKeywordId:1,
+   retention:{days:14,checkpoints:[1,7,14]},activity:{enabled:false,screenshot:false,instructions:''},
+   reviews:{enabled:false,delayDays:7,prompt:'soft'},
+   volume:{paced:true,dailyInstalls:1,acquisitionDays:14,totalInstalls:14}};
+ }
+ function total(d){return d.volume.paced?d.volume.dailyInstalls*d.volume.acquisitionDays:d.volume.totalInstalls;}
+ function counts(d){var c={link:0,web:0,keywords:0};c[d.source]=total(d);return c;}
+ function applyStrategy(d,template){
+  if(!['aso','retention','deep','custom'].includes(template))return d;
+  var n=create({id:d.appId,name:d.appTitle});n.baseline=clone(d.baseline);n.template=template;
+  var rate=d.baseline.available?d.baseline.perDay:0;
+  if(template==='aso'){
+   n.source='keywords';n.reviews.enabled=true;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.3)));
+   var phrase=LiveCampaignKeywords.suggest({title:d.appTitle})[0]||LiveCampaignKeywords.clean(d.appTitle).slice(0,80);
+   if(phrase)n=addKeyword(n,phrase);
+  }else if(template==='retention'){
+   n.retention={days:30,checkpoints:[1,7,14,21,30]};n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.1)));
+  }else if(template==='deep'){
+   n.retention={days:7,checkpoints:[1,7]};n.activity={enabled:true,screenshot:true,instructions:''};n.volume.acquisitionDays=7;
+  }
+  n.volume.totalInstalls=total(n);return n;
+ }
+ function checkpointOptions(days){var list=[1,4,7,10,14,21,28,35].filter(function(n){return n<=days;});if(!list.includes(days))list.push(days);return list.sort(function(a,b){return a-b;});}
+ function change(d,f,v){
+  var n=clone(d);
+  if(f==='source'&&['link','web','keywords'].includes(v))n.source=v;
+  else if(f==='name'&&typeof v==='string'&&v.length<=80)n.name=v;
+  else if(f==='webQuery'&&typeof v==='string'&&v.length<=200)n.web.query=v;
+  else if(f==='instructions'&&typeof v==='string'&&v.length<=5000)n.activity.instructions=v;
+  else if(f==='retention'&&Number.isInteger(v)&&v>=7&&v<=35)n.retention={days:v,checkpoints:checkpointOptions(v)};
+  else if(f==='checkpoint'){
+   if(v===1||!checkpointOptions(n.retention.days).includes(v))return d;
+   var ds=n.retention.checkpoints;if(ds.includes(v)){if(ds.length===2)return d;ds.splice(ds.indexOf(v),1);}else ds.push(v);ds.sort(function(a,b){return a-b;});
+  }else if(f==='activity'){n.activity.enabled=!!v;if(!v)n.activity.screenshot=false;}
+  else if(f==='screenshot'&&n.activity.enabled)n.activity.screenshot=!!v;
+  else if(f==='reviews')n.reviews.enabled=!!v;
+  else if(f==='paced'){if(!v)n.volume.totalInstalls=total(n);n.volume.paced=!!v;}
+  else if(f==='daily'&&Number.isInteger(v)&&v>=1&&v<=500)n.volume.dailyInstalls=v;
+  else if(f==='period'&&Number.isInteger(v)&&v>=1&&v<=90)n.volume.acquisitionDays=v;
+  else if(f==='target'&&Number.isInteger(v)&&v>=1&&v<=100000)n.volume.totalInstalls=v;
+  else return d;
+  return n;
+ }
+ function addKeyword(d,value){
+  var phrase=LiveCampaignKeywords.clean(value);
+  if(!phrase||phrase.length>80||/[\p{Cc}]/u.test(phrase)||d.keywords.length>=20||d.keywords.some(function(k){return LiveCampaignKeywords.identity(k.keyword)===LiveCampaignKeywords.identity(phrase);}))return d;
+  var n=clone(d);n.keywords.push({id:'k'+n.nextKeywordId++,keyword:phrase,position:'',screenshot:null});return n;
+ }
+ function keyword(d,id,f,v){
+  if(!d.keywords.some(function(k){return k.id===id;}))return d;
+  var n=clone(d),row=n.keywords.find(function(k){return k.id===id;});
+  if(f==='remove')n.keywords=n.keywords.filter(function(k){return k.id!==id;});
+  else if(f==='position'&&typeof v==='string'&&v.length<=80)row.position=v;else return d;return n;
+ }
+ function media(d,key,value){var n=clone(d);if(key==='web')n.web.screenshot=value;else{var row=n.keywords.find(function(k){return 'keyword:'+k.id===key;});if(!row)return d;row.screenshot=value;}return n;}
+ function quote(d){
+  var installs=total(d),unit=(d.retention.checkpoints.length-1)*10,channels=['link','web','keywords'].map(function(k){return {key:k,count:k===d.source?installs:0,percent:k===d.source?100:0};});
+  return {available:installs>0,installs:installs,checkpointUnit:10,perInstall:unit,totalCommitment:installs*unit,dailyCommitment:d.volume.paced?unit*d.volume.dailyInstalls:null,
+   acquisitionDays:d.volume.paced?d.volume.acquisitionDays:null,completionDays:d.volume.paced?d.volume.acquisitionDays+d.retention.days-1:null,channels:channels};
+ }
+ function valid(d,step){return !!d.source&&(d.source!=='web'||!!d.web.query.trim())&&(d.source!=='keywords'||d.keywords.length>0)&&d.retention.checkpoints.length>=2;}
+ async function definition(d,serialize){
+  var payload={name:d.name,template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:clone(d.reviews),volume:clone(d.volume),web:{query:d.source==='web'?d.web.query:'',screenshot:null},keywords:[]};
+  payload.volume.totalInstalls=total(d);
+  if(d.source==='web'&&d.web.screenshot)payload.web.screenshot=await serialize('web',d.web.screenshot);
+  if(d.source==='keywords')for(var k of d.keywords)payload.keywords.push({keyword:k.keyword,position:k.position,screenshot:k.screenshot?await serialize('keyword:'+k.id,k.screenshot):null});
+  return payload;
+ }
+ window.LiveCampaignDraft={create:create,applyStrategy:applyStrategy,counts:counts,change:change,addKeyword:addKeyword,keyword:keyword,media:media,quote:quote,valid:valid,definition:definition,checkpointOptions:checkpointOptions,maxKeywords:20,limit:100000};
 })();

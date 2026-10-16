@@ -21,7 +21,7 @@
     function current(s, id) { return s.actor === actor() && s.rows && s.rows.find(function (row) { return row.id === Number(id); }); }
     function endpoint(id, path) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + Number(id) + '/campaigns' + (path || ''); }
     var errors = { insufficient_bust_balance:'lcBalanceLow', campaign_conflict:'lcConflict', campaign_price_changed:'lcConflict',
-        invalid_control_days:'lcMinimumCheckpoint', pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
+        active_campaign_limit:'lcgLimitReached',last_active_keyword:'lcgLastKey',invalid_campaign_image:'lcwInvalidImage',invalid_control_days:'lcMinimumCheckpoint', pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
         slot_limit_reached:'lcSlotLimit', bridge_fixed_terms:'lcTermsFixed', campaign_budget_insufficient:'lcBudgetInsufficient', campaign_paused:'lcPausedError',
         campaign_screenshot_required:'lcScreenshotRequired', campaign_test_complete:'lcSessionClosed', bridge_requires_mutual_offer:'lcBridgeOffer',
         campaign_language_mismatch:'lcFilterMismatch', campaign_android_mismatch:'lcFilterMismatch' };
@@ -74,6 +74,7 @@
         return ProjectParameters.buildTarget(ref);
     }
     function campaign(c,s) {
+        if(c.definition)return LiveCampaignGrowthCard.build(c,s.pending.has(c.id));
         var busy=s.pending.has(c.id), cost=Number(c.overlimit_cost || 0), covered=cost ? Math.floor(c.pool_available/cost) : null;
         return '<article class="card lc-campaign" data-campaign-id="' + Number(c.id) + '">' +
             '<header class="lc-campaign__head"><div><strong>🤝 ' + esc(c.kind==='closed_bridge' ? tr('lcBridge') : c.name || tr('lcCampaign')) +
@@ -93,10 +94,11 @@
             parameters(c,s)+'</article>';
     }
     function content(s) {
-        var rows=s.rows || [], active=rows.filter(function(c){return c.status==='active';});
-        var visible=rows.filter(function(c){return c.kind==='closed_bridge'||c.status==='active';});
-        var paused=rows.filter(function(c){return c.kind!=='closed_bridge'&&c.status!=='active';});
-        return '<div class="lc-section-head"><h3>'+esc(tr('lcTitle'))+'</h3><small>'+esc(s.rows ? tr('lcActiveCount',{n:active.length}) : '—')+'</small>'+
+        var rows=s.rows || [], active=rows.filter(function(c){return c.status==='active'&&c.kind!=='closed_bridge';});var capacity=s.capacity||{limit:3};
+        var visible=rows.filter(function(c){return c.definition||c.kind==='closed_bridge'||c.status==='active';});
+        var paused=rows.filter(function(c){return !c.definition&&c.kind!=='closed_bridge'&&c.status!=='active';});
+        return '<div class="lc-section-head"><h3>'+esc(tr('lcTitle'))+'</h3><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
+            (s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
             button('create','+',null,false,'lc-create','aria-label="'+esc(tr('lcCreate'))+'"')+'</div>'+
             (s.error ? '<p class="lc-error" role="alert">'+esc(tr('lcError'))+' '+button('retry',tr('lcRetry'))+'</p>' : '')+
             (!s.rows ? '<p class="lc-note" role="status">'+esc(tr('lcLoading'))+'</p>' : visible.map(function(c){return campaign(c,s);}).join('')+
@@ -108,7 +110,7 @@
         var panel=document.querySelector('[data-live-campaigns="'+s.id+'"]');if(!panel)return;
         var focus=panel.contains(document.activeElement)?document.activeElement:null;
         var selector=focus && focus.dataset.projectParam ? '[data-campaign-id="'+focus.closest('[data-campaign-id]').dataset.campaignId+'"] [data-project-param="'+focus.dataset.projectParam+'"]' : null;
-        var pausedOpen=panel.querySelector('.lc-paused[open]');panel.innerHTML=content(s);
+        var keysOpen=Array.from(panel.querySelectorAll('[data-growth-keys][open]')).map(function(el){return el.dataset.growthKeys;});var pausedOpen=panel.querySelector('.lc-paused[open]');panel.innerHTML=content(s);keysOpen.forEach(function(id){var el=panel.querySelector('[data-growth-keys="'+id+'"]');if(el)el.open=true;});
         if(pausedOpen && panel.querySelector('.lc-paused'))panel.querySelector('.lc-paused').open=true;
         if(selector){var next=panel.querySelector(selector);if(next&&!next.disabled)next.focus({preventScroll:true});}
     }
@@ -118,7 +120,7 @@
         try {
             var data=await parse(await fetch(endpoint(s.id)+'?init_data='+encodeURIComponent(s.actor),{cache:'no-store',signal:controller.signal}));
             if(seq!==s.seq||s.actor!==actor())return;
-            s.rows=data.campaigns;s.error=false;s.loaded=true;s.readAt=Date.now();
+            s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;s.error=false;s.loaded=true;s.readAt=Date.now();
         } catch(error) {
             if(error.name==='AbortError'||seq!==s.seq)return;
             s.error=true;if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
@@ -133,13 +135,21 @@
             var response=await parse(await fetch(endpoint(s.id,'/'+c.id+'/'+path),{method:method,headers:{'Content-Type':'application/json'},
                 body:JSON.stringify(Object.assign({init_data:s.actor},data,financial?{request_key:request}:{}))}));
             if(s.actor!==actor())return false;
-            s.rows=s.rows.map(function(row){return row.id===c.id?response.campaign:row;});s.error=false;s.requests.delete(key);s.readAt=Date.now();
+            s.rows=s.rows.map(function(row){return row.id===c.id?Object.assign({},row,response.campaign):row;});s.error=false;s.requests.delete(key);s.readAt=Date.now();
             if(typeof visibilityStats!=='undefined'&&visibilityStats&&Number.isFinite(response.campaign.wallet_balance))visibilityStats.balance_bust=response.campaign.wallet_balance;
             window.dispatchEvent(new CustomEvent('live-campaigns:changed',{detail:{appId:s.id,campaignId:c.id}}));return true;
         } catch(error) {
             toastCode(error.message);if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
             if(error.status===409){s.pending.delete(c.id);await read(s);}return false;
         } finally {s.pending.delete(c.id);repaint(s);}
+    }
+    async function buyActive(s){
+        if(s.pending.has(0)||s.confirmingSlot||s.actor!==actor())return;var limit=s.capacity?s.capacity.limit:3,price=(limit-1)*1000;
+        s.confirmingSlot=true;var accepted=await confirmBuy(tr('lcgBuyConfirm',{slot:limit+1,price:price}));s.confirmingSlot=false;
+        if(!accepted||s.actor!==actor())return;
+        var key='active-slot:'+limit,request=s.requests.get(key);if(!request){request=uuid();s.requests.set(key,request);}s.pending.add(0);repaint(s);
+        try{var data=await parse(await fetch(endpoint(s.id,'/active-slot'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init_data:s.actor,request_key:request,expected_slot:limit+1,expected_price:price})}));if(s.actor!==actor())return;s.capacity=Object.assign({},s.capacity,data.capacity);s.requests.delete(key);if(typeof visibilityStats!=='undefined'&&visibilityStats)visibilityStats.balance_bust=data.capacity.wallet_balance;}
+        catch(error){toastCode(error.message);}finally{s.pending.delete(0);await read(s);}
     }
     async function confirmBuy(message) { return new Promise(function(resolve){if(window.tg&&window.tg.showConfirm)window.tg.showConfirm(message,resolve);else resolve(window.confirm(message));}); }
     function mount(card,p) {
@@ -150,8 +160,10 @@
             event.stopPropagation();var action=control.dataset.lcAction,c=current(s,control.dataset.campaign);
             if(action==='create')return window.LiveCampaignWizard.open(s.id,event);
             if(action==='retry')return read(s);
+            if(action==='buy-active')return buyActive(s);
+            if(action==='keyword'&&c)return mutate(s,c,'keywords/'+Number(control.dataset.keyword),'PATCH',{revision:c.revision,enabled:control.dataset.enabled==='true'});
             if(!c||s.pending.has(c.id))return;
-            if(action==='status')return window.LiveCampaignWallet.openStatus({get:function(){return current(s,c.id);},change:function(value){var row=current(s,c.id);return row&&mutate(s,row,'status','PATCH',{revision:row.revision,status:value});}},control);
+            if(action==='status')return window.LiveCampaignWallet.openStatus({get:function(){return current(s,c.id);},change:function(value){var row=current(s,c.id);return row&&mutate(s,row,row.definition?'growth-status':'status','PATCH',{revision:row.revision,status:value});}},control);
             if(action==='buy'){if(await confirmBuy(tr('lcBuyConfirm',{price:amount(c.next_slot_price)})))return mutate(s,c,'buy-slot','POST',{expected_slot:c.next_slot,expected_price:c.next_slot_price},true);return;}
             if(action==='pool')return window.LiveCampaignWallet.open({get:function(){return current(s,c.id);},change:function(data){var row=current(s,c.id);return row&&mutate(s,row,'pool','POST',data,true);}},control);
             if(action==='day') {
@@ -178,5 +190,6 @@
  }
  function reports(test){var values=test.live_bridge&&test.live_bridge.additional_reports||[];return values.length?'<details class="lc-report-tasks"><summary>'+esc(tr('lcReportsTask'))+'</summary><ul>'+values.map(function(v){return '<li>'+esc(v)+'</li>';}).join('')+'</ul></details>':'';}
 
- window.LiveCampaigns={build:build,mount:mount,toastCode:toastCode,marketBadges:marketBadges,normalActions:normalActions,reports:reports,isControl:function(test,day){return !!(test&&test.live_bridge&&(test.live_bridge.control_days||[]).includes(Number(day)));}};
+ window.addEventListener('live-campaigns:refresh',function(event){var s=state(event.detail.appId);read(s);});
+ window.LiveCampaigns={requestKey:uuid,build:build,mount:mount,toastCode:toastCode,marketBadges:marketBadges,normalActions:normalActions,reports:reports,isControl:function(test,day){return !!(test&&test.live_bridge&&(test.live_bridge.control_days||[]).includes(Number(day)));}};
 })();

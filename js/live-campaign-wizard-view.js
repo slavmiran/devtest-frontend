@@ -1,68 +1,44 @@
-/* Rendering only; controls reuse project tiles, chips and closed-test wizard buttons. */
-(function () {
-    'use strict';
-    function t(key, vars) { return window.t(key, vars || {}, window.lang === 'ru' ? 'ru' : 'en'); }
-    function esc(value) { return window.escapeHTML(String(value == null ? '' : value)); }
-    function num(value) { return Number(value).toLocaleString(window.lang === 'ru' ? 'ru-RU' : 'en-US', {maximumFractionDigits:1}); }
-    function hint(key, cls) { return '<p class="gtw-helper-text '+(cls || '')+'">'+esc(t(key))+'</p>'; }
-    function chip(field, value, label, selected, disabled) {
-        return '<button type="button" class="meta-chip lcw-chip '+(selected?'accent-blue':'')+'" data-lcw-field="'+field+'" data-value="'+value+'" aria-pressed="'+!!selected+'"'+(disabled?' disabled':'')+'>'+esc(label)+'</button>';
-    }
-    function counter(field, value, label, min, max, step) {
-        return '<div class="lcw-counter" role="group" aria-label="'+esc(label)+'">'+[-1,1].map(function (direction) {
-            var next = Math.min(max, Math.max(min, value + direction * step));
-            return '<button type="button" class="meta-chip lcw-chip" data-lcw-field="'+field+'" data-lcw-focus="'+field+':'+direction+'" data-value="'+next+'" aria-label="'+esc(t(direction<0?'lcwDecrease':'lcwIncrease',{name:label}))+'"'+(next===value?' disabled':'')+'>'+ (direction<0?'−':'+') +'</button>';
-        }).join('<strong>'+esc(num(value))+'</strong>')+'</div>';
-    }
-    function toggle(field, label, on, disabled) {
-        return '<button type="button" class="pc-project-param lcw-toggle" role="switch" aria-checked="'+!!on+'" data-lcw-field="'+field+'" data-lcw-focus="'+field+'" data-value="'+!on+'"'+(disabled?' disabled':'')+'><span>'+esc(t(label))+'</span><span class="meta-chip '+(on?'accent-blue':'')+'">'+esc(t(on?'pcParamsOn':'pcParamsOff'))+'</span></button>';
-    }
-    function strategies(d) {
-        var known=d.baseline.available, rate=d.baseline.perDay;
-        var baseline='<section class="lcw-baseline"><span>'+esc(t('lcwBaseline'))+'</span><strong>'+esc(t(known?'lcwBaselineValue':'lcwNoBaseline',{n:num(rate)}))+'</strong>'+hint('lcwBaselineHint')+(!known || rate===0?hint('lcwColdStart'):'')+'</section>';
-        var cards=[['aso','lcwAso','lcwAsoText','↗'],['retention','lcwRetention','lcwRetentionText','◷'],['deep','lcwDeep','lcwDeepText','◎'],['custom','lcwCustom','lcwCustomText','⚙']].map(function(row) {
-            var selected=d.strategy===row[0];
-            return '<button type="button" class="pc-project-param lcw-strategy'+(selected?' is-selected':'')+'" data-lcw-strategy="'+row[0]+'" aria-pressed="'+selected+'" aria-label="'+esc(t('lcwSelect',{name:t(row[1])}))+'">'+
-                '<span class="lcw-strategy-icon" aria-hidden="true">'+row[3]+'</span><span class="lcw-strategy-copy"><span class="lcw-strategy-heading"><strong>'+esc(t(row[1]))+'</strong>'+(row[0]==='aso'?'<span class="meta-chip accent-blue">'+esc(t('lcwRecommended'))+'</span>':'')+'</span><span class="lcw-strategy-description">'+esc(t(row[2]))+'</span>'+(row[0]==='aso'?'<small>'+esc(t(known && rate>0?'lcwAsoRate':'lcwStartRate'))+'</small>':'')+'</span><span class="lcw-selected" aria-hidden="true">'+(selected?'✓':'')+'</span></button>';
-        }).join('');
-        return hint('lcwIntro')+baseline+'<div class="lcw-strategies">'+cards+'</div>'+hint('lcwSmooth')+
-            (d.strategy?'<div class="lcw-pace-preview">'+esc(t('lcwRatePreview',{extra:num(d.pacing.dailyInstalls),total:known?num(rate+d.pacing.dailyInstalls):'—'}))+hint('lcwRounding')+'</div>':'');
-    }
-    function retention(d) {
-        return '<section class="lcw-panel"><h3>'+esc(t('lcwRetentionLabel'))+'</h3><div class="lcw-chips">'+[7,14,30].map(function(n){return chip('retention',n,t('lcwDays',{n:n}),d.retention.days===n);}).join('')+'</div></section>'+
-            '<section class="lcw-panel"><h3>'+esc(t('lcwCheckpoints'))+'</h3><div class="lcw-chips">'+LiveCampaignDraft.checkpointOptions(d.retention.days).map(function(n){return chip('checkpoint',n,t(n===1?'lcwD1':'lcwDay',{n:n}),d.retention.checkpoints.includes(n),n===1);}).join('')+'</div>'+hint('lcwCheckpointHint')+'</section>';
-    }
-    function scenarios(d) {
-        return '<div class="lcw-panels">'+toggle('activity','lcwActivity',d.activity.enabled)+toggle('screenshot','lcwScreenshot',d.activity.screenshot,!d.activity.enabled)+toggle('reviews','lcwReviews',d.reviews.enabled)+'</div>'+hint('requestReviewsHint')+hint('lcwSoft')+
-            (d.reviews.enabled?'<span class="meta-chip accent-blue">'+esc(t('lcwReviewLater'))+'</span>':'');
-    }
-    function budget(d) {
-        var q=LiveCampaignDraft.quote(d);
-        return '<section class="lcw-panel lcw-source"><strong>'+esc(t('lcwDaily'))+'</strong>'+counter('daily',d.pacing.dailyInstalls,t('lcwDaily'),1,500,1)+'</section>'+
-            toggle('ramp','lcwRamp',d.pacing.rampUp)+hint('lcwPaceHint')+toggle('wallet','lcwWallet',d.billing.allowWalletFallback)+hint('lcwWalletHint')+
-            '<section class="lcw-panel lcw-plan"><h3>'+esc(t('lcwSummary'))+'</h3><strong>'+esc(t('lcwInstalls',{n:num(q.installs)}))+'</strong><p>'+esc(t('lcwTotal',{n:num(q.totalCommitment)}))+'</p><p>'+esc(t('lcwCostDuration',{acquisition:q.acquisitionDays,retention:d.retention.days}))+'</p>'+hint('lcwEstimateHint')+'<p class="gtw-helper-text">'+esc(t('lcwFinish',{n:q.completionDays}))+'</p></section>'+
-            '<p class="lcw-stage-notice" id="lcw-launch-hint">'+esc(t('lcwLaunchLater'))+'</p>';
-    }
-    function body(d, step, context) {
-        return step===2?LiveCampaignSourcesView.body(d,context):[null,strategies,null,retention,scenarios,budget][step](d);
-    }
-    function summary(d,step){
-        var q=LiveCampaignDraft.quote(d),c=LiveCampaignDraft.counts(d);
-        if(step===1)return d.strategy?t({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep',custom:'lcwCustom'}[d.strategy]):t('lcwChoose');
-        if(step===2)return t('lcwSourceSummary',{n:num(q.installs),link:num(q.channels[0].percent),web:num(q.channels[1].percent),keys:num(q.channels[2].percent)});
-        if(step===3)return t('lcwRetentionSummary',{n:d.retention.days,days:d.retention.checkpoints.join('/')});
-        if(step===4)return t('lcwActivitySummary',{scenario:t(d.activity.enabled?'pcParamsOn':'pcParamsOff'),reviews:t(d.reviews.enabled?'pcParamsOn':'pcParamsOff')});
-        return t('lcwPaceSummary',{n:num(d.pacing.dailyInstalls),days:q.acquisitionDays});
-    }
-    function header(d,step,unlocked){
-        return '<button type="button" class="lcw-heading" data-lcw-action="outline" aria-expanded="false" aria-controls="lcw-outline"><span id="lcw-title">'+esc(t('lcwStep',{n:step}))+' · '+esc(t('lcwStep'+step))+' ▾</span><span class="gtw-progress-bar" aria-hidden="true">'+[1,2,3,4,5].map(function(i){return '<i class="gtw-progress-step'+(i<=step?' active':'')+'"></i>';}).join('')+'</span></button>'+
-            '<nav class="lcw-outline" id="lcw-outline" aria-label="'+esc(t('lcwContents'))+'" hidden>'+[1,2,3,4,5].map(function(i){return '<button type="button" data-lcw-action="step" data-step="'+i+'"'+(i>unlocked?' disabled':'')+(i===step?' aria-current="step"':'')+'><b>'+i+'</b><span><strong>'+esc(t('lcwStep'+i))+'</strong><small>'+esc(i<=unlocked?summary(d,i):t('lcwStepLocked'))+'</small></span></button>';}).join('')+'</nav>';
-    }
-    function footer(d,step,expanded){
-        var q=LiveCampaignDraft.quote(d),short=function(value){return Number(value).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{notation:value>=10000?'compact':'standard',maximumFractionDigits:1});};
-        return '<button type="button" class="lcw-estimate-line" data-lcw-action="estimate" aria-expanded="'+!!expanded+'" aria-controls="lcw-cost-details" aria-label="'+esc(t('lcwCostDetails'))+'"><span>⚡ <b data-lcw-installs>'+esc(short(q.installs))+'</b> '+esc(t('lcwInstallUnit'))+' · ~<b data-lcw-daily>'+esc(short(q.dailyCommitment))+'</b> '+esc(t('lcwBustDay'))+' · '+esc(t('lcwTotalLabel'))+' <b data-lcw-total>'+esc(short(q.totalCommitment))+'</b> $BUST</span><span class="lcw-details-label">'+esc(t('lcwDetails'))+' '+(expanded?'▾':'▴')+'</span></button>'+
-            '<section class="lcw-cost-details" id="lcw-cost-details"'+(expanded?'':' hidden')+'><h3>'+esc(t('lcwCostDetails'))+'</h3><p>'+esc(t('lcwCostCheckpoint',{days:d.retention.checkpoints.length-1,unit:q.checkpointUnit,price:num(q.perInstall)}))+'</p><p>'+esc(t('lcwCostDuration',{acquisition:q.acquisitionDays,retention:d.retention.days}))+'</p><p>'+esc(t('lcwTotal',{n:num(q.totalCommitment)}))+'</p><small>'+esc(t('lcwEstimateHint'))+'</small></section>'+
-            '<div class="lcw-nav"><button type="button" class="gtw-continue-btn" data-lcw-action="next"'+(!LiveCampaignDraft.valid(d,step) || step===5?' disabled':'')+(step===5?' aria-describedby="lcw-launch-hint"':'')+'>'+esc(t(step===5?'lcwLaunch':'lcwNext'))+'</button></div>';
-    }
-    window.LiveCampaignWizardView={body:body,footer:footer,header:header,summary:summary,text:t,number:num};
+/* Shared fullscreen controls: entry + four focused campaign setup steps. */
+(function(){
+ 'use strict';
+ function t(k,v){return window.t(k,v||{},window.lang==='ru'?'ru':'en');}
+ function e(v){return window.escapeHTML(String(v==null?'':v));}
+ function n(v){return Number(v).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{maximumFractionDigits:1});}
+ function hint(k){return '<p class="gtw-helper-text">'+e(t(k))+'</p>';}
+ function chip(f,v,label,on,disabled){return '<button type="button" class="meta-chip lcw-chip '+(on?'accent-blue':'')+'" data-lcw-field="'+f+'" data-value="'+v+'" aria-pressed="'+!!on+'"'+(disabled?' disabled':'')+'>'+e(label)+'</button>';}
+ function counter(f,v,min,max){
+  return '<div class="lcw-counter"><button type="button" class="meta-chip lcw-chip" data-lcw-field="'+f+'" data-lcw-focus="'+f+':minus" data-value="'+(v-1)+'"'+(v<=min?' disabled':'')+'>−</button><input class="gtw-input lcw-quantity" type="number" inputmode="numeric" min="'+min+'" max="'+max+'" value="'+v+'" data-lcw-input="'+f+'" aria-label="'+e(t({daily:'lcwDaily',period:'lcwDuration',target:'lcgTarget',retention:'lcwRetentionLabel'}[f]))+'"><button type="button" class="meta-chip lcw-chip" data-lcw-field="'+f+'" data-lcw-focus="'+f+':plus" data-value="'+(v+1)+'"'+(v>=max?' disabled':'')+'>+</button></div>';
+ }
+ function toggle(f,k,on,disabled){return '<button type="button" class="pc-project-param lcw-toggle" role="switch" aria-checked="'+!!on+'" data-lcw-field="'+f+'" data-lcw-focus="'+f+'" data-value="'+!on+'"'+(disabled?' disabled':'')+'><span>'+e(t(k))+'</span><span class="meta-chip '+(on?'accent-blue':'')+'">'+e(t(on?'pcParamsOn':'pcParamsOff'))+'</span></button>';}
+ function retention(d){
+  return '<section class="lcw-panel"><div class="lcw-source"><h3>'+e(t('lcwRetentionLabel'))+'</h3>'+counter('retention',d.retention.days,7,35)+'</div><div class="lcw-chips">'+[7,14,21,30,35].map(function(day){return chip('retention',day,t('lcwDays',{n:day}),day===d.retention.days);}).join('')+'</div></section><section class="lcw-panel"><h3>'+e(t('lcwCheckpoints'))+'</h3><div class="lcw-chips">'+LiveCampaignDraft.checkpointOptions(d.retention.days).map(function(day){return chip('checkpoint',day,t(day===1?'lcwD1':'lcwDay',{n:day}),d.retention.checkpoints.includes(day),day===1);}).join('')+'</div>'+hint('lcwCheckpointHint')+'</section>';
+ }
+ function scenarios(d){
+  return toggle('activity','lcwActivity',d.activity.enabled)+(d.activity.enabled?'<label class="gtw-label" for="lcw-instructions">'+e(t('lcgScenarioText'))+'</label><div class="gtw-input-wrapper gtw-input-wrapper--multiline"><textarea id="lcw-instructions" class="gtw-textarea" data-lcw-input="instructions" maxlength="5000">'+e(d.activity.instructions)+'</textarea></div>':'')+toggle('screenshot','lcwScreenshot',d.activity.screenshot,!d.activity.enabled)+toggle('reviews','lcwReviews',d.reviews.enabled)+hint('requestReviewsHint')+hint('lcwSoft');
+ }
+ function budget(d,c){
+  var v=d.volume,q=LiveCampaignDraft.quote(d),safe=d.baseline.available?Math.max(1,Math.round(d.baseline.perDay*.3)):1;
+  return '<label class="gtw-label" for="lcw-campaign-name">'+e(t('lcgCampaignName'))+'</label><div class="gtw-input-wrapper"><input class="gtw-input" id="lcw-campaign-name" maxlength="80" data-lcw-input="name" value="'+e(d.name)+'" placeholder="'+e(t('lcgOptional'))+'"></div>'+toggle('paced','lcgDailyLimit',v.paced)+
+   (v.paced?'<section class="lcw-panel"><div class="lcw-source"><strong>'+e(t('lcwDaily'))+'</strong>'+counter('daily',v.dailyInstalls,1,500)+'</div><p class="gtw-helper-text">'+e(t('lcgCorridor',{n:safe}))+'</p><div class="lcw-source"><strong>'+e(t('lcwDuration'))+'</strong>'+counter('period',v.acquisitionDays,1,90)+'</div></section>':'<section class="lcw-panel lcw-source"><strong>'+e(t('lcgTarget'))+'</strong>'+counter('target',v.totalInstalls,1,100000)+'</section>'+hint('lcgUnpacedHint'))+
+   '<section class="lcw-panel lcw-plan"><h3>'+e(t('lcwSummary'))+'</h3><strong>'+e(t('lcwInstalls',{n:n(q.installs)}))+'</strong><p>'+e(t('lcwTotal',{n:n(q.totalCommitment)}))+'</p>'+hint('lcgOnlyCheckpoints')+'</section>'+
+   (c.capacity&&c.capacity.active>=c.capacity.limit?hint('lcgSavePaused'):'')+'<p class="lcw-input-error" role="status">'+e(c.saveError||'')+'</p>';
+ }
+ function body(d,step,c){return step===0?LiveCampaignEntry.body(d,c):[null,LiveCampaignSourcesView.body,retention,scenarios,budget][step](d,c);}
+ function summary(d,step){
+  if(step===1)return t({link:'lcwLink',web:'lcwWeb',keywords:'lcwKeywords'}[d.source])+(d.source==='keywords'?' · '+d.keywords.length:'');
+  if(step===2)return t('lcwRetentionSummary',{n:d.retention.days,days:d.retention.checkpoints.join('/')});
+  if(step===3)return t('lcwActivitySummary',{scenario:t(d.activity.enabled?'pcParamsOn':'pcParamsOff'),reviews:t(d.reviews.enabled?'pcParamsOn':'pcParamsOff')});
+  return d.volume.paced?t('lcwPaceSummary',{n:d.volume.dailyInstalls,days:d.volume.acquisitionDays}):t('lcwInstalls',{n:d.volume.totalInstalls});
+ }
+ function header(d,step,unlocked){
+  if(step===0)return '<h1 class="gtw-header-title" id="lcw-title">'+e(t('lcwTitle'))+'</h1>';
+  return '<button type="button" class="lcw-heading" data-lcw-action="outline" aria-expanded="false" aria-controls="lcw-outline"><span id="lcw-title">'+e(t('lcwStep',{n:step}))+' · '+e(t('lcwStep'+step))+' ▾</span><span class="gtw-progress-bar" aria-hidden="true">'+[1,2,3,4].map(function(i){return '<i class="gtw-progress-step'+(i<=step?' active':'')+'"></i>';}).join('')+'</span></button><nav id="lcw-outline" class="lcw-outline" hidden>'+[1,2,3,4].map(function(i){return '<button type="button" data-lcw-action="step" data-step="'+i+'"'+(i>unlocked?' disabled':'')+(i===step?' aria-current="step"':'')+'><b>'+i+'</b><span><strong>'+e(t('lcwStep'+i))+'</strong><small>'+e(i<=unlocked?summary(d,i):t('lcwStepLocked'))+'</small></span></button>';}).join('')+'<button type="button" data-lcw-action="entry">↺ '+e(t('lcgChangeTemplate'))+'</button></nav>';
+ }
+ function footer(d,step,expanded,c){
+  if(step===0)return '';
+  var q=LiveCampaignDraft.quote(d),short=function(x){return Number(x).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{notation:x>=10000?'compact':'standard',maximumFractionDigits:1});};
+  var active=!!(c.capacity&&c.capacity.active<c.capacity.limit);
+  return '<button type="button" class="lcw-estimate-line" data-lcw-action="estimate" aria-expanded="'+!!expanded+'" aria-controls="lcw-cost-details"><span>⚡ <b data-lcw-installs>'+short(q.installs)+'</b> '+e(t('lcwInstallUnit'))+' · '+(q.dailyCommitment==null?e(t('lcgByReports')):'~<b data-lcw-daily>'+short(q.dailyCommitment)+'</b> '+e(t('lcwBustDay')))+' · '+e(t('lcwTotalLabel'))+' <b data-lcw-total>'+short(q.totalCommitment)+'</b> $BUST</span><span class="lcw-details-label">'+e(t('lcwDetails'))+' '+(expanded?'▾':'▴')+'</span></button><section class="lcw-cost-details" id="lcw-cost-details"'+(expanded?'':' hidden')+'><p>'+e(t('lcwCostCheckpoint',{days:d.retention.checkpoints.length-1,unit:10,price:q.perInstall}))+'</p><p>'+e(t('lcwCostDuration',{acquisition:q.acquisitionDays==null?'∞':q.acquisitionDays,retention:d.retention.days}))+'</p><small>'+e(t('lcgOnlyCheckpoints'))+'</small></section><div class="lcw-nav"><button type="button" class="gtw-continue-btn" data-lcw-action="'+(step===4?'save':'next')+'"'+(!LiveCampaignDraft.valid(d,step)||c.saving?' disabled':'')+'>'+e(t(c.saving?'lcgSaving':step===4?(active?'lcwLaunch':'lcgCreatePaused'):'lcwNext'))+'</button></div>';
+ }
+ window.LiveCampaignWizardView={body:body,header:header,summary:summary,footer:footer,text:t,number:n};
 })();

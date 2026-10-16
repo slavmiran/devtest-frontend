@@ -2,8 +2,8 @@
 (function () {
     'use strict';
     var ru = {
-        lcwTitle:'Новая кампания', lcwStep:'Шаг {n} из 5', lcwNext:'Продолжить →', lcwBack:'Назад', lcwClose:'Закрыть мастер', lcwLaunch:'Запустить кампанию',
-        lcwStep1:'Стратегия', lcwStep2:'Источники трафика', lcwStep3:'Удержание и КД', lcwStep4:'Сценарий и отзывы', lcwStep5:'Темп и запуск',
+        lcwTitle:'Новая кампания', lcwStep:'Шаг {n} из 4', lcwNext:'Продолжить →', lcwBack:'Назад', lcwClose:'Закрыть мастер', lcwLaunch:'Запустить кампанию',
+        lcwStep1:'Источник трафика', lcwStep2:'Удержание и КД', lcwStep3:'Сценарий и отзывы', lcwStep4:'Темп и объём',
         lcwIntro:'Задайте направление. Пресет заполнит следующие шаги — настройки можно изменить.',
         lcwBaseline:'Фоновый темп платформы', lcwBaselineValue:'{n} установок / день', lcwBaselineHint:'Среднее за 7 дней внутри DevTestHub; это не органический трафик Google Play.',
         lcwNoBaseline:'Пока нет данных о фоне', lcwColdStart:'Стартуем с 1 установки в день. Процентный прирост без фоновых данных не рассчитывается.',
@@ -14,9 +14,9 @@
         lcwCustom:'Свой сценарий', lcwCustomText:'Соберите параметры вручную. Начнём с прямой ссылки, 7 дней удержания и 1 установки в день.',
         lcwChosen:'Выбрано', lcwRatePreview:'Кампания: +{extra}/день · вместе с фоном ≈{total}/день', lcwRounding:'Темп округлён до целых установок, минимум 1 в день.', lcwStartRate:'Старт: 1 установка / день',
         lcwLink:'Прямой переход', lcwWeb:'Веб-поиск (браузер)', lcwKeywords:'Ключи Google Play', lcwSourcesHint:'Укажите точное количество установок по каждому источнику.',
-         lcwChannelVolume:'≈{count} уст. · {percent}%', lcwNoSources:'Включите хотя бы один источник трафика.', lcwConcentrated:'Один источник занимает 80% или больше. Проверьте распределение трафика.',
+         lcwChannelVolume:'≈{count} уст. · {percent}%', lcwNoSources:'Включите хотя бы один источник трафика.', lcwConcentrated:'Доля одного источника в проекте ≥80%. Выберите кампанию другого типа, чтобы выровнять баланс.',
         lcwDays:'{n} дней', lcwRetentionLabel:'Срок удержания', lcwCheckpoints:'Контрольные дни со скриншотом', lcwD1:'День 1 · бесплатно', lcwDay:'День {n}',
-        lcwCheckpointHint:'День 1 обязателен; оставьте хотя бы один дополнительный КД. Ориентир оценки — 10 $BUST за КД на установку.', lcwMinimum:'Оставьте хотя бы один КД помимо дня 1.',
+        lcwCheckpointHint:'День 1 бесплатно. Каждый следующий КД — 10 $BUST по подтверждённому скриншоту. Оставьте хотя бы один дополнительный КД.', lcwMinimum:'Оставьте хотя бы один КД помимо дня 1.',
         lcwActivity:'Целевое действие по сценарию', lcwScreenshot:'Скриншот результата', lcwReviews:'Запрос отзыва Google Play', lcwSoft:'Мягкий запрос после 7 дней; отзыв добровольный, оценку выбирает тестер. Отзыв не является платным действием.',
         lcwDaily:'Установок в день', lcwDuration:'Период набора установок', lcwRamp:'Плавное распределение потока', lcwRampHint:'Распределить набор без резких скачков активности.',
         lcwWallet:'Разрешить основной баланс', lcwWalletHint:'Использовать основной баланс, если средств проекта не хватит.',
@@ -26,8 +26,8 @@
         lcwReviewLater:'Задержка: 7 дней · мягкий запрос', lcwSelect:'Выбрать {name}', lcwDecrease:'Уменьшить: {name}', lcwIncrease:'Увеличить: {name}'
     };
     var en = {
-        lcwTitle:'New campaign', lcwStep:'Step {n} of 5', lcwNext:'Continue →', lcwBack:'Back', lcwClose:'Close wizard', lcwLaunch:'Launch campaign',
-        lcwStep1:'Strategy', lcwStep2:'Traffic sources', lcwStep3:'Retention & checkpoints', lcwStep4:'Scenario & reviews', lcwStep5:'Pace & launch',
+        lcwTitle:'New campaign', lcwStep:'Step {n} of 4', lcwNext:'Continue →', lcwBack:'Back', lcwClose:'Close wizard', lcwLaunch:'Launch campaign',
+        lcwStep1:'Traffic source', lcwStep2:'Retention & checkpoints', lcwStep3:'Scenario & reviews', lcwStep4:'Pace & volume',
         lcwIntro:'Choose a direction. The preset fills the next steps; you can adjust it later.',
         lcwBaseline:'Platform baseline', lcwBaselineValue:'{n} installs / day', lcwBaselineHint:'7-day average within DevTestHub, separate from Google Play organic traffic.',
         lcwNoBaseline:'No baseline data yet', lcwColdStart:'Start with 1 install per day. Percentage growth needs baseline data.',
@@ -50,6 +50,7 @@
         lcwReviewLater:'Delay: 7 days · gentle prompt', lcwSelect:'Select {name}', lcwDecrease:'Decrease: {name}', lcwIncrease:'Increase: {name}'
     };
     Object.assign(ru,{
+        lcgDefaultScenario:'Откройте приложение, выполните основное действие и прикрепите скриншот результата.',
         lcwContents:'Шаги кампании',lcwStepLocked:'Откроется после предыдущего шага',lcwSourceSummary:'{n} уст. · ссылка {link}% / веб {web}% / ключи {keys}%',lcwRetentionSummary:'{n} дней · КД {days}',lcwActivitySummary:'Сценарий: {scenario} · отзывы: {reviews}',lcwPaceSummary:'{n} уст./день · набор {days} дн.',lcwPaceHint:'Количество установок задано в источниках. Темп меняет длительность набора, сохраняя объём.',
         lcwDetails:'Детали',lcwTotalLabel:'Всего:',lcwInstallUnit:'уст.',lcwBustDay:'$BUST/день',lcwCostDetails:'Детализация сметы',lcwCostCheckpoint:'КД: {days} × {unit} $BUST = {price} $BUST на установку',lcwCostDuration:'Набор: {acquisition} дн. · удержание: {retention} дн.',
         lcwBalance:'Баланс источников проекта',lcwCurrentMix:'Сейчас в проекте: {n} уст.',lcwNoSourceBase:'Статистика источников ещё недоступна. Показан баланс кампании.',lcwLoadingSources:'Загружаем текущий баланс источников…',lcwAfter:'После кампании',lcwCampaignMix:'В кампании',lcwUnknown:'Не определено',lcwBalanced:'Источники распределены без выраженного перекоса.',lcwUncertain:'Часть установок без источника. Оценка баланса пока неполная.',
@@ -59,6 +60,7 @@
         lcwManualKey:'Свой ключ',lcwKeyPlaceholder:'Например: семейный бюджет',lcwAdd:'Добавить',lcwRemoveKey:'Удалить ключ «{name}»',lcwKeywordInstalls:'Установок по ключу «{name}»',lcwCheckPlay:'Проверить в Google Play ↗',lcwPosition:'Позиция / ориентир в выдаче',lcwPositionHint:'Например: 12 или «синяя иконка»',lcwKeyInvalid:'Введите уникальный ключ до 80 символов; максимум 20 ключей.',lcwInvalidCount:'Введите целое число от 0 до 100 000; для ключа — минимум 1.',lcwRetry:'Повторить загрузку'
     });
     Object.assign(en,{
+        lcgDefaultScenario:'Open the app, complete its main action and attach a screenshot of the result.',
         lcwContents:'Campaign steps',lcwStepLocked:'Complete the previous step first',lcwSourceSummary:'{n} installs · link {link}% / web {web}% / keys {keys}%',lcwRetentionSummary:'{n} days · checkpoints {days}',lcwActivitySummary:'Scenario: {scenario} · reviews: {reviews}',lcwPaceSummary:'{n} installs/day · acquisition {days} days',lcwPaceHint:'Install counts come from traffic sources. Changing pace adjusts acquisition duration while preserving volume.',
         lcwDetails:'Details',lcwTotalLabel:'Total:',lcwInstallUnit:'inst.',lcwBustDay:'$BUST/day',lcwCostDetails:'Cost breakdown',lcwCostCheckpoint:'Checkpoints: {days} × {unit} $BUST = {price} $BUST per install',lcwCostDuration:'Acquisition: {acquisition} days · retention: {retention} days',
         lcwBalance:'Project traffic balance',lcwCurrentMix:'Currently in project: {n} installs',lcwNoSourceBase:'Source statistics are not available yet. Showing the campaign mix.',lcwLoadingSources:'Loading the current traffic mix…',lcwAfter:'After campaign',lcwCampaignMix:'In this campaign',lcwUnknown:'Unattributed',lcwBalanced:'Sources are distributed without strong concentration.',lcwUncertain:'Some installs are unattributed. The balance assessment is incomplete.',
@@ -66,6 +68,22 @@
         lcwReference:'Search results reference',lcwAttachImage:'Attach results screenshot',lcwReplaceImage:'Replace screenshot',lcwRemoveImage:'Remove screenshot',lcwImageHint:'PNG, JPG or WebP · up to 5 MB',lcwInvalidImage:'Use a valid PNG, JPG or WebP up to 5 MB and 24 megapixels.',
         lcwPickKeys:'+ Find and add keywords',lcwPassportHelp:'From Google Play passport',lcwFullDescription:'Full description',lcwIdeas:'Ideas from the listing',lcwIdeasHint:'Words and phrases from the saved listing. Check that your app appears for each selected query.',lcwNoPassport:'The passport has not been loaded. Add a keyword manually or use ideas from the project title.',lcwLoadingPassport:'Loading the saved app listing…',
         lcwManualKey:'Custom keyword',lcwKeyPlaceholder:'For example: family budget',lcwAdd:'Add',lcwRemoveKey:'Remove keyword “{name}”',lcwKeywordInstalls:'Installs for “{name}”',lcwCheckPlay:'Check in Google Play ↗',lcwPosition:'Position / search results reference',lcwPositionHint:'For example: 12 or “blue icon”',lcwKeyInvalid:'Enter a unique keyword up to 80 characters; at most 20 keywords.',lcwInvalidCount:'Enter a whole number from 0 to 100,000; keywords need at least 1.',lcwRetry:'Retry loading'
+    });
+    Object.assign(ru,{
+        lcgDefaultScenario:'Откройте приложение, выполните основное действие и прикрепите скриншот результата.',
+        lcgManual:'Настроить кампанию вручную',lcgTemplates:'Быстрый старт',lcgTemplatePause:'Шаблон сразу добавляется в текущие кампании на паузе — параметры можно проверить перед включением.',lcgChangeTemplate:'Сменить шаблон',lcgRetentionText:'Удержание 30 дней · прямой переход · поддерживающий темп.',
+        lcgInstallSpeed:'Установки',lcgReviewSpeed:'Отзывы',lcgHold:'Удержание',lcgDayUnit:'день',lcgDaysUnit:'дн.',lcgPhotoActivity:'Активность: скрин {age} · в графике КД: {percent}%',lcgNoPhoto:'нет данных',lcgMinutes:'{n} мин назад',lcgHours:'{n} ч назад',lcgDaysAgo:'{n} дн. назад',
+        lcgOpenBrowser:'🌐 Скопировать запрос и открыть поиск',lcgNeedKey:'Добавьте хотя бы один ключ в пул кампании.',lcgScenarioText:'Инструкция к действию',lcgCampaignName:'Название кампании',lcgOptional:'Необязательно',lcgDailyLimit:'Ограничить суточный темп',lcgTarget:'Всего установок',lcgUnpacedHint:'Тестеры выполняют задания по мере поступления, без суточного лимита.',lcgUnpaced:'Без суточного лимита',lcgCorridor:'Ориентир +30% к текущему темпу: до {n} уст./день. Это рекомендация, не гарантия отсутствия санкций.',lcgOnlyCheckpoints:'Оплачиваются только контрольные дни по 10 $BUST за подтверждённый скриншот. День 1 бесплатно; платы за установку и отзыв нет.',lcgByReports:'по отчётам',
+        lcgSavePaused:'Лимит активных кампаний достигнут. Кампания будет сохранена на паузе.',lcgCreatePaused:'Создать на паузе',lcgSaving:'Сохраняем…',lcgCreatedPaused:'Кампания добавлена на паузе',lcgCreated:'Кампания создана',lcgSaveFailed:'Не удалось сохранить кампанию. Повторите попытку.',lcgLimitReached:'Достигнут лимит активных кампаний. Приостановите другую или купите слот.',lcgLastKey:'В активной кампании должен остаться хотя бы один включённый ключ.',
+        lcgActiveCapacity:'Активно: {n} / {limit}',lcgExpandSlots:'+ Слот · {price} $BUST',lcgBuyConfirm:'Купить {slot}-й слот активной кампании навсегда для проекта за {price} $BUST?',lcgProgress:'Установки',lcgCheckpointDays:'КД: {days}',lcgPerInstall:'План КД: {n} $BUST / тестер',lcgCampaignKeys:'Ключевые слова кампании'
+    });
+    Object.assign(en,{
+        lcgDefaultScenario:'Open the app, complete its main action and attach a screenshot of the result.',
+        lcgManual:'Set up a campaign manually',lcgTemplates:'Quick start',lcgTemplatePause:'A template is added to current campaigns as paused. Review its settings before activation.',lcgChangeTemplate:'Change template',lcgRetentionText:'30-day retention · direct link · supporting pace.',
+        lcgInstallSpeed:'Installs',lcgReviewSpeed:'Reviews',lcgHold:'Retention',lcgDayUnit:'day',lcgDaysUnit:'days',lcgPhotoActivity:'Activity: screenshot {age} · checkpoints on schedule: {percent}%',lcgNoPhoto:'no data',lcgMinutes:'{n} min ago',lcgHours:'{n} h ago',lcgDaysAgo:'{n} days ago',
+        lcgOpenBrowser:'🌐 Copy query and open search',lcgNeedKey:'Add at least one keyword to the campaign pool.',lcgScenarioText:'Action instructions',lcgCampaignName:'Campaign name',lcgOptional:'Optional',lcgDailyLimit:'Limit daily pace',lcgTarget:'Total installs',lcgUnpacedHint:'Testers complete tasks as they arrive, without a daily cap.',lcgUnpaced:'No daily cap',lcgCorridor:'Suggested +30% to current pace: up to {n} installs/day. This is guidance, not protection from sanctions.',lcgOnlyCheckpoints:'Only checkpoints are charged: 10 $BUST per verified screenshot. Day 1 is free; installs and reviews have no separate fee.',lcgByReports:'per report',
+        lcgSavePaused:'The active campaign limit has been reached. This campaign will be saved as paused.',lcgCreatePaused:'Create as paused',lcgSaving:'Saving…',lcgCreatedPaused:'Campaign added as paused',lcgCreated:'Campaign created',lcgSaveFailed:'Could not save the campaign. Please retry.',lcgLimitReached:'Active campaign limit reached. Pause another campaign or buy a slot.',lcgLastKey:'An active campaign needs at least one enabled keyword.',
+        lcgActiveCapacity:'Active: {n} / {limit}',lcgExpandSlots:'+ Slot · {price} $BUST',lcgBuyConfirm:'Buy permanent active campaign slot {slot} for this project for {price} $BUST?',lcgProgress:'Installs',lcgCheckpointDays:'Checkpoints: {days}',lcgPerInstall:'Checkpoint plan: {n} $BUST / tester',lcgCampaignKeys:'Campaign keywords'
     });
     Object.assign(window.I18NRU, ru); Object.assign(window.I18NEN, en);
 })();

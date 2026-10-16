@@ -14,7 +14,11 @@
                 remove(key);var row={url:url,name:file.name,type:file.type,size:file.size};entries.set(key,{url:url,file:file});return row;
             }catch(error){URL.revokeObjectURL(url);if(pending.get(key)===token)pending.delete(key);throw error;}
         }
-        return {attach:attach,remove:remove,clear:clear};
+        function serialize(key,meta){
+            var item=entries.get(key);if(!item)throw new Error('lcwInvalidImage');
+            return new Promise(function(resolve,reject){var reader=new FileReader();reader.onerror=reject;reader.onload=function(){resolve({name:meta.name,mime:item.file.type,data_base64:String(reader.result).split(',')[1]});};reader.readAsDataURL(item.file);});
+        }
+        return {attach:attach,remove:remove,clear:clear,serialize:serialize};
     }
     window.LiveCampaignWizardMedia={create:create};
 })();
