@@ -6514,9 +6514,9 @@ function renderKarmaHowList() {
             title: label('karmaHowPlatformTitle', '🟢 От Платформы'),
             rows: [
                 { label: label('karmaHowOvertimeCheckin', 'Чекин в овертайме'), value: '+0.1' },
-                { label: label('karmaHowScreenshots', '3 скриншота за день'), value: '+0.2' },
-                { label: label('karmaHowScreenshots4', '4 скриншота за день'), value: '+0.3' },
-                { label: label('karmaHowScreenshots5', '5 скриншотов за день'), value: '+0.4' },
+                { label: label('karmaHowScreenshots', '3 скриншота за день'), value: '+0.1' },
+                { label: label('karmaHowScreenshots4', '4 скриншота за день'), value: '+0.2' },
+                { label: label('karmaHowScreenshots5', '5 скриншотов за день'), value: '+0.3' },
                 { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.5' },
                 { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.5' },
                 { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.5' },
