@@ -421,3 +421,30 @@
     .card-moderation .moderation-phase { padding-left: 26px; }
     #tab-projects .card.card-moderation .moderation-results .pc-results-grid { gap: 4px; }
 }
+/* In-app retest confirmation: deliberately independent of the project card. */
+.moderation-retest-overlay { justify-content: center; z-index: 10000; }
+.moderation-retest-sheet.modal-content {
+    box-sizing: border-box;
+    max-width: 560px;
+    max-height: 90dvh;
+    background: var(--card-bg, #192533);
+    color: var(--text-color, #eef2f7);
+    border: 1px solid rgba(147, 169, 195, .18);
+    padding: 16px 24px calc(24px + env(safe-area-inset-bottom));
+}
+.moderation-retest-sheet h2 { margin: 8px 0; font-size: 24px; line-height: 1.25; }
+.moderation-retest-sheet p { font-size: 15px; line-height: 1.55; }
+.moderation-retest-sheet__eyebrow { color: #8db9f5; font-size: 12px; font-weight: 600; }
+.moderation-retest-sheet__project { margin: 0 0 16px; color: #a5b3c5; overflow-wrap: anywhere; }
+.moderation-retest-sheet__summary { display: grid; grid-template-columns: 1fr 1fr; margin: 20px 0; background: rgba(100, 152, 232, .08); border: 1px solid rgba(100, 152, 232, .2); border-radius: 16px; padding: 16px 0; }
+.moderation-retest-sheet__summary > div { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
+.moderation-retest-sheet__summary > div + div { border-left: 1px solid rgba(147, 169, 195, .18); }
+.moderation-retest-sheet__summary strong { font-size: 30px; line-height: 1.15; color: #8db9f5; }
+.moderation-retest-sheet__summary span { font-size: 13px; color: #a5b3c5; }
+.moderation-retest-sheet__note { color: #a5b3c5; }
+.moderation-retest-sheet__cost { padding: 12px; border-radius: 12px; background: rgba(245, 181, 76, .09); color: #e9c98e; }
+.moderation-retest-sheet__actions { display: grid; gap: 10px; margin-top: 22px; }
+.moderation-retest-sheet__actions button { width: 100%; min-height: 48px; padding: 12px; border-radius: 14px; font: inherit; font-weight: 600; cursor: pointer; }
+.moderation-retest-sheet .retest-confirm { border: 0; background: var(--primary-color, #4389ed); color: #fff; }
+.moderation-retest-sheet .retest-cancel { border: 1px solid rgba(147, 169, 195, .22); background: transparent; color: inherit; }
+.moderation-retest-sheet button:focus-visible { outline: 2px solid #8db9f5; outline-offset: 3px; }

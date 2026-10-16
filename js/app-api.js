@@ -3759,19 +3759,23 @@ async function apiPipelineRequestLive(appId) {
  * Ask backend to perform a Soft Reset: transition project 'moderation' → 'testing'.
  * Returns { ok: true } on success, or { ok: false, message: string } on error.
  */
-async function apiPipelineRequestRetest(appId) {
+async function apiPipelineRequestRetest(appId, expectedRunIteration) {
     try {
         var url = `${API_BASE}/api/pipeline/request-retest`.replace('/api/api/', '/api/');
         var response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
+            body: JSON.stringify({
+                app_id: Number(appId), owner_id: Number(userId),
+                expected_run_iteration: Number(expectedRunIteration),
+                init_data: typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((tg && tg.initData) || '')
+            })
         });
         var data = await response.json();
         if (response.ok && data.status === 'success') {
             return { ok: true, data: data };
         }
-        var msg = (data && (data.message || data.error)) || null;
+        var msg = (data && (data.detail || data.error || data.message)) || null;
         return { ok: false, message: msg };
     } catch (err) {
         console.error('[apiPipelineRequestRetest] network error:', err);

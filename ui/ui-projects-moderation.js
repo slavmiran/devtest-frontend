@@ -287,31 +287,14 @@ async function handleModerationRequestLive(projectId, event) {
  * Confirms, then calls backend → on success moves project back to 'testing'.
  */
 /**
- * Helper to display custom SweetAlert2 popup when trying to retest an already live app.
+ * The publication guard uses the same in-app sheet, never a native popup.
  */
-function showAppAlreadyPublishedModal(projectId) {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '🎉 Приложение уже в Google Play!',
-            text: 'Мы проверили маркет и нашли ваш проект. Модерация успешно пройдена, поэтому ретест больше не доступен (для опубликованных приложений существуют другие механики продвижения). Хотите перевести проект в фазу Live прямо сейчас?',
-            icon: 'success',
-            showCancelButton: true,
-            confirmButtonText: '🚀 Перевести в Live',
-            cancelButtonText: 'Отмена',
-            confirmButtonColor: '#0a84ff',
-            cancelButtonColor: '#8e8e93',
-            background: '#1c1c1e',
-            color: '#ffffff'
-        }).then(function(res) {
-            if (res.isConfirmed) {
-                handleModerationRequestLive(projectId, null);
-            }
-        });
-    } else {
-        var confirmMsg = 'Мы проверили маркет и нашли ваш проект. Модерация успешно пройдена, поэтому ретест больше не доступен. Хотите перевести проект в фазу Live прямо сейчас?';
-        if (confirm(confirmMsg)) {
-            handleModerationRequestLive(projectId, null);
-        }
+async function showAppAlreadyPublishedModal(projectId) {
+    var projects = (typeof myProjects !== 'undefined' ? myProjects : []).concat(
+        typeof archivedProjects !== 'undefined' ? archivedProjects : []);
+    var project = projects.find(function(item) {return Number(item.app_id || item.id) === Number(projectId);});
+    if (await showModerationRetestConfirmation(project || {}, true)) {
+        await handleModerationRequestLive(projectId, null);
     }
 }
 
@@ -319,19 +302,104 @@ function showAppAlreadyPublishedModal(projectId) {
  * Handler: "🔄 Нужен ретест" button.
  * Confirms, then calls backend → on success moves project back to 'testing'.
  */
+var moderationRetestPending = new Set();
+var closeModerationRetestConfirmation = null;
+
+function showModerationRetestConfirmation(project, alreadyPublished) {
+    if (closeModerationRetestConfirmation) closeModerationRetestConfirmation(false);
+    return new Promise(function(resolve) {
+        var previousFocus = document.activeElement;
+        var overlay = document.createElement('div');
+        overlay.id = 'moderation-retest-modal';
+        overlay.className = 'modal-overlay moderation-retest-overlay';
+        overlay.innerHTML = '<section class="modal-content moderation-retest-sheet" role="dialog" aria-modal="true" aria-labelledby="moderation-retest-title" aria-describedby="moderation-retest-description">' +
+            '<div class="sheet-handle" aria-hidden="true"></div>' +
+            '<div class="moderation-retest-sheet__eyebrow"></div><h2 id="moderation-retest-title"></h2>' +
+            '<p class="moderation-retest-sheet__project"></p><p id="moderation-retest-description"></p>' +
+            '<div class="moderation-retest-sheet__summary"><div><strong>1</strong><span class="retest-day-label"></span></div>' +
+            '<div><strong>14</strong><span class="retest-duration-label"></span></div></div>' +
+            '<p class="moderation-retest-sheet__note"></p><p class="moderation-retest-sheet__cost" hidden></p>' +
+            '<div class="moderation-retest-sheet__actions"><button type="button" class="retest-confirm"></button>' +
+            '<button type="button" class="retest-cancel"></button></div></section>';
+        function text(selector, key, params) {
+            overlay.querySelector(selector).textContent = window.t(key, params || {}, lang);
+        }
+        text('.moderation-retest-sheet__eyebrow', alreadyPublished ? 'pipelinePhaseLive' : 'moderationRetestEyebrow');
+        text('#moderation-retest-title', alreadyPublished ? 'moderationPublishedTitle' : 'moderationRetestTitle');
+        overlay.querySelector('.moderation-retest-sheet__project').textContent = project.name || '';
+        text('#moderation-retest-description', alreadyPublished ? 'moderationPublishedDescription' : 'moderationRetestConfirm');
+        text('.retest-day-label', 'moderationRetestDayLabel');
+        text('.retest-duration-label', 'moderationRetestDurationLabel');
+        text('.moderation-retest-sheet__note', 'moderationRetestHistoryNote');
+        text('.retest-confirm', alreadyPublished ? 'moderationPublishedAction' : 'moderationRetestSubtitle');
+        text('.retest-cancel', 'btnCancel');
+        var cost = ['hybrid', 'bounty'].includes(project.mode)
+            ? Math.max(0, Number(project.limit_bounty || 0)) * Math.max(0, Number(project.bounty_per_tester || 0)) : 0;
+        if (alreadyPublished) {
+            overlay.querySelector('.moderation-retest-sheet__summary').remove();
+            overlay.querySelector('.moderation-retest-sheet__note').remove();
+        }
+        if (cost > 0 && !alreadyPublished) {
+            text('.moderation-retest-sheet__cost', 'moderationRetestCost', {amount: cost});
+            overlay.querySelector('.moderation-retest-sheet__cost').hidden = false;
+        }
+        var settled = false;
+        var observer;
+        function finish(confirmed) {
+            if (settled) return;
+            settled = true;
+            observer.disconnect();
+            document.removeEventListener('keydown', onKeyDown, true);
+            overlay.remove();
+            closeModerationRetestConfirmation = null;
+            if (previousFocus && previousFocus.isConnected) previousFocus.focus({preventScroll:true});
+            if (window.syncTelegramBackButton) window.syncTelegramBackButton();
+            resolve(!!confirmed);
+        }
+        function onKeyDown(event) {
+            if (event.key === 'Escape') {
+                event.preventDefault(); event.stopImmediatePropagation(); finish(false);
+            } else if (event.key === 'Tab') {
+                var first = overlay.querySelector('.retest-confirm');
+                var last = overlay.querySelector('.retest-cancel');
+                if (event.shiftKey && document.activeElement === first) {event.preventDefault(); last.focus();}
+                else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first.focus();}
+            }
+        }
+        overlay.onclick = function(event) {if (event.target === overlay) finish(false);};
+        overlay.querySelector('.retest-cancel').onclick = function() {finish(false);};
+        overlay.querySelector('.retest-confirm').onclick = function() {finish(true);};
+        closeModerationRetestConfirmation = finish;
+        document.body.appendChild(overlay);
+        overlay.classList.add('active');
+        // The common Telegram Back handler can remove .active without calling
+        // this dialog. Resolve cancellation and release the in-flight guard too.
+        observer = new MutationObserver(function() {
+            if (!overlay.classList.contains('active')) finish(false);
+        });
+        observer.observe(overlay, {attributes:true, attributeFilter:['class']});
+        document.addEventListener('keydown', onKeyDown, true);
+        overlay.querySelector('.retest-cancel').focus({preventScroll:true});
+        if (window.syncTelegramBackButton) window.syncTelegramBackButton();
+    });
+}
+
 async function handleModerationRequestRetest(projectId, event) {
     if (event) event.stopPropagation();
+    projectId = Number(projectId);
+    if (moderationRetestPending.has(projectId)) return;
     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
-    var confirmMsg = window.t('moderationRetestConfirm', {}, lang);
-    var confirmed = await new Promise(function(resolve) {
-        if (tg && tg.showConfirm) {
-            tg.showConfirm(confirmMsg, function(ok) { resolve(!!ok); });
-        } else {
-            resolve(confirm(confirmMsg));
-        }
+    var projects = (typeof myProjects !== 'undefined' ? myProjects : []).concat(
+        typeof archivedProjects !== 'undefined' ? archivedProjects : []);
+    var project = projects.find(function(item) {
+        return Number(item.app_id || item.id) === projectId;
     });
-    if (!confirmed) return;
+    if (!project) {showToast(window.t('moderationRetestChanged', {}, lang)); return;}
+    var expectedRun = Math.max(1, Number(project.run_iteration || 1));
+    moderationRetestPending.add(projectId);
+    var confirmed = await showModerationRetestConfirmation(project);
+    if (!confirmed) {moderationRetestPending.delete(projectId); return;}
 
     var btn = document.getElementById('moderation-retest-btn-' + projectId);
     var liveBtn = document.getElementById('moderation-live-btn-' + projectId);
@@ -344,7 +412,7 @@ async function handleModerationRequestRetest(projectId, event) {
     if (liveBtn) liveBtn.disabled = true;
 
     try {
-        var result = await apiPipelineRequestRetest(projectId);
+        var result = await apiPipelineRequestRetest(projectId, expectedRun);
         if (result && result.ok) {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             showToast(window.t('moderationRetestSuccess', {}, lang));
@@ -354,7 +422,7 @@ async function handleModerationRequestRetest(projectId, event) {
             // projects live in `archivedProjects`, not `myProjects`.
             if (Array.isArray(archivedProjects)) {
                 archivedProjects = archivedProjects.filter(function(p) {
-                    return Number(p.app_id) !== Number(projectId);
+                    return Number(p.app_id || p.id) !== projectId;
                 });
             }
             if (window.renderProjects) window.renderProjects(true);
@@ -364,18 +432,25 @@ async function handleModerationRequestRetest(projectId, event) {
             // (now status='active', phase='testing', created_at=now) appears with
             // the correct Day 1 counter and reset progress bar.
             if (typeof loadProjects === 'function') {
-                loadProjects(true).then(function() {
+                // A poll started before the mutation may still be running.
+                // Wait for it, then force a genuinely post-commit snapshot.
+                var previousLoad = typeof _projectsInFlight !== 'undefined' ? _projectsInFlight : null;
+                Promise.resolve(previousLoad).catch(function() {}).then(function() {
+                    return loadProjects(true, true);
+                }).then(function() {
                     if (window.renderProjects) window.renderProjects(true);
                 }).catch(function(e) {
                     console.error('[moderation] retest loadProjects refresh failed:', e);
                 });
             }
         } else {
-            var errMsg = (result && result.message) || window.t('moderationRetestError', {}, lang);
+            var errMsg = (result && result.message) || '';
             if (errMsg === 'app_already_published') {
-                showAppAlreadyPublishedModal(projectId);
+                await showAppAlreadyPublishedModal(projectId);
             } else {
-                showToast(errMsg);
+                var key = errMsg === 'insufficient_bust_balance' ? 'moderationRetestInsufficient' :
+                    ['project_changed','app_not_in_moderation'].includes(errMsg) ? 'moderationRetestChanged' : 'moderationRetestError';
+                showToast(window.t(key, {}, lang));
             }
             if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
             if (liveBtn) liveBtn.disabled = false;
@@ -384,12 +459,14 @@ async function handleModerationRequestRetest(projectId, event) {
         console.error('[moderation] handleModerationRequestRetest error:', err);
         var errMsg = (err && (err.message || err.detail)) || '';
         if (errMsg === 'app_already_published') {
-            showAppAlreadyPublishedModal(projectId);
+            await showAppAlreadyPublishedModal(projectId);
         } else {
             showToast(window.t('moderationRetestError', {}, lang));
         }
         if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
         if (liveBtn) liveBtn.disabled = false;
+    } finally {
+        moderationRetestPending.delete(projectId);
     }
 }
 
