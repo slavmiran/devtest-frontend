@@ -2363,34 +2363,57 @@ function setPageScrollY(y) {
     if (document.body) document.body.scrollTop = next;
 }
 
-var _resumeTestsScrollClearTimer = null;
+var _testsScrollResumeGeneration = 0;
 
-function rememberTestsScrollForResume() {
-    window._resumeTestsScrollY = getPageScrollY();
-    if (_resumeTestsScrollClearTimer) {
-        clearTimeout(_resumeTestsScrollClearTimer);
-        _resumeTestsScrollClearTimer = null;
-    }
+function cancelTestsScrollResume() {
+    window._resumeTestsScrollY = undefined;
+    _testsScrollResumeGeneration++;
 }
 
-function restoreTestsScrollAfterResume() {
+function getTestsScrollResumeToken() {
+    return typeof window._resumeTestsScrollY === 'number' ? _testsScrollResumeGeneration : null;
+}
+
+// A delayed refresh must never override newer, explicit user navigation.
+if (!window._testsScrollResumeListenersBound) {
+    window._testsScrollResumeListenersBound = true;
+    ['wheel', 'touchstart', 'pointerdown'].forEach(function(type) {
+        document.addEventListener(type, function() {
+            if (!document.hidden) cancelTestsScrollResume();
+        }, {passive:true, capture:true});
+    });
+    document.addEventListener('keydown', function(event) {
+        if (['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].indexOf(event.key) !== -1) cancelTestsScrollResume();
+    }, true);
+}
+
+function rememberTestsScrollForResume() {
+    if (!isTabVisible('tests')) {cancelTestsScrollResume(); return;}
+    // Keep the pre-store position if visibilitychange fires after opening it.
+    if (typeof window._resumeTestsScrollY === 'number') return;
+    window._resumeTestsScrollY = getPageScrollY();
+    _testsScrollResumeGeneration++;
+}
+
+function restoreTestsScrollAfterResume(expectedToken) {
+    if (!isTabVisible('tests')) {cancelTestsScrollResume(); return;}
+    if (document.hidden) return;
+    if (expectedToken != null && expectedToken !== _testsScrollResumeGeneration) return;
+    if (expectedToken === null) return;
     if (typeof window._resumeTestsScrollY !== 'number') return;
     var y = window._resumeTestsScrollY;
+    var generation = _testsScrollResumeGeneration;
+    window._resumeTestsScrollY = undefined; // Consume once, not for another 1.2 s.
     setPageScrollY(y);
     requestAnimationFrame(function() {
-        setPageScrollY(y);
+        if (generation === _testsScrollResumeGeneration && isTabVisible('tests')) setPageScrollY(y);
     });
-    if (_resumeTestsScrollClearTimer) clearTimeout(_resumeTestsScrollClearTimer);
-    _resumeTestsScrollClearTimer = setTimeout(function() {
-        window._resumeTestsScrollY = undefined;
-        _resumeTestsScrollClearTimer = null;
-    }, 1200);
 }
 
 function captureTestsViewportAnchor() {
     if (!isTabVisible('tests')) return null;
     if (typeof window._resumeTestsScrollY === 'number') {
-        return { scrollY: window._resumeTestsScrollY, id: null, top: 0, inDone: false, resume: true };
+        return { scrollY: window._resumeTestsScrollY, id: null, top: 0, inDone: false, resume: true, resumeToken: getTestsScrollResumeToken() };
     }
     const scrollY = getPageScrollY();
     const tab = document.getElementById('tab-tests');
@@ -2407,19 +2430,21 @@ function captureTestsViewportAnchor() {
         id: anchor.id,
         top: anchor.getBoundingClientRect().top,
         inDone: !!(done && done.contains(anchor)),
+        containerId: (anchor.closest('#tests-list, #done-list, #pending-release-list') || {}).id,
     };
 }
 
 function restoreTestsViewportAnchor(anchor) {
     if (!anchor || !isTabVisible('tests')) return;
     if (anchor.resume && typeof anchor.scrollY === 'number') {
-        setPageScrollY(anchor.scrollY);
+        restoreTestsScrollAfterResume(anchor.resumeToken);
         return;
     }
     const node = anchor.id ? document.getElementById(anchor.id) : null;
     const done = document.getElementById('done-list');
     const movedToDone = !anchor.inDone && node && done && done.contains(node);
-    if (node && !movedToDone && typeof anchor.top === 'number') {
+    const movedSection = node && anchor.containerId && (node.closest('#tests-list, #done-list, #pending-release-list') || {}).id !== anchor.containerId;
+    if (node && !movedToDone && !movedSection && typeof anchor.top === 'number') {
         const delta = node.getBoundingClientRect().top - anchor.top;
         if (Math.abs(delta) > 1) window.scrollBy(0, delta);
         return;
@@ -2430,6 +2455,7 @@ window.getPageScrollY = getPageScrollY;
 window.setPageScrollY = setPageScrollY;
 window.rememberTestsScrollForResume = rememberTestsScrollForResume;
 window.restoreTestsScrollAfterResume = restoreTestsScrollAfterResume;
+window.getTestsScrollResumeToken = getTestsScrollResumeToken;
 
 function getOpenControlProofCatchups(test) {
     return (Array.isArray(test && test.control_proof_catchups) ? test.control_proof_catchups : [])

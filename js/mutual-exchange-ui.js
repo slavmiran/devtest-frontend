@@ -1369,7 +1369,16 @@
         if (btnTopicEl) btnTopicEl.innerText = _t('bellRemindBtnTopic');
 
         _syncBellRemindPreviewUi();
+        var assessment = document.getElementById('bell-remind-assessment');
+        if (assessment) {
+            assessment.innerHTML = '';
+            if (typeof window.pcRenderTesterActivityAssessment === 'function') {
+                window.pcRenderTesterActivityAssessment(assessment, appId, _bellRemindState.testerId);
+            }
+        }
         overlay.classList.add('active');
+        var sheet = overlay.querySelector('.modal-content');
+        if (sheet) sheet.scrollTop = 0;
     }
 
     function closeBellRemindOverlay(event) {
@@ -1378,6 +1387,8 @@
         if (event && event.target && event.target.closest && event.target.closest('.modal-content')) return;
         overlay.classList.remove('active');
         _bellRemindState = null;
+        var assessment = document.getElementById('bell-remind-assessment');
+        if (assessment) assessment.innerHTML = '';
     }
 
     function confirmBellRemindSend(target) {

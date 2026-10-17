@@ -1807,6 +1807,18 @@
         '</button>';
     }
 
+    function smartBellIndicatorHtml(assessment) {
+        return '<span class="pc-smart-bell__icon-wrap">' +
+                '<svg class="pc-smart-bell__icon" viewBox="0 0 36 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<path class="pc-smart-bell__waves" d="M8.3 9.1c-2.3 2.3-3.4 4.8-3.4 7.6m22.8-7.6c2.3 2.3 3.4 4.8 3.4 7.6"/>' +
+                    '<path class="pc-smart-bell__body" d="M18 9.3c-4.6 0-7.3 3.4-7.3 8.2v6.1l-2.5 2h19.6l-2.5-2v-6.1c0-4.8-2.7-8.2-7.3-8.2Z"/>' +
+                    '<path d="M18 9.2V6.7"/>' +
+                    '<path d="M15.4 29.1c.4 1.5 1.2 2.3 2.6 2.3s2.2-.8 2.6-2.3"/>' +
+                '</svg>' +
+            '</span>' +
+            activitySignalMatrixHtml(assessment) ;
+    }
+
     function smartBellButtonHtml(appId, row) {
         var safeAppId = Number(appId || 0);
         var safeTesterId = Number(row && (row.testerId || (row.tester && (row.tester.id || row.tester.tester_id))) || 0);
@@ -1824,15 +1836,7 @@
             ' onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'control\')"' +
             ' aria-label="' + esc(ariaLabel) + '"' +
             ' title="' + esc(ariaLabel) + '">' +
-            '<span class="pc-smart-bell__icon-wrap">' +
-                '<svg class="pc-smart-bell__icon" viewBox="0 0 36 36" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<path class="pc-smart-bell__waves" d="M8.3 9.1c-2.3 2.3-3.4 4.8-3.4 7.6m22.8-7.6c2.3 2.3 3.4 4.8 3.4 7.6"/>' +
-                    '<path class="pc-smart-bell__body" d="M18 9.3c-4.6 0-7.3 3.4-7.3 8.2v6.1l-2.5 2h19.6l-2.5-2v-6.1c0-4.8-2.7-8.2-7.3-8.2Z"/>' +
-                    '<path d="M18 9.2V6.7"/>' +
-                    '<path d="M15.4 29.1c.4 1.5 1.2 2.3 2.6 2.3s2.2-.8 2.6-2.3"/>' +
-                '</svg>' +
-            '</span>' +
-            activitySignalMatrixHtml(assessment) +
+            smartBellIndicatorHtml(assessment) +
         '</button>';
     }
 
@@ -5433,8 +5437,7 @@
     };
     window.closeTesterControlActivitySheet = window.pcCloseTesterControlActivitySheet;
 
-    window.pcOpenTesterControlActivitySheet = function (appId, testerId) {
-        removeTesterControlActivitySheet();
+    function testerControlActivityView(appId, testerId) {
         var safeAppId = Number(appId || 0);
         var safeTesterId = Number(testerId || 0);
         var project = projectById(safeAppId) || (typeof _fixtureProject !== 'undefined' ? _fixtureProject : null);
@@ -5518,41 +5521,8 @@
 
         var infoIconSvg = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7" x2="8" y2="11.5"/><circle cx="8" cy="5" r="0.75" fill="currentColor"/></svg>';
 
-        // Remind check: personal reminder already sent today?
-        var currentDay = Number(tester.current_day || tester.testing_days || 0);
-        var alreadyReminded = isTesterRemindedToday(safeAppId, safeTesterId);
-        if (!alreadyReminded) {
-            var receipts = controlReminderStates.get(safeAppId);
-            if (receipts && Array.isArray(receipts.items)) {
-                var found = receipts.items.find(function (item) {
-                    return Number(item.tester_id) === safeTesterId && (!currentDay || Number(item.day) === currentDay);
-                });
-                if (found && found.personal_dm_opened_at) {
-                    alreadyReminded = true;
-                }
-            }
-        }
-
-        var sendBtnHtml = alreadyReminded
-            ? '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn is-sent" disabled>' +
-                esc(text('pcActivityRemindAlreadySent', '✓ Напоминание уже отправлено')) + '</button>'
-            : '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn" onclick="pcSubmitActivitySheetReminder(' + safeAppId + ',' + safeTesterId + ')">' +
-                esc(text('pcActivitySendRemindBtn', 'Отправить напоминание')) + '</button>';
-
-        var cancelBtnHtml = '<button type="button" class="pc-activity-sheet__cancel-btn" onclick="pcCloseTesterControlActivitySheet()">' +
-            esc(text('pcActivityCloseBtn', 'Закрыть')) + '</button>';
-
-        var html = '<div id="pc-tester-activity-dialog" class="modal-overlay pc-tester-activity-modal" role="presentation" onclick="if (event.target === this) pcCloseTesterControlActivitySheet()">' +
-            '<section class="modal-content pc-tester-activity-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-tester-activity-title" aria-describedby="pc-tester-activity-subtitle">' +
-                '<div class="sheet-handle" aria-hidden="true"></div>' +
-                '<div class="pc-tester-activity-sheet__header">' +
-                    '<div class="pc-tester-activity-sheet__title-row">' +
-                        '<h3 id="pc-tester-activity-title" class="pc-tester-activity-sheet__title">' + esc(titleText) + '</h3>' +
-                        '<span class="pc-tester-activity-sheet__signal-count">' + score + '/4</span>' +
-                    '</div>' +
-                    '<div id="pc-tester-activity-subtitle" class="pc-tester-activity-sheet__subtitle">' + esc(subtitleText) + '</div>' +
-                '</div>' +
-                '<div class="pc-activity-cards-grid">' +
+        return {tester:tester, assessment:assessment, score:score, titleText:titleText, subtitleText:subtitleText,
+            detailsHtml: '<div class="pc-activity-cards-grid">' +
                     '<div class="pc-activity-card' + (yData.risk ? ' is-risk' : '') + '">' +
                         '<div class="pc-activity-card__header">' +
                             '<span class="pc-activity-card__category">' + esc(text('pcActivityCardYesterday', 'Вчерашний день')) + '</span>' +
@@ -5593,7 +5563,50 @@
                 '<div class="pc-activity-summary-banner' + (score > 0 ? ' has-signals' : '') + '">' +
                     '<span class="pc-activity-summary-banner__icon" aria-hidden="true">' + infoIconSvg + '</span>' +
                     '<span class="pc-activity-summary-banner__text">' + esc(summaryText) + '</span>' +
+                '</div>' };
+    }
+
+    window.pcOpenTesterControlActivitySheet = function (appId, testerId) {
+        removeTesterControlActivitySheet();
+        var view = testerControlActivityView(appId, testerId);
+        if (!view) return;
+        var safeAppId = Number(appId || 0), safeTesterId = Number(testerId || 0);
+        var tester = view.tester, score = view.score, titleText = view.titleText, subtitleText = view.subtitleText;
+        // Remind check: personal reminder already sent today?
+        var currentDay = Number(tester.current_day || tester.testing_days || 0);
+        var alreadyReminded = isTesterRemindedToday(safeAppId, safeTesterId);
+        if (!alreadyReminded) {
+            var receipts = controlReminderStates.get(safeAppId);
+            if (receipts && Array.isArray(receipts.items)) {
+                var found = receipts.items.find(function (item) {
+                    return Number(item.tester_id) === safeTesterId && (!currentDay || Number(item.day) === currentDay);
+                });
+                if (found && found.personal_dm_opened_at) {
+                    alreadyReminded = true;
+                }
+            }
+        }
+
+        var sendBtnHtml = alreadyReminded
+            ? '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn is-sent" disabled>' +
+                esc(text('pcActivityRemindAlreadySent', '✓ Напоминание уже отправлено')) + '</button>'
+            : '<button id="pc-activity-sheet-send-btn" type="button" class="pc-activity-sheet__send-btn" onclick="pcSubmitActivitySheetReminder(' + safeAppId + ',' + safeTesterId + ')">' +
+                esc(text('pcActivitySendRemindBtn', 'Отправить напоминание')) + '</button>';
+
+        var cancelBtnHtml = '<button type="button" class="pc-activity-sheet__cancel-btn" onclick="pcCloseTesterControlActivitySheet()">' +
+            esc(text('pcActivityCloseBtn', 'Закрыть')) + '</button>';
+
+        var html = '<div id="pc-tester-activity-dialog" class="modal-overlay pc-tester-activity-modal" role="presentation" onclick="if (event.target === this) pcCloseTesterControlActivitySheet()">' +
+            '<section class="modal-content pc-tester-activity-sheet" role="dialog" aria-modal="true" aria-labelledby="pc-tester-activity-title" aria-describedby="pc-tester-activity-subtitle">' +
+                '<div class="sheet-handle" aria-hidden="true"></div>' +
+                '<div class="pc-tester-activity-sheet__header">' +
+                    '<div class="pc-tester-activity-sheet__title-row">' +
+                        '<h3 id="pc-tester-activity-title" class="pc-tester-activity-sheet__title">' + esc(titleText) + '</h3>' +
+                        '<span class="pc-tester-activity-sheet__signal-count">' + score + '/4</span>' +
+                    '</div>' +
+                    '<div id="pc-tester-activity-subtitle" class="pc-tester-activity-sheet__subtitle">' + esc(subtitleText) + '</div>' +
                 '</div>' +
+                view.detailsHtml +
                 '<div class="pc-activity-sheet__footer">' +
                     sendBtnHtml +
                     cancelBtnHtml +
@@ -5606,6 +5619,23 @@
         window.requestAnimationFrame(function () {
             if (dialog) dialog.classList.add('active');
         });
+    };
+
+    window.pcRenderTesterActivityAssessment = function(container, appId, testerId) {
+        if (!container) return;
+        var view = testerControlActivityView(appId, testerId);
+        var assessment = view ? view.assessment : null;
+        container.innerHTML = '<details class="bell-remind-assessment">' +
+            '<summary class="bell-remind-assessment__toggle">' +
+                '<span class="bell-remind-assessment__indicator pc-smart-bell--' + (view ? view.score : 0) + '" aria-hidden="true">' + smartBellIndicatorHtml(assessment) + '</span>' +
+                '<span class="bell-remind-assessment__labels"><strong>' + esc(text('bellActivityTitle', 'Оценка активности')) + '</strong>' +
+                    '<span>' + esc(text('bellActivityHint', '4 точки — 4 сигнала внимания')) + '</span></span>' +
+                '<span class="bell-remind-assessment__count">' + (view ? view.score : '—') + '/4</span>' +
+                '<span class="bell-remind-assessment__chevron" aria-hidden="true">⌄</span>' +
+            '</summary><div class="bell-remind-assessment__body">' +
+                '<p class="bell-remind-assessment__legend">' + esc(text('bellActivityLegend', 'Подсвеченная точка — сигнал внимания.')) + '</p>' +
+                (view ? view.detailsHtml : '<p>' + esc(text('bellActivityUnavailable', 'Данные оценки пока недоступны.')) + '</p>') +
+            '</div></details>';
     };
     window.openTesterControlActivitySheet = window.pcOpenTesterControlActivitySheet;
 

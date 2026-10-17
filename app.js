@@ -34,9 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
         syncUserTimezone(false).catch(() => {});
 
         function _restoreTestsScrollWhenSettled(promise) {
+            var token = typeof window.getTestsScrollResumeToken === 'function' ? window.getTestsScrollResumeToken() : null;
             var restore = function() {
                 if (typeof window.restoreTestsScrollAfterResume === 'function') {
-                    window.restoreTestsScrollAfterResume();
+                    window.restoreTestsScrollAfterResume(token);
                 }
             };
             if (promise && typeof promise.then === 'function') {
