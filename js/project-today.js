@@ -5437,7 +5437,7 @@
     };
     window.closeTesterControlActivitySheet = window.pcCloseTesterControlActivitySheet;
 
-    function testerControlActivityView(appId, testerId) {
+    function testerControlActivityView(appId, testerId, includeSummary) {
         var safeAppId = Number(appId || 0);
         var safeTesterId = Number(testerId || 0);
         var project = projectById(safeAppId) || (typeof _fixtureProject !== 'undefined' ? _fixtureProject : null);
@@ -5560,10 +5560,10 @@
                         '</div>' +
                     '</div>' +
                 '</div>' +
-                '<div class="pc-activity-summary-banner' + (score > 0 ? ' has-signals' : '') + '">' +
+                (includeSummary === false ? '' : '<div class="pc-activity-summary-banner' + (score > 0 ? ' has-signals' : '') + '">' +
                     '<span class="pc-activity-summary-banner__icon" aria-hidden="true">' + infoIconSvg + '</span>' +
                     '<span class="pc-activity-summary-banner__text">' + esc(summaryText) + '</span>' +
-                '</div>' };
+                '</div>') };
     }
 
     window.pcOpenTesterControlActivitySheet = function (appId, testerId) {
@@ -5623,17 +5623,19 @@
 
     window.pcRenderTesterActivityAssessment = function(container, appId, testerId) {
         if (!container) return;
-        var view = testerControlActivityView(appId, testerId);
+        var view = testerControlActivityView(appId, testerId, false);
         var assessment = view ? view.assessment : null;
-        container.innerHTML = '<details class="bell-remind-assessment">' +
+        var score = view ? view.score : null;
+        var status = text('bellActivityStatus' + (view ? score : 'Unknown'), 'Нет данных');
+        var subtitle = text(view ? 'bellActivitySubtitle' + score : 'bellActivityUnavailable', 'Данные оценки пока недоступны.');
+        container.innerHTML = '<details class="bell-remind-assessment bell-remind-assessment--' + (view ? score : 'unknown') + '">' +
             '<summary class="bell-remind-assessment__toggle">' +
                 '<span class="bell-remind-assessment__indicator pc-smart-bell--' + (view ? view.score : 0) + '" aria-hidden="true">' + smartBellIndicatorHtml(assessment) + '</span>' +
-                '<span class="bell-remind-assessment__labels"><strong>' + esc(text('bellActivityTitle', 'Оценка активности')) + '</strong>' +
-                    '<span>' + esc(text('bellActivityHint', '4 точки — 4 сигнала внимания')) + '</span></span>' +
-                '<span class="bell-remind-assessment__count">' + (view ? view.score : '—') + '/4</span>' +
-                '<span class="bell-remind-assessment__chevron" aria-hidden="true">⌄</span>' +
+                '<strong class="bell-remind-assessment__title">' + esc(text('bellActivityTitle', 'Оценка активности')) + '</strong>' +
+                '<span class="bell-remind-assessment__status"><span class="bell-remind-assessment__count">' + (view ? score : '—') + '/4</span> · ' + esc(status) + '</span>' +
+                '<svg class="bell-remind-assessment__chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 6 4.5 4 4.5-4"/></svg>' +
+                '<span class="bell-remind-assessment__subtitle">' + esc(subtitle) + '</span>' +
             '</summary><div class="bell-remind-assessment__body">' +
-                '<p class="bell-remind-assessment__legend">' + esc(text('bellActivityLegend', 'Подсвеченная точка — сигнал внимания.')) + '</p>' +
                 (view ? view.detailsHtml : '<p>' + esc(text('bellActivityUnavailable', 'Данные оценки пока недоступны.')) + '</p>') +
             '</div></details>';
     };

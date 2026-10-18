@@ -52,7 +52,7 @@ const output = path.resolve(root,'../artifacts/my-tests-reminder');
         assert.equal(await scroll.evaluate(()=>window.scrollY),480,'A card moving into Buffer cannot pull the page down');
         await scroll.close();
 
-        for (const language of ['ru','en']) for (const width of [320,390]) {
+        for (const language of ['ru','en']) for (const width of [320,360,390]) {
             const page = await browser.newPage({viewport:{width,height:900}});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await page.route('http://fixture.local/**',r=>r.fulfill({contentType:'text/html',body:'<html><body>'+bellMarkup+'<div id="fixture"></div><div id="tab-tests"><div id="pending-release-section" class="pending-release-section"><button class="ts-section-head ts-section-head--buffer pending-release-section__header" onclick="this.parentElement.classList.toggle(\'is-collapsed\')">Buffer</button></div><div id="done-section" class="accordion active"><button class="ts-section-head ts-section-head--done" onclick="this.parentElement.classList.toggle(\'active\')">Done</button></div></div></body></html>'}));
@@ -86,6 +86,7 @@ const output = path.resolve(root,'../artifacts/my-tests-reminder');
                 pcOpenTesterControlActivitySheet(101,10);
             });
             const sharedDetails=await page.locator('#pc-tester-activity-dialog .pc-activity-cards-grid').innerHTML();
+            assert.equal(await page.locator('#pc-tester-activity-dialog .pc-activity-summary-banner').count(),1,'Standalone summary remains');
             await page.evaluate(()=>{document.getElementById('pc-tester-activity-dialog').remove();openBellRemindPreview({testerId:10,username:'first_tester',fullName:'First Tester',remindAppId:101,remindAppName:'QuickSweep',remindReason:'control',controlDay:7,messageLang:'en'});});
             assert.equal(await page.locator('.bell-remind-assessment').getAttribute('open'),null);
             assert.equal(await page.locator('.bell-remind-cancel-btn').count(),0);
@@ -97,6 +98,7 @@ const output = path.resolve(root,'../artifacts/my-tests-reminder');
             await page.screenshot({path:path.join(output,`${language}-${width}-collapsed.png`)});
             await page.locator('.bell-remind-assessment__toggle').click();
             assert.equal(await page.locator('.bell-remind-assessment .pc-activity-cards-grid').innerHTML(),sharedDetails,'Details use the existing renderer');
+            assert.equal(await page.locator('.bell-remind-assessment .pc-activity-summary-banner, .bell-remind-assessment__legend').count(),0);
             assert.equal(await page.evaluate(()=>sent.length),0,'Expanding must never send');
             assert.equal(await page.locator('.bell-remind-assessment button').count(),0,'No duplicate send action inside assessment');
             await page.waitForTimeout(350);
@@ -108,6 +110,29 @@ const output = path.resolve(root,'../artifacts/my-tests-reminder');
             assert.equal(await page.locator('.bell-remind-assessment').getAttribute('open'),null);
             assert.equal(await page.locator('.bell-remind-assessment__count').innerText(),'0/4');
             assert.equal(await page.locator('.bell-remind-assessment .pc-smart-bell__dot.is-lit').count(),0);
+            for (let score=0;score<=4;score++) {
+                await page.evaluate(score=>{
+                    myProjects[0].testers[1].activityAssessment.riskScore=score;
+                    pcRenderTesterActivityAssessment(document.getElementById('bell-remind-assessment'),101,11);
+                },score);
+                const dict=await page.evaluate(()=>lang==='ru'?I18NRU:I18NEN);
+                assert.equal(await page.locator('.bell-remind-assessment__status').innerText(),`${score}/4 · ${dict['bellActivityStatus'+score]}`);
+                assert.equal(await page.locator('.bell-remind-assessment__subtitle').innerText(),dict['bellActivitySubtitle'+score]);
+                for (const expanded of [false,true]) {
+                    await page.locator('.bell-remind-assessment').evaluate((el,open)=>{el.open=open;},expanded);
+                    assert(await page.locator('.bell-remind-assessment__toggle').evaluate(el=>{
+                        const subtitle=el.querySelector('.bell-remind-assessment__subtitle').getBoundingClientRect();
+                        const badge=el.querySelector('.bell-remind-assessment__status').getBoundingClientRect();
+                        const title=el.querySelector('.bell-remind-assessment__title').getBoundingClientRect();
+                        return el.scrollWidth<=el.clientWidth+1 && subtitle.top>=badge.bottom && title.right<=badge.left;
+                    }),'Header wraps without collisions');
+                }
+                assert.equal(await page.locator('svg.bell-remind-assessment__chevron').count(),1);
+                if(score===1 || score===4) {
+                    await page.locator('.bell-remind-assessment__toggle').scrollIntoViewIfNeeded();
+                    await page.screenshot({path:path.join(output,`${language}-${width}-risk-${score}.png`)});
+                }
+            }
             await page.evaluate(()=>closeBellRemindOverlay());
             for(const selector of ['.ts-section-head--buffer','.ts-section-head--done']){
                 await page.locator(selector).click();
@@ -121,6 +146,6 @@ const output = path.resolve(root,'../artifacts/my-tests-reminder');
             assert.deepEqual(errors,[]);
             await page.close();
         }
-        console.log('Passed: resume scroll ownership/races/section moves, shared RU/EN assessment accordion, no accidental sends, sequential testers, primary DM and non-flashing headers (320/390px).');
+        console.log('Passed: resume scroll ownership/races/section moves, shared RU/EN assessment accordion, all five risk headers without collisions, standalone summary preserved, no accidental sends, sequential testers, primary DM and non-flashing headers (320/360/390px).');
     }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
