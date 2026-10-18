@@ -855,12 +855,15 @@ html.tests-scrolling #tab-tests .test-card-highlight-pulse {
     font: inherit;
     color: inherit;
     -webkit-tap-highlight-color: transparent;
-    transition: background 0.22s ease, border-color 0.22s ease, border-radius 0.22s ease;
+    transition: background-color 0.22s ease, border-radius 0.22s ease;
 }
 
 button.ts-section-head {
     cursor: pointer;
 }
+
+button.ts-section-head:focus:not(:focus-visible) { outline: none; }
+button.ts-section-head:focus-visible { outline: 2px solid var(--ts-accent, #8bb9f9); outline-offset: 3px; }
 
 .ts-section-head--clickable:active {
     opacity: 0.88;
@@ -1086,7 +1089,7 @@ button.ts-section-head {
 
 /* Expanded: clean heading, no box — same as «Выполнено сегодня» */
 .pending-release-section:not(.is-collapsed) .ts-section-head--buffer {
-    border: none;
+    border: 1px solid transparent;
     background: transparent;
     border-radius: 0;
     padding-left: 4px;
@@ -1094,7 +1097,7 @@ button.ts-section-head {
 }
 
 #tab-tests .pending-release-section:not(.is-collapsed) .pending-release-section__header.ts-handoff-glow {
-    border: none !important;
+    border-color: transparent !important;
 }
 
 #tab-tests .pending-release-section:not(.is-collapsed) .pending-release-section__header.ts-handoff-glow::after {
@@ -1154,7 +1157,7 @@ button.ts-section-head {
 
 /* Expanded: clean heading, no box — cards display freely below */
 #done-section.accordion.active .ts-section-head--done {
-    border: none;
+    border: 1px solid transparent;
     background: transparent;
     border-radius: 0;
     padding-left: 4px;
@@ -1502,20 +1505,27 @@ button.ts-section-head {
     background-color: rgba(255, 255, 255, 0.08);
 }
 
-.bell-remind-cancel-btn {
-    width: 100%;
-    margin-top: 4px;
-    color: var(--hint-color);
-    background: transparent;
-    border: none;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 12px;
-    cursor: pointer;
-}
-
-.bell-remind-cancel-btn:hover {
-    color: var(--text-color);
+.bell-remind-assessment { margin-top: 16px; border: 1px solid rgba(148,175,204,.18); border-radius: 16px; overflow: hidden; }
+.bell-remind-assessment__toggle { display: grid; grid-template-columns: auto minmax(0,1fr) auto 16px; align-items: center; gap: 10px 8px; padding: 14px 12px; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.bell-remind-assessment__toggle::-webkit-details-marker { display: none; }
+.bell-remind-assessment__toggle:focus-visible { outline: 2px solid #8bb9f9; outline-offset: -3px; }
+.bell-remind-assessment__indicator { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 6px; border-radius: 10px; background: rgba(116,164,231,.08); }
+.bell-remind-assessment__indicator .pc-smart-bell__icon-wrap { width: 22px; height: 24px; }
+.bell-remind-assessment__indicator .pc-smart-bell__icon { width: 22px; height: 24px; }
+.bell-remind-assessment__title { min-width: 0; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.bell-remind-assessment__subtitle { grid-column: 1 / -1; font-size: 12px; line-height: 1.5; color: var(--hint-color); overflow-wrap: anywhere; }
+.bell-remind-assessment__status { color: #9dc6fa; background: rgba(110,169,248,.1); border: 1px solid rgba(110,169,248,.22); border-radius: 8px; padding: 4px 6px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.bell-remind-assessment--0 .bell-remind-assessment__status { color: #a5beb0; background: rgba(123,165,143,.1); border-color: rgba(123,165,143,.22); }
+.bell-remind-assessment--2 .bell-remind-assessment__status { color: #e5c66e; background: rgba(229,198,110,.1); border-color: rgba(229,198,110,.22); }
+.bell-remind-assessment--3 .bell-remind-assessment__status { color: #f1ae70; background: rgba(241,174,112,.1); border-color: rgba(241,174,112,.22); }
+.bell-remind-assessment--4 .bell-remind-assessment__status { color: #f18b91; background: rgba(241,139,145,.1); border-color: rgba(241,139,145,.22); }
+.bell-remind-assessment--unknown .bell-remind-assessment__status { color: var(--hint-color); background: transparent; border-color: rgba(148,175,204,.18); }
+.bell-remind-assessment__chevron { width: 16px; height: 16px; color: var(--hint-color); transition: transform .18s ease; }
+.bell-remind-assessment[open] .bell-remind-assessment__chevron { transform: rotate(180deg); }
+.bell-remind-assessment__body { padding: 0 12px 2px; }
+@media (prefers-reduced-motion: reduce) { .bell-remind-assessment__chevron { transition: none; } }
+@media (max-width: 380px) {
+    .bell-remind-assessment .pc-activity-cards-grid { grid-template-columns: minmax(0,1fr); }
 }
 
 #report-modal .report-feedback-block {

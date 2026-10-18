@@ -9677,7 +9677,9 @@ function _renderDossierLinkedExchangeCard(rel, options) {
         statsParts.push(window.escapeHTML(window.t('parityDayChip', { day: dayValue, total: 14 }, lang)));
     }
     statsParts.push(
-        `<span${skipWarn ? ' class="is-warn"' : ''}>${window.escapeHTML(skipsFmt(skipValue))}</span>`
+        `<span${skipWarn ? ' class="is-warn"' : ''}>${window.escapeHTML(
+            window.t('linkedCardSkipsTotal', { label: skipsFmt(skipValue) }, lang)
+        )}</span>`
     );
     const statsHtml = statsParts.length
         ? `<span class="linked-card-stats">${statsParts.join('<span class="linked-card-stats-dot" aria-hidden="true">•</span>')}</span>`
