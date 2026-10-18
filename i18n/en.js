@@ -1712,6 +1712,7 @@
             mutualBalanceYourProject: "Your project",
             mutualBalanceDayOf: "Day {day} of {total}",
             mutualBalanceSkipsTotal: "Total skips: {skips}",
+            linkedCardSkipsTotal: "{label} total",
             mutualBalancePartnerSkipHint: "💡 Partner missed {count} consecutive {word}. You can remove them or leave without a penalty.",
             mutualBalancePartnerLeftHint: "💡 Partner already left your project. You can leave without a penalty.",
             mutualBalanceOwnerKickHint: "💡 The tester has {count} consecutive {word}. You can remove them as inactive.",

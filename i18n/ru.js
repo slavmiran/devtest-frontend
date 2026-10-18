@@ -1712,6 +1712,7 @@
             mutualBalanceYourProject: "Ваш проект",
             mutualBalanceDayOf: "День {day} из {total}",
             mutualBalanceSkipsTotal: "Всего пропусков: {skips}",
+            linkedCardSkipsTotal: "{label} всего",
             mutualBalancePartnerSkipHint: "💡 Партнёр пропустил {count} {word} подряд. Вы можете исключить его или выйти без штрафа.",
             mutualBalancePartnerLeftHint: "💡 Партнёр уже покинул ваш проект. Вы можете выйти без штрафа.",
             mutualBalanceOwnerKickHint: "💡 У тестера {count} {word} подряд. Можно исключить его как неактивного.",
