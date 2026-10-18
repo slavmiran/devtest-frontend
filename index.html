@@ -36,15 +36,15 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261016-screenshot-karma-v2"></script>
-    <script src="./i18n/en.js?v=20261016-screenshot-karma-v2"></script>
+    <script src="./i18n/ru.js?v=20261018-skips-total-v1"></script>
+    <script src="./i18n/en.js?v=20261018-skips-total-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
-    <script src="./ui/ui-tests.js?v=20261015-access-owner-contact-v1"></script>
+    <script src="./ui/ui-tests.js?v=20261018-tests-reminder-v1"></script>
     <script src="./ui/ui-projects.js?v=20261015-actor-status-v1"></script>
     <script src="./js/project-parameters.js?v=20261014-single-email-v1"></script>
-    <script src="./ui/ui-market.js?v=20261016-screenshot-karma-v2"></script>
+    <script src="./ui/ui-market.js?v=20261018-skips-total-v1"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261012-geo-radar-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -60,19 +60,19 @@
     <script src="./js/testing-control.js?v=20261005-model-catalog-v2"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20261006-attention-break-side-v1"></script>
-    <script src="./js/project-today.js?v=20261014-activity-digest-v1"></script>
+    <script src="./js/project-today.js?v=20261018-risk-header-v1"></script>
     <script src="./js/smart-ping.js?v=20261014-activity-digest-v1"></script>
     <script src="./js/proof-ping.js?v=20261011-preference-consistency-v1"></script>
     <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260917-mi-run-context-v1"></script>
 <script src="./js/app-features.js?v=20261014-single-email-v1"></script>
-<script src="./js/mutual-exchange-ui.js?v=20261014-activity-digest-v1"></script>
+<script src="./js/mutual-exchange-ui.js?v=20261018-tests-reminder-v1"></script>
 <script src="./js/termination-sheet.js?v=20261015-termination-result-v2"></script>
 <script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
 <script src="./js/guaranteed-test-offer.js?v=20261004-cta-parse-v1"></script>
     <script src="./js/guaranteed-test-wizard.js?v=20261004-cta-instant-v1"></script>
     <script src="./js/project-results.js?v=20261011-market-coverage-v1"></script>
-    <script src="./app.js?v=20261007-runtime-proof-v1"></script>
+    <script src="./app.js?v=20261018-tests-reminder-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260822-recip-highlight-v1">
@@ -103,7 +103,7 @@
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260917-scroll-smooth-v2">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
     <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20261002-paypal-me-v1">
-    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20260920-report-tab-v1">
+    <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20261018-risk-header-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20261001-coverage-polish-v2">
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
@@ -2501,7 +2501,7 @@
                     <button type="button" class="btn btn-secondary bell-remind-btn-topic" id="t-bellRemindBtnTopic" onclick="confirmBellRemindSend('topic')" data-i18n="bellRemindBtnTopic">📢 Отправить в топик</button>
                 </div>
             </div>
-            <button type="button" class="btn btn-ghost bell-remind-cancel-btn" onclick="closeBellRemindOverlay()" data-i18n="btnCancel">Отмена</button>
+            <div id="bell-remind-assessment"></div>
         </div>
     </div>
 
