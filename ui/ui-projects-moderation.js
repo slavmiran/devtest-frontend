@@ -283,10 +283,6 @@ async function handleModerationRequestLive(projectId, event) {
 }
 
 /**
- * Handler: "🔄 Нужен ретест" button.
- * Confirms, then calls backend → on success moves project back to 'testing'.
- */
-/**
  * The publication guard uses the same in-app sheet, never a native popup.
  */
 async function showAppAlreadyPublishedModal(projectId) {
@@ -299,8 +295,8 @@ async function showAppAlreadyPublishedModal(projectId) {
 }
 
 /**
- * Handler: "🔄 Нужен ретест" button.
- * Confirms, then calls backend → on success moves project back to 'testing'.
+ * Retest reuses the project editor. Confirmation and the atomic restart happen
+ * only when its settings have passed the standard validation.
  */
 var moderationRetestPending = new Set();
 var closeModerationRetestConfirmation = null;
@@ -396,9 +392,16 @@ async function handleModerationRequestRetest(projectId, event) {
         return Number(item.app_id || item.id) === projectId;
     });
     if (!project) {showToast(window.t('moderationRetestChanged', {}, lang)); return;}
-    var expectedRun = Math.max(1, Number(project.run_iteration || 1));
+    openEditModal(projectId, {
+        project: _mapArchivedProjectForEdit(project),
+        retestContext: {project: project, expectedRun: Math.max(1, Number(project.run_iteration || 1))}
+    });
+}
+
+async function confirmModerationRetestFromSettings(projectId, context, settingsPayload) {
+    if (moderationRetestPending.has(projectId)) return null;
     moderationRetestPending.add(projectId);
-    var confirmed = await showModerationRetestConfirmation(project);
+    var confirmed = await showModerationRetestConfirmation(Object.assign({}, context.project, settingsPayload));
     if (!confirmed) {moderationRetestPending.delete(projectId); return;}
 
     var btn = document.getElementById('moderation-retest-btn-' + projectId);
@@ -412,7 +415,7 @@ async function handleModerationRequestRetest(projectId, event) {
     if (liveBtn) liveBtn.disabled = true;
 
     try {
-        var result = await apiPipelineRequestRetest(projectId, expectedRun);
+        var result = await apiPipelineRequestRetest(projectId, context.expectedRun, settingsPayload);
         if (result && result.ok) {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             showToast(window.t('moderationRetestSuccess', {}, lang));
@@ -443,6 +446,7 @@ async function handleModerationRequestRetest(projectId, event) {
                     console.error('[moderation] retest loadProjects refresh failed:', e);
                 });
             }
+            return result.data || {status: 'success'};
         } else {
             var errMsg = (result && result.message) || '';
             if (errMsg === 'app_already_published') {
@@ -468,6 +472,7 @@ async function handleModerationRequestRetest(projectId, event) {
     } finally {
         moderationRetestPending.delete(projectId);
     }
+    return null;
 }
 
 /**

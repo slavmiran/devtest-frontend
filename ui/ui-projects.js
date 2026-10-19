@@ -5996,28 +5996,34 @@ function showReadonlyAlert() {
 var _editModalSnapshot = null;
 var _editSaveAndCloseRequested = false;
 var _editModalRestartMode = false;
+var _editModalRetestContext = null;
 
 function isEditModalRestartMode() {
     return !!_editModalRestartMode;
 }
 
+function getEditModalRetestContext() {
+    return _editModalRetestContext;
+}
+
 function _mapArchivedProjectForEdit(archived) {
     if (!archived) return null;
     return {
-        id: Number(archived.app_id || 0),
+        id: Number(archived.app_id || archived.id || 0),
         name: archived.name || '',
-        package: archived.package_name || '',
+        package: archived.package_name || archived.package || '',
         instructions: archived.instructions || '',
         icon_url: archived.icon_url || '',
         google_group_url: archived.google_group_url || '',
         mode: archived.mode || 'mutual',
         target_lang: archived.target_lang || 'ALL',
-        limit_mutual: archived.limit_mutual || 12,
-        limit_bounty: archived.limit_bounty || 12,
-        bounty_per_tester: archived.bounty_per_tester || 100,
+        limit_mutual: archived.limit_mutual ?? 12,
+        limit_bounty: archived.limit_bounty ?? 12,
+        bounty_per_tester: archived.bounty_per_tester ?? 100,
         request_reviews: archived.request_reviews !== false,
         test_mode: archived.test_mode || 'google_group',
         accepts_email_testers: !!archived.accepts_email_testers,
+        min_android_version: archived.min_android_version || 0,
         is_setup_completed: true,
     };
 }
@@ -6050,6 +6056,13 @@ function _applyEditModalRestartChrome(isRestart) {
     if (createdAtEl && isRestart) {
         createdAtEl.textContent = window.t('archiveRestartSettingsIntro', {}, lang);
         createdAtEl.style.opacity = '1';
+    }
+    if (_editModalRetestContext) {
+        if (titleEl) titleEl.textContent = window.t('moderationRetestSettingsTitle', {}, lang);
+        if (hintEl) hintEl.textContent = window.t('archiveRestartModeHint', {}, lang);
+        if (saveBtn) saveBtn.textContent = window.t('moderationRetestSettingsContinue', {}, lang);
+        if (transferBtn) transferBtn.style.display = 'none';
+        if (createdAtEl) createdAtEl.textContent = window.t('moderationRetestSettingsIntro', {}, lang);
     }
 }
 
@@ -6139,6 +6152,7 @@ function openEditModal(projectId, options) {
     const project = options.project || myProjects.find((item) => item.id === projectId);
     if (!project) return;
     _editModalRestartMode = !!options.restartMode;
+    _editModalRetestContext = options.retestContext || null;
     projectToEdit = projectId;
     document.getElementById('edit-name').value = project.name || '';
     document.getElementById('edit-description').value = project.instructions || '';
@@ -6147,9 +6161,9 @@ function openEditModal(projectId, options) {
     if (window.AccessSetupManager && typeof window.AccessSetupManager.initEdit === 'function') {
         window.AccessSetupManager.initEdit(project);
     }
-    document.getElementById('edit-limit-mutual').value = String(project.limit_mutual || 12);
-    document.getElementById('edit-limit-bounty').value = String(project.limit_bounty || 12);
-    document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester || 100);
+    document.getElementById('edit-limit-mutual').value = String(project.limit_mutual ?? 12);
+    document.getElementById('edit-limit-bounty').value = String(project.limit_bounty ?? 12);
+    document.getElementById('edit-bounty-per-tester').value = String(project.bounty_per_tester ?? 100);
     document.getElementById('edit-request-reviews').checked = project.request_reviews !== false;
     setMinAndroidVersion('edit', project.min_android_version || 0);
 
@@ -6232,6 +6246,7 @@ function exitEditEmailTestingMode() {
 
 function closeEditModal(event) {
     if (event && event.target !== document.getElementById('edit-project-modal')) return;
+    if (window.moderationRetestPending && window.moderationRetestPending.has(Number(projectToEdit))) return;
     var forceClose = !!(arguments[1] && arguments[1].force);
     if (!forceClose && _isEditModalDirty()) {
         _openEditUnsavedModal();
@@ -6243,6 +6258,7 @@ function closeEditModal(event) {
         _editModalSnapshot = null;
         _editSaveAndCloseRequested = false;
         _editModalRestartMode = false;
+        _editModalRetestContext = null;
         _applyEditModalRestartChrome(false);
         if (window.editProjectFlow) window.editProjectFlow.emailMode = false;
         renderEditAccessSetup();

@@ -3576,7 +3576,8 @@ async function doSaveProject(projectData) {
 
 async function saveProjectEdit() {
     if (!projectToEdit) return;
-    if (typeof window.isEditModalRestartMode === 'function' && window.isEditModalRestartMode()) {
+    if ((typeof window.isEditModalRestartMode === 'function' && window.isEditModalRestartMode()) ||
+        (typeof window.getEditModalRetestContext === 'function' && window.getEditModalRetestContext())) {
         return confirmRestartFromSettings();
     }
     const name = document.getElementById('edit-name').value.trim();
@@ -3759,13 +3760,14 @@ async function apiPipelineRequestLive(appId) {
  * Ask backend to perform a Soft Reset: transition project 'moderation' → 'testing'.
  * Returns { ok: true } on success, or { ok: false, message: string } on error.
  */
-async function apiPipelineRequestRetest(appId, expectedRunIteration) {
+async function apiPipelineRequestRetest(appId, expectedRunIteration, settingsPayload) {
     try {
         var url = `${API_BASE}/api/pipeline/request-retest`.replace('/api/api/', '/api/');
         var response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                ...(settingsPayload || {}),
                 app_id: Number(appId), owner_id: Number(userId),
                 expected_run_iteration: Number(expectedRunIteration),
                 init_data: typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((tg && tg.initData) || '')
@@ -3879,18 +3881,32 @@ function _buildRestartSettingsPayload() {
 
     return {
         name,
-        instructions: instructions || null,
-        icon_url: iconUrl || null,
+        instructions: instructions,
+        icon_url: iconUrl,
         google_group_url: resolvedGoogleGroupUrl,
         test_mode: editEmailMode ? 'email_list' : 'google_group',
         target_lang: targetLang,
         request_reviews: requestReviews,
+        min_android_version: typeof normalizeMinAndroidVersion === 'function'
+            ? normalizeMinAndroidVersion((document.getElementById('edit-min-android-version') || {}).value)
+            : (parseInt((document.getElementById('edit-min-android-version') || {}).value, 10) || 0),
+        accepts_email_testers: !!(document.getElementById('edit-app-accepts-email-testers') || {}).checked,
         ...pricingPayload,
     };
 }
 
+var _restartSettingsSubmitting = false;
 async function confirmRestartFromSettings() {
+    if (_restartSettingsSubmitting) return null;
+    _restartSettingsSubmitting = true;
+    try {return await _confirmRestartFromSettings();}
+    finally {_restartSettingsSubmitting = false;}
+}
+
+async function _confirmRestartFromSettings() {
     if (!projectToEdit) return null;
+    const appId = Number(projectToEdit);
+    const retestContext = typeof window.getEditModalRetestContext === 'function' ? window.getEditModalRetestContext() : null;
     const restartAcceptsEmail = !!(document.getElementById('edit-app-accepts-email-testers') && document.getElementById('edit-app-accepts-email-testers').checked);
     var resolvedRestartEmail = await _resolveTesterEmailForSave('edit-app-tester-email', restartAcceptsEmail);
     if (!resolvedRestartEmail.ok) {
@@ -3922,7 +3938,9 @@ async function confirmRestartFromSettings() {
 
     var succeeded = false;
     try {
-        const result = await restartArchivedProject(projectToEdit, settingsPayload);
+        const result = retestContext
+            ? await confirmModerationRetestFromSettings(appId, retestContext, settingsPayload)
+            : await restartArchivedProject(appId, settingsPayload);
         succeeded = !!(result && result.status === 'success');
         if (succeeded) {
             if (typeof window.markEditModalSavedState === 'function') {
@@ -3943,7 +3961,7 @@ async function confirmRestartFromSettings() {
             if (typeof applyActionButtonProcessing === 'function') {
                 applyActionButtonProcessing(editBtn, false);
             } else if (editBtn) {
-                editBtn.innerText = window.t('archiveRestartConfirmBtn', {}, lang);
+                editBtn.innerText = window.t(retestContext ? 'moderationRetestSettingsContinue' : 'archiveRestartConfirmBtn', {}, lang);
                 editBtn.disabled = false;
             }
             if (typeof window.updateEditSaveButtonState === 'function') {
