@@ -114,10 +114,14 @@
             '</div>' +
             '<div class="live-keywords" tabindex="0">' + chips + '</div>' +
         '</div>';
+        var paceNote=window.LiveHistoryImport&&installs?window.LiveHistoryImport.pace(installs):'';
+        var retentionNote=metrics&&metrics.retention_observed_only_count&&window.LiveHistoryImport?window.t('lhiRetentionLower',{},window.lang==='ru'?'ru':'en'):'';
         return '<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
             '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs) + '</div>' +
+            (paceNote?'<p class="lh-pace-note">'+esc(paceNote)+'</p>':'')+
             '<div class="live-metrics-health">' + health + '</div>' + aso +
-            '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>';
+            (retentionNote?'<p class="lh-pace-note">'+esc(retentionNote)+'</p>':'')+
+            '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>'+(window.LiveHistoryImport&&metrics?window.LiveHistoryImport.banner(id,metrics.history_import):'');
     }
     function remember(id, metrics) {
         cache.set(id, metrics);
@@ -189,4 +193,5 @@
         var id = Number(event.detail && event.detail.appId);
         if (id && document.querySelector('.live-metrics-slot[data-app-id="' + id + '"]')) load(id);
     });
+    window.addEventListener('live-history:imported',function(event){var id=Number(event.detail&&event.detail.appId);if(!id)return;revisions.set(id,(revisions.get(id)||0)+1);Promise.resolve(requests.get(id)).finally(function(){load(id);});});
 })();

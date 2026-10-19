@@ -142,6 +142,7 @@
         if (id === 'project-coverage-modal') return callGlobal('closeProjectCoverageModal');
         if (id === 'play-store-passport') return callGlobal('closePlayStorePassport');
         if (id === 'live-analytics-modal') return callGlobal('closeLiveMetricsAnalytics');
+        if (id === 'live-history-modal') return callGlobal('closeLiveHistoryImport');
         if (id === 'coverage-screenshot-modal') return callGlobal('closeCoverageScreenshotModal');
         if (id.indexOf('guaranteed-test-wizard-') === 0 || id.indexOf('gtw-') === 0) {
             var wizardBack = window.handleGuaranteedTestWizardBack;

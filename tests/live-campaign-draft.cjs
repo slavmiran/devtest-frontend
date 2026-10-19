@@ -39,6 +39,8 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  const keys=ideas.suggest({title:'Family Budget Planner',summary:'Track family budget and travel expenses',description:'<script>evil script()</script> Family budget for everyone.'});
  assert.ok(keys.includes('family budget'));assert.equal(keys.some(k=>k.includes('evil')),false);assert.ok(keys.every(k=>k.split(' ').length<=3));assert.equal(keys.includes('and'),false);
  for(const rate of [null,NaN,Infinity,-1,'12']){const empty=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:rate}}});assert.equal(empty.baseline.available,false);assert.equal(model.applyStrategy(empty,'aso').volume.dailyInstalls,1);}
+ const monthly=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:0,baseline:{available:true,days:28,per_day:.5}}}});assert.equal(monthly.baseline.available,true);assert.equal(monthly.baseline.perDay,.5);assert.equal(monthly.baseline.days,28);
+ const inactive=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:0,baseline:{available:false,days:null,per_day:null}}}});assert.equal(inactive.baseline.available,false);
  for(const strategy of ['aso','retention','deep','custom']){const preset=model.applyStrategy(model.create(project),strategy),quote=model.quote(preset);assert.equal(quote.channels.reduce((sum,c)=>sum+c.count,0),quote.installs);assert.ok(preset.retention.checkpoints.length>=2);}
  console.log('Single-source model: pool without quotas, paced/fixed volume, KD-only budget, source isolation, forecast and bounds passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

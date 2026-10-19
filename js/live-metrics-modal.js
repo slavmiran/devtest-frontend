@@ -174,7 +174,8 @@
         var messages=summary.signals.map(function(signal){
             var key={INSTALL_TREND_DOWN:'actionInstall',REVIEW_TREND_DOWN:'actionReviews',EARLY_DROPOFFS:'actionEarly',ACTIVE_SLOTS_LOW:'actionActive',SOURCE_IMBALANCE:'actionSource',SOURCE_CONCENTRATION:'actionConcentration',UPDATE_AGING:'actionAging',UPDATE_STALE:'actionStale'}[signal.code];
             if(!key)return '';
-            return '<li data-signal="'+esc(signal.code)+'">'+esc(t(key).replace('{p}',n(Math.abs(signal.percent))).replace('{n}',n(signal.count==null?signal.days:signal.count,0)).replace('{d}',n(signal.toxic_count,0)).replace('{channel}',t(signal.channel)))+'</li>';
+            var message=signal.code==='SOURCE_IMBALANCE'&&signal.channel==='link'&&window.LiveHistoryImport?window.t('lhiLinkImbalance',{n:n(signal.percent)},window.lang==='ru'?'ru':'en'):t(key).replace('{p}',n(Math.abs(signal.percent))).replace('{n}',n(signal.count==null?signal.days:signal.count,0)).replace('{d}',n(signal.toxic_count,0)).replace('{channel}',t(signal.channel));
+            return '<li data-signal="'+esc(signal.code)+'">'+esc(message)+'</li>';
         }).join('');
         return '<section class="la-actions"><h2>💡 '+esc(t('actions'))+'</h2>'+(messages?'<ul>'+messages+'</ul>':'<p>'+esc(t(summary.status==='clear'?'allClear':'collecting'))+'</p>')+'</section>';
     }
@@ -196,6 +197,7 @@
                 (current.view==='tree'?'<section class="la-tree-section">'+tree(data)+'</section>'+actions(data):'<section><h2>'+esc(t('signals'))+'</h2>'+chart(data)+'</section><section class="la-checks-section"><h2>'+esc(t('checks'))+'</h2><ul class="la-checks">'+checks(data)+'</ul></section>')+
                 '<details id="la-history" class="la-history"'+(current.view==='detailed'?' open':'')+'><summary>'+esc(t('historyToggle'))+'</summary>'+cohorts(data)+'<h2>'+esc(t('timeline'))+'</h2>'+timeline(data)+'</details><details id="la-method" class="la-method"><summary>'+esc(t('methodology'))+'</summary><p>'+esc(t('formula'))+'</p><ul>'+data.components.map(function(component){return '<li><span>'+esc(t(component.code))+' <small>'+esc(t('weight'))+' '+esc(n(component.weight,0))+'%</small>'+(!component.available&&component.reason?'<small>'+esc(t(component.reason))+'</small>':'')+'</span><strong>'+esc(component.points==null?t('unavailable'):n(component.points)+' / 100')+'</strong></li>';}).join('')+'</ul><p>'+esc(t('minimum'))+'</p><p>'+esc(t('scope'))+'</p><p>'+esc(t('noBaseline'))+'</p></details><p class="la-caption">'+esc(current.demo?t('demo'):t('snapshot')+': '+new Date(data.as_of).toLocaleString(window.lang==='ru'?'ru-RU':'en-US'))+'</p>';
         }
+        if(data&&window.LiveHistoryImport){var paceNote=window.LiveHistoryImport.pace(data.install_velocity);if(paceNote)(body.querySelector('.la-tree-section')||body.querySelector('.la-score-section')).insertAdjacentHTML('afterend','<p class="lh-pace-note">'+esc(paceNote)+'</p>');if(data.retention.observed_only_count)body.insertAdjacentHTML('beforeend','<p class="lh-pace-note">'+esc(window.t('lhiRetentionLower',{},window.lang==='ru'?'ru':'en'))+'</p>');if(!current.demo)body.insertAdjacentHTML('beforeend',window.LiveHistoryImport.footer(current.id,data.history_import,data.live_activated_at));}
         opened.forEach(function(id){var el=document.getElementById(id);if(el)el.open=true;});scroll.scrollTop=position;
     }
     async function read(state) {
@@ -249,4 +251,5 @@
     window.LiveMetricsAnalytics={open:open,close:close};window.closeLiveMetricsAnalytics=close;
     window.addEventListener('live-metrics:details',function(event){open(event.detail&&event.detail.appId);});
     window.addEventListener('play-store:synced',function(event){if(current&&current.id===Number(event.detail&&event.detail.appId))read(current);});
+    window.addEventListener('live-history:imported',function(event){var id=Number(event.detail&&event.detail.appId);cache.forEach(function(_,key){if(key.indexOf(id+':')===0)cache.delete(key);});if(current&&current.id===id)read(current);});
 })();

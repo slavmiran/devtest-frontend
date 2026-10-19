@@ -1,0 +1,52 @@
+(function(){
+ 'use strict';
+ Object.assign(window.I18NRU,{
+  lhiTitle:'Перенести статистику из прошлых запусков (Run #2+)?',
+  lhiIntro:'Добавьте подтверждённые установки, удержание и отзывы в Live или оставьте счётчики с нуля.',
+  lhiChoose:'Выбрать и перенести',lhiClose:'Закрыть',lhiEntry:'⇄ Перенести статистику из прошлых запусков (Run #2+)',
+  lhiSelect:'С какого запуска перенести данные?',lhiRun1:'Run #1 — базовый закрытый тест (не переносится)',
+  lhiSummary:'Запусков: {runs} · Установок: {installs} · Отзывов: {reviews} · Удержание: ~{days} дн.',
+  lhiRuns:'Войдут запуски: {runs}',lhiDirect:'Все перенесённые установки получат источник «Прямая ссылка». Это может вызвать предупреждение о дисбалансе трафика.',
+  lhiDates:'Даты событий сохраняются. Перенос не создаёт установок сегодняшним днём, не занимает слоты и не списывает $BUST.',
+  lhiObserved:'Для {n} участий точная дата завершения не сохранилась: учитываем только подтверждённый срок до последней активности. Это нижняя оценка, она не используется для сигналов раннего удаления и когорт.',
+  lhiDateOnly:'У {n} участий дата начала известна с точностью до дня.',
+  lhiUnrated:'У {n} принятых отзывов нет сохранённой оценки. Они добавятся в количество, но не изменят средний рейтинг.',
+  lhiExcluded:'Не войдут {n} участий: нет подтверждения/дат, участие ещё активно или период пересекается с уже учтённой установкой.',
+  lhiEmpty:'Нет подтверждённых завершённых участий для переноса с этого запуска.',
+  lhiContinue:'Перенести в Live',lhiConfirm:'Подтвердить перенос',lhiConfirmTitle:'Подтвердите разовый перенос',
+  lhiOnce:'После подтверждения выбрать другой стартовый запуск или повторить перенос будет нельзя.',
+  lhiCancel:'Отмена',lhiBack:'Изменить выбор',lhiLoading:'Загружаем данные…',lhiSaving:'Переносим…',
+  lhiError:'Не удалось загрузить данные. Попробуйте ещё раз.',lhiSaveError:'Не удалось подтвердить перенос. Повторите запрос: уже выполненный перенос не дублируется.',
+  lhiChanged:'История изменилась. Проверьте новое превью и подтвердите его ещё раз.',lhiRetry:'Повторить',
+  lhiDone:'✓ Данные перенесены в Live-фазу {date} (с Run #{run})',lhiSuccess:'История перенесена в Live.',
+  lhiOlderPeriod:'Перенос выполнен для предыдущего Live-периода; текущие метрики его не включают.',
+  lhiMonthly:'Фон 28 дн.: {n}/день. Основной интервал и WMA — 7 полных дней.',
+  lhiNoPace:'Установок за последние 7–28 дней не было — рассчитать темп нельзя.',
+  lhiWeek:'Темп за 7 полных дней: {n}/день · Фон за 28 дней: {m}/день.',
+  lhiRetentionLower:'Удержание включает нижнюю оценку исторических периодов без точной даты завершения.',
+  lhiLinkImbalance:'{n}% установок по прямой ссылке — обнаружен дисбаланс. Новые кампании по ключам и веб-поиску помогут выровнять баланс.'
+ });
+ Object.assign(window.I18NEN,{
+  lhiTitle:'Import past-run statistics (Run #2+)?',lhiIntro:'Add verified installs, retention and reviews to Live, or keep the counters at zero.',
+  lhiChoose:'Choose and import',lhiClose:'Close',lhiEntry:'⇄ Import past-run statistics (Run #2+)',
+  lhiSelect:'Which run should the import start from?',lhiRun1:'Run #1 — baseline closed test (excluded)',
+  lhiSummary:'Runs: {runs} · Installs: {installs} · Reviews: {reviews} · Retention: ~{days} days',lhiRuns:'Included runs: {runs}',
+  lhiDirect:'All imported installs will use the Direct link source. This may trigger a traffic imbalance warning.',
+  lhiDates:'Original event dates are preserved. Importing does not add installs today, consume slots or charge $BUST.',
+  lhiObserved:'The exact end date is missing for {n} participations. Only the verified duration through the last activity is included. This lower bound is excluded from early-departure signals and cohorts.',
+  lhiDateOnly:'For {n} participations, the start date is known only to the nearest day.',
+  lhiUnrated:'{n} accepted reviews have no recorded rating. They increase the count but do not change the average rating.',
+  lhiExcluded:'{n} participations excluded: missing confirmation/dates, still active, or overlapping an install already counted.',
+  lhiEmpty:'No verified completed participations can be imported from this run.',lhiContinue:'Import into Live',lhiConfirm:'Confirm import',
+  lhiConfirmTitle:'Confirm this one-time import',lhiOnce:'After confirmation, you cannot choose a different starting run or import again.',
+  lhiCancel:'Cancel',lhiBack:'Change selection',lhiLoading:'Loading data…',lhiSaving:'Importing…',lhiError:'Could not load the data. Please retry.',
+  lhiSaveError:'Could not confirm the import. Retry safely: a completed import will not be duplicated.',lhiChanged:'History has changed. Review the updated preview and confirm again.',
+  lhiRetry:'Retry',lhiDone:'✓ Imported into Live on {date} (from Run #{run})',lhiSuccess:'History imported into Live.',
+  lhiOlderPeriod:'The import belongs to a previous Live period and is excluded from current metrics.',
+  lhiMonthly:'28-day background: {n}/day. The primary window and WMA use 7 completed days.',
+  lhiNoPace:'No installs in the last 7–28 days — a pace cannot be calculated.',
+  lhiWeek:'7 completed days: {n}/day · 28-day background: {m}/day.',
+  lhiRetentionLower:'Retention includes a lower bound for historical periods without an exact end date.',
+  lhiLinkImbalance:'{n}% of installs come from direct links — traffic is imbalanced. Keyword and web-search campaigns can help balance the mix.'
+ });
+})();

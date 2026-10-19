@@ -3,9 +3,9 @@
  'use strict';
  function clone(x){return JSON.parse(JSON.stringify(x));}
  function create(p){
-  var m=p.live_metrics,r=m&&m.installs&&m.installs.per_day,title=String(p.play_store_raw&&p.play_store_raw.title||p.name||p.package_name||'');
+  var m=p.live_metrics,b=m&&m.installs&&m.installs.baseline,r=b?b.per_day:m&&m.installs&&m.installs.per_day,title=String(p.play_store_raw&&p.play_store_raw.title||p.name||p.package_name||'');
   return {schemaVersion:5,appId:Number(p.id||p.app_id),appTitle:title,template:'custom',name:'',icon:'rocket',source:'link',
-   baseline:{available:!!(m&&m.source==='devtesthub_live'&&m.boundary_available!==false&&typeof r==='number'&&Number.isFinite(r)&&r>=0),perDay:r||0},
+   baseline:{available:!!(m&&m.source==='devtesthub_live'&&m.boundary_available!==false&&(!b||b.available)&&typeof r==='number'&&Number.isFinite(r)&&r>=0),perDay:r||0,days:b&&b.days||7},
    web:{query:title.slice(0,200),screenshot:null},keywords:[],nextKeywordId:1,
    retention:{days:14,checkpoints:[1,7,14]},activity:{enabled:false,screenshot:false,instructions:''},
    reviews:{enabled:false,delayDays:7,prompt:'soft'},

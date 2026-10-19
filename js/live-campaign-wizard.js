@@ -87,8 +87,8 @@
             if(kind==='sources'){
                 var base=LiveCampaignTraffic.baseline(data.analytics);if(!base)throw new Error('invalid_snapshot');
                 s.context.sourceBaseline=base;s.context.sourcesError=false;
-                var analytics=data.analytics;s.context.metrics={installs:{per_day:analytics.install_velocity.per_day},reviews:{per_day:analytics.reviews_health&&analytics.reviews_health.per_day},avg_retention_days:analytics.retention&&analytics.retention.avg_days};
-                var rate=analytics.install_velocity.per_day;s.draft.baseline={available:typeof rate==='number'&&Number.isFinite(rate)&&rate>=0,perDay:rate||0};
+                var analytics=data.analytics;s.context.metrics={installs:analytics.install_velocity,reviews:{per_day:analytics.reviews_health&&analytics.reviews_health.per_day},avg_retention_days:analytics.retention&&analytics.retention.avg_days};
+                var b=analytics.install_velocity.baseline,rate=b?b.per_day:analytics.install_velocity.per_day;s.draft.baseline={available:(!b||b.available)&&typeof rate==='number'&&Number.isFinite(rate)&&rate>=0,perDay:rate||0,days:b&&b.days||7};
             }else if(kind==='campaigns'){s.context.capacity=data.capacity||{active:0,limit:3};s.context.hud=data.hud||null;s.context.campaignsError=false;
                 if(data.project_control&&!s.context.projectControl){var pristine=!dirty(s);s.context.projectControl=LiveProjectControl.setup(s.draft,data.project_control,data.campaigns,s.editing);if(pristine)s.initial=fingerprint(s.draft);}
             }else{
