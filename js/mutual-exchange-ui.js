@@ -430,6 +430,7 @@
             appName: String(options.myAppName || (test && test.name) || '').trim(),
             remindAppId: safeAppId,
             remindAppName: String(options.myAppName || (test && test.name) || '').trim(),
+            assessmentAppId: context === 'projects' ? safeAppId : Number(test && test.reciprocal_app_id || 0),
         };
 
         if (titleEl) {
@@ -698,6 +699,9 @@
         }
         if (_balanceState) {
             _balanceState.testerLanguage = person.language || _balanceState.testerLanguage;
+            if (options.context !== 'projects') {
+                _balanceState.assessmentAppId = Number(stats.partner_app_id || (test && test.reciprocal_app_id) || 0);
+            }
             if (!_balanceState.testerUsername && person.username) {
                 _balanceState.testerUsername = person.username;
             }
@@ -1381,7 +1385,8 @@
         if (assessment) {
             assessment.innerHTML = '';
             if (typeof window.pcRenderTesterActivityAssessment === 'function') {
-                window.pcRenderTesterActivityAssessment(assessment, appId, _bellRemindState.testerId);
+                var assessmentAppId = source.assessmentAppId != null ? Number(source.assessmentAppId) : appId;
+                window.pcRenderTesterActivityAssessment(assessment, assessmentAppId, _bellRemindState.testerId);
             }
         }
         overlay.classList.add('active');
