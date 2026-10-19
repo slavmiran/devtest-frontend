@@ -28,7 +28,7 @@
             var code = String(reason && reason.code || '').toLowerCase();
             if (code === 'skips') {
                 var s = Number(reason.skips || (item.tester && item.tester.consecutive_skips) || 0);
-                value = s >= 3 ? 0 : 4; // P1: 3+ skips (0), P2: 2 skips (4)
+                value = s >= 3 ? 0 : 7; // Only 3+ closed consecutive skips are actionable.
             } else if (code === 'tester_left' || code === 'broken_link') {
                 value = 1; // P1: tester left (1)
             } else if (code === 'missed_control') {
@@ -53,7 +53,10 @@
         var dismissed = options.isDismissed || root.isBrokenTesterDismissed;
         var byId = new Map();
         (existingItems || []).forEach(function (item) {
-            byId.set(Number(item.testerId), Object.assign({}, item, { reasons: (item.reasons || []).slice() }));
+            var reasons = (item.reasons || []).filter(function(reason) {
+                return reason.code !== 'skips' || Number(reason.skips || (item.tester && item.tester.consecutive_skips) || 0) >= 3;
+            });
+            if (reasons.length) byId.set(Number(item.testerId), Object.assign({}, item, { reasons: reasons }));
         });
         (project && project.testers || []).forEach(function (tester) {
             if (!tester || tester.is_guest_tester || tester.is_external) return;

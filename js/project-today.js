@@ -403,7 +403,6 @@
     var ATTENTION_ICONS = {
         debt: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13ZM6.5 5a.5.5 0 0 0-.5.5v2h12v-2a.5.5 0 0 0-.5-.5h-11ZM6 10v8.5c0 .28.22.5.5.5h11a.5.5 0 0 0 .5-.5V10H6Zm3 2h6v2H9v-2Zm0 3h4v2H9v-2Z"/></svg>',
         skips: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3 1.7 20.5h20.6L12 3Zm1 13h-2V9h2v7Zm0 3h-2v-2h2v2Z"/></svg>',
-        skips_2: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z"/></svg>',
         missed_control: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10v2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3V2Zm2 2h6V3H9v1Zm11 4H4v12h16V8Zm-8 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm1 1v2.59l1.7 1.7-1.4 1.41L11 14v-3h2Z"/></svg>',
         not_opened: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 5c5.3 0 9.27 4.11 10.5 7-1.23 2.89-5.2 7-10.5 7S2.73 14.89 1.5 12C2.73 9.11 6.7 5 12 5Zm0 2c-3.96 0-7.16 2.86-8.39 5 1.23 2.14 4.43 5 8.39 5s7.16-2.86 8.39-5C19.16 9.86 15.96 7 12 7Zm0 2.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Zm-7.7 9.34L18.6 4.3l1.41 1.41L5.71 20 4.3 18.59Z"/></svg>',
         direct_invite: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>',
@@ -1016,10 +1015,10 @@
 
     /* ───────────────────────────── data loading ───────────────────────────── */
 
-    async function requestJson(url) {
+    async function requestJson(url, allowProjectsPayload) {
         var response = await fetchWithRetry(url, { timeoutMs: 25000 }, 1);
         var payload = await response.json().catch(function () { return {}; });
-        if (!response.ok || payload.status !== 'success') {
+        if (!response.ok || (payload.status !== 'success' && !(allowProjectsPayload && Array.isArray(payload.projects)))) {
             throw new Error((payload && (payload.code || payload.message)) || ('HTTP ' + response.status));
         }
         return payload;
@@ -2654,9 +2653,11 @@
                     hasRealIssue = true;
                 });
 
-                var skips = (typeof calculateConsecutiveSkips === 'function')
-                    ? Number(calculateConsecutiveSkips(tester) || 0)
-                    : Number(tester.consecutive_skips || 0);
+                var metrics = tester.exchange_state && Number(tester.exchange_state.version || 0) >= 1
+                    && tester.exchange_state.left && tester.exchange_state.left.metrics;
+                var skips = Number(metrics && metrics.consecutive_skips != null ? metrics.consecutive_skips
+                    : tester.consecutive_skips != null ? tester.consecutive_skips
+                    : (typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(tester) : 0)) || 0;
 
                 var joinType = String(tester.join_type || '').toLowerCase();
                 var isDebt = (joinType === 'mutual' || joinType === 'prelaunch') && !!tester.is_mutual_debt;
@@ -2686,8 +2687,9 @@
                         hasRealIssue = true;
                     }
                 } else {
-                    // Scenarios b & c: Regular mutual test with skips >= 2
-                    if (!isBuffer && skips >= 2) {
+                    // A regular mutual tester needs 3 closed consecutive skips.
+                    // Today's control-day badge alone must not lower this threshold.
+                    if (!isBuffer && skips >= 3) {
                         reasons.push({
                             code: 'skips',
                             label: skipsLabel(skips),
@@ -3213,7 +3215,6 @@
     var ATTENTION_GLYPHS = {
         debt: '⚖️',
         skips: '⏳',
-        skips_2: '⚠️',
         missed_control_unrequested: '📸',
         missed_control_pending: '📸',
         missed_control_received: '📸',
@@ -3385,23 +3386,7 @@
             }
         } else if (code === 'skips') {
             var skips = Number(reason.skips || (tester && tester.consecutive_skips) || 0);
-            if (skips <= 2) {
-                priorityLevel = 'p2';
-                reasonIcon = ATTENTION_GLYPHS.skips_2;
-                title = text('pcAttentionSkips2Title', '2 дня без тестирования');
-                subtitle = text('pcAttentionSkips2Subtitle', 'Риск снижения активности');
-                hasAccordion = false;
-                spoilerText = '';
-                isDone = reminded || isPinged;
-
-                if (reminded || isPinged) {
-                    actions.push('<button type="button" class="pc-attention-btn is-remind-again" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: 2 })">' +
-                        esc(text('pcAttentionRemindAgain', '🔔 Напомнить повторно')) + '</button>');
-                } else {
-                    actions.push('<button type="button" class="pc-attention-btn" onclick="event.stopPropagation(); pcRemindTester(' + safeAppId + ',' + safeTesterId + ', \'skips\', { skips: 2 })">' +
-                        esc(text('pcAttentionRemind', '🔔 Напомнить')) + '</button>');
-                }
-            } else {
+            if (skips >= 3) {
                 priorityLevel = 'p1';
                 reasonIcon = ATTENTION_GLYPHS.skips;
                 title = text('pcAttentionSkipsCriticalTitle', '{skips} дн. без тестирования подряд', { skips: skips });
@@ -5437,19 +5422,19 @@
     };
     window.closeTesterControlActivitySheet = window.pcCloseTesterControlActivitySheet;
 
-    function testerControlActivityView(appId, testerId, includeSummary) {
+    function testerControlActivityView(appId, testerId, includeSummary, projectSnapshot) {
         var safeAppId = Number(appId || 0);
         var safeTesterId = Number(testerId || 0);
-        var project = projectById(safeAppId) || (typeof _fixtureProject !== 'undefined' ? _fixtureProject : null);
+        var project = projectSnapshot || projectById(safeAppId) || (typeof _fixtureProject !== 'undefined' ? _fixtureProject : null);
         var tester = project && (project.testers || []).find(function (item) {
             return Number(item && (item.tester_id || item.id) || 0) === safeTesterId;
         });
         if (!project || !tester) return;
 
         var cacheKey = safeAppId + ':' + safeTesterId;
-        var cachedRow = _controlRowsByAppAndTester.get(cacheKey);
+        var cachedRow = !projectSnapshot && _controlRowsByAppAndTester.get(cacheKey);
         var assessment = (cachedRow && cachedRow.activityAssessment)
-            || _controlActivityAssessments.get(cacheKey)
+            || (!projectSnapshot && _controlActivityAssessments.get(cacheKey))
             || (cachedRow ? calculateTesterControlActivityAssessment(cachedRow, project) : null)
             || (tester && tester.activityAssessment)
             || calculateTesterControlActivityAssessment(tester, project);
@@ -5621,13 +5606,18 @@
         });
     };
 
-    window.pcRenderTesterActivityAssessment = function(container, appId, testerId) {
+    window.pcRenderTesterActivityAssessment = function(container, appId, testerId, projectSnapshot) {
         if (!container) return;
-        var view = testerControlActivityView(appId, testerId, false);
+        var requestToken = {};
+        container._pcAssessmentRequest = requestToken;
+        var view = testerControlActivityView(appId, testerId, false, projectSnapshot);
+        var canLoad = !view && !projectSnapshot && Number(appId) > 0 && Number(testerId) > 0
+            && typeof userId !== 'undefined' && Number(userId) > 0;
         var assessment = view ? view.assessment : null;
         var score = view ? view.score : null;
         var status = text('bellActivityStatus' + (view ? score : 'Unknown'), 'Нет данных');
-        var subtitle = text(view ? 'bellActivitySubtitle' + score : 'bellActivityUnavailable', 'Данные оценки пока недоступны.');
+        var subtitle = canLoad ? text('bellActivityLoading', 'Загружаем оценку активности…')
+            : text(view ? 'bellActivitySubtitle' + score : 'bellActivityUnavailable', 'Данные оценки пока недоступны.');
         container.innerHTML = '<details class="bell-remind-assessment bell-remind-assessment--' + (view ? score : 'unknown') + '">' +
             '<summary class="bell-remind-assessment__toggle">' +
                 '<span class="bell-remind-assessment__indicator pc-smart-bell--' + (view ? view.score : 0) + '" aria-hidden="true">' + smartBellIndicatorHtml(assessment) + '</span>' +
@@ -5636,8 +5626,22 @@
                 '<svg class="bell-remind-assessment__chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 6 4.5 4 4.5-4"/></svg>' +
                 '<span class="bell-remind-assessment__subtitle">' + esc(subtitle) + '</span>' +
             '</summary><div class="bell-remind-assessment__body">' +
-                (view ? view.detailsHtml : '<p>' + esc(text('bellActivityUnavailable', 'Данные оценки пока недоступны.')) + '</p>') +
+                (view ? view.detailsHtml : '') +
             '</div></details>';
+        if (canLoad) {
+            requestJson(API_BASE + '/projects/' + Number(userId) + '?init_data=' + encodeURIComponent(initData()), true)
+                .then(function(payload) {
+                    if (container._pcAssessmentRequest !== requestToken || !container.innerHTML) return;
+                    var project = (payload.projects || []).find(function(item) {
+                        return Number(item.id || item.app_id) === Number(appId);
+                    });
+                    window.pcRenderTesterActivityAssessment(container, appId, testerId,
+                        project ? Object.assign({}, project, { id: Number(appId) }) : { id: Number(appId), testers: [] });
+                }).catch(function() {
+                    if (container._pcAssessmentRequest !== requestToken || !container.innerHTML) return;
+                    window.pcRenderTesterActivityAssessment(container, appId, testerId, { id: Number(appId), testers: [] });
+                });
+        }
     };
     window.openTesterControlActivitySheet = window.pcOpenTesterControlActivitySheet;
 
