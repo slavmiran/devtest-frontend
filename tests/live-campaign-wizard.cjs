@@ -8,18 +8,23 @@ const listing={title:'Orbit Budget Planner',genre:'Finance',summary:'Family budg
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lQ0AAAAASUVORK5CYII=','base64');
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
  for(const language of ['ru','en'])for(const width of [360,390]){
-  const page=await browser.newPage({viewport:{width,height:740}}),errors=[],posts=[],slotKeys=new Set();
-  let campaigns=[structuredClone(bridge)],limit=3,nextId=10,failSave=false;
+  const page=await browser.newPage({viewport:{width,height:740}}),errors=[],posts=[],edits=[],slotKeys=new Set();
+  let campaigns=[structuredClone(bridge)],limit=3,nextId=10,failSave=false,failEdit=false,loseResponse=false;
+  let projectControl={revision:1,pool_available:0,allow_wallet_spending:false,policy:{paced:true,dailyInstalls:4,pauseHours:24,rampDays:0,allowContractsDuringPause:true},parameters:{request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:''},allocations:[{campaign_id:3,kind:'closed_bridge',status:'active',limit:1}]};
   const capacity=()=>({active:campaigns.filter(c=>c.kind!=='closed_bridge'&&c.status==='active').length,limit,next_slot:limit+1,next_price:(limit-1)*1000});
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://fixture.local/**',async route=>{
    const url=new URL(route.request().url()),request=route.request(),method=request.method(),body=method==='GET'?null:request.postDataJSON();
    const ok=json=>route.fulfill({json:{status:'success',...json}});
-   if(url.pathname.endsWith('/campaigns')&&method==='GET')return ok({campaigns,capacity:capacity(),pace:{needed:1,policies:[]},hud:{last_screenshot_at:new Date(Date.now()-2*3600000).toISOString(),on_schedule_percent:75,active_testers:4}});
+   if(url.pathname.endsWith('/campaigns')&&method==='GET')return ok({campaigns,project_control:{...projectControl,allocations:campaigns.map(c=>({campaign_id:c.id,kind:c.kind,name:c.name,status:c.status,source:c.definition&&c.definition.source,limit:c.cycle_limit||null}))},capacity:capacity(),pace:{needed:1,policies:[]},hud:{last_screenshot_at:new Date(Date.now()-2*3600000).toISOString(),on_schedule_percent:75,active_testers:4}});
    if(url.pathname.endsWith('/campaigns')&&method==='POST'){
     posts.push(body);if(failSave)return route.fulfill({status:503,json:{status:'error',code:'unavailable'}});
-    const c={id:nextId++,app_id:42,kind:'custom',status:body.status,revision:1,name:body.definition.name,definition:body.definition,confirmed_installs:0,pool_available:0,keywords:body.definition.keywords.map((k,i)=>({...k,id:i+1,enabled:true,installs:0}))};campaigns.push(c);return ok({campaign:c});
+    const replay=campaigns.find(c=>c.create_token===body.request_key);if(replay)return ok({campaign:replay});
+    assert.ok(body.project_control);projectControl.policy=body.project_control.policy;projectControl.revision++;const c={id:nextId++,app_id:42,kind:'custom',create_token:body.request_key,status:body.status,revision:1,name:body.definition.name,definition:body.definition,cycle_limit:body.project_control.own_limit,confirmed_installs:0,keywords:body.definition.keywords.map((k,i)=>({...k,id:i+1,enabled:k.enabled!==false,asset_id:k.screenshot?9:null,installs:0}))};campaigns.push(c);if(loseResponse){loseResponse=false;return route.fulfill({status:503,json:{status:'error',code:'unavailable'}});}return ok({campaign:c});
    }
+   const editing=url.pathname.match(/\/campaigns\/(\d+)\/definition$/);
+   if(editing){edits.push(body);if(failEdit)return route.fulfill({status:503,json:{status:'error',code:'unavailable'}});const c=campaigns.find(c=>c.id===Number(editing[1]));assert.equal(body.revision,c.revision);c.definition=body.definition;c.name=body.definition.name;c.keywords=body.definition.keywords.map((k,i)=>({...k,id:i+1,enabled:k.enabled,asset_id:k.screenshot&&k.screenshot.asset_id,installs:0}));c.revision++;return ok({campaign:c});}
+   if(url.pathname.includes('/assets/'))return route.fulfill({contentType:'image/png',body:png});
    if(url.pathname.endsWith('/active-slot')){if(!slotKeys.has(body.request_key)){assert.equal(body.expected_price,(limit-1)*1000);assert.equal(body.expected_slot,limit+1);slotKeys.add(body.request_key);limit++;}return ok({capacity:capacity()});}
    if(url.pathname.endsWith('/contracts')){const c=campaigns.find(c=>c.id===3);c.contracts={enabled:body.enabled,limit:body.limit,reward:body.reward,hired:0,funded_budget:body.limit*body.reward,unassigned_budget:body.limit*body.reward};c.revision++;return ok({campaign:c});}
    const toggle=url.pathname.match(/\/campaigns\/(\d+)\/keywords\/(\d+)$/),status=url.pathname.match(/\/campaigns\/(\d+)\/growth-status$/);
@@ -32,7 +37,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.goto('http://fixture.local/');
   for(const file of css)if(fs.existsSync(path.join(root,file)))await page.addStyleTag({path:path.join(root,file)});
   await page.addStyleTag({content:'body{padding:8px}#tab-projects{display:block}'});
-  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
+  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
   await page.evaluate(({language,index})=>{
    const ref=new DOMParser().parseFromString(index,'text/html').querySelector('#add-bounty-settings');const holder=document.createElement('div');holder.hidden=true;holder.appendChild(ref);document.body.appendChild(holder);
    window.lang=language;window.API_BASE='/api';window.signed='owner-42';window.getTelegramInitDataRaw=()=>signed;
@@ -76,10 +81,13 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await field('position').first().fill('12 · blue icon');
   await layer.locator('[data-lcw-file="keyword:k1"]').setInputFiles({name:'reference.png',mimeType:'image/png',buffer:png});
   await layer.locator('.lcw-attachment figure').waitFor();await fit();await page.screenshot({path:path.join(out,'source-'+language+'-'+width+'.png'),animations:'disabled'});
-  await next();await field('retention').fill('35');await field('retention').dispatchEvent('change');assert.equal(await layer.locator('[data-lcw-field="checkpoint"][data-value="35"]').count(),1);
+  await next();await layer.locator('[data-lcw-field="retention"][data-value="35"]').click();assert.equal(await field('retention').count(),0);assert.equal(await layer.locator('[data-lcw-field="checkpoint"][data-value="35"]').count(),1);
   await layer.locator('[data-lcw-field="retention"][data-value="14"]').click();await next();
   await layer.locator('[data-lcw-field="reviews"]').click();await next();
   await field('name').fill('Summer ASO');
+  await layer.locator('[data-lcw-icon="none"]').click();await field('name').fill('');assert.equal(await layer.locator('[data-lcw-action="save"]').isDisabled(),true);await field('name').fill('Summer ASO');
+  await layer.locator('[data-lpc-cap="own"]').click();await field('cap:own').fill('2');
+  await field('target').fill('53');
   assert.equal(await layer.locator('[data-lcw-field="paced"]').count(),2);
   for(const hours of [6,18,24,36,48]){await layer.locator('[data-lcw-field="pauseHours"][data-value="'+hours+'"]').click();await fit();}
   assert.equal(await layer.locator('.lcp-equalizer').getAttribute('data-zone'),'buffer');
@@ -102,14 +110,30 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   assert.equal(await layer.isVisible(),true);const failedKey=posts.at(-1).request_key;
   failSave=false;await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});
   assert.equal(posts.at(-1).request_key,failedKey,'Retry preserves idempotency key');assert.equal(posts.at(-1).definition.volume.totalInstalls,53);assert.equal(posts.at(-1).definition.web.query,'');assert.equal(posts.at(-1).definition.keywords[0].screenshot.data_base64,png.toString('base64'));
+  assert.equal(posts.at(-1).definition.volume.paced,false,'Campaign definition cannot isolate the project independently');assert.equal(posts.at(-1).project_control.own_limit,2);assert.equal(posts.at(-1).project_control.policy.pauseHours,48);
+  assert.equal(posts.at(-1).definition.icon,null,'An explicit name allows a campaign without an icon');
   await page.locator('.lc-growth').waitFor();assert.equal(await page.evaluate(()=>revoked.length>0),true);
-  const growth=page.locator('[data-campaign-id="10"]');await growth.locator('[data-growth-keys] summary').click();
-  await growth.locator('[data-lc-action="keyword"]').first().click();await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="keyword"][aria-checked="false"]'));
+  const growth=page.locator('[data-campaign-id="10"]');await growth.locator('[data-lc-card]>summary').click();await growth.locator('[data-growth-keys] summary').click();
+  await growth.locator('[data-lc-action="keyword"]').first().locator('..').click();await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="keyword"][aria-checked="false"]'));
   assert.equal(await growth.locator('[data-lc-action="keyword"][aria-checked="true"]').isDisabled(),true,'Last enabled keyword cannot be switched off');
   assert.equal(await growth.locator('[data-growth-keys]').getAttribute('open'),'','Pool remains expanded after update');
-  await open();await layer.locator('[data-lcw-template="aso"]').click();assert.match(await layer.locator('#lcw-title').innerText(),/1.*4/);await next();await next();await next();assert.equal(await layer.locator('[data-lcw-field="rampDays"][data-value="7"]').getAttribute('aria-pressed'),'true');await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="11"]').waitFor();assert.equal(posts.at(-1).status,'active');
-  const activate=async id=>{await page.locator('[data-campaign-id="'+id+'"] [data-lc-action="status"]').click();await page.locator('[data-lc-status="active"]').click();await page.waitForFunction(()=>!document.querySelector('#live-campaign-wallet-modal').classList.contains('active'));};
-  await activate(11);await open();await layer.locator('[data-lcw-template="retention"]').click();await next();await next();await next();await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="12"]').waitFor();await activate(12);
+  const beforeEdit=campaigns.length;
+  await growth.locator('[data-lc-action="edit"]').click();await layer.waitFor();assert.match(await layer.locator('#lcw-title').innerText(),/1.*4/);
+  assert.equal(await layer.locator('[data-keyword-row]').count(),2);assert.equal(await layer.locator('.lcw-attachment img').count(),1);
+  await next();assert.deepEqual(await layer.locator('[data-lcw-field="retention"]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.value))),[7,14,21,28,35]);
+  await layer.locator('[data-lcw-field="retention"][data-value="28"]').click();await next();await next();await field('name').fill('Edited ASO');
+  failEdit=true;await layer.locator('[data-lcw-action="save"]').click();await page.waitForFunction(()=>document.querySelector('[data-lcw-action="save"]:not(:disabled)'));const editKey=edits.at(-1).request_key;
+  failEdit=false;await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});
+  assert.equal(edits.at(-1).request_key,editKey);assert.equal(edits.at(-1).definition.keywords[0].screenshot.asset_id,9);assert.equal(campaigns.length,beforeEdit);assert.equal(campaigns[0].kind,'closed_bridge');assert.equal(campaigns.find(c=>c.id===10).status,'active');
+  assert.equal(campaigns.find(c=>c.id===10).definition.retention.days,28);assert.equal(campaigns.find(c=>c.id===10).keywords[0].enabled,false);
+  const flip=async(id,on)=>{const toggle=page.locator('[data-campaign-id="'+id+'"] [data-lc-action="toggle-status"]');await toggle.locator('..').click();await page.waitForFunction(({id,on})=>document.querySelector('[data-campaign-id="'+id+'"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')===String(on),{id,on});};
+  await flip(10,false);await flip(10,true);
+  const keyboardToggle=growth.locator('[data-lc-action="toggle-status"]');await keyboardToggle.focus();await keyboardToggle.press('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='false');
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.lcAction),'toggle-status','Keyboard focus survives the request');await keyboardToggle.press('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='true');
+  await open();await layer.locator('[data-lcw-template="aso"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="11"]').waitFor();assert.equal(posts.at(-1).status,'active');assert.equal(posts.at(-1).project_control.policy.rampDays,14,'A template preserves the existing project-wide pace');
+  await open();loseResponse=true;await layer.locator('[data-lcw-template="retention"]').click();await layer.locator('[data-lcw-action="retry-template"]:not(:disabled)').waitFor();const committedKey=posts.at(-1).request_key,committedCount=campaigns.length;
+  await layer.locator('[data-lcw-action="retry-template"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="12"]').waitFor();assert.equal(posts.at(-1).definition.retention.days,28);assert.equal(posts.at(-1).request_key,committedKey);assert.equal(campaigns.length,committedCount,'A lost response at the active limit cannot create a duplicate paused campaign');assert.equal(posts.at(-1).status,'active');
+  await open();await layer.locator('[data-lcw-template="deep"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="13"]').waitFor();assert.equal(posts.at(-1).status,'paused');
   await page.locator('[data-lc-action="buy-active"]').waitFor();assert.equal(capacity().active,3);assert.equal(limit,3);
   await page.evaluate(()=>confirmAnswer=true);await page.locator('[data-lc-action="buy-active"]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="buy-active"]'));assert.equal(limit,4);assert.equal(slotKeys.size,1);
   assert.equal(await page.locator('.lc-section').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Several campaign cards fit mobile width');
@@ -118,14 +142,14 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.evaluate(()=>confirmAnswer=false);await layer.locator('[data-lcw-action="close"]').click();assert.equal(await layer.isVisible(),true);
   await page.evaluate(()=>confirmAnswer=true);await layer.locator('[data-lcw-action="close"]').click();await layer.waitFor({state:'detached'});
   await page.locator('[data-lc-action="learn"]').click();await page.locator('[data-learn-close]').click();
-  await page.locator('[data-lc-action="contracts-toggle"]').click();const editor=page.locator('.lc-contract-editor');await editor.waitFor();
+  await page.locator('[data-lc-action="contracts-toggle"]').locator('..').click();const editor=page.locator('.lc-contract-editor');await editor.waitFor();
   await editor.locator('[data-contract-field="limit"]').fill('8');await editor.locator('[data-contract-field="reward"]').fill('100');
   await page.evaluate(()=>dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:42}})));await page.waitForTimeout(300);
   assert.equal(await editor.locator('[data-contract-field="limit"]').inputValue(),'8','Pace refresh preserves unsubmitted contract terms');
   assert.match(await editor.locator('[data-contract-result="daily"]').innerText(),/65/);assert.match(await editor.locator('[data-contract-result="hold"]').innerText(),/35/);assert.match(await editor.locator('[data-contract-result="total"]').innerText(),/800/);
   await page.locator('[data-lc-action="contract-save"]').click();await page.waitForFunction(()=>document.querySelector('[data-lc-action="contracts-toggle"]').getAttribute('aria-checked')==='true');
   assert.equal(await page.locator('.lc-section').evaluate(el=>el.scrollWidth<=el.clientWidth),true);assert.equal(await editor.locator('[data-i18n="calculatorTitle"]').textContent(),language==='ru'?'Калькулятор $BUST':'$BUST calculator');await page.locator('[data-contract-details] summary').click();await page.screenshot({path:path.join(out,'contracts-'+language+'-'+width+'.png'),fullPage:true});
-  await page.locator('[data-lc-action="contracts-toggle"]').click();await page.waitForFunction(()=>document.querySelector('[data-lc-action="contracts-toggle"]').getAttribute('aria-checked')==='false');
+  await page.locator('[data-lc-action="contracts-toggle"]').locator('..').click();await page.waitForFunction(()=>document.querySelector('[data-lc-action="contracts-toggle"]').getAttribute('aria-checked')==='false');
   if(!await page.locator('[data-lc-action="contract-withdraw"]').isVisible())await page.locator('[data-contract-details] summary').click();
   await page.locator('[data-lc-action="contract-withdraw"]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="contract-withdraw"]'));
   assert.equal(campaigns[0].contracts.limit,0,'Return unassigned budget after disabling Contracts');

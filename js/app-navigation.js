@@ -135,6 +135,7 @@
         if (id === 'guest-claim-welcome-overlay') return callGlobal('closeGuestClaimWelcomeScreen');
         if (id === 'live-campaign-learning' && window.LiveCampaignLearning) { window.LiveCampaignLearning.close(); return true; }
         if (id === 'live-campaign-wallet-modal' && window.LiveCampaignWallet) { window.LiveCampaignWallet.close(); return true; }
+        if (id === 'live-project-pace-modal' && window.LiveProjectControl) { window.LiveProjectControl.close(); return true; }
         if (id === 'live-campaign-wizard' && window.LiveCampaignWizard) { window.LiveCampaignWizard.back(); return true; }
         if (id === 'checkin-proof-upload-modal') return callGlobal('closeCheckinProofUploadModal');
         if (id === 'guaranteed-test-offer-overlay') return callGlobal('hideGuaranteedTestOfferModal');

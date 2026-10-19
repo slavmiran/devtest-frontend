@@ -15,6 +15,7 @@
             }catch(error){URL.revokeObjectURL(url);if(pending.get(key)===token)pending.delete(key);throw error;}
         }
         function serialize(key,meta){
+            if(meta.assetId)return Promise.resolve({asset_id:meta.assetId});
             var item=entries.get(key);if(!item)throw new Error('lcwInvalidImage');
             return new Promise(function(resolve,reject){var reader=new FileReader();reader.onerror=reject;reader.onload=function(){resolve({name:meta.name,mime:item.file.type,data_base64:String(reader.result).split(',')[1]});};reader.readAsDataURL(item.file);});
         }

@@ -30,6 +30,9 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  const base=traffic.baseline({source:'devtesthub_live',install_velocity:{source_counts:{link:90,browser:5,key:5,unknown:0}}});
  const forecast=traffic.mix(model.applyStrategy(model.create(project),'aso'),base);assert.equal(forecast.total,142);assert.equal(forecast.status,'balanced');
  assert.equal(scope.LiveCampaignPace.quota(5,7,1),1);assert.equal(scope.LiveCampaignPace.quota(5,7,7),5);assert.equal(scope.LiveCampaignPace.risk(18),'risk');assert.equal(scope.LiveCampaignPace.risk(24),'caution');assert.equal(scope.LiveCampaignPace.risk(48),'buffer');
+ const original=model.applyStrategy(model.create(project),'retention');assert.equal(original.retention.days,28);assert.equal(model.change(original,'retention',30),original);
+ const legacy={name:'Legacy',definition:JSON.parse(JSON.stringify(original)),keywords:[]};delete legacy.definition.volume.paceVersion;legacy.definition.volume.dailyInstalls=3;legacy.definition.volume.acquisitionDays=14;legacy.definition.volume.totalInstalls=1;legacy.definition.retention={days:30,checkpoints:[1,7,14,21,30]};
+ const loaded=model.fromCampaign(project,legacy,()=>null);assert.equal(loaded.retention.days,28);assert.equal(loaded.volume.totalInstalls,42);assert.equal(loaded.volume.paceVersion,1);assert.equal(model.change(loaded,'name','Renamed').volume.paceVersion,1);assert.equal(model.change(loaded,'target',53).volume.paceVersion,2);
  const custom=model.create(project);assert.equal(traffic.mix(custom,null).status,'warning');
  assert.equal(traffic.baseline({source:'devtesthub_live',is_demo:true,source_counts:{link:90,browser:5,key:5}}),null);
  const unknown=traffic.baseline({source:'devtesthub_live',source_counts:{link:0,browser:0,key:0,unknown:100}});assert.equal(traffic.mix(custom,unknown).status,'uncertain');

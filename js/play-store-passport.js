@@ -297,9 +297,6 @@
         timer = setInterval(updateControls, 1000);
         readCache(current);
     }
-    window.renderLiveProjectBalance = function (project) {
-        return '<span class="live-project-balance">' + esc(text('balance')) + ': <strong>' + esc(amount(project.live_balance_bust)) + ' $BUST</strong><span> · ' + esc(amount(project.live_daily_burn_bust)) + ' $BUST/' + esc(text('day')) + '</span></span>';
-    };
     window.renderPlayStoreDetailsButton = function (id) {
         return '<button type="button" class="live-project-details" onclick="openPlayStorePassport(' + Number(id) + ', event)">📄 ' + esc(text('details')) + ' ›</button>';
     };

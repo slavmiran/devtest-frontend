@@ -20,7 +20,7 @@
     }
     function current(s, id) { return s.actor === actor() && s.rows && s.rows.find(function (row) { return row.id === Number(id); }); }
     function endpoint(id, path) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + Number(id) + '/campaigns' + (path || ''); }
-    var errors = { insufficient_bust_balance:'lcBalanceLow', campaign_conflict:'lcConflict', campaign_price_changed:'lcConflict',
+    var errors = { campaign_cycle_limit:'lpcCycleLimit',live_project_offer_exists:'lpcDuplicate',insufficient_bust_balance:'lcBalanceLow', campaign_conflict:'lcConflict', campaign_price_changed:'lcConflict',
         live_pace_paused:'lcpGateError',live_contract_disabled:'lcpContractOff',contract_rate_locked:'lcpContractRateLocked',contract_limit_below_committed:'lcpContractLimit',active_campaign_limit:'lcgLimitReached',last_active_keyword:'lcgLastKey',invalid_campaign_image:'lcwInvalidImage',invalid_control_days:'lcMinimumCheckpoint', pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
         slot_limit_reached:'lcSlotLimit', bridge_fixed_terms:'lcTermsFixed', campaign_budget_insufficient:'lcBudgetInsufficient', campaign_paused:'lcPausedError',
         campaign_screenshot_required:'lcScreenshotRequired', campaign_test_complete:'lcSessionClosed', bridge_requires_mutual_offer:'lcBridgeOffer',
@@ -55,16 +55,15 @@
             }).join('') + '</div><small class="lc-note">' + esc(tr('lcControlCost')) + '</small><small class="lc-note">' + esc(tr('lcFutureTerms')) + '</small></div>';
     }
     function parameters(c, s) {
-        var ref = 'campaign-' + s.id + '-' + c.id;
+        var ref = 'campaign-' + s.id + '-0';
         ProjectParameters.registerTarget(ref, {
-            key:ref + ':scope-' + s.scope, appId:s.id, titleKey:'lcParams',
+            key:ref + ':scope-' + s.scope, appId:s.id, titleKey:'pcParamsTitle',
             hideActions:true, instructionsMax:5000,
-            get:function () { var value=current(s,c.id); return value && Object.assign({},project(s),value,{id:s.id,test_mode:'google_group'}); },
-            busy:function () { return s.pending.has(c.id); },
-            save:function (field,value) { var row=current(s,c.id); if(!row)return false; var payload=settings(row);payload[field]=value;return mutate(s,row,'settings','PATCH',payload); },
+            get:function () { return s.control && Object.assign({},project(s),s.control.parameters,{id:s.id,test_mode:'google_group'}); },
+            busy:function () { return s.pending.has(-1); },
+            save:function (field,value) { if(!s.control)return false;var payload=Object.assign({revision:s.control.revision},s.control.parameters);payload[field]=value;return projectChange(s,'parameters','PATCH',payload); },
             openBoost:function (event) { return window.openScreenshotBoostSettings(s.id,event); },
             onChange:function () { repaint(s); },
-            extraHtml:function () { var row=current(s,c.id);return row ? controls(row,s) : ''; },
             activeCount:function (value) {
                 var boost=value.screenshot_boost_campaign || {};
                 return Number(value.request_reviews !== false) + Number(!!value.target_lang && value.target_lang !== 'ALL') + Number(value.min_android_version > 0) +
@@ -73,37 +72,34 @@
         });
         return ProjectParameters.buildTarget(ref);
     }
-    function contract(c,s){
+    function contract(c,s,channelsOnly){
         var d=c.contracts||{enabled:false,limit:0,reward:100,hired:0,unassigned_budget:0},busy=s.pending.has(c.id);
-        var channels='<div class="lc-bridge-channels">'+button('status',tr('lcpMutual')+': '+tr(c.status==='active'?'lcActive':'lcOff')+' ▾',c,busy,'lc-status'+(c.status==='active'?' is-on':''))+
-            button('contracts-toggle',tr('lcpContracts')+': '+tr(d.enabled?'lcActive':'pcParamsOff'),c,busy,'lc-status'+(d.enabled?' is-on':''),'role="switch" aria-checked="'+d.enabled+'"')+'</div>';
-        if(!d.enabled&&!d.limit&&!s.contractSetup.has(c.id))return channels;
-        return channels+(!d.enabled?'<small class="lc-note">'+esc(tr('lcpContractOffHint'))+'</small>':'')+'<details class="lc-contract-settings lc-campaign__section" data-contract-details="'+c.id+'"'+(s.contractSetup.has(c.id)?' open':'')+'><summary>'+esc(tr('lcpContractSummary',{used:d.hired,limit:d.limit||12,rate:d.reward}))+'<small class="lc-note">'+esc(tr('lcpContractBudget',{n:d.unassigned_budget}))+'</small></summary>'+ProjectContractPricing.build(c.id,d,c.wallet_balance)+button('contract-save',tr('lcpContractSave'),c,busy,'btn btn-primary')+(!d.enabled&&d.unassigned_budget>0?button('contract-withdraw',tr('lcpContractWithdraw'),c,busy,'lc-link'):'')+'</details>';
+        var channels='<div class="lc-bridge-channels">'+LiveCampaignControls.toggle('toggle-status',tr('lcpMutual'),c,busy,c.status==='active')+
+            LiveCampaignControls.toggle('contracts-toggle',tr('lcpContracts'),c,busy,d.enabled)+'</div>';
+        if(channelsOnly)return channels;
+        if(!d.enabled&&!d.limit&&!s.contractSetup.has(c.id))return '';
+        return (!d.enabled?'<small class="lc-note">'+esc(tr('lcpContractOffHint'))+'</small>':'')+'<details class="lc-contract-settings lc-campaign__section" data-contract-details="'+c.id+'"'+(s.contractSetup.has(c.id)?' open':'')+'><summary>'+esc(tr('lcpContractSummary',{used:d.hired,limit:d.limit||12,rate:d.reward}))+'<small class="lc-note">'+esc(tr('lcpContractBudget',{n:d.unassigned_budget}))+'</small></summary>'+ProjectContractPricing.build(c.id,d,c.wallet_balance)+button('contract-save',tr('lcpContractSave'),c,busy,'btn btn-primary')+(!d.enabled&&d.unassigned_budget>0?button('contract-withdraw',tr('lcpContractWithdraw'),c,busy,'lc-link'):'')+'</details>';
     }
     function paceNotice(s){
         var p=s.pace;if(!p)return '';var until=Date.parse(p.pause_until||'');
         if(until>Date.now())return '<div class="lcp-project-notice">⏸ '+esc(tr('lcpPaused',{date:new Date(until).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}))+'</div>';
-        return p.needed>0?'<div class="lcp-project-notice"><p>⚠️ '+esc(tr('lcpDeficit_'+new Intl.PluralRules(window.lang==='ru'?'ru':'en').select(p.needed),{n:p.needed}))+'</p><div>'+button('showcase',tr('lcpShowcase'),null,false,'meta-chip')+button('guests',tr('lcpGuests'),null,false,'meta-chip')+'</div></div>':'';
+        return p.needed>0&&Date.now()-Date.parse(p.cycle_started_at)>18*3600000?'<div class="lcp-project-notice"><p>⚠️ '+esc(tr('lpcStatusDeficit',{n:p.needed}))+'</p><div>'+button('showcase',tr('lcpShowcase'),null,false,'meta-chip')+button('guests',tr('lcpGuests'),null,false,'meta-chip')+'</div></div>':'';
     }
     function campaign(c,s) {
-        if(c.definition)return LiveCampaignGrowthCard.build(c,s.pending.has(c.id));
-        var busy=s.pending.has(c.id), cost=Number(c.overlimit_cost || 0), covered=cost ? Math.floor(c.pool_available/cost) : null;
+        var allocation=s.control&&(s.control.allocations||[]).find(function(a){return a.campaign_id===c.id;});c=Object.assign({},c,{cycle_used:allocation&&allocation.used||0,project_paced:!!(s.control&&s.control.policy.paced),project_reviews:s.control&&s.control.parameters.request_reviews});
+        if(c.definition)return LiveCampaignGrowthCard.build(c,s.pending.has(c.id)||s.pending.has(-1));
+        var busy=s.pending.has(c.id)||s.pending.has(-1), cost=Number(c.overlimit_cost || 0);
         return '<article class="card lc-campaign" data-campaign-id="' + Number(c.id) + '">' +
             '<header class="lc-campaign__head"><div><strong>🤝 ' + esc(c.kind==='closed_bridge' ? tr('lcBridge') : c.name || tr('lcCampaign')) +
             '</strong><small class="lc-note">' + esc(tr('lcBadge')) + '</small></div>' +
-            '</header>'+(c.kind==='closed_bridge'?contract(c,s):'')+
+            (c.kind==='closed_bridge'?contract(c,s,true):LiveCampaignControls.toggle('toggle-status',tr(c.status==='active'?'lcActive':'lcOff'),c,busy,c.status==='active'))+'</header>'+LiveCampaignGrowthCard.summary(c,'D14 · '+tr('lpcCheckpointCount',{n:c.control_days.length-1})+' · '+tr('lcOccupied',{used:amount(c.free_occupied),total:c.total_slots})+(LiveCampaignGrowthCard.capTag(c)?' · '+LiveCampaignGrowthCard.capTag(c):''))+
+            '<div class="lc-card-expanded">'+contract(c,s,false)+
             '<div class="lc-campaign__section"><div class="lc-slot-line"><span>'+esc(tr('lcSlots'))+'</span><strong>'+
             esc(tr('lcOccupied',{used:amount(c.free_occupied),total:c.total_slots}))+'</strong></div>'+
             '<small class="lc-note">'+esc(tr('lcFreeHint'))+'</small>'+
             (c.next_slot ? button('buy','+ '+tr('lcBuy',{n:c.next_slot,price:amount(c.next_slot_price)}),c,busy,'lc-buy') : '<small class="lc-note">'+esc(tr('lcMaxSlots'))+'</small>')+
             (c.paid_active ? '<small class="lc-note">'+esc(tr('lcPaidActive',{n:amount(c.paid_active)}))+'</small>' : '')+'</div>'+
-            '<div class="lc-campaign__section lc-budget"><strong>'+esc(tr('lcOver',{price:amount(cost)}))+'</strong>'+
-            '<div class="lc-pool-line"><span>'+esc(tr('lcPool'))+': <b>'+esc(amount(c.pool_available))+' $BUST</b> <small>'+
-            esc(covered==null ? tr('lcNoCost') : tr('lcPoolTesters',{n:amount(covered)}))+'</small></span>'+
-            button('pool',tr('lcTopup'),c,busy,'lc-link','aria-haspopup="dialog"')+'</div>'+
-            (c.allow_wallet_spending ? '<span class="lc-wallet-badge">✓ '+esc(tr('lcWalletEnabled'))+'</span>' : '')+
-            (c.reserved_bust ? '<small class="lc-note">'+esc(tr('lcReserved',{n:amount(c.reserved_bust)}))+'</small>' : '')+'</div>'+
-            parameters(c,s)+'</article>';
+            '<div class="lc-campaign__section lc-budget"><strong>'+esc(tr('lcOver',{price:amount(cost)}))+'</strong></div>'+controls(c,s)+'</div></details></article>';
     }
     function content(s) {
         var rows=s.rows || [], active=rows.filter(function(c){return c.status==='active'&&c.kind!=='closed_bridge';});var capacity=s.capacity||{limit:3};
@@ -112,21 +108,29 @@
         return '<div class="lc-section-head"><h3>'+esc(tr('lcTitle'))+'</h3><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
             (s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
             button('create','+',null,false,'lc-create','aria-label="'+esc(tr('lcCreate'))+'"')+'</div>'+
-            '<button type="button" class="lcp-learning-link" data-lc-action="learn">📚 '+esc(tr('lcpLearn'))+'</button>'+paceNotice(s)+
+            projectBar(s)+'<button type="button" class="lcp-learning-link" data-lc-action="learn">📚 '+esc(tr('lcpLearn'))+'</button>'+
             (s.error ? '<p class="lc-error" role="alert">'+esc(tr('lcError'))+' '+button('retry',tr('lcRetry'))+'</p>' : '')+
             (!s.rows ? '<p class="lc-note" role="status">'+esc(tr('lcLoading'))+'</p>' : visible.map(function(c){return campaign(c,s);}).join('')+
-                (paused.length ? '<details class="lc-paused"><summary>'+esc(tr('lcPaused',{n:paused.length}))+'</summary>'+paused.map(function(c){return campaign(c,s);}).join('')+'</details>' : ''));
+                (paused.length ? '<details class="lc-paused"><summary>'+esc(tr('lcPaused',{n:paused.length}))+'</summary>'+paused.map(function(c){return campaign(c,s);}).join('')+'</details>' : '')+(s.control?parameters(null,s):''));
+    }
+    function projectBar(s){
+        if(!s.control)return '';var c=s.control,v=c.policy||{},p=s.pace||{};
+        return '<div class="lpc-project-budget"><div><span>'+esc(tr('lpcPoolTitle'))+'</span><strong>'+esc(amount(c.pool_available))+' $BUST</strong></div>'+button('project-pool',tr('lcTopup'),null,s.pending.has(-1),'lc-link','aria-haspopup="dialog"')+(c.allow_wallet_spending?'<small class="lc-wallet-badge">✓ '+esc(tr('lcWalletEnabled'))+'</small>':'')+(c.reserved_bust?'<small class="lc-note">'+esc(tr('lcReserved',{n:amount(c.reserved_bust)}))+'</small>':'')+'</div><button type="button" class="lpc-pace-bar" data-lc-action="project-pace"'+(s.pending.has(-1)?' disabled':'')+'><span><strong>'+esc(tr(v.paced?'lpcPaceSummary':'lcpFree',{n:v.dailyInstalls,h:v.pauseHours,r:v.rampDays}))+'</strong>'+(v.paced?'<small>'+esc(tr('lpcCycleProgress',{used:p.admitted||0,total:p.quota||v.dailyInstalls}))+'</small>':'')+'</span>'+LiveCampaignGrowthCard.chevron+'</button>'+paceNotice(s);
     }
     function build(p) { var s=state(p.id||p.app_id);s.project=p;return '<section class="lc-section" data-live-campaigns="'+s.id+'">'+content(s)+'</section>'; }
+    function controlSelector(node){return node&&node.dataset.lcAction&&node.dataset.campaign?'[data-campaign-id="'+Number(node.dataset.campaign)+'"] [data-lc-action="'+node.dataset.lcAction+'"]'+(node.dataset.keyword?'[data-keyword="'+Number(node.dataset.keyword)+'"]':''):null;}
     function repaint(s, preserveContractDrafts) {
         if(s.actor!==actor())return;
         var panel=document.querySelector('[data-live-campaigns="'+s.id+'"]');if(!panel)return;
         var focus=panel.contains(document.activeElement)?document.activeElement:null;
-        var selector=focus && focus.dataset.projectParam ? '[data-campaign-id="'+focus.closest('[data-campaign-id]').dataset.campaignId+'"] [data-project-param="'+focus.dataset.projectParam+'"]' : null;
+        var selector=focus && focus.dataset.projectParam ? '[data-project-param="'+focus.dataset.projectParam+'"]' : null;
         if(focus&&focus.dataset.contractField)selector='#'+focus.id;
+        if(controlSelector(focus))selector=controlSelector(focus);
         var drafts=preserveContractDrafts?Array.from(panel.querySelectorAll('[data-contract-details]')).map(function(el){return {id:el.dataset.contractDetails,fields:Array.from(el.querySelectorAll('[data-contract-field]')).map(function(n){return {field:n.dataset.contractField,value:n.value};})};}):[];
         var contractOpen=Array.from(panel.querySelectorAll('[data-contract-details][open]')).map(function(el){return el.dataset.contractDetails;});
+        var cardsOpen=Array.from(panel.querySelectorAll('[data-lc-card][open]')).map(function(el){return el.dataset.lcCard;});
         var keysOpen=Array.from(panel.querySelectorAll('[data-growth-keys][open]')).map(function(el){return el.dataset.growthKeys;});var pausedOpen=panel.querySelector('.lc-paused[open]');panel.innerHTML=content(s);keysOpen.forEach(function(id){var el=panel.querySelector('[data-growth-keys="'+id+'"]');if(el)el.open=true;});
+        cardsOpen.forEach(function(id){var el=panel.querySelector('[data-lc-card="'+id+'"]');if(el)el.open=true;});
         contractOpen.forEach(function(id){var el=panel.querySelector('[data-contract-details="'+id+'"]');if(el)el.open=true;});
         drafts.forEach(function(d){var el=panel.querySelector('[data-contract-details="'+d.id+'"]');if(el){d.fields.forEach(function(f){var n=el.querySelector('[data-contract-field="'+f.field+'"]');if(n)n.value=f.value;});ProjectContractPricing.update(el);}});
         if(pausedOpen && panel.querySelector('.lc-paused'))panel.querySelector('.lc-paused').open=true;
@@ -139,15 +143,16 @@
         try {
             var data=await parse(await fetch(endpoint(s.id)+'?init_data='+encodeURIComponent(s.actor),{cache:'no-store',signal:controller.signal}));
             if(seq!==s.seq||s.actor!==actor())return;
-            s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;s.error=false;s.loaded=true;s.readAt=Date.now();
+            s.control=data.project_control||null;s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;project(s).live_project_control=s.control;LiveProjectControl.updateStatus(project(s),s.pace,s.rows);s.error=false;s.loaded=true;s.readAt=Date.now();
             clearTimeout(s.paceTimer);if(s.pace&&(s.pace.pause_until||s.pace.policies&&s.pace.policies.length))queueRead(s,Math.max(1000,Math.min(60000,Date.parse(s.pace.pause_until||'')-Date.now()||60000)));
         } catch(error) {
             if(error.name==='AbortError'||seq!==s.seq)return;
-            s.error=true;if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
+            s.error=true;if([401,403,404].includes(error.status)){s.rows=null;s.control=null;s.loaded=false;}
         } finally {if(s.controller===controller)s.controller=null;if(seq===s.seq)repaint(s,true);}
     }
     async function mutate(s,c,path,method,data,financial) {
         if(s.pending.has(c.id)||s.actor!==actor())return false;
+        var returnFocus=controlSelector(document.activeElement);
         var key=JSON.stringify([c.id,path,data]),request=s.requests.get(key);
         if(financial&&!request){request=uuid();s.requests.set(key,request);}
         s.pending.add(c.id);++s.seq;if(s.controller){s.controller.abort();s.controller=null;}repaint(s);
@@ -161,7 +166,18 @@
         } catch(error) {
             toastCode(error.message);if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
             if(error.status===409){s.pending.delete(c.id);await read(s);}return false;
-        } finally {s.pending.delete(c.id);repaint(s);if(s.rows)queueRead(s,100);}
+        } finally {s.pending.delete(c.id);repaint(s);if(returnFocus&&document.activeElement===document.body){var next=document.querySelector('[data-live-campaigns="'+s.id+'"] '+returnFocus);if(next&&!next.disabled)next.focus({preventScroll:true});}if(s.rows)queueRead(s,100);}
+    }
+    async function projectChange(s,path,method,data,request){
+        if(s.pending.has(-1)||s.actor!==actor())return false;
+        var key=JSON.stringify(['project',path,data]),id=request||s.requests.get(key)||uuid();s.requests.set(key,id);s.pending.add(-1);++s.seq;if(s.controller){s.controller.abort();s.controller=null;}repaint(s);
+        try{
+            var response=await parse(await fetch(endpoint(s.id,'/'+path),{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({init_data:s.actor,request_key:id},path==='pace'?{control:data}:data))}));
+            if(s.actor!==actor())return false;s.control=response.project_control;s.pace=response.pace;s.requests.delete(key);project(s).live_project_control=s.control;Object.assign(project(s),s.control.parameters);LiveProjectControl.updateStatus(project(s),s.pace,s.rows);
+            if(typeof visibilityStats!=='undefined'&&visibilityStats)visibilityStats.balance_bust=s.control.wallet_balance;
+            return true;
+        }catch(error){toastCode(error.message);return false;}
+        finally{s.pending.delete(-1);if(s.actor===actor())await read(s);}
     }
     async function buyActive(s){
         if(s.pending.has(0)||s.confirmingSlot||s.actor!==actor())return;var limit=s.capacity?s.capacity.limit:3,price=(limit-1)*1000;
@@ -177,18 +193,29 @@
         var s=state(p.id||p.app_id);s.project=p;var panel=card.querySelector('[data-live-campaigns]');if(!panel)return;
         panel.oninput=function(event){var editor=event.target.closest('.lc-contract-editor');if(editor)ProjectContractPricing.update(editor);};
         panel.onclick=async function(event) {
+            var summary=event.target.closest('summary');
+            if(summary&&summary.parentElement.tagName==='DETAILS'){event.preventDefault();event.stopPropagation();summary.parentElement.open=!summary.parentElement.open;return;}
+            if(event.target.closest('.lc-switch'))event.stopPropagation();
             var control=event.target.closest('[data-lc-action]');if(!control)return;
             event.stopPropagation();var action=control.dataset.lcAction,c=current(s,control.dataset.campaign);
             if(action==='learn')return window.LiveCampaignLearning.open('spikes',control);
             if(action==='showcase'||action==='guests'){if(window.switchTab)window.switchTab('market');if(window.switchMarketSubTab)window.switchMarketSubTab('seeking');if(action==='guests'){var guests=document.getElementById('guest-projects-section');if(guests){if(!guests.classList.contains('expanded')&&window.toggleGuestProjectsAccordion)window.toggleGuestProjectsAccordion();guests.scrollIntoView({behavior:'smooth',block:'start'});}}return;}
             if(action==='create')return window.LiveCampaignWizard.open(s.id,event);
             if(action==='retry')return read(s);
+            if(action==='project-pool')return LiveCampaignWallet.open({get:function(){return s.actor===actor()?s.control:null;},change:function(data){return projectChange(s,'pool','POST',data);}},control);
+            if(action==='project-pace')return LiveProjectControl.open({appId:s.id,get:function(){return s.actor===actor()?s.control:null;},project:function(){return project(s);},rows:function(){return s.rows;},save:function(data,key){return projectChange(s,'pace','PATCH',data,key);}},control);
             if(action==='buy-active')return buyActive(s);
             if(action==='keyword'&&c)return mutate(s,c,'keywords/'+Number(control.dataset.keyword),'PATCH',{revision:c.revision,enabled:control.dataset.enabled==='true'});
             if(!c||s.pending.has(c.id))return;
+            if(action==='edit'){
+                if(c.definition)return window.LiveCampaignWizard.edit(s.id,c,event);
+                var ref='campaign-'+s.id+'-0',params=document.getElementById('project-parameters-'+ref);
+                if(params){if(!params.classList.contains('is-expanded'))ProjectParameters.toggle(ref,event);params.scrollIntoView({behavior:'smooth',block:'center'});var first=params.querySelector('.pc-project-param');if(first)first.focus({preventScroll:true});}return;
+            }
+            if(action==='toggle-status')return mutate(s,c,c.definition?'growth-status':'status','PATCH',{revision:c.revision,status:control.checked?'active':'paused'});
             if(action==='contracts-toggle'||action==='contract-save'||action==='contract-withdraw'){
                 var contract=c.contracts||{enabled:false,limit:0,reward:100,funded_budget:0};
-                if(action==='contracts-toggle'&&!contract.enabled&&(!contract.limit||!contract.unassigned_budget)){s.contractSetup.add(c.id);repaint(s);return;}
+                if(action==='contracts-toggle'&&!contract.enabled&&(!contract.limit||!contract.unassigned_budget)){s.contractSetup.add(c.id);repaint(s);var details=panel.querySelector('[data-lc-card="'+c.id+'"]');if(details)details.open=true;return;}
                 var terms=action==='contract-withdraw'?{limit:contract.hired,reward:contract.reward}:action==='contract-save'?ProjectContractPricing.read(control.closest('[data-contract-details]')):{limit:contract.limit,reward:contract.reward};
                 if(!terms)return;
                 var enabled=action==='contract-withdraw'?false:action==='contract-save'?true:!contract.enabled,delta=terms.limit*terms.reward-(contract.funded_budget||0);
@@ -198,7 +225,6 @@
             }
             if(action==='status')return window.LiveCampaignWallet.openStatus({get:function(){return current(s,c.id);},change:function(value){var row=current(s,c.id);return row&&mutate(s,row,row.definition?'growth-status':'status','PATCH',{revision:row.revision,status:value});}},control);
             if(action==='buy'){if(await confirmBuy(tr('lcBuyConfirm',{price:amount(c.next_slot_price)})))return mutate(s,c,'buy-slot','POST',{expected_slot:c.next_slot,expected_price:c.next_slot_price},true);return;}
-            if(action==='pool')return window.LiveCampaignWallet.open({get:function(){return current(s,c.id);},change:function(data){var row=current(s,c.id);return row&&mutate(s,row,'pool','POST',data,true);}},control);
             if(action==='day') {
                 var day=Number(control.dataset.day);if(day===1||![4,7,10,14].includes(day))return;
                 var days=new Set(c.control_days);
@@ -223,6 +249,6 @@
  }
  function reports(test){var values=test.live_bridge&&test.live_bridge.additional_reports||[];return values.length?'<details class="lc-report-tasks"><summary>'+esc(tr('lcReportsTask'))+'</summary><ul>'+values.map(function(v){return '<li>'+esc(v)+'</li>';}).join('')+'</ul></details>':'';}
 
- window.addEventListener('live-campaigns:refresh',function(event){var s=state(event.detail.appId);read(s);});
+ window.addEventListener('live-campaigns:refresh',async function(event){var s=state(event.detail.appId);await read(s);if(s.actor!==actor())return;var row=event.detail.reveal&&document.querySelector('[data-live-campaigns="'+s.id+'"] [data-campaign-id="'+Number(event.detail.campaignId)+'"]');if(row){row.scrollIntoView({behavior:'smooth',block:'start'});var edit=row.querySelector('[data-lc-action="edit"]');if(edit)edit.focus({preventScroll:true});}});
  window.LiveCampaigns={requestKey:uuid,build:build,mount:mount,toastCode:toastCode,marketBadges:marketBadges,normalActions:normalActions,reports:reports,isControl:function(test,day){return !!(test&&test.live_bridge&&(test.live_bridge.control_days||[]).includes(Number(day)));}};
 })();

@@ -236,7 +236,10 @@
 
     // ── Card Results Block Builder (Expanded Card) ──
 
-    function buildProjectResultsBlock(project) {
+    function buildProjectResultsBlock(project, full) {
+        if (!full && project.phase === 'live' && window.LiveProjectControl) {
+            return window.LiveProjectControl.results(project, buildProjectResultsBlock(project, true));
+        }
         var lang = _getLang();
         var appId = Number(project.app_id || project.id || 0);
         var summary = project.results_summary || {};

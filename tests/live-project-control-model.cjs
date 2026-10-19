@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
+const scope={window:{lang:'en'},Date,localStorage:{},document:{}};vm.createContext(scope);vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../js/live-project-control.js'),'utf8'),scope);
+const model=scope.window.LiveProjectControl,active=[{id:3,status:'active'}],now=new Date().toISOString();
+assert.equal(model.status({},null,null).key,'lpcStatusLoading');
+assert.equal(model.status({},null,[]).key,'lpcStatusIdle');
+assert.equal(model.status({},null,[{status:'paused',contracts:{enabled:true}}]).key,'lpcStatusFree');
+assert.equal(model.status({}, {paced:true,admitted:2,quota:4,cycle_started_at:now},active).key,'lpcStatusOpen');
+assert.equal(model.status({}, {pause_until:new Date(Date.now()+3600000).toISOString()},active).key,'lpcStatusPaused');
+assert.equal(model.status({}, {accepting:false},active).key,'lpcStatusClosed');
+assert.equal(model.status({}, {paced:true,needed:2,cycle_started_at:new Date(Date.now()-19*3600000).toISOString()},active).key,'lpcStatusDeficit');
+const draft={volume:{totalInstalls:30}},control=model.setup(draft,{revision:7,policy:{paced:true,dailyInstalls:4,pauseHours:48,rampDays:7},allocations:[{campaign_id:3,kind:'closed_bridge',status:'active',limit:1},{campaign_id:4,status:'active',limit:2},{campaign_id:5,status:'paused',limit:1}]},[],{id:4,cycle_limit:2});
+model.change(control,'own',1);const payload=model.payload(draft,control);
+assert.equal(payload.revision,7);assert.equal(payload.own_limit,1);assert.equal(payload.allocations.length,1);assert.equal(payload.allocations[0].campaign_id,3);assert.equal(payload.policy.dailyInstalls,4);assert.equal(draft.volume.totalInstalls,30);
+console.log('Project status, independent target volume and allocation serialization passed.');

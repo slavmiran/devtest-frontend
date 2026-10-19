@@ -2489,7 +2489,7 @@ function renderProjects(force) {
                 </div>
                 <div class="card-info">
                     <div class="card-title notranslate">${safeProjectName}</div>
-                    <div class="card-subtitle notranslate${phase === 'live' ? ' card-subtitle--live' : ''}">${phase === 'live' ? window.renderLiveProjectBalance(project) : stageBadgeHtml}</div>
+                    <div class="card-subtitle notranslate${phase === 'live' ? ' card-subtitle--live' : ''}">${phase === 'live' ? window.LiveProjectControl.statusHTML(project) : stageBadgeHtml}</div>
                 </div>
                 <div class="project-header-actions${phase === 'live' ? ' project-header-actions--live' : ''}">
                     <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
@@ -2546,15 +2546,14 @@ function renderProjects(force) {
             ${visibilityMeta.hint ? `<div class="visibility-hint ${visibilityMeta.mode === 'isolated' ? 'is-critical' : ''}">${window.escapeHTML(visibilityMeta.hint)}</div>` : ''}
             ${phase === 'live' && window.LiveProjectMetrics ? `<div class="live-metrics-slot" data-app-id="${Number(project.id)}">${window.LiveProjectMetrics.render(project)}</div>` : stateBlockHtml}
             ${phase === 'live' && window.LiveCampaigns ? window.LiveCampaigns.build(project) : ''}
-            <div class="pc-team-collapsed-slot">${phase !== 'live' && typeof window.buildProjectTeamCollapsedBar === 'function' ? window.buildProjectTeamCollapsedBar(project) : ''}</div>
-            <div class="pc-results-collapsed-slot">${phase !== 'live' && typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>
+            <div class="pc-team-collapsed-slot">${typeof window.buildProjectTeamCollapsedBar === 'function' ? window.buildProjectTeamCollapsedBar(project) : ''}</div>
+            <div class="pc-results-collapsed-slot">${typeof window.buildProjectResultsCollapsed === 'function' ? window.buildProjectResultsCollapsed(project) : ''}</div>
             </section>
 
             <!-- DASHBOARD BODY (hidden when card is collapsed) -->
             <div class="pc-dashboard-body">
                 ${phase === 'live' ? '' : proofPingHtml}
                 ${todaySectionHtml}
-                ${phase === 'live' ? `<div class="live-phase1-history-label">${window.escapeHTML(lang === 'ru' ? 'История закрытого теста' : 'Closed test history')}</div>` : ''}
                 <div class="pc-results-block-slot">${typeof window.buildProjectResultsBlock === 'function' ? window.buildProjectResultsBlock(project) : ''}</div>
 
                 <div id="pc-roster-source-${project.id}" class="pc-roster-source" hidden>

@@ -9,7 +9,7 @@
         lcwNoBaseline:'Пока нет данных о фоне', lcwColdStart:'Стартуем с 1 установки в день. Процентный прирост без фоновых данных не рассчитывается.',
         lcwSmooth:'Настроим плавный прирост относительно текущего темпа. Он не гарантирует отсутствие санкций Google Play.',
         lcwRecommended:'Рекомендуем', lcwAso:'ASO-разгон', lcwAsoText:'Поиск по ключам · удержание 14 дней · мягкий запрос отзыва после 7 дней.', lcwAsoRate:'+30% к фону',
-        lcwRetention:'Максимальный Retention', lcwRetentionText:'Удержание 30 дней · три источника трафика · поддерживающий темп +10% к фону.',
+        lcwRetention:'Максимальный Retention', lcwRetentionText:'Удержание 28 дней · три источника трафика · поддерживающий темп +10% к фону.',
         lcwDeep:'Глубокий сценарий', lcwDeepText:'Прямая ссылка · целевое действие со скриншотом · удержание 7 дней.',
         lcwCustom:'Свой сценарий', lcwCustomText:'Соберите параметры вручную. Начнём с прямой ссылки, 7 дней удержания и 1 установки в день.',
         lcwChosen:'Выбрано', lcwRatePreview:'Кампания: +{extra}/день · вместе с фоном ≈{total}/день', lcwRounding:'Темп округлён до целых установок, минимум 1 в день.', lcwStartRate:'Старт: 1 установка / день',
@@ -33,7 +33,7 @@
         lcwNoBaseline:'No baseline data yet', lcwColdStart:'Start with 1 install per day. Percentage growth needs baseline data.',
         lcwSmooth:'Plan a gradual increase relative to your current pace. This does not guarantee protection from Google Play sanctions.',
         lcwRecommended:'Recommended', lcwAso:'ASO boost', lcwAsoText:'Keyword search · 14-day retention · gentle review prompt after 7 days.', lcwAsoRate:'+30% to baseline',
-        lcwRetention:'Maximum Retention', lcwRetentionText:'30-day retention · three traffic sources · supporting pace at +10% to baseline.',
+        lcwRetention:'Maximum Retention', lcwRetentionText:'28-day retention · three traffic sources · supporting pace at +10% to baseline.',
         lcwDeep:'Deep scenario', lcwDeepText:'Direct link · target action with a screenshot · 7-day retention.',
         lcwCustom:'Custom scenario', lcwCustomText:'Build it yourself. Start with a direct link, 7-day retention and 1 install per day.',
         lcwChosen:'Selected', lcwRatePreview:'Campaign: +{extra}/day · with baseline ≈{total}/day', lcwRounding:'Rounded to whole installs, at least 1 per day.', lcwStartRate:'Start: 1 install / day',
@@ -71,7 +71,7 @@
     });
     Object.assign(ru,{
         lcgDefaultScenario:'Откройте приложение, выполните основное действие и прикрепите скриншот результата.',
-        lcgManual:'Настроить кампанию вручную',lcgTemplates:'Быстрый старт',lcgTemplatePause:'Шаблон сразу добавляется в текущие кампании на паузе — параметры можно проверить перед включением.',lcgChangeTemplate:'Сменить шаблон',lcgRetentionText:'Удержание 30 дней · прямой переход · поддерживающий темп.',
+        lcgManual:'Настроить кампанию вручную',lcgTemplates:'Быстрый старт',lcgTemplatePause:'Шаблон сразу добавляется в текущие кампании на паузе — параметры можно проверить перед включением.',lcgChangeTemplate:'Сменить шаблон',lcgRetentionText:'Удержание 28 дней · прямой переход · поддерживающий темп.',
         lcgInstallSpeed:'Установки',lcgReviewSpeed:'Отзывы',lcgHold:'Удержание',lcgDayUnit:'день',lcgDaysUnit:'дн.',lcgPhotoActivity:'Активность: скрин {age} · в графике КД: {percent}%',lcgNoPhoto:'нет данных',lcgMinutes:'{n} мин назад',lcgHours:'{n} ч назад',lcgDaysAgo:'{n} дн. назад',
         lcgOpenBrowser:'🌐 Скопировать запрос и открыть поиск',lcgNeedKey:'Добавьте хотя бы один ключ в пул кампании.',lcgScenarioText:'Инструкция к действию',lcgCampaignName:'Название кампании',lcgOptional:'Необязательно',lcgDailyLimit:'Ограничить суточный темп',lcgTarget:'Всего установок',lcgUnpacedHint:'Тестеры выполняют задания по мере поступления, без суточного лимита.',lcgUnpaced:'Без суточного лимита',lcgCorridor:'Ориентир +30% к текущему темпу: до {n} уст./день. Это рекомендация, не гарантия отсутствия санкций.',lcgOnlyCheckpoints:'Оплачиваются только контрольные дни по 10 $BUST за подтверждённый скриншот. День 1 бесплатно; платы за установку и отзыв нет.',lcgByReports:'по отчётам',
         lcgSavePaused:'Лимит активных кампаний достигнут. Кампания будет сохранена на паузе.',lcgCreatePaused:'Создать на паузе',lcgSaving:'Сохраняем…',lcgCreatedPaused:'Кампания добавлена на паузе',lcgCreated:'Кампания создана',lcgSaveFailed:'Не удалось сохранить кампанию. Повторите попытку.',lcgLimitReached:'Достигнут лимит активных кампаний. Приостановите другую или купите слот.',lcgLastKey:'В активной кампании должен остаться хотя бы один включённый ключ.',
@@ -79,7 +79,7 @@
     });
     Object.assign(en,{
         lcgDefaultScenario:'Open the app, complete its main action and attach a screenshot of the result.',
-        lcgManual:'Set up a campaign manually',lcgTemplates:'Quick start',lcgTemplatePause:'A template is added to current campaigns as paused. Review its settings before activation.',lcgChangeTemplate:'Change template',lcgRetentionText:'30-day retention · direct link · supporting pace.',
+        lcgManual:'Set up a campaign manually',lcgTemplates:'Quick start',lcgTemplatePause:'A template is added to current campaigns as paused. Review its settings before activation.',lcgChangeTemplate:'Change template',lcgRetentionText:'28-day retention · direct link · supporting pace.',
         lcgInstallSpeed:'Installs',lcgReviewSpeed:'Reviews',lcgHold:'Retention',lcgDayUnit:'day',lcgDaysUnit:'days',lcgPhotoActivity:'Activity: screenshot {age} · checkpoints on schedule: {percent}%',lcgNoPhoto:'no data',lcgMinutes:'{n} min ago',lcgHours:'{n} h ago',lcgDaysAgo:'{n} days ago',
         lcgOpenBrowser:'🌐 Copy query and open search',lcgNeedKey:'Add at least one keyword to the campaign pool.',lcgScenarioText:'Action instructions',lcgCampaignName:'Campaign name',lcgOptional:'Optional',lcgDailyLimit:'Limit daily pace',lcgTarget:'Total installs',lcgUnpacedHint:'Testers complete tasks as they arrive, without a daily cap.',lcgUnpaced:'No daily cap',lcgCorridor:'Suggested +30% to current pace: up to {n} installs/day. This is guidance, not protection from sanctions.',lcgOnlyCheckpoints:'Only checkpoints are charged: 10 $BUST per verified screenshot. Day 1 is free; installs and reviews have no separate fee.',lcgByReports:'per report',
         lcgSavePaused:'The active campaign limit has been reached. This campaign will be saved as paused.',lcgCreatePaused:'Create as paused',lcgSaving:'Saving…',lcgCreatedPaused:'Campaign added as paused',lcgCreated:'Campaign created',lcgSaveFailed:'Could not save the campaign. Please retry.',lcgLimitReached:'Active campaign limit reached. Pause another campaign or buy a slot.',lcgLastKey:'An active campaign needs at least one enabled keyword.',
