@@ -2067,16 +2067,13 @@ function renderProjects(force) {
                         : window.t('pcStatusRecruiting', {}, lang);
 
         let dayMain;
-        let isDayMainBuffer = false;
+        const isDayMainBuffer = isPendingCompletion;
         if (hasSync) {
             if (isPendingCompletion) {
                 const consumedBufferHours = Number(project.consumed_pending_hours || 0);
                 const bufferDaysElapsed = Math.min(2, Math.floor(consumedBufferHours / 24));
                 const bufferedDay = Math.min(16, Math.max(14, Math.min(14, currentGoogleDay) + bufferDaysElapsed));
                 dayMain = bufferedDay;
-                if (dayMain > 14) {
-                    isDayMainBuffer = true;
-                }
             } else {
                 dayMain = Math.min(14, Math.max(1, currentGoogleDay));
             }
@@ -7495,13 +7492,15 @@ function openProjectDetailsModal(appId) {
             '<div class="detail-section-title">' + window.t('detail_owner_label', {}, lang) + '</div>' +
             '<div class="detail-owner-row" style="display: flex; align-items: center; gap: 12px;">' +
                 ownerAvatarHtml +
-                '<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">' +
+                '<div style="min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px;">' +
                     '<div id="detail-owner-name" class="detail-owner-name notranslate" style="font-weight: 700; font-size: 18px; color: #ffffff; line-height: 1.2; word-break: break-word;">' + window.escapeHTML(mainName) + '</div>' +
                     subNameHtml +
                     '<div id="detail-owner-status" class="detail-owner-status ' + ownerActivity.detailClass + '" style="cursor:pointer;" onclick="showOwnerLastSeenToast(\'' + escapeInlineJsString(test.last_owner_activity || '') + '\')">' +
                         window.escapeHTML(getOwnerDetailStatusText(test.last_owner_activity)) +
                     '</div>' +
                 '</div>' +
+                (ownerIdForProfile > 0 ? '<button type="button" class="bounty-app-dossier-btn" aria-label="' + window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang)) + '" title="' + window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang)) + '" onclick="event.stopPropagation(); closeProjectDetailsModal(); openTesterDossier(\'' + safeOwnerUsername + '\',' + ownerIdForProfile + ',' + Number(test.reciprocal_app_id || 0) + ')">' +
+                    (typeof _bountyDossierIconSvg === 'function' ? _bountyDossierIconSvg() : '') + '</button>' : '') +
             '</div>' +
             buildOwnerDetailMetricsHtml(cachedOwnerProfile || {
                 karma: ownerKarma,
