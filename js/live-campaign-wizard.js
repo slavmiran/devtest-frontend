@@ -179,7 +179,7 @@
         var template=button.dataset.lcwTemplate;
         if(template){
             if(s.edited){s.confirming=true;var accepted=await confirm(text('lcwReset'));s.confirming=false;if(!accepted||!accessible(s))return;}
-            if(s.editing)return;s.media.clear();var projectPolicy=Object.assign({},s.draft.volume);s.draft=LiveCampaignDraft.applyStrategy(s.draft,template);if(s.context.projectControl)Object.assign(s.draft.volume,LiveProjectControl.policy(projectPolicy));s.draft.name=text({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep'}[template]);if(template==='deep')s.draft.activity.instructions=text('lcgDefaultScenario');s.edited=false;s.webEdited=false;s.context.manualKey='';s.quickStatus=s.context.capacity&&s.context.capacity.active<s.context.capacity.limit?'active':'paused';return save(s,s.quickStatus);
+            if(s.editing)return;s.media.clear();var projectPolicy=Object.assign({},s.draft.volume);s.draft=LiveCampaignDraft.applyStrategy(s.draft,template);if(s.context.projectControl)Object.assign(s.draft.volume,LiveProjectControl.policy(projectPolicy));s.draft.name=text({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep'}[template]);if(template==='deep')s.draft.activity.instructions=text('lcgDefaultScenario');s.edited=false;s.webEdited=false;s.context.manualKey='';s.quickStatus='paused';return save(s,s.quickStatus);
         }
         if(field){
             var value=button.dataset.value;value=field==='source'?value:value==='true'?true:value==='false'?false:Number(value);
@@ -194,7 +194,7 @@
         s.saving=true;s.context.saving=true;s.context.saveError='';refresh(s);if(s.step===0)render(s,false);
         try{
             if(!s.context.projectControl){await s.campaignRead;if(!s.context.projectControl)throw new Error('project_control_unavailable');}
-            if(!s.editing&&s.quickStatus&&!s.createAttempt){status=s.context.capacity&&s.context.capacity.active<s.context.capacity.limit?'active':'paused';s.quickStatus=status;}
+            if(!s.editing&&s.quickStatus&&!s.createAttempt)status=s.quickStatus;
             var payload=await LiveCampaignDraft.definition(s.draft,s.media.serialize);
             if(!accessible(s))return;
             var control=LiveProjectControl.payload(s.draft,s.context.projectControl);
@@ -220,7 +220,7 @@
         if(event)event.stopPropagation();if(session){if(!accessible(session))dispose(session);else return;}
         var p=project(id),signed=actor();if(!p || !signed){toast('lcwNoAccess');return;}
         var layer=document.createElement('div');layer.id='live-campaign-wizard';layer.className='modal-overlay active gtw-overlay';
-        layer.innerHTML='<section class="lcw-page" role="dialog" aria-modal="true" aria-labelledby="lcw-title"><header class="gtw-header"><button type="button" class="gtw-back-btn" data-lcw-action="back" aria-label="'+text('lcwBack')+'">‹</button><div class="lcw-header-center"></div><button type="button" class="gtw-forward-btn" data-lcw-action="close" aria-label="'+text('lcwClose')+'">×</button></header><main class="lcw-scroll gtw-body"></main><footer class="lcw-footer"></footer></section>';
+        layer.innerHTML='<section class="lcw-page" role="dialog" aria-modal="true" aria-labelledby="lcw-title"><header class="gtw-header"><button type="button" class="gtw-back-btn" data-lcw-action="back" aria-label="'+text('lcwBack')+'">‹</button><div class="lcw-header-center"></div><div class="lcw-header-actions"><button type="button" class="gtw-forward-btn lcw-learn-btn" data-lcw-action="learn" data-topic="spikes" aria-haspopup="dialog" aria-label="'+text('lcpLearn')+'" title="'+text('lcpLearn')+'"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16M12 5C9 3 5 3 2 4v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-3-1-7-1-10 1Z"/></svg></button><button type="button" class="gtw-forward-btn" data-lcw-action="close" aria-label="'+text('lcwClose')+'">×</button></div></header><main class="lcw-scroll gtw-body"></main><footer class="lcw-footer"></footer></section>';
         function asset(assetId){return assetId?{assetId:assetId,name:text('lcwReference'),url:String(window.API_BASE||'/api').replace(/\/$/,'')+'/apps/'+Number(id)+'/campaigns/'+Number(campaign.id)+'/assets/'+Number(assetId)+'?init_data='+encodeURIComponent(signed)}:null;}
         var draft=campaign?LiveCampaignDraft.fromCampaign(p,campaign,asset):LiveCampaignDraft.create(p);
         session={draft:draft,editing:campaign||null,step:campaign?1:0,unlocked:campaign?4:1,actor:signed,layer:layer,initial:fingerprint(draft),edited:false,webEdited:!!campaign,confirming:false,outlineOpen:false,estimateOpen:false,

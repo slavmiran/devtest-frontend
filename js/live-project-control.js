@@ -32,10 +32,6 @@
  }
  function statusHTML(p){var s=status(p,p.live_pace,p.live_campaign_rows);return '<span class="live-project-status is-'+s.tone+'" data-live-project-status="'+Number(p.id||p.app_id)+'">'+e(t(s.key,s.vars))+'</span>';}
  function updateStatus(p,pace,rows){p.live_pace=pace;p.live_campaign_rows=rows;document.querySelectorAll('[data-live-project-status="'+Number(p.id||p.app_id)+'"]').forEach(function(n){n.outerHTML=statusHTML(p);});}
- function rememberResults(id,open){try{localStorage.setItem('live_results_open_'+Number(id),open?'1':'0');}catch(_){}}
- function results(p,html){var id=Number(p.id||p.app_id),open=false;try{open=localStorage.getItem('live_results_open_'+id)==='1';}catch(_){}
-  return '<details class="lpc-results-fold" data-live-results="'+id+'"'+(open?' open':'')+' ontoggle="LiveProjectControl.rememberResults('+id+',this.open)"><summary class="pc-participants-header" onclick="event.stopPropagation()"><span>'+e(t('lpcResultsTitle'))+'</span>'+LiveCampaignGrowthCard.chevron+'</summary><div class="lpc-results-body"><small class="lc-note">'+e(t('lpcResultsScope'))+'</small>'+html+'</div></details>';
- }
  function close(){if(!session)return;if(session.busy)return;var s=session;session=null;s.layer.remove();document.body.style.overflow=s.overflow;if(s.focus&&s.focus.isConnected)s.focus.focus({preventScroll:true});if(window.syncTelegramBackButton)window.syncTelegramBackButton();}
  function open(adapter,trigger){
   if(session||!adapter.get())return;var data=adapter.get(),d=LiveCampaignDraft.create(adapter.project?adapter.project():{id:adapter.appId}),c=setup(d,data,adapter.rows(),null),layer=document.createElement('div');
@@ -58,5 +54,5 @@
   layer.onkeydown=function(event){if(event.key==='Escape'){event.preventDefault();close();}if(event.key==='Tab'){var nodes=Array.from(layer.querySelectorAll('button:not(:disabled),input:not(:disabled)')).filter(function(n){return n.getClientRects().length;});if(event.shiftKey&&document.activeElement===nodes[0]){event.preventDefault();nodes[nodes.length-1].focus();}else if(!event.shiftKey&&document.activeElement===nodes[nodes.length-1]){event.preventDefault();nodes[0].focus();}}};
   render();layer.querySelector('[data-lpc-close]').focus();if(window.syncTelegramBackButton)window.syncTelegramBackButton();
  }
- window.LiveProjectControl={policy:policy,setup:setup,payload:payload,distribution:distribution,refresh:refresh,change:change,status:status,statusHTML:statusHTML,updateStatus:updateStatus,results:results,rememberResults:rememberResults,open:open,close:close};
+ window.LiveProjectControl={policy:policy,setup:setup,payload:payload,distribution:distribution,refresh:refresh,change:change,status:status,statusHTML:statusHTML,updateStatus:updateStatus,open:open,close:close};
 })();

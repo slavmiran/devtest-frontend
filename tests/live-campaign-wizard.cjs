@@ -54,6 +54,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   const fit=async()=>{
    assert.equal(await layer.evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Fullscreen has no horizontal overflow');
    assert.equal(await layer.locator('.lcw-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Content has no horizontal overflow');
+   assert.equal(await layer.locator('.gtw-header').evaluate(el=>{const back=el.querySelector('[data-lcw-action="back"]').getBoundingClientRect(),title=el.querySelector('.lcw-header-center').getBoundingClientRect(),actions=el.querySelector('.lcw-header-actions').getBoundingClientRect();return back.right<=title.left&&title.right<=actions.left&&actions.right<=innerWidth;}),true,'Header title and icon actions do not overlap');
    if(await layer.locator('.lcw-footer').isVisible()){
     assert.equal(await layer.locator('.lcw-estimate-line').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Compact estimate fits');
     assert.equal(await layer.evaluate(el=>{const b=el.querySelector('.lcw-scroll').getBoundingClientRect(),f=el.querySelector('.lcw-footer').getBoundingClientRect();return b.bottom<=f.top+1&&f.bottom<=innerHeight+1;}),true,'Footer never overlaps body');
@@ -62,6 +63,11 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await open();await layer.waitFor();await page.waitForFunction(()=>document.querySelector('.lcw-hud-proof').textContent.includes('75'));
   assert.equal(await layer.locator('.lcw-footer').isVisible(),false);assert.equal(await layer.locator('[data-lcw-action="next"]').count(),0);
   assert.match(await layer.locator('.lcw-hud-grid strong').last().innerText(),/^23 /);
+  assert.equal(await layer.locator('.lcw-learn-btn').innerText(),'','Learning is an icon-only header action');
+  assert.equal(await layer.locator('.lcw-learn-btn').getAttribute('aria-label'),await page.evaluate(()=>t('lcpLearn',{},lang)));
+  await layer.locator('.lcw-learn-btn').click();await page.locator('#live-campaign-learning').waitFor();
+  await page.evaluate(()=>tg.BackButton.callback());await page.waitForSelector('#live-campaign-learning',{state:'detached'});
+  assert.equal(await layer.locator('[data-lcw-action="manual"]').isVisible(),true,'Closing learning returns to the untouched entry');
   await fit();await page.screenshot({path:path.join(out,'entry-'+language+'-'+width+'.png'),animations:'disabled'});
   await page.evaluate(()=>tg.BackButton.callback());await layer.waitFor({state:'detached'});
   await open();await layer.locator('[data-lcw-action="manual"]').click();await fit();
@@ -130,9 +136,10 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await flip(10,false);await flip(10,true);
   const keyboardToggle=growth.locator('[data-lc-action="toggle-status"]');await keyboardToggle.focus();await keyboardToggle.press('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='false');
   assert.equal(await page.evaluate(()=>document.activeElement.dataset.lcAction),'toggle-status','Keyboard focus survives the request');await keyboardToggle.press('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='true');
-  await open();await layer.locator('[data-lcw-template="aso"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="11"]').waitFor();assert.equal(posts.at(-1).status,'active');assert.equal(posts.at(-1).project_control.policy.rampDays,14,'A template preserves the existing project-wide pace');
+  await open();await layer.locator('[data-lcw-template="aso"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="11"]').waitFor();assert.equal(posts.at(-1).status,'paused');assert.equal(capacity().active,1,'A template does not consume an active slot before the owner enables it');assert.equal(await page.locator('[data-campaign-id="11"] [data-lc-action="toggle-status"]').getAttribute('aria-checked'),'false');assert.equal(posts.at(-1).project_control.policy.rampDays,14,'A template preserves the existing project-wide pace');
   await open();loseResponse=true;await layer.locator('[data-lcw-template="retention"]').click();await layer.locator('[data-lcw-action="retry-template"]:not(:disabled)').waitFor();const committedKey=posts.at(-1).request_key,committedCount=campaigns.length;
-  await layer.locator('[data-lcw-action="retry-template"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="12"]').waitFor();assert.equal(posts.at(-1).definition.retention.days,28);assert.equal(posts.at(-1).request_key,committedKey);assert.equal(campaigns.length,committedCount,'A lost response at the active limit cannot create a duplicate paused campaign');assert.equal(posts.at(-1).status,'active');
+  await layer.locator('[data-lcw-action="retry-template"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="12"]').waitFor();assert.equal(posts.at(-1).definition.retention.days,28);assert.equal(posts.at(-1).request_key,committedKey);assert.equal(campaigns.length,committedCount,'A lost response cannot duplicate or activate a paused template');assert.equal(posts.at(-1).status,'paused');assert.equal(capacity().active,1);
+  await flip(11,true);await flip(12,true); // Explicit owner actions still respect active capacity.
   await open();await layer.locator('[data-lcw-template="deep"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="13"]').waitFor();assert.equal(posts.at(-1).status,'paused');
   await page.locator('[data-lc-action="buy-active"]').waitFor();assert.equal(capacity().active,3);assert.equal(limit,3);
   await page.evaluate(()=>confirmAnswer=true);await page.locator('[data-lc-action="buy-active"]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="buy-active"]'));assert.equal(limit,4);assert.equal(slotKeys.size,1);
@@ -141,7 +148,8 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await open();await layer.locator('[data-lcw-action="manual"]').click();await choose('web');await field('webQuery').fill('unsaved');
   await page.evaluate(()=>confirmAnswer=false);await layer.locator('[data-lcw-action="close"]').click();assert.equal(await layer.isVisible(),true);
   await page.evaluate(()=>confirmAnswer=true);await layer.locator('[data-lcw-action="close"]').click();await layer.waitFor({state:'detached'});
-  await page.locator('[data-lc-action="learn"]').click();await page.locator('[data-learn-close]').click();
+  assert.equal(await page.locator('.lc-section [data-lc-action="learn"]').count(),0);
+  await open();await layer.locator('.lcw-learn-btn').click();await page.locator('[data-learn-close]').click();await layer.locator('[data-lcw-action="close"]').click();await layer.waitFor({state:'detached'});
   await page.locator('[data-lc-action="contracts-toggle"]').locator('..').click();const editor=page.locator('.lc-contract-editor');await editor.waitFor();
   await editor.locator('[data-contract-field="limit"]').fill('8');await editor.locator('[data-contract-field="reward"]').fill('100');
   await page.evaluate(()=>dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:42}})));await page.waitForTimeout(300);

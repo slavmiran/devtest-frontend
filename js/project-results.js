@@ -236,10 +236,7 @@
 
     // ── Card Results Block Builder (Expanded Card) ──
 
-    function buildProjectResultsBlock(project, full) {
-        if (!full && project.phase === 'live' && window.LiveProjectControl) {
-            return window.LiveProjectControl.results(project, buildProjectResultsBlock(project, true));
-        }
+    function buildProjectResultsBlock(project) {
         var lang = _getLang();
         var appId = Number(project.app_id || project.id || 0);
         var summary = project.results_summary || {};
@@ -265,7 +262,9 @@
         var resultsTitle = isModerationCard
             ? (lang === 'ru' ? 'Результаты' : 'Results')
             : (lang === 'ru' ? 'Результаты тестирования' : 'Testing results');
-        var resultsSubtitle = lang === 'ru' ? 'Покрытие и полезные находки' : 'Coverage and useful findings';
+        var resultsSubtitle = project.phase === 'live'
+            ? window.t('lpcResultsScope', {}, lang)
+            : (lang === 'ru' ? 'Покрытие и полезные находки' : 'Coverage and useful findings');
         var overviewLabel = lang === 'ru' ? 'Сводка' : 'Overview';
         var allFeedbackLabel = window.t('pcResultsAllFeedback', {}, lang);
         var feedbackTotal = Number(project.feedback_total_count || 0);
@@ -385,7 +384,7 @@
         }).join('');
 
         return (
-            '<section class="pc-results-card" data-app-id="' + appId + '" aria-label="' + window.escapeHTML(resultsTitle) + '">' +
+            '<section class="pc-results-card' + (project.phase === 'live' ? ' pc-results-card--live' : '') + '" data-app-id="' + appId + '" aria-label="' + window.escapeHTML(resultsTitle) + '">' +
                 '<div class="pc-results-header" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');" role="button" tabindex="0" title="' + window.escapeHTML(resultsTitle) + '">' +
                     '<span class="pc-results-header__copy">' +
                         '<span class="pc-results-title">' + window.escapeHTML(resultsTitle) + '</span>' +

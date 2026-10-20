@@ -6,7 +6,7 @@
   lceSourceLocked:'После первой установки источник кампании изменить нельзя. Создайте другую кампанию для нового источника.',
   lceVolumeLow:'Общий объём не может быть меньше числа уже выполненных установок.',
   lceConflict:'Кампания изменилась в другом окне. Закройте редактор и откройте актуальные настройки.',
-  lceTemplate:'Шаблон сразу добавится в текущие кампании. При заполненном лимите он будет на паузе.',
+  lceTemplate:'Шаблон добавится в текущие кампании выключенным. Проверьте настройки и включите его, когда будете готовы.',
   lceKeyPaused:'Ключ на паузе',lceLoading:'Добавляем шаблон…'
  });
  Object.assign(window.I18NEN,{
@@ -15,7 +15,7 @@
   lceSourceLocked:'The traffic source is fixed after the first install. Create another campaign for a new source.',
   lceVolumeLow:'Total volume cannot be lower than already completed installs.',
   lceConflict:'This campaign changed in another window. Close the editor and reopen its latest settings.',
-  lceTemplate:'Templates are added to current campaigns immediately, or paused when all active slots are used.',
+  lceTemplate:'Templates are added to current campaigns switched off. Review the settings and enable a campaign when you are ready.',
   lceKeyPaused:'Keyword paused',lceLoading:'Adding template…'
  });
  window.I18NRU.lcpTemplateHint=window.I18NRU.lceTemplate;

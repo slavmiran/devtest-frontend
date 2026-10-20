@@ -1,9 +1,9 @@
 /* Campaign frames only. Parameter tiles, grids and editors use project-parameters.css. */
-.lc-section{margin:14px 12px 12px;min-width:0}
-.lc-section-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.lc-section{margin:14px 12px 16px;padding:12px;min-width:0;border:1px solid var(--border-strong);border-radius:18px;background:var(--bg-surface-1);box-sizing:border-box}
+.lc-section-head{display:flex;align-items:center;gap:9px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-subtle)}
 .lc-section-head h3{flex:1;margin:0;font-size:13px;font-weight:650;color:var(--text-primary,var(--text-color))}
 .lc-section-head>small{font-size:10px;color:var(--text-secondary,var(--hint-color))}
-.lc-campaign.card{padding:0;margin:0 0 10px;border:1px solid rgba(174,195,226,.12);border-radius:14px;overflow:hidden;background:rgba(7,14,25,.16)}
+.lc-campaign.card{padding:0;margin:0 0 10px;border:1px solid var(--border-strong);border-radius:14px;overflow:hidden;background:var(--bg-surface-2)}
 .lc-campaign__head{display:flex;align-items:flex-start;gap:9px;padding:12px}
 .lc-campaign__head>div{flex:1;min-width:0}.lc-campaign__head strong{display:block;font-size:12px;line-height:1.4;color:#c6d1e1}
 .lc-note{display:block;margin:4px 0 0;color:#8291a7;font-size:10px;line-height:1.4;overflow-wrap:anywhere}
@@ -14,7 +14,7 @@
 .lc-switch input:focus-visible+i{outline:2px solid var(--accent-primary);outline-offset:3px}
 .lc-switch:has(input:disabled){opacity:.5;cursor:default}.lc-edit{min-height:28px;font-size:10px;padding:3px 0}
 .lc-growth-key .lc-switch>span{display:none}.lc-bridge-channels .lc-switch{padding:6px 8px;border:1px solid var(--border-subtle);border-radius:10px}
-.lc-create{width:30px;height:30px;border:1px solid rgba(174,195,226,.12);border-radius:50%;font-size:20px;background:rgba(191,211,243,.035)}
+.lc-create{flex:0 0 36px;width:36px;height:36px;border:1px solid var(--accent-primary-border);border-radius:50%;font-size:22px;background:var(--accent-primary-surface);color:var(--accent-primary)}
 .lc-status{flex-shrink:0;padding:6px 8px;border:1px solid rgba(174,195,226,.12);border-radius:8px;font-size:10px;line-height:1.5;color:#8d9caf;background:rgba(174,195,226,.04)}
 .lc-status.is-on{color:#6de9b9;border-color:rgba(16,185,129,.24);background:rgba(16,185,129,.08)}
 .lc-campaign__section{padding:10px 12px;border-top:1px solid rgba(174,195,226,.1)}
@@ -39,7 +39,8 @@
 .link-status-type-badge.is-live,.term-type-badge.is-live{color:var(--accent-primary);background:var(--accent-primary-surface);border-color:var(--accent-primary-border)}
 
 /* The section owns finance and policy. Individual cards stay folded by default. */
-.lpc-project-budget{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--bg-card);margin-bottom:8px;font-size:11px;color:var(--text-secondary)}
+.lc-project-controls{display:grid;gap:8px;margin-bottom:14px}
+.lpc-project-budget{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--bg-app);font-size:11px;color:var(--text-secondary)}
 .lpc-project-budget>div{display:flex;gap:6px;flex:1;min-width:0;flex-wrap:wrap}.lpc-project-budget strong{color:var(--success-color,#6de9b9);font-variant-numeric:tabular-nums}.lpc-project-budget>small{flex-basis:100%;margin:0}
 .lpc-pace-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;width:100%;padding:10px 12px;background:var(--accent-primary-surface);border:1px solid var(--accent-primary-border);border-radius:12px;color:var(--text-primary);font:inherit;cursor:pointer}
 .lpc-pace-bar strong{font-size:11px;font-weight:600;line-height:1.5}.lpc-pace-bar small{display:block;margin-top:3px;color:var(--text-secondary);font-size:10px}.lpc-pace-bar>span{min-width:0}
@@ -56,4 +57,4 @@
 .lpc-pace-sheet>.btn{width:100%;margin-top:12px}.lpc-pace-sheet .lcw-panel{margin:10px 0}.lpc-pace-sheet .gtw-helper-text{font-size:11px;line-height:1.5}
 .lpc-allocation{display:flex;flex-direction:column;gap:7px;padding:10px 0;border-bottom:1px solid var(--border-subtle);min-width:0}.lpc-allocation>span{font-size:12px;line-height:1.5;overflow-wrap:anywhere;color:var(--text-primary)}.lpc-allocation small{display:block;font-size:10px;color:var(--accent-primary)}.lpc-allocation>div{display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0}.lpc-allocation .lcw-counter{flex-shrink:0}.lpc-distribution .is-warn{color:var(--warning-color,#eab308)}
 @media(prefers-reduced-motion:reduce){.lc-card-details::details-content,.lc-card-chevron{transition:none}}
-.lpc-results-fold{margin-top:12px;border:1px solid var(--border-subtle);border-radius:14px;overflow:hidden;background:var(--bg-card)}.lpc-results-fold>summary{display:flex;align-items:center;justify-content:space-between;list-style:none;cursor:pointer;padding:12px;font-size:12px;color:var(--text-primary)}.lpc-results-fold>summary::-webkit-details-marker{display:none}.lpc-results-fold[open]>summary .lc-card-chevron{transform:rotate(180deg)}.lpc-results-body>.lc-note{padding:0 12px 8px}.lpc-results-body .pc-results-card{margin:0;border:0;border-radius:0}
+@media(max-width:374px){.lc-section{padding:10px}.lc-section-head{gap:7px}.lc-section-head h3{font-size:12px}}

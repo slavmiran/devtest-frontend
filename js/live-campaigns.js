@@ -108,14 +108,14 @@
         return '<div class="lc-section-head"><h3>'+esc(tr('lcTitle'))+'</h3><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
             (s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
             button('create','+',null,false,'lc-create','aria-label="'+esc(tr('lcCreate'))+'"')+'</div>'+
-            projectBar(s)+'<button type="button" class="lcp-learning-link" data-lc-action="learn">📚 '+esc(tr('lcpLearn'))+'</button>'+
+            projectBar(s)+
             (s.error ? '<p class="lc-error" role="alert">'+esc(tr('lcError'))+' '+button('retry',tr('lcRetry'))+'</p>' : '')+
             (!s.rows ? '<p class="lc-note" role="status">'+esc(tr('lcLoading'))+'</p>' : visible.map(function(c){return campaign(c,s);}).join('')+
                 (paused.length ? '<details class="lc-paused"><summary>'+esc(tr('lcPaused',{n:paused.length}))+'</summary>'+paused.map(function(c){return campaign(c,s);}).join('')+'</details>' : '')+(s.control?parameters(null,s):''));
     }
     function projectBar(s){
         if(!s.control)return '';var c=s.control,v=c.policy||{},p=s.pace||{};
-        return '<div class="lpc-project-budget"><div><span>'+esc(tr('lpcPoolTitle'))+'</span><strong>'+esc(amount(c.pool_available))+' $BUST</strong></div>'+button('project-pool',tr('lcTopup'),null,s.pending.has(-1),'lc-link','aria-haspopup="dialog"')+(c.allow_wallet_spending?'<small class="lc-wallet-badge">✓ '+esc(tr('lcWalletEnabled'))+'</small>':'')+(c.reserved_bust?'<small class="lc-note">'+esc(tr('lcReserved',{n:amount(c.reserved_bust)}))+'</small>':'')+'</div><button type="button" class="lpc-pace-bar" data-lc-action="project-pace"'+(s.pending.has(-1)?' disabled':'')+'><span><strong>'+esc(tr(v.paced?'lpcPaceSummary':'lcpFree',{n:v.dailyInstalls,h:v.pauseHours,r:v.rampDays}))+'</strong>'+(v.paced?'<small>'+esc(tr('lpcCycleProgress',{used:p.admitted||0,total:p.quota||v.dailyInstalls}))+'</small>':'')+'</span>'+LiveCampaignGrowthCard.chevron+'</button>'+paceNotice(s);
+        return '<div class="lc-project-controls"><div class="lpc-project-budget"><div><span>'+esc(tr('lpcPoolTitle'))+'</span><strong>'+esc(amount(c.pool_available))+' $BUST</strong></div>'+button('project-pool',tr('lcTopup'),null,s.pending.has(-1),'lc-link','aria-haspopup="dialog"')+(c.allow_wallet_spending?'<small class="lc-wallet-badge">✓ '+esc(tr('lcWalletEnabled'))+'</small>':'')+(c.reserved_bust?'<small class="lc-note">'+esc(tr('lcReserved',{n:amount(c.reserved_bust)}))+'</small>':'')+'</div><button type="button" class="lpc-pace-bar" data-lc-action="project-pace"'+(s.pending.has(-1)?' disabled':'')+'><span><strong>'+esc(tr(v.paced?'lpcPaceSummary':'lcpFree',{n:v.dailyInstalls,h:v.pauseHours,r:v.rampDays}))+'</strong>'+(v.paced?'<small>'+esc(tr('lpcCycleProgress',{used:p.admitted||0,total:p.quota||v.dailyInstalls}))+'</small>':'')+'</span>'+LiveCampaignGrowthCard.chevron+'</button>'+paceNotice(s)+'</div>';
     }
     function build(p) { var s=state(p.id||p.app_id);s.project=p;return '<section class="lc-section" data-live-campaigns="'+s.id+'">'+content(s)+'</section>'; }
     function controlSelector(node){return node&&node.dataset.lcAction&&node.dataset.campaign?'[data-campaign-id="'+Number(node.dataset.campaign)+'"] [data-lc-action="'+node.dataset.lcAction+'"]'+(node.dataset.keyword?'[data-keyword="'+Number(node.dataset.keyword)+'"]':''):null;}
@@ -198,7 +198,6 @@
             if(event.target.closest('.lc-switch'))event.stopPropagation();
             var control=event.target.closest('[data-lc-action]');if(!control)return;
             event.stopPropagation();var action=control.dataset.lcAction,c=current(s,control.dataset.campaign);
-            if(action==='learn')return window.LiveCampaignLearning.open('spikes',control);
             if(action==='showcase'||action==='guests'){if(window.switchTab)window.switchTab('market');if(window.switchMarketSubTab)window.switchMarketSubTab('seeking');if(action==='guests'){var guests=document.getElementById('guest-projects-section');if(guests){if(!guests.classList.contains('expanded')&&window.toggleGuestProjectsAccordion)window.toggleGuestProjectsAccordion();guests.scrollIntoView({behavior:'smooth',block:'start'});}}return;}
             if(action==='create')return window.LiveCampaignWizard.open(s.id,event);
             if(action==='retry')return read(s);

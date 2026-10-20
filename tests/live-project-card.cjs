@@ -9,8 +9,8 @@ fs.mkdirSync(artifacts, {recursive:true});
 (async () => {
     const browser = await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL || 'chrome'});
     try {
-        for (const language of ['ru','en']) {
-            const page = await browser.newPage({viewport:{width:360,height:1000}});
+        for (const language of ['ru','en']) for (const width of [360,390]) {
+            const page = await browser.newPage({viewport:{width,height:1000}});
             const errors = [];
             page.on('pageerror',error => errors.push(error.message));
             page.on('console',message => {if(message.type()==='error') errors.push(message.text());});
@@ -21,10 +21,11 @@ fs.mkdirSync(artifacts, {recursive:true});
                 return route.fulfill({contentType:'text/html',body:'<section id="tab-projects"><div id="projects-list"></div></section><div id="archived-projects-list"></div>'});
             });
             await page.goto('http://fixture.local/');
-            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css','css/live-campaigns.css','css/project-parameters.css']) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css','css/live-campaigns.css','css/project-parameters.css','css/project-results.css']) await page.addStyleTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(language => {
                 window.lang = language;
+                window.currentLang = language;
                 Object.assign(window.t,language==='ru' ? I18NRU : I18NEN);
                 window.API_BASE='/api'; window.App={API_BASE:'/api',state:{}};
                 window.visibilityStats=null; window.tg={HapticFeedback:{impactOccurred(){},notificationOccurred(){}}};
@@ -46,23 +47,26 @@ fs.mkdirSync(artifacts, {recursive:true});
                 localStorage.setItem('hideDeleteReminder','true');
                 localStorage.setItem('project_card_collapsed_30','false');
                 localStorage.setItem('pc_participants_collapsed_30','0');
+                localStorage.setItem('live_results_open_30','0'); // A legacy fold preference must no longer hide results.
                 window.ProjectToday.mount=()=>{}; // No background I/O in this render fixture.
                 renderProjects(true);
             },language);
             await page.waitForSelector('#project-card-30 .lc-campaign').catch(e=>{console.error(errors);throw e;});
             assert.equal(await page.evaluate(()=>{const card=document.querySelector('#project-card-30').getBoundingClientRect(), block=document.querySelector('[data-live-campaigns]').getBoundingClientRect();return block.left-card.left>=12 && card.right-block.right>=12;}),true,'Campaign block has side insets inside the actual project card');
+            assert.equal(await page.locator('.lc-section').evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.borderTopWidth)>=1&&parseFloat(s.paddingLeft)>=10&&parseFloat(s.paddingRight)>=10;}),true,'One shared frame and inner padding unite the campaign controls');
+            assert.equal(await page.locator('.lc-section [data-lc-action="learn"]').count(),0,'Learning lives in the campaign wizard header');
             assert.equal(await page.locator('.lc-section-head h3').innerText(),language==='ru'?'Текущие Компании':'Current campaigns');
             assert.equal((await page.locator('.pc-project-params__toggle').first().innerText()).includes('NaN'),false,'Missing report settings must not produce NaN');
             assert.equal(await page.locator('#project-card-30 [data-lc-card]').getAttribute('open'),null);
             assert.match(await page.locator('#project-card-30 [data-lc-card]>summary').innerText(),/7 \/ 7/);
-            await page.locator('#project-card-30').screenshot({path:path.join(artifacts,'live-card-campaigns-'+language+'-360.png')});
+            await page.locator('#project-card-30').screenshot({path:path.join(artifacts,'live-card-campaigns-'+language+'-'+width+'.png')});
             assert.equal(await page.locator('#pipeline-section-live #project-card-30').count(),1);
             assert.equal(await page.locator('#project-card-30').count(),1);
             assert.equal(await page.locator('#project-card-30 .pc-stage-badge--live').count(),0);
             assert.equal(await page.locator('#project-card-30 .live-project-balance').count(),0);
             assert.ok(await page.locator('#project-card-30 .live-project-status').innerText());
             assert.equal(await page.locator('#project-card-30 .live-project-details').count(),1);
-            await page.locator('#project-card-30 .card-header').screenshot({path:path.join(artifacts, 'live-header-' + language + '-360.png')});
+            await page.locator('#project-card-30 .card-header').screenshot({path:path.join(artifacts, 'live-header-' + language + '-'+width+'.png')});
             assert.deepEqual(errors,[]);
             assert.equal(await page.locator('#project-card-30 .pc-participants-title').count(),1);
             assert.equal(await page.locator('#project-card-30 .tester-live-prefix').count(),1);
@@ -73,10 +77,15 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await page.locator('#project-card-30 .live-metrics').count(),1);
             assert.equal(await page.locator('#project-card-30 [data-live-campaigns]').count(),1);
             assert.equal(await page.evaluate(()=>{const a=document.querySelector('.live-metrics-slot'),b=document.querySelector('[data-live-campaigns]');return !!(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);}),true);
-            assert.equal(await page.locator('#project-card-30 [data-live-results]').getAttribute('open'),null);
-            await page.locator('#project-card-30 [data-live-results]>summary').click();
-            assert.equal(await page.locator('#project-card-30 [data-live-results]').getAttribute('open'),'');
-            await page.locator('#project-card-30 .pc-state-unified').screenshot({path:path.join(artifacts, 'live-metrics-' + language + '-360.png')});
+            assert.equal(await page.locator('#project-card-30 [data-live-results],#project-card-30 .lpc-results-fold').count(),0,'No redundant results accordion');
+            const results=page.locator('#project-card-30 .pc-results-block-slot>.pc-results-card--live');
+            assert.equal(await results.isVisible(),true,'Results are shown without expanding another section');
+            assert.equal(await results.evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.marginLeft)>=12&&parseFloat(s.marginRight)>=12&&parseFloat(s.paddingLeft)>=12&&parseFloat(s.marginBottom)>=14;}),true,'Results keep their outer and inner spacing');
+            assert.equal(await results.locator('.pc-results-title').innerText(),language==='ru'?'Результаты тестирования':'Testing results');
+            assert.equal(await results.locator('.pc-results-subtitle').evaluate(el=>getComputedStyle(el).whiteSpace),'normal','The history scope is readable without truncation');
+            await page.locator('#project-card-30 .lc-section').screenshot({path:path.join(artifacts,'live-campaign-section-'+language+'-'+width+'.png')});
+            await results.screenshot({path:path.join(artifacts,'live-results-'+language+'-'+width+'.png')});
+            await page.locator('#project-card-30 .pc-state-unified').screenshot({path:path.join(artifacts, 'live-metrics-' + language + '-'+width+'.png')});
             assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
             assert.equal(await page.evaluate(()=>collectPipelineProjectsByPhase().live.length),1);
             assert.deepEqual(errors,[]);
@@ -85,6 +94,7 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await page.locator('#pipeline-section-testing #project-card-30').count(),1);
             assert.equal(await page.locator('#project-card-30 .live-metrics').count(),0);
             assert.equal(await page.locator('#project-card-30 [data-live-campaigns]').count(),0);
+            assert.equal(await page.locator('#project-card-30 .pc-results-card--live').count(),0);
             assert.equal(await page.locator('#project-card-30 .pc-metrics-grid').count(),1);
             assert.equal(await page.locator('#project-card-30 .pc-participants-title').innerText(),language==='ru'?'Команда':'Team');
             // Publication refresh must bring the archive-backed card into the live dashboard.

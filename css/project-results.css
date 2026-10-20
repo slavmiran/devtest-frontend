@@ -3,6 +3,9 @@
    ========================================================================== */
 
 /* ── Card Results 5-Column Dashboard (Quiet, Premium UX/UI) ── */
+/* Live uses the standard results card directly, aligned with its other sections. */
+.pc-results-card.pc-results-card--live { margin: 14px 12px 16px; padding: 12px; }
+.pc-results-card--live .pc-results-subtitle { overflow: visible; white-space: normal; text-overflow: clip; line-height: 1.4; }
 .coverage-unknown-devices { margin: 12px 0; }
 .coverage-unknown-device {
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
