@@ -1,5 +1,64 @@
-.lh-banner,.lh-passport,.lh-entry{position:relative;margin-top:12px;padding:14px;border:1px solid var(--border-color,rgba(148,163,184,.18));border-radius:16px;background:var(--card-bg,#171e29);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
-.lh-banner>strong{display:block;padding-right:28px}.lh-banner p,.lh-passport p{color:var(--hint-color,#99a6b8);margin:8px 0}.lh-close{border:0;background:transparent;color:var(--hint-color,#99a6b8);font-size:26px;min-width:44px;min-height:44px;cursor:pointer}.lh-banner>.lh-close{position:absolute;right:4px;top:3px}
-.lh-link{padding:4px 0;border:0;background:transparent;color:var(--accent-color,#70a6ff);font:inherit;text-align:left;cursor:pointer}.lh-passport summary{cursor:pointer;list-style-position:outside;margin-left:14px}.lh-pace-note{margin:8px 0;color:var(--hint-color,#99a6b8);font-size:11px;line-height:1.45;overflow-wrap:anywhere}
-.lh-overlay{z-index:11000!important;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}.lh-dialog{display:flex;flex-direction:column;width:100%;max-width:540px;max-height:92dvh;border:1px solid var(--border-color,#303745);border-radius:22px;background:var(--card-bg,#171c25);color:var(--text-color,#e7edf8);box-sizing:border-box;overflow:hidden;box-shadow:0 20px 70px #0008}
-.lh-dialog header{display:flex;gap:8px;align-items:center;padding:14px 14px 10px 18px;border-bottom:1px solid var(--border-color,#303745)}.lh-dialog h2{margin:0;flex:1;min-width:0;font-size:18px;line-height:1.3}.lh-body{overflow-y:auto;overscroll-behavior:contain;padding:16px 18px;min-height:0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}.lh-select{display:block;width:100%;margin:10px 0 16px;padding:12px;border:1px solid var(--border-color,#303745);border-radius:12px;background:var(--bg-color,#10141b);color:inherit;font:inherit;min-height:44px}.lh-dialog footer{display:flex;flex-direction:column;gap:8px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border-color,#303745)}.lh-dialog footer button{width:100%;min-height:44px;white-space:normal;line-height:1.35}.lh-summary{font-weight:650}.lh-note{font-size:12px;color:var(--hint-color,#99a6b8)}.lh-notice{padding:10px;border-radius:12px;background:#f5b84410;border:1px solid #f5b84435}.lh-error{color:#ff9393}.lh-dialog button:disabled{opacity:.5}.lh-body:empty{min-height:80px}
+/* Import entry, bottom sheet and audit share the project's semantic tokens. */
+.lh-banner,.lh-passport,.lh-entry{position:relative;margin-top:12px;padding:14px;border:1px solid var(--border-subtle);border-radius:16px;background:var(--bg-surface-1);color:var(--text-primary);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.lh-banner{padding:16px;background:linear-gradient(135deg,var(--accent-primary-surface),transparent 65%),var(--bg-surface-1);border-color:var(--accent-primary-border)}
+.lh-eyebrow{display:block;color:var(--text-secondary);font-size:10px;font-weight:600;letter-spacing:.025em;line-height:1.5}
+.lh-banner>.lh-eyebrow,.lh-banner>strong{padding-right:28px}
+.lh-banner>strong{display:block;margin-top:5px;font-size:16px;line-height:1.3}
+.lh-banner>p{margin:10px 0 14px;color:var(--text-secondary);font-size:12px;line-height:1.5}
+.lh-close{display:grid;place-items:center;flex:0 0 44px;width:44px;min-height:44px;padding:0;border:0;border-radius:12px;background:transparent;color:var(--text-secondary);font-family:inherit;font-size:26px;line-height:1;cursor:pointer}
+.lh-close:hover{background:var(--bg-surface-muted)}
+.lh-banner>.lh-close{position:absolute;right:4px;top:4px}
+.lh-banner-actions{display:grid;grid-template-columns:1.2fr 1fr;gap:8px}
+.lh-banner-actions .btn{min-width:0;min-height:44px;margin:0;padding:9px 8px;border-radius:11px;font-size:12px;line-height:1.35;white-space:normal}
+.lh-secondary{border:1px solid var(--border-strong);background:transparent;color:var(--text-secondary)}
+.lh-banner>.lh-later{margin:10px 0 0;font-size:11px}
+.lh-link{min-height:44px;padding:4px 0;border:0;background:transparent;color:var(--link-color);font:inherit;text-align:left;cursor:pointer}
+.lh-passport>summary{cursor:pointer;list-style-position:outside;margin-left:14px}
+.lh-pace-note{margin:8px 0;color:var(--text-secondary);font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+
+/* Same bottom attachment, handle and radii as the project parameter sheets.
+   Only the body scrolls; the title and actions remain reachable. */
+.lh-overlay{z-index:11000!important;align-items:flex-end;justify-content:center;padding:0;box-sizing:border-box;background:rgba(7,11,17,.74);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.lh-dialog{display:flex;flex-direction:column;width:100%;max-width:560px;max-height:92vh;max-height:92dvh;margin:0;border:1px solid var(--border-strong);border-bottom:0;border-radius:24px 24px 0 0;background:var(--bg-surface-1);color:var(--text-primary);box-sizing:border-box;overflow:hidden;box-shadow:0 -18px 46px rgba(0,0,0,.34)}
+.lh-dialog>.sheet-handle{margin-top:9px;margin-bottom:2px}
+.lh-dialog>header{display:flex;flex:0 0 auto;gap:8px;align-items:center;padding:8px 10px 12px 18px;border-bottom:1px solid var(--border-subtle)}
+.lh-dialog>header>div{flex:1;min-width:0}
+.lh-dialog h2{margin:3px 0 0;font-size:19px;line-height:1.25}
+.lh-body{overflow-y:auto;overscroll-behavior:contain;padding:16px 18px;min-height:0;font-size:13px;line-height:1.5;overflow-wrap:anywhere;scrollbar-width:thin}
+.lh-run-field{margin-bottom:16px}
+.lh-run-field label{display:block;margin-bottom:7px;color:var(--text-secondary);font-size:12px}
+.lh-select{display:block;width:100%;box-sizing:border-box;margin:0;padding:11px 12px;border:1px solid var(--border-strong);border-radius:12px;background:var(--bg-app);color:var(--text-primary);font:inherit;font-size:16px;min-height:46px;cursor:pointer}
+.lh-sources{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border-subtle)}
+.lh-sources strong{display:block;margin-top:2px;font-size:13px;font-weight:600}
+.lh-runs{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.lh-runs span{padding:3px 7px;border:1px solid var(--border-subtle);border-radius:7px;color:var(--text-secondary);background:var(--bg-surface-2);font-size:11px;font-variant-numeric:tabular-nums}
+.lh-summary{padding:14px 0 0}
+.lh-caption{margin:0 0 9px;color:var(--text-secondary);font-size:11px}
+.lh-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0}
+.lh-totals>div{display:flex;flex-direction:column-reverse;justify-content:flex-end;gap:4px;min-width:0;padding:10px 8px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--bg-surface-2)}
+.lh-totals dt{color:var(--text-secondary);font-size:10px;line-height:1.4}
+.lh-totals dd{margin:0;color:var(--text-primary);font-size:21px;font-weight:650;line-height:1.3;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.lh-note{color:var(--text-secondary);font-size:11px;line-height:1.5}
+.lh-estimate{margin:8px 0 0}
+.lh-accuracy{margin-top:10px;border-bottom:1px solid var(--border-subtle);color:var(--text-secondary);font-size:12px}
+.lh-accuracy>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;cursor:pointer;list-style:none}
+.lh-accuracy>summary::-webkit-details-marker{display:none}
+.lh-chevron{flex:0 0 12px;transition:transform .18s ease}
+.lh-accuracy[open]>summary .lh-chevron{transform:rotate(180deg)}
+.lh-accuracy ul{display:grid;gap:10px;margin:0 0 14px;padding-left:17px;font-size:11px;line-height:1.55}
+.lh-notice{margin:14px 0 0;padding:12px;border:1px solid var(--warning-border);border-radius:12px;background:var(--warning-surface)}
+.lh-notice>strong{display:block;color:var(--warning);font-size:12px;font-weight:600}
+.lh-notice>p{margin:5px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.5}
+.lh-dates{margin:12px 0 0}
+.lh-once{margin:0 0 14px;padding:10px 12px;border-left:2px solid var(--accent-primary);border-radius:0 10px 10px 0;background:var(--accent-primary-surface);color:var(--text-primary);font-size:12px}
+.lh-dialog>footer{display:flex;flex:0 0 auto;flex-direction:column;gap:6px;padding:12px 18px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border-subtle);background:var(--bg-surface-1)}
+.lh-dialog>footer .btn{width:100%;min-height:44px;margin:0;padding:10px 12px;border-radius:12px;font-size:14px;line-height:1.35;white-space:normal}
+.lh-dialog>footer .lh-secondary{border-color:transparent;background:transparent}
+.lh-error{padding:10px 12px;border-radius:10px;background:var(--danger-surface);color:var(--danger);font-size:12px}
+.lh-loading{padding:24px 0;text-align:center;color:var(--text-secondary)}
+.lh-dialog button:disabled{opacity:.5;cursor:default}
+.lh-body:empty{min-height:80px}
+.lh-banner button:focus-visible,.lh-dialog :is(button,select,summary):focus-visible,.lh-passport summary:focus-visible,.lh-link:focus-visible{outline:2px solid var(--accent-primary);outline-offset:2px}
+.lh-passport>.lh-sources{margin-top:14px}
+@media(max-width:374px){.lh-body{padding:14px}.lh-dialog>header{padding-left:14px}.lh-dialog>footer{padding-left:14px;padding-right:14px}.lh-totals dd{font-size:19px}.lh-banner{padding:14px}.lh-banner-actions{gap:6px}}
+@media(prefers-reduced-motion:reduce){.lh-chevron{transition:none}}
