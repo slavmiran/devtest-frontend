@@ -4,7 +4,7 @@
  function clone(x){return JSON.parse(JSON.stringify(x));}
  function create(p){
   var m=p.live_metrics,b=m&&m.installs&&m.installs.baseline,r=b?b.per_day:m&&m.installs&&m.installs.per_day,title=String(p.play_store_raw&&p.play_store_raw.title||p.name||p.package_name||'');
-  return {schemaVersion:5,appId:Number(p.id||p.app_id),appTitle:title,template:'custom',name:'',icon:'rocket',source:'link',
+  return {schemaVersion:5,appId:Number(p.id||p.app_id),appTitle:title,template:'custom',name:'',icon:'rocket',source:'link',country:null,
    baseline:{available:!!(m&&m.source==='devtesthub_live'&&m.boundary_available!==false&&(!b||b.available)&&typeof r==='number'&&Number.isFinite(r)&&r>=0),perDay:r||0,days:b&&b.days||7},
    web:{query:title.slice(0,200),screenshot:null},keywords:[],nextKeywordId:1,
    retention:{days:14,checkpoints:[1,7,14]},activity:{enabled:false,screenshot:false,instructions:''},
@@ -33,6 +33,7 @@
   var n=clone(d);
   if(['daily','target','paced','pauseHours','rampDays','allowContractsDuringPause'].includes(f))n.volume.paceVersion=2;
   if(f==='source'&&['link','web','keywords'].includes(v))n.source=v;
+  else if(f==='country'&&(v===null||typeof v==='string'&&/^[A-Z]{2}$/.test(v)))n.country=v;
   else if(f==='name'&&typeof v==='string'&&v.length<=80)n.name=v;
   else if(f==='webQuery'&&typeof v==='string'&&v.length<=200)n.web.query=v;
   else if(f==='instructions'&&typeof v==='string'&&v.length<=5000)n.activity.instructions=v;
@@ -73,6 +74,7 @@
  function valid(d,step){return !!d.source&&(d.source!=='web'||!!d.web.query.trim())&&(d.source!=='keywords'||d.keywords.length>0)&&d.retention.checkpoints.length>=2&&(step!==4||!!d.icon||!!d.name.trim());}
  async function definition(d,serialize){
   var payload={name:d.name,icon:d.icon===null?null:d.icon||'rocket',template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:clone(d.reviews),volume:clone(d.volume),web:{query:d.source==='web'?d.web.query:'',screenshot:null},keywords:[]};
+  if(d.country)payload.country=d.country;
   payload.volume.totalInstalls=total(d);
   // Project control is saved separately in the same transaction. Legacy volume fields no longer gate intake.
   payload.volume.paced=false;payload.volume.paceVersion=2;
@@ -83,6 +85,7 @@
  function fromCampaign(p,c,asset){
   var d=create(p),saved=clone(c.definition);['name','icon','template','source','retention','activity','reviews'].forEach(function(k){if(saved[k]!=null)d[k]=saved[k];});
   if(saved.icon===null)d.icon=null;
+  d.country=saved.country||null;
   d.volume=Object.assign(d.volume,saved.volume);if(d.volume.paced&&saved.volume.paceVersion!==2)d.volume.totalInstalls=d.volume.dailyInstalls*d.volume.acquisitionDays;d.volume.paceVersion=saved.volume.paceVersion||1;
   if(![7,14,21,28,35].includes(d.retention.days)){d.retention.days=[7,14,21,28,35].filter(function(n){return n<=d.retention.days;}).pop()||7;d.retention.checkpoints=d.retention.checkpoints.filter(function(n){return n<=d.retention.days;});if(!d.retention.checkpoints.includes(d.retention.days))d.retention.checkpoints.push(d.retention.days);}
   d.web={query:saved.web.query||d.appTitle,screenshot:asset(saved.web.asset_id)};

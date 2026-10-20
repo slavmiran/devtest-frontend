@@ -20,7 +20,7 @@
     }
     function current(s, id) { return s.actor === actor() && s.rows && s.rows.find(function (row) { return row.id === Number(id); }); }
     function endpoint(id, path) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + Number(id) + '/campaigns' + (path || ''); }
-    var errors = { campaign_cycle_limit:'lpcCycleLimit',live_project_offer_exists:'lpcDuplicate',insufficient_bust_balance:'lcBalanceLow', campaign_conflict:'lcConflict', campaign_price_changed:'lcConflict',
+    var errors = { campaign_country_mismatch:'lcGeoMismatch',campaign_cycle_limit:'lpcCycleLimit',live_project_offer_exists:'lpcDuplicate',insufficient_bust_balance:'lcBalanceLow', campaign_conflict:'lcConflict', campaign_price_changed:'lcConflict',
         live_pace_paused:'lcpGateError',live_contract_disabled:'lcpContractOff',contract_rate_locked:'lcpContractRateLocked',contract_limit_below_committed:'lcpContractLimit',active_campaign_limit:'lcgLimitReached',last_active_keyword:'lcgLastKey',invalid_campaign_image:'lcwInvalidImage',invalid_control_days:'lcMinimumCheckpoint', pool_reserved:'lcReservedError', request_key_reused:'lcKeyError', not_owner:'lcNoAccess', app_not_found:'lcNoAccess', invalid_init_data:'lcNoAccess',
         slot_limit_reached:'lcSlotLimit', bridge_fixed_terms:'lcTermsFixed', campaign_budget_insufficient:'lcBudgetInsufficient', campaign_paused:'lcPausedError',
         campaign_screenshot_required:'lcScreenshotRequired', campaign_test_complete:'lcSessionClosed', bridge_requires_mutual_offer:'lcBridgeOffer',

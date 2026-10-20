@@ -107,6 +107,12 @@
             }else if(session===s)dispose(s);
         }
     }
+    async function readGeo(s,force){
+        if(s.context.geoLoading||!window.ShowcaseGeo)return;s.context.geoLoading=true;s.context.geoError=false;
+        try{var data=await ShowcaseGeo.getStats(force);if(accessible(s))s.context.geoStats=data;}
+        catch(_){if(accessible(s))s.context.geoError=true;}
+        finally{if(accessible(s)){s.context.geoLoading=false;if(s.step===1)render(s,false);}}
+    }
     function mediaExists(s,key){return key==='web' || s.draft.keywords.some(function(k){return 'keyword:'+k.id===key;});}
     async function fileInput(s,input){
         var key=input.dataset.lcwFile,file=input.files[0];if(!file)return;
@@ -145,6 +151,9 @@
         if(button.dataset.lcwIcon){s.draft.icon=button.dataset.lcwIcon==='none'?null:button.dataset.lcwIcon;s.edited=true;render(s,false);return;}
         if(button.hasAttribute('data-lpc-unlimited')||button.hasAttribute('data-lpc-cap')){if(!s.context.projectControl)return;LiveProjectControl.change(s.context.projectControl,button.dataset.lpcUnlimited||button.dataset.lpcCap,button.hasAttribute('data-lpc-cap')?1:null);s.context.allocationEdited=true;render(s,false);return;}
         if(action==='learn'){window.LiveCampaignLearning.open(button.dataset.topic||'pace',button);return;}
+        if(action==='geo'){ShowcaseGeo.openPicker({value:s.draft.country,titleKey:'lcGeoTitle',hintKey:'lcGeoPickerHint',anyKey:'lcGeoAny',onChoose:function(code){if(!accessible(s))return;s.draft=LiveCampaignDraft.change(s.draft,'country',code);s.edited=true;render(s,false);var choice=s.layer.querySelector('[data-lcw-action="geo"]');if(choice)choice.focus({preventScroll:true});}});return;}
+        if(action==='geo-community'){ShowcaseGeo.openCommunityList();return;}
+        if(action==='geo-retry'){readGeo(s,true);return;}
         if(action==='close')return close();if(action==='back')return back();
         if(action==='outline'){s.outlineOpen=!s.outlineOpen;shell(s);return;}
         if(action==='estimate'){s.estimateOpen=!s.estimateOpen;shell(s);return;}
@@ -231,7 +240,7 @@
         layer.addEventListener('change',function(e){var s=session;if(!s)return;if(!accessible(s)){dispose(s);return;}if(e.target.dataset.lcwFile)fileInput(s,e.target);else if(e.target.dataset.lcwInput==='retention'&&!invalid(s))render(s,false);});
         layer.addEventListener('keydown',keydown);
         window.addEventListener('beforeunload',beforeUnload);render(session,true);syncBack();
-        session.hudTimer=setInterval(function(){if(session&&session.layer===layer)refresh(session);},60000);session.campaignRead=readData(session,'campaigns');readData(session,'sources');if(!session.context.market)readData(session,'market');
+        session.hudTimer=setInterval(function(){if(session&&session.layer===layer)refresh(session);},60000);session.campaignRead=readData(session,'campaigns');readData(session,'sources');if(!session.context.market)readData(session,'market');readGeo(session,false);
     }
     window.LiveCampaignWizard={open:open,edit:function(id,campaign,event){return open(id,event,campaign);},close:close,back:back};
 })();

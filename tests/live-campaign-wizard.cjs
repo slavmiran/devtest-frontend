@@ -9,13 +9,15 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
  for(const language of ['ru','en'])for(const width of [360,390]){
   const page=await browser.newPage({viewport:{width,height:740}}),errors=[],posts=[],edits=[],slotKeys=new Set();
-  let campaigns=[structuredClone(bridge)],limit=3,nextId=10,failSave=false,failEdit=false,loseResponse=false;
+  let campaigns=[structuredClone(bridge)],limit=3,nextId=10,failSave=false,failEdit=false,loseResponse=false,geoFailure=false;
   let projectControl={revision:1,pool_available:0,allow_wallet_spending:false,policy:{paced:true,dailyInstalls:4,pauseHours:24,rampDays:0,allowContractsDuringPause:true},parameters:{request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:''},allocations:[{campaign_id:3,kind:'closed_bridge',status:'active',limit:1}]};
   const capacity=()=>({active:campaigns.filter(c=>c.kind!=='closed_bridge'&&c.status==='active').length,limit,next_slot:limit+1,next_price:(limit-1)*1000});
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://fixture.local/**',async route=>{
    const url=new URL(route.request().url()),request=route.request(),method=request.method(),body=method==='GET'?null:request.postDataJSON();
    const ok=json=>route.fulfill({json:{status:'success',...json}});
+   if(url.pathname.endsWith('/stats/countries'))return geoFailure?route.fulfill({status:503,json:{status:'error'}}):ok({countries:[{country_code:'RU',name_ru:'Россия',name_en:'Russia',flag:'🇷🇺',total_count:100,active_count:40},{country_code:'KZ',name_ru:'Казахстан',name_en:'Kazakhstan',flag:'🇰🇿',total_count:6,active_count:2},{country_code:'TH',name_ru:'Таиланд',name_en:'Thailand',flag:'🇹🇭',total_count:20,active_count:0},{country_code:'US',name_ru:'США',name_en:'United States',flag:'🇺🇸',total_count:10,active_count:1},{country_code:'VN',name_ru:'Вьетнам',name_en:'Vietnam',flag:'🇻🇳',total_count:9,active_count:2}],total_registered:145,total_active:45});
+   if(url.pathname.endsWith('/users/me/google-play-country'))throw Error('Campaign GEO must not change the owner profile');
    if(url.pathname.endsWith('/campaigns')&&method==='GET')return ok({campaigns,project_control:{...projectControl,allocations:campaigns.map(c=>({campaign_id:c.id,kind:c.kind,name:c.name,status:c.status,source:c.definition&&c.definition.source,limit:c.cycle_limit||null}))},capacity:capacity(),pace:{needed:1,policies:[]},hud:{last_screenshot_at:new Date(Date.now()-2*3600000).toISOString(),on_schedule_percent:75,active_testers:4}});
    if(url.pathname.endsWith('/campaigns')&&method==='POST'){
     posts.push(body);if(failSave)return route.fulfill({status:503,json:{status:'error',code:'unavailable'}});
@@ -37,9 +39,10 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.goto('http://fixture.local/');
   for(const file of css)if(fs.existsSync(path.join(root,file)))await page.addStyleTag({path:path.join(root,file)});
   await page.addStyleTag({content:'body{padding:8px}#tab-projects{display:block}'});
-  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
+  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-campaign-geo.js','i18n/live-project-control.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/country-catalog.js','js/showcase-geo.js','js/live-campaign-geo.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
   await page.evaluate(({language,index})=>{
    const ref=new DOMParser().parseFromString(index,'text/html').querySelector('#add-bounty-settings');const holder=document.createElement('div');holder.hidden=true;holder.appendChild(ref);document.body.appendChild(holder);
+   const dom=new DOMParser().parseFromString(index,'text/html');['showcase-geo-picker-modal','showcase-geo-list-modal'].forEach(id=>document.body.appendChild(dom.getElementById(id)));
    window.lang=language;window.API_BASE='/api';window.signed='owner-42';window.getTelegramInitDataRaw=()=>signed;
    window.confirmations=[];window.confirmAnswer=false;window.showToast=m=>window.lastToast=m;
    window.tg={initData:'fixture',BackButton:{show(){},hide(){},onClick(fn){this.callback=fn;}},showConfirm(message,cb){confirmations.push(message);cb(confirmAnswer);},openLink(url){window.openedUrl=url;}};
@@ -76,6 +79,20 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.evaluate(()=>tg.BackButton.callback());assert.equal(await layer.locator('#lcw-outline').isVisible(),false);
   await page.evaluate(()=>tg.BackButton.callback());assert.equal(await layer.locator('[data-lcw-action="manual"]').isVisible(),true);
   await layer.locator('[data-lcw-action="manual"]').click();await choose('web');await field('webQuery').fill('Orbit android budget');
+  const selectCountry=async(code)=>{await layer.locator('[data-lcw-action="geo"]').click();await page.locator('#showcase-geo-picker-modal.active').waitFor();await page.locator('#showcase-geo-search').fill(code);await page.locator('#showcase-geo-options [data-geo-code="'+code+'"]').click();};
+  await selectCountry('KZ');await page.waitForFunction(()=>document.querySelector('.lcw-geo-counts dd')?.textContent==='6');
+  assert.deepEqual(await layer.locator('.lcw-geo-counts dd').allTextContents(),['6','2']);assert.match(await layer.locator('.lcw-geo .is-warn').innerText(),/10/);
+  assert.equal(await page.evaluate(()=>ShowcaseGeo._profile()),null,'Campaign selection does not edit the owner country');
+  await layer.locator('[data-lcw-action="geo-community"]').click();await page.locator('#showcase-geo-list-modal.active').waitFor();
+  await page.waitForFunction(()=>{const el=document.querySelector('#showcase-geo-list-modal'),r=el.querySelector('.showcase-geo-sheet').getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+20)?.closest('#showcase-geo-list-modal');});
+  await page.evaluate(()=>tg.BackButton.callback());assert.equal(await page.locator('#showcase-geo-list-modal.active').count(),0);assert.match(await layer.locator('[data-lcw-action="geo"]').innerText(),/Казахстан|Kazakhstan/);
+  await selectCountry('US');assert.equal(await layer.locator('.lcw-geo .is-warn').count(),0,'Exactly ten testers is outside the small audience warning');
+  await selectCountry('VN');assert.equal(await layer.locator('.lcw-geo-counts dd').first().innerText(),'9');assert.equal(await layer.locator('.lcw-geo .is-warn').count(),1,'Nine testers triggers the small audience warning');
+  await selectCountry('TH');assert.equal(await layer.locator('.lcw-geo .is-warn').count(),1,'Zero active testers is explained separately');
+  await selectCountry('VA');assert.deepEqual(await layer.locator('.lcw-geo-counts dd').allTextContents(),['0','0'],'An absent country in a successful complete snapshot is zero');
+  await layer.locator('[data-lcw-action="geo"]').click();await page.locator('.showcase-geo-frequent [data-geo-code=""]').click();assert.equal(await layer.locator('.lcw-geo-counts').count(),0,'Any country removes the filter');
+  await selectCountry('KZ');await fit();await layer.locator('.lcw-geo').screenshot({path:path.join(out,'geo-'+language+'-'+width+'.png')});
+  await layer.locator('[data-lcw-action="geo"]').click();await page.evaluate(()=>tg.BackButton.callback());assert.equal(await page.locator('#showcase-geo-picker-modal.active').count(),0);assert.match(await layer.locator('[data-lcw-action="geo"]').innerText(),/Казахстан|Kazakhstan/);
   await layer.locator('[data-lcw-action="web-search"]').click();assert.equal(await page.evaluate(()=>copiedQuery),'Orbit android budget');assert.match(await page.evaluate(()=>openedUrl),/^https:\/\/www.google.com\/search\?q=Orbit/);
   await field('webQuery').fill('');assert.equal(await layer.locator('[data-lcw-action="next"]').isDisabled(),true);
   await choose('keywords');assert.equal(await layer.locator('[data-lcw-action="next"]').isDisabled(),true);
@@ -118,6 +135,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   assert.equal(posts.at(-1).request_key,failedKey,'Retry preserves idempotency key');assert.equal(posts.at(-1).definition.volume.totalInstalls,53);assert.equal(posts.at(-1).definition.web.query,'');assert.equal(posts.at(-1).definition.keywords[0].screenshot.data_base64,png.toString('base64'));
   assert.equal(posts.at(-1).definition.volume.paced,false,'Campaign definition cannot isolate the project independently');assert.equal(posts.at(-1).project_control.own_limit,2);assert.equal(posts.at(-1).project_control.policy.pauseHours,48);
   assert.equal(posts.at(-1).definition.icon,null,'An explicit name allows a campaign without an icon');
+  assert.equal(posts.at(-1).definition.country,'KZ','GEO survives traffic changes and all four steps');
   await page.locator('.lc-growth').waitFor();assert.equal(await page.evaluate(()=>revoked.length>0),true);
   const growth=page.locator('[data-campaign-id="10"]');await growth.locator('[data-lc-card]>summary').click();await growth.locator('[data-growth-keys] summary').click();
   await growth.locator('[data-lc-action="keyword"]').first().locator('..').click();await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="keyword"][aria-checked="false"]'));
@@ -132,6 +150,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   failEdit=false;await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});
   assert.equal(edits.at(-1).request_key,editKey);assert.equal(edits.at(-1).definition.keywords[0].screenshot.asset_id,9);assert.equal(campaigns.length,beforeEdit);assert.equal(campaigns[0].kind,'closed_bridge');assert.equal(campaigns.find(c=>c.id===10).status,'active');
   assert.equal(campaigns.find(c=>c.id===10).definition.retention.days,28);assert.equal(campaigns.find(c=>c.id===10).keywords[0].enabled,false);
+  assert.equal(edits.at(-1).definition.country,'KZ','Editing preserves the country');
   const flip=async(id,on)=>{const toggle=page.locator('[data-campaign-id="'+id+'"] [data-lc-action="toggle-status"]');await toggle.locator('..').click();await page.waitForFunction(({id,on})=>document.querySelector('[data-campaign-id="'+id+'"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')===String(on),{id,on});};
   await flip(10,false);await flip(10,true);
   const keyboardToggle=growth.locator('[data-lc-action="toggle-status"]');await keyboardToggle.focus();await keyboardToggle.press('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='false');
@@ -161,6 +180,13 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   if(!await page.locator('[data-lc-action="contract-withdraw"]').isVisible())await page.locator('[data-contract-details] summary').click();
   await page.locator('[data-lc-action="contract-withdraw"]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="contract-withdraw"]'));
   assert.equal(campaigns[0].contracts.limit,0,'Return unassigned budget after disabling Contracts');
+  geoFailure=true;await page.evaluate(()=>{sessionStorage.clear();return ShowcaseGeo.getStats(true).catch(()=>{});});
+  await open();await layer.locator('[data-lcw-action="manual"]').click();await selectCountry('KZ');await layer.locator('[data-lcw-action="geo-retry"]').waitFor();
+  assert.equal(await layer.locator('.lcw-geo-counts').count(),0,'A failed request must not invent zero users');
+  geoFailure=false;await layer.locator('[data-lcw-action="geo-retry"]').click();await layer.locator('.lcw-geo-counts').waitFor();
+  assert.deepEqual(await layer.locator('.lcw-geo-counts dd').allTextContents(),['6','2']);await layer.locator('[data-lcw-action="close"]').click();await layer.waitFor({state:'detached'});
+  await page.evaluate(()=>ShowcaseGeo.openPicker());assert.equal(await page.locator('#showcase-geo-picker-title').innerText(),await page.evaluate(()=>t('geoPlayCountryLabel',{},lang)));
+  assert.equal(await page.locator('#showcase-geo-picker-modal [data-geo-code=""]').count(),0,'The profile picker does not inherit campaign-only options');await page.keyboard.press('Escape');
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('RU/EN 360/390: entry HUD, four steps, source isolation, media persistence, retry identity, templates, keyword guards, active capacity and slot purchase passed.');

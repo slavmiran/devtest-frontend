@@ -6,6 +6,8 @@
     var saving = false;
     var profileLoaded = false;
     var revealOnNextRender = false;
+    var pickerContext = null, pickerFocus = null, communityFocus = null;
+    var statsFailed = false, statsPromise = null, statsAt = 0;
 
     function langCode() {
         return (typeof lang !== 'undefined' && lang) ? lang : 'ru';
@@ -46,7 +48,7 @@
         try {
             var raw = sessionStorage.getItem(STATS_KEY);
             var parsed = raw ? JSON.parse(raw) : null;
-            return parsed && Array.isArray(parsed.countries) ? parsed : null;
+            return parsed && Array.isArray(parsed.countries) && Date.now() - Number(parsed.cached_at || 0) < 300000 ? parsed : null;
         } catch (error) {
             return null;
         }
@@ -54,7 +56,7 @@
 
     function writeStatsCache(payload) {
         try {
-            sessionStorage.setItem(STATS_KEY, JSON.stringify(payload));
+            sessionStorage.setItem(STATS_KEY, JSON.stringify(Object.assign({}, payload, {cached_at: Date.now()})));
         } catch (error) {}
     }
 
@@ -279,6 +281,7 @@
     function renderCommunityList() {
         var body = document.getElementById('showcase-geo-list-body');
         if (!body) return;
+        if (statsFailed) {body.innerHTML='<p class="showcase-geo-sheet__hint" role="alert">'+esc(tr('geoStatsUnavailable'))+'</p><button type="button" class="meta-chip" onclick="ShowcaseGeo.retryStats()">'+esc(tr('geoRetryStats'))+'</button>';return;}
         var rows = stats ? stats.countries : null;
         var play = selectedPlay();
         var list = Array.isArray(rows) && rows.length
@@ -325,8 +328,12 @@
     }
 
     function renderPicker(query) {
-        var play = selectedPlay();
-        var detected = detectedCountry();
+        var play = pickerContext ? byCode(pickerContext.value) : selectedPlay();
+        var detected = pickerContext ? null : detectedCountry();
+        var title = document.getElementById('showcase-geo-picker-title');
+        var hint = document.querySelector('#showcase-geo-picker-modal .showcase-geo-sheet__hint');
+        if (title) title.textContent = tr(pickerContext ? pickerContext.titleKey : 'geoPlayCountryLabel');
+        if (hint) hint.textContent = tr(pickerContext ? pickerContext.hintKey : 'geoSheetSubtitle');
         var selected = play ? String(play.code || '').toUpperCase() : '';
         var currentNode = document.getElementById('showcase-geo-current');
         var detectedNode = document.getElementById('showcase-geo-detected');
@@ -360,7 +367,7 @@
             }
         }
         if (frequentNode) {
-            frequentNode.innerHTML = FREQUENT.map(function (code) {
+            frequentNode.innerHTML = (pickerContext ? '<button type="button" class="showcase-geo-chip'+(!selected?' is-selected':'')+'" data-geo-code="" onclick="ShowcaseGeo.choose(\'\')">'+esc(tr(pickerContext.anyKey))+'</button>' : '') + FREQUENT.map(function (code) {
                 var item = byCode(code);
                 if (!item) return '';
                 var selectedClass = code === selected ? ' is-selected' : '';
@@ -413,9 +420,10 @@
 
     async function loadStats(force) {
         if (!force) {
-            var cached = stats || readStatsCache();
+            var cached = stats && !statsFailed && Date.now() - statsAt < 300000 ? stats : readStatsCache();
             if (cached) {
                 stats = cached;
+                statsAt = Number(cached.cached_at || Date.now());statsFailed = false;
                 renderWidget();
                 renderCommunityList();
                 return;
@@ -427,6 +435,7 @@
         }
         var response = await fetch(apiBase() + '/stats/countries?init_data=' + encodeURIComponent(initData()));
         if (!response.ok) {
+            statsFailed = true;
             if (!stats) stats = { countries: [], total_active: 0, total_registered: 0 };
             renderWidget();
             renderCommunityList();
@@ -434,12 +443,15 @@
         }
         var payload = parseStatsPayload(await response.json());
         if (!payload) {
+            statsFailed = true;
             if (!stats) stats = { countries: [], total_active: 0, total_registered: 0 };
             renderWidget();
             renderCommunityList();
             return;
         }
         stats = payload;
+        statsAt = Date.now();
+        statsFailed = false;
         writeStatsCache(payload);
         renderWidget();
         renderCommunityList();
@@ -448,6 +460,13 @@
     async function choose(code) {
         var normalized = String(code || '').toUpperCase();
         var item = byCode(normalized);
+        if (pickerContext) {
+            if (normalized && !item) return;
+            var onChoose = pickerContext.onChoose;
+            closePicker();
+            onChoose(normalized || null);
+            return;
+        }
         if (!normalized || !item || saving) return;
         var previous = profile;
         saving = true;
@@ -479,7 +498,7 @@
             closePicker();
             haptic('success');
             if (typeof showToast === 'function') showToast(tr('geoSavedToast'));
-            await loadStats(true);
+            await loadStats(true).catch(function () {});
         } catch (error) {
             profile = previous;
             renderWidget();
@@ -493,15 +512,34 @@
 
     function openModal(id) {
         var modal = document.getElementById(id);
-        if (modal) modal.classList.add('active');
+        if (!modal) return;
+        var top = Array.from(document.querySelectorAll('.modal-overlay.active')).reduce(function (z, node) {return Math.max(z, parseInt(getComputedStyle(node).zIndex, 10) || 0);}, 10000);
+        modal.style.zIndex = String(top + 1);
+        modal.classList.add('active');
+        modal.onkeydown = function (event) {
+            if (event.key === 'Escape') {event.preventDefault();event.stopPropagation();if (id === 'showcase-geo-picker-modal') closePicker();else closeCommunityList();return;}
+            if (event.key !== 'Tab') return;
+            var nodes = Array.from(modal.querySelectorAll('button,input,a[href]')).filter(function (n) {return !n.disabled && n.getClientRects().length;});
+            if (!nodes.length) {event.preventDefault();return;}
+            if (event.shiftKey && document.activeElement === nodes[0]) {event.preventDefault();nodes[nodes.length-1].focus();}
+            else if (!event.shiftKey && document.activeElement === nodes[nodes.length-1]) {event.preventDefault();nodes[0].focus();}
+        };
+        var focusable = modal.querySelector('input,button');
+        if (focusable) focusable.focus({preventScroll:true});
+        else {modal.tabIndex=-1;modal.focus({preventScroll:true});}
+        if (window.syncTelegramBackButton) window.syncTelegramBackButton();
     }
 
     function closeModal(id) {
         var modal = document.getElementById(id);
-        if (modal) modal.classList.remove('active');
+        if (modal) {modal.classList.remove('active');modal.style.zIndex='';modal.onkeydown=null;}
+        if (window.syncTelegramBackButton) window.syncTelegramBackButton();
     }
 
-    function openPicker() {
+    function openPicker(options) {
+        if (saving) return;
+        pickerContext = options && typeof options.onChoose === 'function' ? options : null;
+        pickerFocus = document.activeElement;
         var input = document.getElementById('showcase-geo-search');
         if (input) input.value = '';
         renderPicker('');
@@ -511,16 +549,28 @@
     function closePicker(event) {
         if (event && event.target && event.target.id !== 'showcase-geo-picker-modal') return;
         closeModal('showcase-geo-picker-modal');
+        pickerContext = null;
+        if (pickerFocus && pickerFocus.isConnected) pickerFocus.focus({preventScroll:true});
     }
 
     function openCommunityList() {
+        communityFocus = document.activeElement;
         renderCommunityList();
         openModal('showcase-geo-list-modal');
+        getStats().catch(function () {});
     }
 
     function closeCommunityList(event) {
         if (event && event.target && event.target.id !== 'showcase-geo-list-modal') return;
         closeModal('showcase-geo-list-modal');
+        if (communityFocus && communityFocus.isConnected) communityFocus.focus({preventScroll:true});
+    }
+
+    async function getStats(force) {
+        if (!statsPromise) statsPromise = loadStats(!!force).finally(function () {statsPromise = null;});
+        try {await statsPromise;if (statsFailed || !stats) throw new Error('country_stats_unavailable');}
+        catch (error) {statsFailed=true;renderCommunityList();throw error;}
+        return stats;
     }
 
     function mount() {
@@ -548,6 +598,10 @@
             if (detected) choose(detected.code);
         },
         filterPicker: function (value) { renderPicker(value); },
+        getStats: getStats,
+        retryStats: function () {return getStats(true).catch(function () {});},
+        country: byCode,
+        countryLabel: countryLabel,
         _profile: function () { return profile; },
         _stats: function () { return stats; },
     };

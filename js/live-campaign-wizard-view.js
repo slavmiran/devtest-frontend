@@ -19,7 +19,7 @@
  function budget(d,c){return LiveCampaignPaceView.body(d,c,{counter:counter,toggle:toggle,hint:hint,chip:chip});}
  function body(d,step,c){return step===0?LiveCampaignEntry.body(d,c):[null,LiveCampaignSourcesView.body,retention,scenarios,budget][step](d,c);}
  function summary(d,step){
-  if(step===1)return t({link:'lcwLink',web:'lcwWeb',keywords:'lcwKeywords'}[d.source])+(d.source==='keywords'?' · '+d.keywords.length:'');
+  if(step===1)return t({link:'lcwLink',web:'lcwWeb',keywords:'lcwKeywords'}[d.source])+(d.source==='keywords'?' · '+d.keywords.length:'')+(d.country?' · '+t('lcGeoTag',{country:d.country}):'');
   if(step===2)return t('lcwRetentionSummary',{n:d.retention.days,days:d.retention.checkpoints.join('/')});
   if(step===3)return t('lcwActivitySummary',{scenario:t(d.activity.enabled?'pcParamsOn':'pcParamsOff'),reviews:t(d.reviews.enabled?'pcParamsOn':'pcParamsOff')});
   return d.volume.paced?t('lcpQuotaSummary',{n:Math.min(d.volume.dailyInstalls,d.volume.totalInstalls),total:d.volume.totalInstalls}):t('lcwInstalls',{n:d.volume.totalInstalls});

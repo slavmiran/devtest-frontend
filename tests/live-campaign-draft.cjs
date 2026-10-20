@@ -5,6 +5,9 @@ const model=scope.LiveCampaignDraft,ideas=scope.LiveCampaignKeywords,traffic=sco
 const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesthub_live',boundary_available:true,installs:{per_day:10}}};
 (async()=>{
  let d=model.applyStrategy(model.create(project),'aso'),q=model.quote(d);
+ assert.equal(d.country,null);
+ const geo=model.change(d,'country','KZ');assert.equal(geo.country,'KZ');assert.equal(model.change(geo,'source','web').country,'KZ');assert.equal(model.change(geo,'country',null).country,null);
+ assert.equal((await model.definition(geo,async()=>null)).country,'KZ');assert.equal(Object.hasOwn(await model.definition(d,async()=>null),'country'),false);
  assert.equal(d.source,'keywords');assert.equal(q.installs,42);assert.equal(q.totalCommitment,840);assert.equal(q.dailyCommitment,60);
  assert.equal(model.quote(model.change(d,'pauseHours',6)).dailyCommitment,240);
  assert.equal(model.quote(model.change(d,'pauseHours',48)).dailyCommitment,30);

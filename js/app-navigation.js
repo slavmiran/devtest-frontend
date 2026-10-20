@@ -127,6 +127,8 @@
     function closeSpecialLayer(element) {
         if (!element) return false;
         var id = element.id;
+        if (id === 'showcase-geo-picker-modal' && window.ShowcaseGeo) {window.ShowcaseGeo.closePicker();return true;}
+        if (id === 'showcase-geo-list-modal' && window.ShowcaseGeo) {window.ShowcaseGeo.closeCommunityList();return true;}
         if (id === 'pc-activity-sheet') return callGlobal('pcCloseActivitySheet');
         if (id === 'protection-center') return callGlobal('closeProtectionCenter');
         if (id === 'attract-testers-sheet-overlay') return callGlobal('closeAttractTestersSheet');
