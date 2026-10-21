@@ -867,7 +867,7 @@
     function _renderDropBody(test) {
         var joinType = _normalizeJoinType(test && test.join_type);
         var testingDays = test && test.start_date && typeof getUserTestingDay === 'function'
-            ? getUserTestingDay(test.start_date)
+            ? getUserTestingDay(test.start_date, test.testing_days)
             : Number(test && test.testing_days || 0);
         var checkins = Number(test && test.checkins_count || 0);
         var skips = Number(test && test.skips_count || 0);

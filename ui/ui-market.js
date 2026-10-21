@@ -4769,7 +4769,7 @@ function _reportModalSendFeedback(feedbackType) {
 
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
     var testingDay = test && typeof window.getUserTestingDay === 'function'
-        ? window.getUserTestingDay(test.start_date)
+        ? window.getUserTestingDay(test.start_date, test.testing_days)
         : null;
     var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
     var checkinContext = (testingDay && localDate)

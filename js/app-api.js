@@ -595,7 +595,7 @@ function _normalizeCachedTests(tests) {
         // Recalculate testing_days from start_date for current date
         if (t.start_date) {
             var calculatedDay = (typeof getUserTestingDay === 'function')
-                ? getUserTestingDay(t.start_date)
+                ? getUserTestingDay(t.start_date, Number(t.access_pause_days || 0) > 0 || t.issue_reported_at ? t.testing_days : null)
                 : null;
             if (Number.isFinite(calculatedDay) && calculatedDay > 0) {
                 t.testing_days = calculatedDay;
@@ -1646,7 +1646,7 @@ function _mapTestsFromApi(data) {
         // on every loadTasks() poll (which would force renderTests() on every poll).
         var apiTestingDays = Number(app.testing_days || 0);
         var calTestingDay = (app.start_date && typeof getUserTestingDay === 'function')
-            ? getUserTestingDay(app.start_date)
+            ? getUserTestingDay(app.start_date, app.testing_days)
             : null;
         var testingDays = (Number.isFinite(calTestingDay) && calTestingDay > 0)
             ? calTestingDay
@@ -1736,6 +1736,7 @@ function _mapTestsFromApi(data) {
             partner_progress_status: app.partner_progress_status || '',
             last_sync_date: app.last_sync_date || null,
             testing_days: testingDays,
+            access_pause_days: Number(app.access_pause_days || 0),
             exact_daily_reward: typeof app.exact_daily_reward !== 'undefined' ? Number(app.exact_daily_reward) : 0,
             grant_claimed: !!app.grant_claimed,
             progress_status: app.progress_status || 'active',

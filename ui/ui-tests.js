@@ -143,7 +143,7 @@ function getTesterOvertimeStats(tester) {
     }
 
     var totalCheckins = Math.max(0, Number(tester && tester.checkins_count || 0));
-    var testingDay = getUserTestingDay(tester && tester.start_date);
+    var testingDay = getUserTestingDay(tester && tester.start_date, tester && tester.testing_days);
     var hasCheckedToday = (tester && tester.last_check_date || '') === getLocalDate();
     var realizedDays = Math.max(0, testingDay - (hasCheckedToday ? 0 : 1));
     var overtimeRealized = Math.max(0, realizedDays - 14);

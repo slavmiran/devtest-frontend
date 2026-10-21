@@ -1786,7 +1786,7 @@ function recomputeLocalTestState(test) {
 
     var isTestedToday = nextStatus === 'done';
     if (test.start_date && typeof getUserTestingDay === 'function' && (!isExternal || (typeof isExternalContinueModeEnabled === 'function' && !isExternalContinueModeEnabled(test)))) {
-        var computedCalDay = getUserTestingDay(test.start_date);
+        var computedCalDay = getUserTestingDay(test.start_date, Number(test.access_pause_days || 0) > 0 || test.issue_reported_at ? test.testing_days : null);
         if (Number.isFinite(computedCalDay) && computedCalDay > 0) {
             test.testing_days = computedCalDay;
         }
@@ -3525,7 +3525,7 @@ async function initiateProjectFeedback(appId, options) {
     var isEligibleForCheckin = test && (test.status === 'new' || test.status === 'daily' || test.status === 'opened');
     
     if (!options.checkinContext && isEligibleForCheckin) {
-        var testingDay = typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date) : null;
+        var testingDay = typeof window.getUserTestingDay === 'function' ? window.getUserTestingDay(test.start_date, test.testing_days) : null;
         var localDate = typeof getLocalDate === 'function' ? getLocalDate() : '';
         if (testingDay && localDate) {
             options.checkinContext = { day: Number(testingDay), local_date: localDate };
@@ -5134,7 +5134,7 @@ async function confirmStart(id, options) {
         test.last_check_date = getLocalDate();
         test.checkins_count = Math.max(0, Number(test.checkins_count || 0)) + 1;
         test.testing_days = (test.start_date && typeof getUserTestingDay === 'function')
-            ? (getUserTestingDay(test.start_date) || Number(test.testing_days || 1))
+            ? (getUserTestingDay(test.start_date, test.testing_days) || Number(test.testing_days || 1))
             : Number(test.testing_days || 1);
         if (shouldSubmitPlayFeedback) {
             test.play_feedback_submitted = true;
@@ -5298,11 +5298,12 @@ async function confirmStart(id, options) {
                 updatedTest.checkins_count = Math.max(0, Number(result.checkins_count || updatedTest.checkins_count || 0));
                 updatedTest.skips_count = Math.max(0, Number(result.skips_count || 0));
                 updatedTest.daily_timeline = result.daily_timeline || updatedTest.daily_timeline || '';
+                if (result.access_pause_days != null) updatedTest.access_pause_days = Number(result.access_pause_days || 0);
                 var serverDay = Number(result.testing_day || 0);
                 if (serverDay > 0) {
                     updatedTest.testing_days = serverDay;
                 } else if (updatedTest.start_date && typeof getUserTestingDay === 'function') {
-                    updatedTest.testing_days = getUserTestingDay(updatedTest.start_date) || Number(updatedTest.testing_days || 1);
+                    updatedTest.testing_days = getUserTestingDay(updatedTest.start_date, updatedTest.testing_days) || 1;
                 }
                 updatedTest.status = 'done';
                 updatedTest.play_feedback_submitted = Object.prototype.hasOwnProperty.call(result, 'play_feedback_submitted')
