@@ -865,7 +865,18 @@ function getMutualFeedJoinUnavailableLabel(item) {
             || project.is_accepting_new_testers === false
             || (String(project.test_mode || '') === 'email_list' && item.owner_has_email === false);
     });
-    return allUnavailable ? window.t('mutualNoAvailableProjectBtn', {}, lang) : '';
+    if (!allUnavailable) return '';
+    var hasExchange = choices.some(function(project) {
+        var link = _getProjectOwnerLinkMeta(project, item.owner_id);
+        return link && link.linkedProjectId > 0;
+    });
+    return window.t(hasExchange ? 'mutualTargetLinkedDetailsBtn' : 'mutualNoAvailableProjectBtn', {}, lang);
+}
+
+// Keep apps from "Already testing" out of all recruitment feeds, not other apps by the same owner.
+function _showcaseAvailableFeedItems(items) {
+    const testingIds = new Set(_showcaseActiveTestsItems().map(test => Number(test.id)));
+    return (Array.isArray(items) ? items : []).filter(item => !testingIds.has(Number(item.app_id)));
 }
 
 function renderFeedCard(item, kind) {
@@ -1153,23 +1164,25 @@ function renderMutualFeed(force) {
 
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.mutual));
     const feedState = window.getMarketFeedState ? window.getMarketFeedState('mutual') : { confirmedEmpty: false };
+    const seekingItems = _showcaseAvailableFeedItems(mutualSeeking);
+    const prelaunchItems = _showcaseAvailableFeedItems(mutualPrelaunch);
 
-    if (!mutualSeeking.length) {
-        if (isLoading || !feedState.confirmedEmpty) {
+    if (!seekingItems.length) {
+        if (!mutualSeeking.length && (isLoading || !feedState.confirmedEmpty)) {
             if (window._marketForceSkeleton) showSkeleton('mutual-seeking-list');
             else showMarketLoading('mutual-seeking-list');
         } else seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
-        seekingEl.innerHTML = mutualSeeking.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
+        seekingEl.innerHTML = seekingItems.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
     }
 
-    if (!mutualPrelaunch.length) {
-        if (isLoading || !feedState.confirmedEmpty) {
+    if (!prelaunchItems.length) {
+        if (!mutualPrelaunch.length && (isLoading || !feedState.confirmedEmpty)) {
             if (window._marketForceSkeleton) showSkeleton('mutual-prelaunch-list');
             else showMarketLoading('mutual-prelaunch-list');
         } else prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
-        prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
+        prelaunchEl.innerHTML = prelaunchItems.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
     }
 
     renderGuestProjectsSection(true);
@@ -2841,14 +2854,15 @@ function renderBountyFeed(force) {
     if (!bountyEl) return;
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.bounty));
     const feedState = window.getMarketFeedState ? window.getMarketFeedState('bounty') : { confirmedEmpty: false };
-    if (!bountyContracts.length) {
-        if (isLoading || !feedState.confirmedEmpty) {
+    const bountyItems = _showcaseAvailableFeedItems(bountyContracts);
+    if (!bountyItems.length) {
+        if (!bountyContracts.length && (isLoading || !feedState.confirmedEmpty)) {
             if (window._marketForceSkeleton) showSkeleton('bounty-list');
             else showMarketLoading('bounty-list');
         } else bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
         return;
     }
-    bountyEl.innerHTML = bountyContracts.map((item) => renderFeedCard(item, 'bounty')).join('');
+    bountyEl.innerHTML = bountyItems.map((item) => renderFeedCard(item, 'bounty')).join('');
 }
 
 function toggleDetailsWithAnimation(detailsEl) {
@@ -10730,27 +10744,34 @@ window.openTimelineStatsSheet = openTimelineStatsSheet;
 window.closeTimelineStatsSheet = closeTimelineStatsSheet;
 
 function _getProjectOwnerLinkMeta(project, targetOwnerId) {
+    if (!project || !['active', 'pending_completion'].includes(String(project.status || project.app_status || 'active').toLowerCase())) return null;
     const testers = Array.isArray(project && project.testers) ? project.testers : [];
     const ownerTester = testers.find(function(tester) {
         return tester && !tester.is_left_soft && String(tester.progress_status || 'active').toLowerCase() === 'active'
             && Number(tester.tester_id || 0) === Number(targetOwnerId);
     });
-    if (!ownerTester) return null;
-
-    let linkedProjectName = String(ownerTester.reciprocal_app_name || ownerTester.reciprocal_app_package_name || '').trim();
-    if (!linkedProjectName) {
-        const myLinkedTest = (myTests || []).find(function(test) {
-            return Number(test && test.owner_id || 0) === Number(targetOwnerId)
-                && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0)
-                && String(test.progress_status || 'active').toLowerCase() === 'active' && !test.is_left_soft;
-        });
-        if (myLinkedTest) {
-            linkedProjectName = String(myLinkedTest.name || myLinkedTest.package || '').trim();
-        }
+    const myLinkedTest = (myTests || []).find(function(test) {
+        return test && Number(test.owner_id || 0) === Number(targetOwnerId)
+            && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0)
+            && String(test.progress_status || 'active').toLowerCase() === 'active' && !test.is_left_soft
+            && !test.is_external && !test.is_guest
+            && ['active', 'pending_completion'].includes(String(test.app_status || 'active').toLowerCase());
+    });
+    if (!ownerTester && !myLinkedTest) return null;
+    const linkedProjectId = Number(ownerTester && ownerTester.reciprocal_app_id || myLinkedTest && myLinkedTest.id || 0);
+    let linkedProjectName = linkedProjectId > 0
+        ? String(ownerTester && (ownerTester.reciprocal_app_name || ownerTester.reciprocal_app_package_name) || '').trim() : '';
+    if (!linkedProjectName && myLinkedTest && Number(myLinkedTest.id) === linkedProjectId) {
+        linkedProjectName = String(myLinkedTest.name || myLinkedTest.package || '').trim();
+    }
+    if (!linkedProjectName && linkedProjectId > 0 && typeof window.getMarketCandidateByAppId === 'function') {
+        const linkedApp = window.getMarketCandidateByAppId(linkedProjectId);
+        linkedProjectName = String(linkedApp && linkedApp.name || '').trim();
     }
     return {
         linkedProjectName: linkedProjectName,
-        joinType: String(ownerTester.join_type || '').toLowerCase(),
+        linkedProjectId: linkedProjectId,
+        joinType: String(ownerTester && ownerTester.join_type || myLinkedTest && myLinkedTest.join_type || '').toLowerCase(),
     };
 }
 
@@ -10838,6 +10859,13 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
                 ? window.t('projectSelectOwnerLinkedDetails', { owner_app: ownerLinkMeta.linkedProjectName }, lang)
                 : window.t('projectSelectOwnerAlreadyTestingDetails', {}, lang);
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(ownerLinkReason)}</span>`;
+            if (readOnly && ownerLinkMeta.linkedProjectName) {
+                reasonHtml = `<span class="project-select-pair">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg>
+                    <span><span class="project-select-pair__label">${window.escapeHTML(window.t('mutualExchangePartnerApp', {}, lang))}</span>
+                    <strong class="notranslate">${window.escapeHTML(ownerLinkMeta.linkedProjectName)}</strong></span>
+                </span><span class="project-select-reason">${window.escapeHTML(window.t('mutualExchangePairedProjectHint', {}, lang))}</span>`;
+            }
         } else if (targetLinked) {
             const linkedReason = pairedProject
                 ? window.t('mutualTargetPairedWithDetails', { my_app: pairedProject.name }, lang)
@@ -10873,6 +10901,7 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         return `${openTag}
             <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
             <span class="project-select-text">
+                ${readOnly && ownerLinkMeta && ownerLinkMeta.linkedProjectName ? `<span class="project-select-pair__label">${window.escapeHTML(window.t('mutualExchangeYourApp', {}, lang))}</span>` : ''}
                 <span class="project-select-name">${safeName}</span>
                 ${reasonHtml}
             </span>
@@ -10934,7 +10963,13 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     }
     if (readOnly) {
         const targetName = options && options.targetAppName || window.t('unknownLabel', {}, lang);
-        listEl.insertAdjacentHTML('afterbegin', `<p class="project-select-overview">${window.escapeHTML(window.t('mutualExchangeDetailsIntro', { target_app: targetName }, lang))}</p>`);
+        const hasOtherExchange = availableProjects.some(project => {
+            const link = _getProjectOwnerLinkMeta(project, targetOwnerId);
+            return link && link.linkedProjectId > 0 && link.linkedProjectId !== Number(targetAppId);
+        });
+        const introKey = targetLinked ? 'mutualExchangeCurrentProjectIntro'
+            : hasOtherExchange ? 'mutualExchangeOtherProjectIntro' : 'mutualExchangeDetailsIntro';
+        listEl.insertAdjacentHTML('afterbegin', `<p class="project-select-overview">${window.escapeHTML(window.t(introKey, { target_app: targetName }, lang))}</p>`);
     }
     modal.classList.add('active');
 }

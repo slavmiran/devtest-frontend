@@ -309,6 +309,7 @@ function getProjectDailyProgressMeta(project) {
         statusChip: statusChip,
         isOverachieved: isOverachieved,
         peakColor: peakColor,
+        teamActivityColor: teamPercent >= 100 || todayDone >= 12 ? peakColor : 'rgba(197, 211, 233, 0.60)',
     };
 }
 
@@ -447,7 +448,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
                 ${pinHtml}
             </svg>
             <div class="pc-ring__center">
-                <span class="pc-ring__count">${todayDone}&nbsp;/&nbsp;12</span>
+                <span class="pc-ring__count"><span class="pc-ring__done"${options && options.compactLabel ? ` style="color: ${meta.teamActivityColor};"` : ''}>${todayDone}</span>&nbsp;/&nbsp;12</span>
                 <span class="pc-ring__label">${compactLabel}</span>
             </div>
         </div>
@@ -2133,10 +2134,7 @@ function renderProjects(force) {
         const remainingRecruitmentSlots = Math.max(0, testerTargetCount - currentRegularTestersCount);
         const isFullActivity = Number(dailyMeta.teamPercent || 0) >= 100;
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
-        const peakColor = dailyMeta.peakColor || (typeof getDailyActivityProgressColor === 'function' ? getDailyActivityProgressColor(dailyMeta.todayDone) : '#30d158');
-        const valueStyle = (isFullActivity || Number(dailyMeta.todayDone || 0) >= 12)
-            ? 'color: ' + peakColor + '; font-weight: 700;'
-            : '';
+        const valueStyle = 'color: ' + dailyMeta.teamActivityColor + '; font-weight: 700;';
         const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line' + (isFullActivity ? ' is-complete' : '') + '">' +
             activityLightning +
             metricFooterPairHtml(
