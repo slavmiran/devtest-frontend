@@ -462,6 +462,7 @@ Object.assign(window.App, {
         guestProjects,
         mutualSeeking,
         mutualPrelaunch,
+        mutualIsolated,
         bountyContracts,
         communityEvents,
         eventsExpanded,

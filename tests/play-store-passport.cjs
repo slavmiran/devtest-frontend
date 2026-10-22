@@ -67,10 +67,11 @@ const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at:
                         protection_bust_pool: 999, ...snapshot }];
                     window.archivedProjects = [];
                     document.getElementById('opener').onclick = e => openPlayStorePassport(42, e);
-                    document.getElementById('tab-projects').innerHTML = '<div class="card"><div class="card-header"><div class="card-info"><div class="card-title">Orbit Notes</div><div class="card-subtitle card-subtitle--live">' + renderLiveProjectBalance(myProjects[0]) + '</div></div><div class="project-header-actions project-header-actions--live"><button class="project-icon-btn">⚙</button>' + renderPlayStoreDetailsButton(42) + '</div></div></div>';
+                    document.getElementById('tab-projects').innerHTML = '<div class="card"><div class="card-header"><div class="card-info"><div class="card-title">Orbit Notes</div></div><div class="project-header-actions project-header-actions--live"><button class="project-icon-btn">⚙</button>' + renderPlayStoreDetailsButton(42) + '</div></div></div>';
                 }, { language, snapshot });
-                assert.match(await page.locator('.live-project-balance').innerText(), /137[,.]5 \$BUST/);
-                assert.doesNotMatch(await page.locator('.live-project-balance').innerText(), /999/);
+                // Campaign pool moved out of the title in the project-control refactor.
+                assert.equal(await page.locator('.live-project-balance').count(), 0);
+                assert.equal(await page.locator('.project-header-actions--live button').count(), 2);
                 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
                 // Cached passport is already visible while a GET is still waiting.
                 hold = true;

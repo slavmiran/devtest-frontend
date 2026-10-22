@@ -98,6 +98,9 @@
                 '<span class="live-health-label">' + esc(t('updateLabel')) + '</span>' +
                 '<strong class="live-health-val">' + freshnessVal + '</strong>' +
             '</div>';
+        if (window.LiveMarketUI && metrics && metrics.engagement) {
+            health = LiveMarketUI.engagement(metrics.engagement, true) + health.slice(health.indexOf('<div class="live-health-badge'));
+        }
         var chips = keywords.map(function (entry) {
             return '<span class="live-keyword-chip" title="' + esc(entry.keyword) + '">' +
                 '<span class="live-keyword-hash" aria-hidden="true">#</span>' +

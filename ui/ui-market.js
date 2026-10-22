@@ -869,6 +869,9 @@ function getMutualFeedJoinUnavailableLabel(item) {
 }
 
 function renderFeedCard(item, kind) {
+    // These are discovery cards, never offer targets. Do not reuse actionable
+    // card branches (pending offers/dossier links can otherwise restore a CTA).
+    if (item.showcase_read_only === true) return renderIsolatedPhase1Card(item);
     const ownerDisplay = window.escapeHTML(formatDeveloperOwnerLine(item.owner_full_name, item.owner_username, item.owner_id));
     const safeOwner = escapeInlineJsString(item.owner_username || '');
     const langBadge = (item.target_lang && item.target_lang !== 'ALL') ? getLangBadge(item.target_lang) : '';
@@ -1146,6 +1149,19 @@ function renderMutualReturns(apps, force) {
     }).join('');
 }
 
+function renderIsolatedPhase1Card(item) {
+    const text = key => window.escapeHTML(window.t(key, {}, lang));
+    const mode = item.visibility_mode === 'hidden_from_showcase'
+        ? 'mutualHiddenMode' : 'mutualIsolationMode';
+    return `<article class="market-card market-card-isolated" data-app-id="${Number(item.app_id) || 0}">
+        <div class="market-isolated-top"><div class="card-title notranslate">${window.escapeHTML(item.name || window.t('unknownLabel', {}, lang))}</div>
+            <span class="meta-chip">${text(mode)}</span></div>
+        <div class="market-isolated-meta"><span>${window.escapeHTML(window.t('mutualIsolatedDay', {day: Number(item.day) || 1}, lang))}</span>
+            ${item.is_own_project ? `<span class="meta-chip">${text('lmOwn')}</span>` : ''}</div>
+        <p class="market-isolated-note">${text('mutualIsolatedNoOffer')}</p>
+    </article>`;
+}
+
 function renderMutualFeed(force) {
     if (!force && !isTabVisible('market')) return;
     const seekingEl = document.getElementById('mutual-seeking-list');
@@ -1173,6 +1189,13 @@ function renderMutualFeed(force) {
         prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
     }
 
+    const isolatedSection = document.getElementById('mutual-isolated-section');
+    if (isolatedSection) {
+        const rows = typeof mutualIsolated !== 'undefined' && Array.isArray(mutualIsolated) ? mutualIsolated : [];
+        isolatedSection.hidden = rows.length === 0;
+        document.getElementById('mutual-isolated-count').textContent = String(rows.length);
+        document.getElementById('mutual-isolated-list').innerHTML = rows.map(renderIsolatedPhase1Card).join('');
+    }
     renderGuestProjectsSection(true);
     if (typeof renderShowcaseActiveTests === 'function') renderShowcaseActiveTests(true);
 }
@@ -2812,6 +2835,7 @@ function renderExternalProjectDetailsModal(test, body) {
 }
 
 function switchMarketSubTab(tab) {
+    var legacy = document.getElementById("live-market-legacy"); if (legacy) legacy.open = true;
     const panels = {
         seeking: document.getElementById('market-subtab-seeking'),
         bounty: document.getElementById('market-subtab-bounty'),
@@ -8584,6 +8608,7 @@ function switchTab(tabId, navElement) {
     }
 
     if (finalTab === 'market') {
+        if (window.LiveMarket) window.LiveMarket.mount();
         if (window.ShowcaseGeo && typeof window.ShowcaseGeo.mount === 'function') {
             window.ShowcaseGeo.mount();
         }

@@ -680,6 +680,7 @@ var incomingOffers = [];
 var myProjects = [];
 var mutualSeeking = [];
 var mutualPrelaunch = [];
+var mutualIsolated = [];
 var mutualReturns = [];
 var guestProjects = [];
 var bountyContracts = [];
@@ -868,6 +869,7 @@ function _bindLegacyAppState() {
     window.App.bindStateProperty('myProjects', function () { return myProjects; }, function (value) { myProjects = value; });
     window.App.bindStateProperty('mutualSeeking', function () { return mutualSeeking; }, function (value) { mutualSeeking = value; });
     window.App.bindStateProperty('mutualPrelaunch', function () { return mutualPrelaunch; }, function (value) { mutualPrelaunch = value; });
+    window.App.bindStateProperty('mutualIsolated', function () { return mutualIsolated; }, function (value) { mutualIsolated = value; });
     window.App.bindStateProperty('mutualReturns', function () { return mutualReturns; }, function (value) { mutualReturns = value; });
     window.App.bindStateProperty('guestProjects', function () { return guestProjects; }, function (value) { guestProjects = value; });
     window.App.bindStateProperty('bountyContracts', function () { return bountyContracts; }, function (value) { bountyContracts = value; });

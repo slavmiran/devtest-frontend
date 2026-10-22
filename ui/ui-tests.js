@@ -1729,6 +1729,7 @@ function renderIncomingOffers() {
         }
         return;
     }
+    if (window.LiveExchanges && !window.LiveExchanges.legacyReady()) { window.LiveExchanges.load(); return; }
     const section = document.getElementById('offers-section');
     const carousel = document.getElementById('offers-carousel');
     if (!section || !carousel) return;
@@ -1738,7 +1739,7 @@ function renderIncomingOffers() {
         _offersTimerId = null;
     }
 
-    const pending = (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending');
+    const pending = (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending' && !(window.LiveExchanges && window.LiveExchanges.managed(offer.offer_id)));
     const isLoading = !!_offersInFlight;
 
     if (!pending.length) {
@@ -2885,6 +2886,7 @@ window.openControlProofCatchupScreenshot = function(appId) {
 };
 
 function renderTests(force) {
+    if (window.LiveExchanges) window.LiveExchanges.mount();
     if (!force && !isTabVisible('tests')) return;
     const viewportAnchor = captureTestsViewportAnchor();
     syncExternalContinueModeState();
@@ -2913,6 +2915,7 @@ function renderTests(force) {
     const externalGuestTestsCount = renderExternalGuestTestsSection();
 
     myTests.forEach((test) => {
+        if (window.LiveExchanges && window.LiveExchanges.waitingFor(test.id || test.app_id)) return;
         const isExternal = !!test.is_external;
         const hasGuestOrigin = hasGuestLinkRelationship(test);
         const showGuestOriginChip = shouldShowGuestOriginChip(test);

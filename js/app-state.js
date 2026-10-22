@@ -10,6 +10,7 @@
         myProjects: [],
         mutualSeeking: [],
         mutualPrelaunch: [],
+        mutualIsolated: [],
         mutualReturns: [],
         guestProjects: [],
         bountyContracts: [],

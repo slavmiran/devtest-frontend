@@ -213,6 +213,7 @@ function hydrateMarketFromCache() {
     if (cached.mutual) {
         mutualSeeking = Array.isArray(cached.mutual.seeking) ? cached.mutual.seeking : [];
         mutualPrelaunch = Array.isArray(cached.mutual.prelaunch) ? cached.mutual.prelaunch : [];
+        mutualIsolated = Array.isArray(cached.mutual.isolated) ? cached.mutual.isolated : [];
         mutualReturns = Array.isArray(cached.mutual.returns) ? cached.mutual.returns : [];
     }
     if (cached.bounty) {
@@ -1889,6 +1890,7 @@ async function _loadTasksImpl(options) {
         // Rebuild the lists only when the API snapshot actually changed.
         var changedTestIds = _changedTestIds(myTests, nextTests);
         var testsChanged = changedTestIds.length > 0;
+        if (testsChanged && window.LiveExchanges) window.LiveExchanges.load(true);
         if (testsChanged || !wasTestsLoadedBeforeRequest) {
             myTests = nextTests;
             markTestsViewDirty();
@@ -1981,6 +1983,7 @@ async function _loadMutualFeedImpl(options) {
     if (hasMutualCache) {
         mutualSeeking = cached.mutual.seeking || [];
         mutualPrelaunch = cached.mutual.prelaunch || [];
+        mutualIsolated = cached.mutual.isolated || [];
         mutualReturns = cached.mutual.returns || [];
         renderMutualFeed();
         if (window.renderMutualReturns) {
@@ -2008,6 +2011,7 @@ async function _loadMutualFeedImpl(options) {
         const nextMutual = {
             seeking: data.seeking || [],
             prelaunch: data.prelaunch || [],
+            isolated: Array.isArray(data.isolated) ? data.isolated : [],
             returns: data.returns || [],
         };
         const nextCount = nextMutual.seeking.length + nextMutual.prelaunch.length + nextMutual.returns.length;
@@ -2016,6 +2020,7 @@ async function _loadMutualFeedImpl(options) {
 
         mutualSeeking = nextMutual.seeking;
         mutualPrelaunch = nextMutual.prelaunch;
+        mutualIsolated = nextMutual.isolated;
         mutualReturns = nextMutual.returns;
         renderMutualFeed();
         if (window.renderMutualReturns) {
@@ -2141,6 +2146,7 @@ async function _loadBountyFeedImpl(options) {
 }
 
 async function forceRefreshMarket() {
+    if (window.LiveMarket) window.LiveMarket.refresh();
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     resetMarketFetchThrottle();
     resetMarketFeedStates();
