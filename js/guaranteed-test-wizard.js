@@ -259,6 +259,14 @@
         uploadCta: ['Upload screenshot', 'Загрузить скриншот'],
         uploadedTitle: ['Screenshot uploaded', 'Скриншот загружен'],
         uploadedSubtitle: ['Tap ✕ to replace it', 'Нажмите ✕, чтобы заменить'],
+        screenshotSelected: ['Screenshot selected', 'Скриншот выбран'],
+        screenshotUploading: ['Uploading screenshot…', 'Загружаем скриншот…'],
+        screenshotRetry: ['Not uploaded yet. Submit to retry, or replace the file.', 'Файл ещё не загружен. Отправьте заявку для повтора или замените файл.'],
+        proofUploadFailed: ['Could not upload the screenshot. The file is kept — please retry.', 'Не удалось загрузить скриншот. Файл сохранён в этом окне — попробуйте ещё раз.'],
+        proofTooLarge: ['The screenshot must be no larger than 5 MB.', 'Размер скриншота должен быть не больше 5 МБ.'],
+        proofInvalidImage: ['Select a valid JPG, PNG or WebP screenshot.', 'Выберите корректный скриншот JPG, PNG или WebP.'],
+        proofDmUnavailable: ['Open the bot in Telegram private messages, press Start, then retry. Do not pay again.', 'Откройте бота в личных сообщениях Telegram, нажмите «Старт» и повторите отправку. Повторно платить не нужно.'],
+        proofRateLimited: ['Telegram is temporarily limiting uploads. Please retry shortly; do not pay again.', 'Telegram временно ограничил загрузку. Повторите отправку чуть позже; повторно платить не нужно.'],
         submitOrder: ['Submit order · ${amount}', 'Отправить заявку · ${amount}'],
         submitting: ['Sending…', 'Отправляем…'],
         submitFallback: ['Submit order', 'Отправить заявку'],
@@ -266,7 +274,7 @@
             'Order {code} submitted. The confirmation will arrive in Telegram.',
             'Заявка {code} отправлена. Подтверждение придет в Telegram.'
         ],
-        toastFailed: ['Could not create the order. Please try again.', 'Не удалось создать заявку. Попробуйте еще раз.'],
+        toastFailed: ['Could not submit the order. Please retry; do not pay again.', 'Не удалось отправить заявку. Повторите отправку; повторно платить не нужно.'],
         toastProofFailed: ['Could not attach the payment proof. Please try again.', 'Не удалось прикрепить подтверждение оплаты. Попробуйте еще раз.'],
         toastOrderAlreadyActive: [
             'You already have an active order for this app. We attached the receipt to order {code}.',
@@ -380,6 +388,47 @@
     var GT_DRAFT_STORAGE_KEY = 'dt_gt_wizard_draft';
     var GT_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
     var paypalManualExpanded = false;
+    var paymentUploadTask = null;
+    var paymentScreenshotGeneration = 0;
+    var paymentSubmitBusy = false;
+
+    function paymentActorId() {
+        var tgUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
+        return Number((window.App && window.App.userId) || window.userId || (tgUser && tgUser.id) || 0);
+    }
+
+    function getGuaranteedApiBase() {
+        return (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
+    }
+
+    function paymentProofReference(value) {
+        var raw = String(value || '').trim();
+        // A local blob/data preview is not an uploaded receipt and cannot
+        // survive a reload. Only keep references returned by our upload API.
+        return /^\/(?:api\/)?telegram-media\/[A-Za-z0-9_-]+$/.test(raw) ? raw : '';
+    }
+
+    function clearPaymentScreenshot() {
+        paymentScreenshotGeneration += 1;
+        paymentUploadTask = null;
+        wizardState.paymentScreenshotFile = null;
+        wizardState.paymentScreenshotUrl = '';
+    }
+
+    function reportPaymentError(error, fallback) {
+        var code = String(error && error.message || '');
+        if (code === 'proof_upload_superseded') return;
+        var key = {
+            proof_missing: 'toastProofMissing',
+            proof_upload_failed: 'proofUploadFailed',
+            empty_file: 'proofInvalidImage',
+            invalid_image_type: 'proofInvalidImage',
+            file_too_large: 'proofTooLarge',
+            bot_dm_unavailable: 'proofDmUnavailable',
+            upload_rate_limited: 'proofRateLimited'
+        }[code] || fallback || 'proofUploadFailed';
+        if (typeof showToast === 'function') showToast(L(key));
+    }
 
     function readGuaranteedTestWizardDraft() {
         try {
@@ -399,6 +448,7 @@
                 localStorage.removeItem(GT_DRAFT_STORAGE_KEY);
                 return null;
             }
+            if (draft.actor_id && paymentActorId() && Number(draft.actor_id) !== paymentActorId()) return null;
             return draft;
         } catch (_) {
             try { localStorage.removeItem(GT_DRAFT_STORAGE_KEY); } catch (e) {}
@@ -417,6 +467,7 @@
         if (!Number.isFinite(step) || step < 1) step = 1;
         if (step > 3) step = 3;
         var draft = {
+            actor_id: paymentActorId(),
             step: step,
             app_name: appName,
             app_type: wizardState.appType === 'paid' ? 'paid' : 'free',
@@ -425,7 +476,7 @@
             payment_method: wizardState.paymentMethod || null,
             payment_exchange: wizardState.paymentExchange || null,
             payment_step1_done: !!wizardState.paymentStep1Done,
-            payment_screenshot_url: String(wizardState.paymentScreenshotUrl || '').trim(),
+            payment_screenshot_url: paymentProofReference(wizardState.paymentScreenshotUrl),
             fiat_currency: String(wizardState.fiatCurrency || '').trim(),
             selected_bank: String(wizardState.fiatBankName || '').trim(),
             is_personal_account: wizardState.fiatPersonalAccount !== false,
@@ -456,7 +507,8 @@
         wizardState.paymentMethod = draft.payment_method || null;
         wizardState.paymentExchange = draft.payment_exchange || null;
         wizardState.paymentStep1Done = !!draft.payment_step1_done;
-        wizardState.paymentScreenshotUrl = String(draft.payment_screenshot_url || '').trim();
+        wizardState.paymentScreenshotUrl = Number(draft.actor_id || 0) === paymentActorId()
+            ? paymentProofReference(draft.payment_screenshot_url) : '';
         wizardState.fiatCurrency = String(draft.fiat_currency || '').trim();
         wizardState.fiatBankName = String(draft.selected_bank || '').trim();
         wizardState.fiatPersonalAccount = draft.is_personal_account !== false;
@@ -525,6 +577,7 @@
     }
 
     function resetWizardState(keepPrefill) {
+        clearPaymentScreenshot();
         var prefill = keepPrefill ? wizardState.prefillProject : null;
         var next = getDefaultWizardState();
         if (prefill) {
@@ -1896,8 +1949,7 @@
 
     function resetPaymentFlowState() {
         wizardState.paymentStep1Done = false;
-        wizardState.paymentScreenshotUrl = '';
-        wizardState.paymentScreenshotFile = null;
+        clearPaymentScreenshot();
     }
 
     function openPaymentFlow(method, exchangeId) {
@@ -1944,7 +1996,9 @@
         var method = wizardState.paymentMethod;
         var amount = getPaymentAmount(method);
         var step1Done = !!wizardState.paymentStep1Done;
-        var step2Done = !!wizardState.paymentScreenshotUrl;
+        var step2Done = !!paymentProofReference(wizardState.paymentScreenshotUrl);
+        var hasSelection = step2Done || !!wizardState.paymentScreenshotFile;
+        var uploading = !!paymentUploadTask;
         var step1Class = step1Done ? 'is-done' : 'is-active';
         var step2Class = step2Done ? 'is-done' : (step1Done ? 'is-active' : 'is-locked');
         var step1Num = step1Done
@@ -2057,17 +2111,17 @@
         }
 
         var uploadHtml = '';
-        if (step2Done) {
+        if (hasSelection) {
             uploadHtml = `
                 <div class="play-review-screenshot-preview">
-                    <div class="preview-success-icon">
+                    <div class="preview-success-icon" ${step2Done ? '' : 'style="color:var(--tg-theme-hint-color,#94a3b8);background:transparent"'}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"/>
+                            ${step2Done ? '<polyline points="20 6 9 17 4 12"/>' : '<path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/>'}
                         </svg>
                     </div>
                     <div class="preview-info">
-                        <div class="preview-title">${L('uploadedTitle')}</div>
-                        <div class="preview-subtitle">${L('uploadedSubtitle')}</div>
+                        <div class="preview-title">${L(step2Done ? 'uploadedTitle' : (uploading ? 'screenshotUploading' : 'screenshotSelected'))}</div>
+                        <div class="preview-subtitle">${L(step2Done ? 'uploadedSubtitle' : 'screenshotRetry')}</div>
                     </div>
                     <button type="button" class="preview-remove-btn" id="gtw-flow-remove-screenshot">✕</button>
                 </div>
@@ -2085,7 +2139,7 @@
             `;
         }
 
-        var canSubmit = step1Done && step2Done;
+        var canSubmit = step1Done && hasSelection && !uploading && !paymentSubmitBusy;
 
         sheet.innerHTML = `
             <h2 class="gtw-payment-flow-title">${title}</h2>
@@ -2118,7 +2172,7 @@
 
             <div class="gtw-payment-flow-footer">
                 <button type="button" class="gtw-continue-btn" id="gtw-flow-submit-btn" ${canSubmit ? '' : 'disabled'}>
-                    ${method === 'paypal' ? L('submitFallback') : L('submitOrder', { amount: amount })}
+                    ${paymentSubmitBusy ? L('submitting') : (method === 'paypal' ? L('submitFallback') : L('submitOrder', { amount: amount }))}
                 </button>
                 <button type="button" class="gtw-payment-flow-cancel" id="gtw-flow-cancel-btn">${L('cancel')}</button>
             </div>
@@ -2212,18 +2266,28 @@
             });
             fileInput.addEventListener('change', function () {
                 var file = fileInput.files && fileInput.files[0];
-                if (!file) return;
+                if (!file || paymentSubmitBusy) return;
+                if (!file.size || (file.type && file.type.indexOf('image/') !== 0)) {
+                    reportPaymentError(new Error('invalid_image_type'));
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    reportPaymentError(new Error('file_too_large'));
+                    return;
+                }
+                clearPaymentScreenshot();
                 wizardState.paymentScreenshotFile = file;
-                wizardState.paymentScreenshotUrl = URL.createObjectURL(file);
-                renderPaymentFlow();
+                persistGuaranteedTestWizardDraft();
+                uploadPaymentScreenshot().catch(function (error) { reportPaymentError(error); });
             });
         }
 
         var removeBtn = document.getElementById('gtw-flow-remove-screenshot');
         if (removeBtn) {
             removeBtn.addEventListener('click', function () {
-                wizardState.paymentScreenshotFile = null;
-                wizardState.paymentScreenshotUrl = '';
+                if (paymentSubmitBusy) return;
+                clearPaymentScreenshot();
+                persistGuaranteedTestWizardDraft();
                 renderPaymentFlow();
             });
         }
@@ -2456,12 +2520,20 @@
         persistGuaranteedTestWizardDraft();
     }
 
-    function handleExecutePayment() {
-        if (wizardState.paymentMethod === 'rub' && wizardState.fiatOrderId) {
-            attachFiatProofAndComplete().catch(function () {});
-            return;
+    async function handleExecutePayment() {
+        if (paymentSubmitBusy) return;
+        paymentSubmitBusy = true;
+        renderPaymentFlow();
+        try {
+            if (wizardState.paymentMethod === 'rub' && wizardState.fiatOrderId) {
+                await attachFiatProofAndComplete();
+            } else {
+                await submitGuaranteedOrderAndOpenTelegram();
+            }
+        } finally {
+            paymentSubmitBusy = false;
+            renderPaymentFlow();
         }
-        submitGuaranteedOrderAndOpenTelegram().catch(function () {});
     }
 
     function getGuaranteedOrderNotes(extraParts) {
@@ -2475,8 +2547,9 @@
     }
 
     function getInitDataPayload(payload) {
-        if (typeof withInitData === 'function') return withInitData(payload);
-        payload.init_data = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
+        if (typeof withInitData === 'function') payload = withInitData(payload) || payload;
+        if (!payload.init_data) payload.init_data = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '';
+        if (!payload.init_data && window.Telegram && window.Telegram.WebApp) payload.init_data = window.Telegram.WebApp.initData || '';
         return payload;
     }
 
@@ -2508,7 +2581,7 @@
             button.textContent = L('fiatCreating');
         }
         try {
-            var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders', {
+            var response = await fetch(getGuaranteedApiBase() + '/guaranteed-test-orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(getInitDataPayload({
@@ -2592,53 +2665,69 @@
         hideGuaranteedTestWizardStep2();
         hideGuaranteedTestWizardStep1();
         clearGuaranteedTestWizardDraft();
+        clearPaymentScreenshot();
         if (typeof showToast === 'function') {
             showToast(L(toastKey || 'toastSubmitted', toastVars || { code: publicCode }));
         }
     }
 
     async function uploadPaymentScreenshot() {
+        var cached = paymentProofReference(wizardState.paymentScreenshotUrl);
+        if (cached) return cached;
+        if (paymentUploadTask) return paymentUploadTask.promise;
         var file = wizardState.paymentScreenshotFile;
-        if (!file) return '';
+        if (!file) throw new Error('proof_missing');
+        var generation = paymentScreenshotGeneration;
+        var task = { promise: null };
+        paymentUploadTask = task;
+        task.promise = performPaymentScreenshotUpload(file, generation).finally(function () {
+            if (paymentUploadTask === task) {
+                paymentUploadTask = null;
+                renderPaymentFlow();
+            }
+        });
+        renderPaymentFlow();
+        return task.promise;
+    }
 
-        var apiBase = (typeof API_BASE !== 'undefined' ? API_BASE : '') || (window.App && window.App.API_BASE) || '';
+    async function performPaymentScreenshotUpload(file, generation) {
         var formData = new FormData();
         formData.append('file', file);
         formData.append('upload_kind', 'payment_proof');
         formData.append('user_id', String((window.App && window.App.userId) || window.userId || 0));
-        if (typeof withInitData === 'function') {
-            var payload = withInitData({});
-            formData.append('init_data', payload.init_data || '');
-        } else if (typeof getTelegramInitDataRaw === 'function') {
-            formData.append('init_data', getTelegramInitDataRaw());
-        }
+        formData.append('init_data', getInitDataPayload({}).init_data || '');
 
         try {
-            var resp = await fetch(apiBase + '/upload-icon', {
+            var resp = await fetch(getGuaranteedApiBase() + '/upload-icon', {
                 method: 'POST',
                 body: formData
             });
-            var data = await resp.json();
-            if (data && data.status === 'success' && data.url) {
-                return String(data.url);
-            }
+            var data = {};
+            try { data = await resp.json(); } catch (_) {}
+            if (generation !== paymentScreenshotGeneration) throw new Error('proof_upload_superseded');
+            var proofUrl = paymentProofReference(data.url);
+            if (!resp.ok || data.status !== 'success' || !proofUrl) throw new Error(data.code || 'proof_upload_failed');
+            wizardState.paymentScreenshotUrl = proofUrl;
+            persistGuaranteedTestWizardDraft();
+            return proofUrl;
         } catch (e) {
-            console.error('Payment screenshot upload failed:', e);
+            if (generation !== paymentScreenshotGeneration) throw new Error('proof_upload_superseded');
+            var known = ['empty_file', 'file_too_large', 'invalid_image_type', 'bot_dm_unavailable', 'upload_rate_limited', 'proof_upload_superseded'];
+            throw new Error(known.indexOf(String(e && e.message)) >= 0 ? e.message : 'proof_upload_failed');
         }
-        return '';
     }
 
     async function attachProofToGuaranteedOrder(orderId, publicCode, toastKey, existingProofUrl) {
         var proofUrl = String(existingProofUrl || '').trim() || await uploadPaymentScreenshot();
         if (!proofUrl) throw new Error('proof_upload_failed');
-        var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders/' + encodeURIComponent(orderId) + '/attach-proof', {
+        var response = await fetch(getGuaranteedApiBase() + '/guaranteed-test-orders/' + encodeURIComponent(orderId) + '/attach-proof', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(getInitDataPayload({ proof_url: proofUrl }))
         });
         var payload = {};
         try { payload = await response.json(); } catch (_) {}
-        if (!response.ok || payload.status === 'error') {
+        if (!response.ok || payload.status !== 'success' || !Number((payload.order || {}).id)) {
             throw new Error((payload && (payload.code || payload.detail || payload.message)) || 'proof_attach_failed');
         }
         var order = payload.order || {};
@@ -2660,27 +2749,30 @@
 
         try {
             var amountUsd = getPaymentAmount(method);
-            var proofUrl = await uploadPaymentScreenshot();
-            if (!proofUrl) {
-                if (typeof showToast === 'function') showToast(L('toastProofMissing'));
-                throw new Error('proof_upload_failed');
-            }
+            var appName = wizardState.appName;
+            var appType = wizardState.appType;
+            var testingLink = wizardState.testingLink;
+            var projectNotes = getGuaranteedOrderNotes([]);
             var exchange = getExchangeById(wizardState.paymentExchange);
+            var generation = paymentScreenshotGeneration;
+            var proofUrl = await uploadPaymentScreenshot();
+            if (generation !== paymentScreenshotGeneration) throw new Error('proof_upload_superseded');
             var notesParts = [];
             if (exchange) notesParts.push('exchange=' + exchange.name);
             notesParts.push('proof=' + proofUrl);
+            if (projectNotes) notesParts.push(projectNotes);
 
-            var response = await fetch((typeof API_BASE !== 'undefined' ? API_BASE : '') + '/guaranteed-test-orders', {
+            var response = await fetch(getGuaranteedApiBase() + '/guaranteed-test-orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(getInitDataPayload({
-                    app_name: wizardState.appName,
-                    app_type: wizardState.appType,
-                    testing_link: wizardState.testingLink,
+                    app_name: appName,
+                    app_type: appType,
+                    testing_link: testingLink,
                     payment_method: method,
                     amount_usd: amountUsd,
                     create_mode: 'submit',
-                    notes: getGuaranteedOrderNotes(notesParts)
+                    notes: notesParts.join('; ')
                 }))
             });
             var payload = {};
@@ -2688,7 +2780,7 @@
                 payload = await response.json();
             } catch (_) {}
 
-            if (!response.ok || payload.status === 'error') {
+            if (!response.ok || payload.status !== 'success') {
                 if ((payload.code || '') === 'order_already_active') {
                     var details = getOrderDetails(payload);
                     var existingId = Number(details.id || details.order_id || 0);
@@ -2703,17 +2795,12 @@
             }
 
             var order = payload.order || {};
+            if (!Number(order.id)) throw new Error('order_create_failed');
             var publicCode = getOrderPublicCode(order, order.id);
             finishGuaranteedOrderSubmit(publicCode, 'toastSubmitted', { code: publicCode });
         } catch (error) {
             console.error('Guaranteed order submit failed:', error);
-            if (typeof showToast === 'function') {
-                if (String(error && error.message) === 'proof_upload_failed') {
-                    showToast(L('toastProofMissing'));
-                } else {
-                    showToast(L('toastFailed'));
-                }
-            }
+            reportPaymentError(error, 'toastFailed');
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText || L('submitFallback');
@@ -2736,7 +2823,7 @@
             );
         } catch (error) {
             console.error('Fiat proof attach failed:', error);
-            if (typeof showToast === 'function') showToast(L('toastProofFailed'));
+            reportPaymentError(error, 'toastProofFailed');
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText || L('submitFallback');
@@ -3350,8 +3437,7 @@
             wizardState.fiatPersonalAccount = String(notes.personal_account || '').toLowerCase() !== 'no';
         }
         wizardState.paymentStep1Done = true;
-        wizardState.paymentScreenshotUrl = '';
-        wizardState.paymentScreenshotFile = null;
+        clearPaymentScreenshot();
         persistGuaranteedTestWizardDraft();
     }
 
