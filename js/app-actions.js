@@ -1063,6 +1063,10 @@ function _loadTimerReadyState() {
                     readyAtMs: Number(payload.readyAtMs || 0) || 0,
                     expiresAtMs: Number(payload.expiresAtMs || 0) || 0,
                     progressId: Number(payload.progressId || 0) || 0,
+                    runIteration: Number(payload.runIteration || 0),
+                    actorUserId: String(payload.actorUserId || ''),
+                    serverNowMs: Number(payload.serverNowMs || 0),
+                    receivedAtMs: Number(payload.receivedAtMs || 0),
                 };
                 if (nextState[key].openToken) {
                     _checkinOpenTokenState[key] = {
@@ -1071,6 +1075,10 @@ function _loadTimerReadyState() {
                         expiresAtMs: nextState[key].expiresAtMs,
                         progressId: nextState[key].progressId,
                         localDate: today,
+                        runIteration: nextState[key].runIteration,
+                        actorUserId: nextState[key].actorUserId,
+                        serverNowMs: nextState[key].serverNowMs,
+                        receivedAtMs: nextState[key].receivedAtMs,
                     };
                 }
             });
@@ -1100,6 +1108,10 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername, de
             readyAtMs: Number(openMeta.readyAtMs || 0) || 0,
             expiresAtMs: Number(openMeta.expiresAtMs || 0) || 0,
             progressId: Number(openMeta.progressId || 0) || 0,
+            runIteration: Number(openMeta.runIteration || 0),
+            actorUserId: String(openMeta.actorUserId || ''),
+            serverNowMs: Number(openMeta.serverNowMs || 0),
+            receivedAtMs: Number(openMeta.receivedAtMs || 0),
         };
     } else {
         delete _timerReadyState[key];
@@ -1123,8 +1135,21 @@ function _getTimerReadyPayload(appId) {
     var key = String(Number(appId) || 0);
     if (key === '0') return null;
     var payload = _timerReadyState[key];
+    if (!payload) {
+        // A rerender/retry can lose the UI flag while the signed Open token
+        // is still mature. Recover readiness, not a second 15-second session.
+        var meta = _getReusableCheckinOpenMeta(appId);
+        if (meta && _checkinTokenNow(meta) >= Number(meta.readyAtMs || 0)) {
+            var test = (myTests || []).find(function(item) { return Number(item.id) === Number(appId); });
+            var day = typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : Number(test && test.testing_days || 0);
+            var screenshot = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day);
+            setTimerReadyForConfirm(appId, true, screenshot, test && test.owner_username || '', true);
+            payload = _timerReadyState[key];
+        }
+    }
     if (!payload || typeof payload !== 'object') return null;
-    if (String(payload.localDate || '') !== getLocalDate()) {
+    if (!_checkinOpenMetaMatches(appId, payload)
+        || (Number(payload.expiresAtMs || 0) > 0 && _checkinTokenNow(payload) > Number(payload.expiresAtMs))) {
         delete _timerReadyState[key];
         _persistTimerReadyState();
         return null;
@@ -2377,24 +2402,62 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
     }
 }
 
+function _checkinOpenMetaMatches(appId, meta) {
+    if (!meta || String(meta.localDate || '') !== getLocalDate()) return false;
+    if (meta.actorUserId && String(meta.actorUserId) !== String(userId)) return false;
+    var test = (myTests || []).find(function(item) { return Number(item.id) === Number(appId); });
+    if (!test) return false;
+    if (meta.progressId && Number(meta.progressId) !== Number(test.progress_id)) return false;
+    if (meta.runIteration && Number(meta.runIteration) !== Number(test.run_iteration || 1)) return false;
+    return true;
+}
+
+function _checkinTokenNow(meta) {
+    return meta.serverNowMs && meta.receivedAtMs
+        ? Number(meta.serverNowMs) + Math.max(0, Date.now() - Number(meta.receivedAtMs)) : Date.now();
+}
+
+function _getReusableCheckinOpenMeta(appId) {
+    var key = String(Number(appId) || 0);
+    var meta = _checkinOpenTokenState[key];
+    if (!meta || !meta.token || !meta.progressId || !_checkinOpenMetaMatches(appId, meta)) return null;
+    if (Number(meta.expiresAtMs || 0) > 0 && _checkinTokenNow(meta) > Number(meta.expiresAtMs)) return null;
+    return meta;
+}
+
+function invalidateCheckinOpenToken(appId) {
+    delete _checkinOpenTokenState[String(Number(appId))];
+    setTimerReadyForConfirm(appId, false);
+}
+
 function _getCheckinOpenToken(appId) {
     var key = String(Number(appId) || 0);
     if (key === '0') return '';
     var readyPayload = _timerReadyState[key];
-    if (readyPayload && String(readyPayload.localDate || '') === getLocalDate() && readyPayload.openToken) {
+    if (readyPayload && _checkinOpenMetaMatches(appId, readyPayload) && readyPayload.openToken
+        && !(Number(readyPayload.expiresAtMs || 0) > 0 && _checkinTokenNow(readyPayload) > Number(readyPayload.expiresAtMs))) {
         return String(readyPayload.openToken || '');
     }
-    var live = _checkinOpenTokenState[key];
-    if (live && String(live.localDate || '') === getLocalDate() && live.token) {
+    var live = _getReusableCheckinOpenMeta(appId);
+    if (live) {
         return String(live.token || '');
     }
     return '';
 }
 
+var _checkinOpenTokenRequests = new Map();
 async function _requestCheckinOpenToken(appId) {
     var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id) === Number(appId);
     });
+    var identity = { date: getLocalDate(), progress: Number(test && test.progress_id || 0),
+        run: Number(test && test.run_iteration || 1), actor: String(userId) };
+    var cached = _getReusableCheckinOpenMeta(appId);
+    if (cached) return { required: true, token: cached.token, progress_id: cached.progressId,
+        ready_at_ms: cached.readyAtMs, expires_at_ms: cached.expiresAtMs, server_now_ms: _checkinTokenNow(cached) };
+    var requestKey = [identity.actor, appId, identity.progress, identity.run, identity.date].join(':');
+    if (_checkinOpenTokenRequests.has(requestKey)) return _checkinOpenTokenRequests.get(requestKey);
+    var pending = (async function() {
     var response = await fetch(API_BASE + '/checkin/open', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2415,6 +2478,9 @@ async function _requestCheckinOpenToken(appId) {
         return null;
     }
     var key = String(Number(appId) || 0);
+    var current = (myTests || []).find(function(item) { return Number(item.id) === Number(appId); });
+    if (getLocalDate() !== identity.date || String(userId) !== identity.actor || !current
+        || Number(current.progress_id || 0) !== identity.progress || Number(current.run_iteration || 1) !== identity.run) return null;
     if (result.required === false) {
         if (_checkinOpenTokenState) delete _checkinOpenTokenState[key];
         return result;
@@ -2426,8 +2492,19 @@ async function _requestCheckinOpenToken(appId) {
         progressId: Number(result.progress_id || 0) || 0,
         localDate: getLocalDate(),
         serverNowMs: Number(result.server_now_ms || 0) || Date.now(),
+        receivedAtMs: Date.now(),
+        actorUserId: identity.actor,
+        runIteration: identity.run,
     };
+    if (_timerReadyState[key]) {
+        var ready = _timerReadyState[key];
+        setTimerReadyForConfirm(appId, true, ready.isScreenshot, ready.ownerUsername, true);
+    }
     return result;
+    })();
+    _checkinOpenTokenRequests.set(requestKey, pending);
+    try { return await pending; }
+    finally { if (_checkinOpenTokenRequests.get(requestKey) === pending) _checkinOpenTokenRequests.delete(requestKey); }
 }
 
 let _activeTimerSwitchAttempts = 0;
@@ -2701,6 +2778,13 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
         _onStoreLinkClickedForIssueFlow(id);
         return;
+    }
+
+    var existingOpen = _getReusableCheckinOpenMeta(id);
+    if (existingOpen) {
+        resolvedDurationSeconds = Math.max(1, Math.ceil(
+            (Number(existingOpen.readyAtMs || 0) - _checkinTokenNow(existingOpen)) / 1000
+        ));
     }
 
     if (activeTimerAppId !== null && activeTimerAppId !== id) {
@@ -5116,6 +5200,21 @@ async function confirmStart(id, options) {
 
     // --- 1. INSTANT OPTIMISTIC UI: Save rollback snapshot & mark test done immediately ---
     var prevTestSnapshot = test ? JSON.parse(JSON.stringify(test)) : null;
+    var checkinIdentity = { actor: String(userId), appId: Number(id),
+        progressId: Number(test && test.progress_id || 0),
+        run: Number(test && test.run_iteration || 0), date: getLocalDate() };
+    var checkinConfirmed = false;
+    var previousCheckinReady = _timerReadyState[String(id)]
+        ? Object.assign({}, _timerReadyState[String(id)]) : null;
+    function restoreTransientCheckinReadiness() {
+        if (!previousCheckinReady || getLocalDate() !== checkinIdentity.date
+            || String(userId) !== checkinIdentity.actor) return;
+        var current = myTests.find(function(item) { return Number(item.id) === Number(id); });
+        if (!current || Number(current.progress_id) !== checkinIdentity.progressId
+            || Number(current.run_iteration || 0) !== checkinIdentity.run) return;
+        _timerReadyState[String(id)] = previousCheckinReady;
+        _persistTimerReadyState();
+    }
     if (test) {
         test.status = 'done';
         test.last_check_date = getLocalDate();
@@ -5154,18 +5253,19 @@ async function confirmStart(id, options) {
                 } catch (e) {}
             }
 
-            const response = await fetch(`${API_BASE}/checkin`, {
+            const sendCheckin = typeof fetchCheckinWithRecovery === 'function' ? fetchCheckinWithRecovery : fetch;
+            const response = await sendCheckin(`${API_BASE}/checkin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(withInitData({
                     tester_id: userId,
                     app_id: id,
-                    local_date: getLocalDate(),
+                    local_date: checkinIdentity.date,
                     play_feedback_submitted: shouldSubmitPlayFeedback,
                     open_token: token,
                     proof_kind: proofKind,
                 }))
-            });
+            }, checkinIdentity);
 
             let result = null;
             try {
@@ -5173,6 +5273,7 @@ async function confirmStart(id, options) {
             } catch (parseError) {
                 result = null;
             }
+            checkinConfirmed = !!(response.ok && result && result.status === 'success');
 
             // Wait for animation to finish before applying final server merge or rollback
             await animPromise;
@@ -5181,6 +5282,9 @@ async function confirmStart(id, options) {
                 // --- ROLLBACK ON ERROR ---
                 if (test && prevTestSnapshot) {
                     Object.assign(test, prevTestSnapshot);
+                }
+                if (!result || response.status >= 500 || result.code === 'database_error') {
+                    restoreTransientCheckinReadiness();
                 }
                 setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
                 renderTests(true);
@@ -5220,6 +5324,7 @@ async function confirmStart(id, options) {
                     ) {
                         if (!(proofKind === 'checkpoint_screenshot' && errorCode === 'open_not_ready')) {
                             setTimerReadyForConfirm(id, false);
+                            if (errorCode !== 'open_not_ready') invalidateCheckinOpenToken(id);
                             clearActiveTimerForApp(id);
                             if (typeof window.renderTests === 'function') {
                                 window.renderTests(true);
@@ -5236,6 +5341,19 @@ async function confirmStart(id, options) {
             }
 
             // --- SUCCESS: Merge authoritative server data & show rewards ---
+            var currentCheckinTest = myTests.find(function(item) { return Number(item.id) === Number(id); });
+            if (getLocalDate() !== checkinIdentity.date || String(userId) !== checkinIdentity.actor
+                || !currentCheckinTest || Number(currentCheckinTest.progress_id) !== checkinIdentity.progressId
+                || Number(currentCheckinTest.run_iteration || 0) !== checkinIdentity.run) {
+                // A reply for yesterday or a previous participation must never
+                // mark today's/new participation's card as confirmed.
+                if (currentCheckinTest === test && getLocalDate() !== checkinIdentity.date) {
+                    test.status = 'daily';
+                    if (typeof recomputeLocalTestState === 'function') recomputeLocalTestState(test);
+                }
+                loadTasks(false).catch(function() {});
+                return true;
+            }
             const earnedBust = Number(result.earned_bust || 0);
             const earnedKarma = Number(result.earned_karma || 0);
             const sourceType = String(result.source_type || '').toLowerCase();
@@ -5325,9 +5443,15 @@ async function confirmStart(id, options) {
         } catch (error) {
             console.error('Checkin background error:', error);
             await animPromise;
+            if (checkinConfirmed) {
+                // A rendering/toast failure must not roll back a saved check-in.
+                setTimeout(function() { loadTasks(true).catch(function() {}); }, 150);
+                return true;
+            }
             if (test && prevTestSnapshot) {
                 Object.assign(test, prevTestSnapshot);
             }
+            restoreTransientCheckinReadiness();
             setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
             renderTests(true);
             if (typeof _highlightTestCard === 'function') {

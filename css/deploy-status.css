@@ -1,0 +1,26 @@
+#deploy-status-banner {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 2147483000;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+    background: #293448;
+    color: #edf3fc;
+    border-bottom: 1px solid #7186a3;
+    font: 500 13px/1.4 system-ui, sans-serif;
+    overflow-wrap: anywhere;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+#deploy-status-banner[hidden] { display: none; }
+#deploy-status-banner[data-state="complete"] { background: #203c35; border-color: #4d967d; }
+#deploy-status-banner[data-state="unknown"],
+#deploy-status-banner[data-state="failed"] { background: #343840; border-color: #78818e; }
+/* Keep the notice and the existing sheet controls visible together, including
+   the report sheet on 360px screens and with the on-screen keyboard open. */
+html.deploy-banner-visible .modal-overlay {
+    padding-top: calc(var(--deploy-banner-height, 0px) + 8px);
+    box-sizing: border-box;
+}
+html.deploy-banner-visible .modal-overlay .modal-content {
+    max-height: calc(100dvh - var(--deploy-banner-height, 0px) - 12px);
+}

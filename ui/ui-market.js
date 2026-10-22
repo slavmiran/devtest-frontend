@@ -4596,6 +4596,7 @@ async function openReportModal(appId, ownerUsername, options) {
             _checkinProofUploadState.submissionMode = isBufferCatchup ? 'buffer_catchup' : 'standard';
             _checkinProofUploadState.catchupRequested = isCatchupSubmission;
             if (typeof _setCheckinProofStatus === 'function') _setCheckinProofStatus('', '');
+            if (typeof restoreCheckinProofRetryDraft === 'function') restoreCheckinProofRetryDraft();
         }
         var visibilityNote = document.getElementById('t-checkinProofVisibilityNote');
         if (visibilityNote) visibilityNote.textContent = window.t('checkinProofVisibilityNote', {}, lang);

@@ -17,6 +17,31 @@ var _checkinProofUploadState = {
 var _checkinProofPendingAppIds = {};
 var _checkinProofUploadQueue = [];
 var _checkinProofActiveJobs = 0;
+// File objects stay only in this open tab, never in persistent web storage.
+var _checkinProofRetryDrafts = new Map();
+
+function _proofDraftKey(progressId, mode) {
+    var actor = typeof userId === 'undefined' ? '' : String(userId);
+    var test = typeof myTests !== 'undefined' && Array.isArray(myTests)
+        ? myTests.find(function(item) { return Number(item.progress_id) === Number(progressId); }) : null;
+    return actor + ':' + _checkinProofSessionKey(progressId) + ':' + (mode || 'standard')
+        + ':' + Number(test && test.run_iteration || 1);
+}
+
+function restoreCheckinProofRetryDraft() {
+    var state = _checkinProofUploadState;
+    var key = _proofDraftKey(state.progressId, state.submissionMode);
+    var draft = _checkinProofRetryDrafts.get(key);
+    if (!draft || draft.appId !== state.appId || draft.catchupRequested !== state.catchupRequested) return false;
+    state.files = draft.files.slice();
+    state.idempotencyKey = draft.idempotencyKey;
+    state.fingerprints = draft.fingerprints ? draft.fingerprints.slice() : state.files.map(_checkinProofMetadataFingerprint);
+    state.previewUrls = state.files.map(function(file) { return URL.createObjectURL(file); });
+    _renderCheckinProofPreviews();
+    _syncCheckinProofControls();
+    _setCheckinProofAlert(window.t('checkinProofDraftRestored', {}, lang));
+    return true;
+}
 
 function isScreenshotProofUploadEnabled() {
     return !!(window.App && window.App.screenshotProofUploadEnabled === true);
@@ -428,6 +453,7 @@ function removeCheckinProofFile(index) {
     _checkinProofUploadState.files.splice(safeIndex, 1);
     _checkinProofUploadState.previewUrls.splice(safeIndex, 1);
     _checkinProofUploadState.fingerprints.splice(safeIndex, 1);
+    _checkinProofRetryDrafts.delete(_proofDraftKey(_checkinProofUploadState.progressId, _checkinProofUploadState.submissionMode));
     _setCheckinProofAlert('');
     _renderCheckinProofPreviews();
     _updateCheckinProofFileStatus();
@@ -547,12 +573,13 @@ async function _postCheckinProofScreenshot(url, form) {
             await new Promise(function(resolve) { setTimeout(resolve, retryDelay); });
             continue;
         }
-        return { response: response, result: result };
+        return { response: response, result: result, retryable: retryable };
     }
 }
 
 async function _runCheckinProofUploadJob(job) {
     var confirmedResult = null;
+    var draftKey = job.draftKey || _proofDraftKey(job.progressId, job.submissionMode);
     try {
         var openToken = typeof _getCheckinOpenToken === 'function' ? _getCheckinOpenToken(job.appId) : '';
         if (!openToken && typeof _requestCheckinOpenToken === 'function') {
@@ -575,6 +602,7 @@ async function _runCheckinProofUploadJob(job) {
         if (!response.ok || !result || result.status !== 'success' || !result.proof || result.proof.state !== 'attached') {
             var code = result && result.code;
             if (code === 'checkin_already_proved') {
+                _checkinProofRetryDrafts.delete(draftKey);
                 _clearCheckinProofKey(job.progressId);
                 _setCheckinProofBackgroundCard(job.appId, false);
                 if (typeof showToast === 'function') showToast(window.t('checkinProofAlreadyReceived', {}, lang));
@@ -582,9 +610,13 @@ async function _runCheckinProofUploadJob(job) {
                 return;
             }
             if (code === 'proof_source_conflict' || code === 'invalid_idempotency_key') _clearCheckinProofKey(job.progressId);
-            throw { isApiError: true, payload: result || { code: 'checkinProofUploadFailed' } };
+            if (['open_required', 'open_invalid', 'open_mismatch', 'open_expired', 'day_boundary_moved'].indexOf(code) !== -1
+                && typeof invalidateCheckinOpenToken === 'function') invalidateCheckinOpenToken(job.appId);
+            throw { isApiError: true, retryable: sent.retryable,
+                payload: result || { code: 'checkinProofUploadFailed' } };
         }
         confirmedResult = result;
+        _checkinProofRetryDrafts.delete(draftKey);
         _clearCheckinProofKey(job.progressId);
         if (result.buffer_catchup_only === true || job.submissionMode === 'buffer_catchup') {
             _applyBufferCatchupProofResult(job.appId, result);
@@ -609,6 +641,15 @@ async function _runCheckinProofUploadJob(job) {
             return;
         }
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
+        var retryable = !(error && error.isApiError) || (error && error.retryable === true) || payload.code === 'proof_attach_incomplete'
+            || payload.code === 'network_error' || (payload.details && payload.details.retryable === true);
+        if (retryable && draftKey === _proofDraftKey(job.progressId, job.submissionMode)) {
+            // Bounded memory even if many different projects fail offline.
+            if (_checkinProofRetryDrafts.size >= 5) _checkinProofRetryDrafts.delete(_checkinProofRetryDrafts.keys().next().value);
+            _checkinProofRetryDrafts.set(draftKey, job);
+        } else {
+            _checkinProofRetryDrafts.delete(draftKey);
+        }
         _setCheckinProofBackgroundCard(job.appId, false);
         if (typeof showToast === 'function') {
             showToast(_checkinProofErrorMessage(payload) + '\n' + window.t('checkinProofBackgroundRetry', {}, lang), 5000);
@@ -634,14 +675,19 @@ function submitCheckinProofScreenshot() {
     var appId = Number(_checkinProofUploadState.appId || 0);
     var progressId = Number(_checkinProofUploadState.progressId || 0);
     if (appId <= 0 || progressId <= 0 || isScreenshotProofUploadPending(appId)) return;
+    if (window.DeployStatus) Promise.resolve().then(function() {
+        return window.DeployStatus.refresh();
+    }).catch(function() {});
     _setCheckinProofBackgroundCard(appId, true);
     _checkinProofUploadQueue.push({
         appId: appId,
         progressId: progressId,
         files: _checkinProofUploadState.files.slice(0, CHECKIN_PROOF_MAX_FILES),
+        fingerprints: _checkinProofUploadState.fingerprints.slice(0, CHECKIN_PROOF_MAX_FILES),
         idempotencyKey: _checkinProofUploadState.idempotencyKey,
         submissionMode: _checkinProofUploadState.submissionMode,
         catchupRequested: _checkinProofUploadState.catchupRequested,
+        draftKey: _proofDraftKey(progressId, _checkinProofUploadState.submissionMode),
     });
     closeCheckinProofUploadModal();
     _drainCheckinProofUploadQueue();

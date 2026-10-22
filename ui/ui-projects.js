@@ -429,7 +429,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
     ].filter(Boolean).join(' ');
 
     const ringSvgHtml = `
-        <div class="${ringClasses}" onclick="openDailyProgressDetailsModal(${appId}, event);" role="button" tabindex="0" aria-label="Суточный план чекинов ${todayDone} из 12">
+        <div class="${ringClasses}" ${options && options.interactive === false ? 'role="img"' : `onclick="openDailyProgressDetailsModal(${appId}, event);" role="button" tabindex="0"`} aria-label="${window.t('dprRingAria', { done: todayDone }, typeof lang !== 'undefined' ? lang : 'ru')}">
             <svg viewBox="0 0 100 100" class="pc-ring__svg" aria-hidden="true">
                 <defs>
                     <filter id="${glowId}" x="-50%" y="-50%" width="200%" height="200%">
@@ -7987,10 +7987,10 @@ function openDailyProgressDetailsModal(projectId, event) {
     const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
     const tr = (k, p, def) => (typeof window.t === 'function' ? window.t(k, p || {}, uiLang) : (def || k));
 
-    titleEl.textContent = tr('dprModalTitle', {}, 'Суточный план и рекомендации');
+    titleEl.textContent = tr('dprModalTitle', {}, 'Активность и рекомендации');
 
     const modalRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
-        ? buildProjectDailyProgressRingHtml(project)
+        ? buildProjectDailyProgressRingHtml(project, { interactive: false })
         : '';
 
     const recommended = Math.max(0, 20 - totalTesters);
@@ -8019,9 +8019,11 @@ function openDailyProgressDetailsModal(projectId, event) {
 
     bodyEl.innerHTML = `
             <div class="dp-sheet__card">
-                <div class="dp-sheet__ring-hero">
+                <section id="daily-activity-history" class="daily-activity-history">
+                  <div class="dp-sheet__ring-hero">
                     ${modalRingHtml}
-                </div>
+                  </div>
+                </section>
                 ${recommendHtml}
                 ${hintsHtml}
             </div>
@@ -8041,6 +8043,7 @@ function openDailyProgressDetailsModal(projectId, event) {
     }
 
     modal.classList.add('active');
+    if (window.ProjectActivityHistory) window.ProjectActivityHistory.open(project, document.getElementById('daily-activity-history'));
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
@@ -8050,6 +8053,7 @@ function closeDailyProgressDetailsModal(event) {
     }
     const modal = document.getElementById('daily-progress-modal');
     if (modal) modal.classList.remove('active');
+    if (window.ProjectActivityHistory) window.ProjectActivityHistory.close();
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
