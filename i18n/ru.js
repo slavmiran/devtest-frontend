@@ -3236,6 +3236,8 @@
             banScreenTitle: "Доступ к платформе ограничен",
             banScreenSubtitle: "Аккаунт заблокирован",
             banScreenReasonLabel: "Причина блокировки",
+            banScreenUntil: "Блокировка до {date}",
+            banScreenUntilForever: "Блокировка без срока",
             banScreenDefaultReason: "Нарушение правил сообщества и регламента тестирования",
             banScreenAppealTitle: "Подача апелляции",
             banScreenAppealPlaceholder: "Опишите причину пропуска тестов или вашу позицию...",

@@ -36,8 +36,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261023-deploy-advisory-v1"></script>
-    <script src="./i18n/en.js?v=20261023-deploy-advisory-v1"></script>
+    <script src="./i18n/ru.js?v=20261023-uinfo-ban-v1"></script>
+    <script src="./i18n/en.js?v=20261023-uinfo-ban-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
@@ -68,7 +68,7 @@
     <script src="./js/proof-ping.js?v=20261011-preference-consistency-v1"></script>
     <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
     <script src="./js/mass-invite-session.js?v=20260917-mi-run-context-v1"></script>
-<script src="./js/app-features.js?v=20261014-single-email-v1"></script>
+<script src="./js/app-features.js?v=20261023-uinfo-ban-v1"></script>
 <script src="./js/mutual-exchange-ui.js?v=20261019-activity-context-v1"></script>
 <script src="./js/termination-sheet.js?v=20261020-access-pause-v1"></script>
 <script src="./js/bounty-applications.js?v=20260921-incoming-access-fix-v2"></script>
@@ -166,6 +166,7 @@
             <div class="ban-screen__card">
                 <div class="ban-screen__card-label" id="ban-screen-reason-label" data-i18n="banScreenReasonLabel">Причина блокировки</div>
                 <div class="ban-screen__reason" id="ban-screen-reason">Нарушение правил сообщества</div>
+                <div class="ban-screen__reason" id="ban-screen-until" hidden></div>
             </div>
 
             <!-- Appeal Section -->
