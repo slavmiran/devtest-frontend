@@ -7,17 +7,19 @@
             noteLabel: 'Комментарий', bugLabel: 'Опишите проблему', ideaLabel: 'Предложите улучшение',
             bugPlaceholder: 'Что произошло? Что вы ожидали? Как повторить проблему?',
             ideaPlaceholder: 'Что стоит улучшить и как это поможет пользователям?',
-            waiting: 'Быстрое подтверждение — после таймера',
+            waiting: 'Быстрое подтверждение · {seconds} с', openFirst: 'Сначала откройте приложение',
             media: 'Добавить фото или видео', limits: 'До 5 файлов · фото до 5 МБ · видео до 50 МБ',
             screenshot: 'Скриншот', bug: 'Баг', idea: 'Идея', note: 'Комментарий для разработчика (необязательно)…',
-            privacy: 'Публикуется в Testing Proofs · без личных данных',
-            seriesTitle: 'Бонус за серию экранов', seriesCount: 'Серия экранов: {count} из 5',
+            privacy: 'Публикуется в топик Testing Proofs',
+            singleHint: 'Одного скрина достаточно. Но хороший тест редко заканчивается на одном экране 🙂',
+            bonusLabel: 'Бонус: +{amount}', excess: '−{count} лишних',
+            seriesTitle: 'Бонус за серию экранов', seriesCount: 'Серия экранов: {count} из 5', mediaCount: 'Материалы: {count} из 5',
             seriesRange: '+0,1…0,3 кармы', seriesReward: '+{amount} кармы',
             seriesHint: 'Прикрепите 3–5 разных экранов для бонуса кармы.',
             seriesActive: 'Бонус активен · ещё +0,1 за следующий экран.', seriesMax: 'Максимальный бонус за серию.',
             noDailyBonus: 'Без повторной дневной награды', noDailyBonusHint: 'Материалы будут отправлены по текущей задаче.',
             qualityBadge: 'Принято: {percent}', rewardBadge: '+0,5 кармы после одобрения',
-            qualityHint: 'Награда после проверки автором. Спам и пустые отчёты снижают рейтинг.',
+            qualityHint: 'Награда после проверки владельцем. Спам и пустые фидбэки снижают рейтинг качества',
             seriesAdded: '✓ Ещё +{amount} кармы за {count} фото · бонусы складываются',
             description: 'Что произошло или что предлагаете улучшить?',
             quality: 'После принятия владельцем: +0,5 кармы. Спам и пустые отчёты снижают рейтинг.',
@@ -47,17 +49,19 @@
             noteLabel: 'Comment', bugLabel: 'Describe the issue', ideaLabel: 'Suggest an improvement',
             bugPlaceholder: 'What happened? What did you expect? How can it be reproduced?',
             ideaPlaceholder: 'What could be improved, and how would it help users?',
-            waiting: 'Quick confirmation unlocks after the timer',
+            waiting: 'Quick confirmation · {seconds}s', openFirst: 'Open the app first',
             media: 'Add photos or video', limits: 'Up to 5 files · photos up to 5 MB · videos up to 50 MB',
             screenshot: 'Screenshot', bug: 'Bug', idea: 'Idea', note: 'Comment for the developer (optional)…',
-            privacy: 'Published in Testing Proofs · no personal data',
-            seriesTitle: 'Screen-series bonus', seriesCount: 'Screen series: {count} of 5',
+            privacy: 'Published in the Testing Proofs topic',
+            singleHint: 'One screenshot is enough. But a good test rarely ends on a single screen 🙂',
+            bonusLabel: 'Bonus: +{amount}', excess: '−{count} extra',
+            seriesTitle: 'Screen-series bonus', seriesCount: 'Screen series: {count} of 5', mediaCount: 'Media: {count} of 5',
             seriesRange: '+0.1…0.3 karma', seriesReward: '+{amount} karma',
             seriesHint: 'Attach 3–5 different screens for a karma bonus.',
             seriesActive: 'Bonus active · +0.1 for each next screen.', seriesMax: 'Maximum photo-series bonus.',
             noDailyBonus: 'No additional daily reward', noDailyBonusHint: 'These materials will fulfil the current task.',
             qualityBadge: 'Accepted: {percent}', rewardBadge: '+0.5 karma after approval',
-            qualityHint: 'Awarded after the author reviews it. Spam and empty reports lower your rating.',
+            qualityHint: 'Reward follows owner approval. Spam and empty feedback lower your quality rating',
             seriesAdded: '✓ Another +{amount} karma for {count} photos · bonuses add up',
             description: 'What happened, or what would you improve?',
             quality: '+0.5 karma after the owner accepts it. Spam and empty reports lower your rating.',
@@ -94,8 +98,8 @@
         var messages = {
             report_media_required: ['Прикрепите фото или видео из приложения.', 'Attach an in-app photo or video.'],
             invalid_report_media: ['Поддерживаются JPEG, PNG, WebP, MP4, WebM и MOV.', 'Use JPEG, PNG, WebP, MP4, WebM or MOV.'],
-            report_description_too_short: ['Опишите баг или идею: минимум 25 символов.', 'Describe the bug or idea in at least 25 characters.'],
-            report_text_too_long: ['Заметка — до 500 символов, описание — до 4000.', 'Notes: up to 500 characters. Descriptions: up to 4000.'],
+            report_description_too_short: ['Опишите баг или идею: минимум 24 символа.', 'Describe the bug or idea in at least 24 characters.'],
+            report_text_too_long: ['Заметка — до 500 символов, описание — до 1000.', 'Notes: up to 500 characters. Descriptions: up to 1000.'],
             report_storage_unavailable: ['Сервис отчётов временно недоступен. Попробуйте ещё раз — день не будет засчитан дважды.', 'Reports are temporarily unavailable. Retry safely: the day will not be counted twice.'],
             report_upload_failed: ['Не удалось завершить отправку. Повторите её из карточки проекта.', 'The report could not be completed. Retry from the project card.'],
             catchup_request_changed: ['Список дозапросов изменился. Откройте карточку заново и повторите отправку.', 'Make-up requests have changed. Reopen the card and retry.'],
@@ -141,8 +145,6 @@
         el('t-reportModalHint').textContent = t('day', { day: s.expectedDay, name: test.name || '' });
         el('t-checkinProofChoose').textContent = t('media');
         el('t-checkinProofLimits').textContent = t('limits');
-        el('unified-report-close').setAttribute('aria-label', t('close'));
-        el('t-checkinProofVisibilityNote').textContent = '🔒 ' + t('privacy');
         if (typeof window.syncCheckinDeveloperAccordion === 'function') {
             window.syncCheckinDeveloperAccordion(Number(test.id), test.owner_username || '', 'report-developer');
         }
@@ -186,13 +188,18 @@
         window.clearInterval(window._unifiedReportTimer);
         window._unifiedReportTimer = window.setInterval(window.syncUnifiedReport, 500);
         window.setUnifiedReportKind(s.reportKind);
-        var viewport = function () {
-            var sheet = document.querySelector('#report-modal .report-modal-sheet');
-            if (sheet && window.visualViewport) sheet.style.setProperty('--report-height', Math.floor(window.visualViewport.height * .92) + 'px');
+        el('unified-report-note').onfocus = function () {
+            if (typeof collapseCheckinDeveloperAccordion === 'function') collapseCheckinDeveloperAccordion('report-developer');
+            requestAnimationFrame(keepReportInputVisible);
         };
-        viewport();
+        el('unified-report-note').onblur = function () {
+            this.style.removeProperty('max-height');
+            this.style.removeProperty('min-height');
+        };
+        syncReportViewport();
         if (window.visualViewport && !window._reportViewportBound) {
-            window.visualViewport.addEventListener('resize', viewport);
+            window.visualViewport.addEventListener('resize', syncReportViewport);
+            window.visualViewport.addEventListener('scroll', syncReportViewport);
             window._reportViewportBound = true;
         }
     };
@@ -202,6 +209,7 @@
         if (!draft || draft.appId !== state().appId || draft.generation !== state().selectionGeneration
             || draft.actor !== String(userId)) return;
         el('report-modal').classList.add('active');
+        syncReportViewport();
         window.syncUnifiedReport();
     };
     window.setUnifiedReportKind = function (kind) {
@@ -217,7 +225,7 @@
         var note = el('unified-report-note');
         note.placeholder = t(kind === 'screenshot' ? 'note' : kind + 'Placeholder');
         el('unified-report-note-label').textContent = t(kind === 'screenshot' ? 'noteLabel' : kind + 'Label');
-        note.maxLength = kind === 'screenshot' ? 500 : 4000;
+        note.removeAttribute('maxlength');
         note.rows = kind === 'screenshot' ? 2 : 4;
         note.required = kind !== 'screenshot';
         if (kind !== 'screenshot') loadQuality();
@@ -230,51 +238,84 @@
         var length = Array.from(s.note.trim().replace(/\s+/g, ' ')).length;
         var files = s.files || [];
         var images = files.filter(function (file) { return file.type.indexOf('image/') === 0; }).length;
-        var validText = s.reportKind === 'screenshot' ? Array.from(s.note).length <= 500 : length >= 25 && length <= 4000 && /[\p{L}\p{N}]/u.test(s.note);
+        var rawLength = Array.from(s.note.trim()).length;
+        var limit = s.reportKind === 'screenshot' ? 500 : 1000;
+        var validText = s.reportKind === 'screenshot' ? rawLength <= limit : length >= 24 && rawLength <= limit && /[\p{L}\p{N}]/u.test(s.note);
         // A standard report and any catch-up need media. Bug/idea on a regular day can be text-only.
         var needsMedia = s.reportKind === 'screenshot' || c.control || c.firstMandatory || c.buffer || !!c.target;
         var submit = el('checkin-proof-submit');
         submit.disabled = s.checkingFiles || !validText || (needsMedia && !files.length);
         el('t-checkinProofSubmit').textContent = t(c.buffer ? 'catchupSend' : (s.reportKind === 'bug' ? 'sendBug' : s.reportKind === 'idea' ? 'sendIdea' : 'send'));
-        el('unified-report-count').textContent = s.reportKind === 'screenshot' ? length + '/500' : (length < 25 ? length + '/25' : length + '/4000');
+        var counter = el('unified-report-count');
+        counter.textContent = rawLength > limit ? t('excess', {count: rawLength - limit})
+            : s.reportKind === 'screenshot' ? rawLength + '/500' : length < 24 ? String(24 - length) : '';
+        counter.classList.toggle('is-required', s.reportKind !== 'screenshot' && length < 24 || rawLength > limit);
         var test = typeof myTests !== 'undefined' && myTests.find(function (row) { return Number(row.id) === Number(s.appId); });
         var seriesEligible = !c.buffer && !(test && typeof isTestedToday === 'function' && isTestedToday(test));
-        renderReportInfo(images, seriesEligible);
+        var videos = files.filter(function (file) { return file.type.indexOf('video/') === 0; }).length;
+        renderReportInfo(images, videos, seriesEligible);
+        var singleHint = el('unified-report-single-hint');
+        singleHint.hidden = images !== 1 || videos > 0;
+        singleHint.textContent = t('singleHint');
         var plain = el('unified-report-plain');
         var timer = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(s.appId)
             : typeof _timerReadyState !== 'undefined' && _timerReadyState[String(s.appId)];
         var ready = !!timer;
         if (typeof isCheckinTimerReadyForConfirm === 'function') ready = isCheckinTimerReadyForConfirm(s.appId);
         plain.disabled = !ready;
-        plain.textContent = t(ready ? 'plain' : 'waiting');
+        var seconds = typeof getCheckinTimerRemainingSeconds === 'function' ? getCheckinTimerRemainingSeconds(s.appId) : 0;
+        if (!seconds && !ready && typeof _getReusableCheckinOpenMeta === 'function') {
+            var meta = _getReusableCheckinOpenMeta(s.appId);
+            if (meta) seconds = Math.max(0, Math.ceil((Number(meta.readyAtMs || 0) - _checkinTokenNow(meta)) / 1000));
+        }
+        plain.classList.toggle('is-waiting', !ready);
+        plain.textContent = t(ready ? 'plain' : seconds > 0 ? 'waiting' : 'openFirst', {seconds:seconds});
     };
 
-    function renderReportInfo(images, eligible) {
+    function syncReportViewport() {
+        var sheet = document.querySelector('#report-modal .report-modal-sheet');
+        var modal = el('report-modal'), vv = window.visualViewport;
+        if (sheet && vv && modal.classList.contains('active') && modal.classList.contains('is-proof-upload')) {
+            sheet.style.setProperty('--report-height', Math.floor(vv.height * .92) + 'px');
+            // Do not infer keyboard size from innerHeight: Android and iOS resize different viewports.
+            modal.style.top = vv.offsetTop + 'px'; modal.style.height = vv.height + 'px'; modal.style.bottom = 'auto';
+        }
+        requestAnimationFrame(keepReportInputVisible);
+    }
+
+    function keepReportInputVisible() {
+        var input = el('unified-report-note'), body = document.querySelector('.unified-report-body');
+        if (document.activeElement !== input || !el('report-modal').classList.contains('active')) return;
+        var available = Math.max(56, body.clientHeight - 12);
+        input.style.maxHeight = available + 'px'; input.style.minHeight = Math.min(82, available) + 'px';
+        var field = input.getBoundingClientRect(), bounds = body.getBoundingClientRect();
+        if (field.bottom > bounds.bottom - 6) body.scrollTop += field.bottom - bounds.bottom + 6;
+        else if (field.top < bounds.top + 6) body.scrollTop -= bounds.top - field.top + 6;
+    }
+
+    function renderReportInfo(images, videos, eligible) {
         var s = state(), info = el('unified-report-info');
-        var key = [s.reportKind, images, eligible, s.qualityPercent, typeof lang === 'undefined' ? 'en' : lang].join(':');
+        var key = [s.reportKind, images, videos, eligible, s.qualityPercent, typeof lang === 'undefined' ? 'en' : lang].join(':');
         if (info.dataset.renderKey === key) return;
         info.dataset.renderKey = key;
         var series = el('unified-report-series'), quality = el('unified-report-quality');
         var screenshot = s.reportKind === 'screenshot';
-        series.hidden = !screenshot;
-        quality.hidden = screenshot;
+        series.hidden = false;
+        quality.hidden = true;
         var escape = window.escapeHTML;
-        var bonus = Math.max(0, Math.min(5, images) - 2) / 10;
-        var amount = bonus.toFixed(1).replace('.', typeof lang !== 'undefined' && lang === 'ru' ? ',' : '.');
-        if (screenshot) {
-            if (!eligible) {
-                series.innerHTML = '<div class="report-info-heading">' + escape(t('noDailyBonus')) + '</div><p>' + escape(t('noDailyBonusHint')) + '</p>';
-                return;
-            }
-            series.innerHTML = '<div class="report-info-top"><span>' + escape(t(images ? 'seriesCount' : 'seriesTitle', { count: images })) + '</span>'
-                + '<span class="report-info-badge' + (bonus ? ' is-earned' : '') + '">' + escape(t(bonus ? 'seriesReward' : 'seriesRange', { amount: amount })) + '</span></div>'
-                + '<div class="report-info-progress" aria-hidden="true">' + [1,2,3,4,5].map(function (n) { return '<i class="' + (images >= n ? 'is-filled' : '') + '"></i>'; }).join('') + '</div>'
-                + '<p>' + escape(t(images < 3 ? 'seriesHint' : images < 5 ? 'seriesActive' : 'seriesMax')) + '</p>';
-        } else {
-            quality.innerHTML = '<div class="report-info-chips"><span class="report-info-badge">' + escape(t('qualityBadge', { percent: s.qualityPercent == null ? '—' : s.qualityPercent })) + '</span>'
-                + '<span class="report-info-badge">' + escape(t('rewardBadge')) + '</span></div><p>' + escape(t('qualityHint')) + '</p>'
-                + (bonus && eligible ? '<div class="report-info-added">' + escape(t('seriesAdded', { amount: amount, count: images })) + '</div>' : '');
-        }
+        var mediaBonus = eligible ? Math.min(5, Math.max(0, Math.min(5, images) - 2) + (videos ? 3 : 0)) / 10 : 0;
+        var total = mediaBonus + (screenshot ? 0 : .5);
+        var amount = (total || .1).toFixed(1).replace('.', typeof lang !== 'undefined' && lang === 'ru' ? ',' : '.');
+        var chip = 'checkin-proof-bonus-chip ' + (total ? 'is-active' : 'is-inactive');
+        if (eligible && (images >= 4 || videos)) chip += ' is-boosted';
+        if (eligible && (videos ? mediaBonus >= .5 : mediaBonus >= .3)) chip += ' is-boosted is-max';
+        var icon = typeof CHECKIN_PROOF_KARMA_ICON_HTML !== 'undefined' ? CHECKIN_PROOF_KARMA_ICON_HTML : '';
+        var label = !eligible && screenshot ? t('noDailyBonus') : t('bonusLabel', {amount:amount});
+        series.innerHTML = '<div class="report-info-top"><span>' + escape(t(videos ? 'mediaCount' : images ? 'seriesCount' : 'seriesTitle', {count:images + videos})) + '</span>'
+            + '<span class="' + chip + '">' + escape(label) + (eligible || !screenshot ? ' ' + icon : '') + '</span></div>'
+            + '<div class="report-info-progress" aria-hidden="true">' + [1,2,3,4,5].map(function (n) { return '<i class="' + (images + videos >= n ? 'is-filled' : '') + '"></i>'; }).join('') + '</div>'
+            + '<p class="report-info-detail">' + (screenshot ? escape(t('privacy')) : escape(t('qualityHint'))
+                + ' <span class="report-quality-value">' + escape(s.qualityPercent == null ? '—' : s.qualityPercent) + '</span>') + '</p>';
     }
 
     var qualityCache = new Map();

@@ -36,8 +36,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261023-contribution-fullset-v1"></script>
-    <script src="./i18n/en.js?v=20261023-contribution-fullset-v1"></script>
+    <script src="./i18n/ru.js?v=20261023-report-media-v4"></script>
+    <script src="./i18n/en.js?v=20261023-report-media-v4"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
@@ -45,7 +45,7 @@
     <script src="./ui/ui-projects.js?v=20261023-restart-buttons-v1"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
     <script src="./js/project-parameters.js?v=20261014-single-email-v1"></script>
-    <script src="./ui/ui-market.js?v=20261023-report-polish-v3"></script>
+    <script src="./ui/ui-market.js?v=20261023-report-media-v4"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261012-geo-radar-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -59,9 +59,9 @@
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
     <script src="./js/app-actions.js?v=20261023-unified-report-v2"></script>
-    <script src="./js/checkin-proof-upload.js?v=20261023-unified-report-v2"></script>
-    <script src="./js/unified-report.js?v=20261023-polish-v3"></script>
-    <link rel="stylesheet" href="./css/unified-report.css?v=20261023-polish-v3">
+    <script src="./js/checkin-proof-upload.js?v=20261023-report-media-v4"></script>
+    <script src="./js/unified-report.js?v=20261023-report-media-v4"></script>
+    <link rel="stylesheet" href="./css/unified-report.css?v=20261023-report-media-v4">
     <script src="./js/testing-control.js?v=20261023-unified-report-v2"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20261019-activity-context-v1"></script>
@@ -1737,7 +1737,6 @@
     <!-- Report Modal / Check-in Proof Modal -->
     <div id="report-modal" class="modal-overlay" onclick="closeReportModal(event)">
         <div class="modal-content report-modal-sheet" onclick="event.stopPropagation()">
-            <button type="button" id="unified-report-close" class="unified-report-close" onclick="closeReportModal()" aria-label="Close">×</button>
             <div id="report-modal-heading">
             <h3 id="t-reportModalTitle" data-i18n="reportModalTitle">📸 Отправка отчёта</h3>
             <p id="t-reportModalHint" data-i18n="reportModalHint">Подтвердите, что приложение скачано и запущено — любым из трёх способов.</p>
@@ -1762,23 +1761,29 @@
 
                 <div id="checkin-proof-upload-alert" class="checkin-proof-upload-alert" role="alert" hidden></div>
                 <div id="checkin-proof-upload-status" class="checkin-proof-upload-status" role="status" aria-live="polite" hidden></div>
+                <p id="unified-report-single-hint" class="unified-report-single-hint" hidden></p>
+                <div id="unified-report-info" class="unified-report-info" aria-live="polite" aria-atomic="true">
+                    <div id="unified-report-series" class="unified-report-series"></div>
+                    <div id="unified-report-quality" class="unified-report-quality" hidden></div>
+                </div>
                 <div id="unified-report-format-label" class="unified-report-sr">Формат отчёта</div>
                 <div class="unified-report-formats" role="group" aria-labelledby="unified-report-format-label">
                     <button type="button" data-report-kind="screenshot" onclick="setUnifiedReportKind('screenshot')">📸 <span>Report</span></button>
                     <button type="button" data-report-kind="bug" onclick="setUnifiedReportKind('bug')">🐞 <span>Bug</span></button>
                     <button type="button" data-report-kind="idea" onclick="setUnifiedReportKind('idea')">💡 <span>Idea</span></button>
                 </div>
-                <div id="unified-report-info" class="unified-report-info" aria-live="polite" aria-atomic="true">
-                    <div id="unified-report-series" class="unified-report-series"></div>
-                    <div id="unified-report-quality" class="unified-report-quality" hidden></div>
-                </div>
                 <label id="unified-report-note-label" class="unified-report-sr" for="unified-report-note"></label>
                 <div class="unified-report-text">
                     <textarea id="unified-report-note" rows="2" maxlength="500" aria-describedby="unified-report-info" oninput="syncUnifiedReport()"></textarea>
                     <span id="unified-report-count" aria-live="polite"></span>
                 </div>
-                <p class="checkin-proof-visibility-note" id="t-checkinProofVisibilityNote" data-i18n="checkinProofVisibilityNote">Скриншот публикуется в теме Testing Proofs. Убедитесь, что на нём нет личных данных.</p>
                 <button type="button" id="unified-report-review" class="unified-report-review" hidden></button>
+                <button type="button" id="unified-report-plain" class="btn unified-report-plain" hidden></button>
+                </div>
+                <div class="checkin-proof-upload-actions">
+                    <button type="button" class="btn btn-primary" id="checkin-proof-submit" onclick="submitCheckinProofScreenshot()" disabled>
+                        <span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">Подтвердить тестирование</span>
+                    </button>
                 <div class="checkin-dev-accordion" id="report-developer">
                     <button type="button" class="checkin-dev-accordion__summary" id="report-developer-toggle" aria-expanded="false" aria-controls="report-developer-panel" onclick="toggleCheckinDeveloperAccordion(event, 'report-developer')">
                         <span class="checkin-dev-accordion__summary-text" id="report-developer-summary"></span>
@@ -1788,12 +1793,6 @@
                         <div class="checkin-dev-accordion__panel-inner"><div class="checkin-dev-accordion__card" id="report-developer-body"></div></div>
                     </div>
                 </div>
-                </div>
-                <div class="checkin-proof-upload-actions">
-                    <button type="button" class="btn btn-primary" id="checkin-proof-submit" onclick="submitCheckinProofScreenshot()" disabled>
-                        <span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">Подтвердить тестирование</span>
-                    </button>
-                    <button type="button" id="unified-report-plain" class="btn unified-report-plain" hidden></button>
                 </div>
             </div>
 

@@ -474,9 +474,6 @@ async function handleCheckinProofFileSelected(event) {
         if (duplicateCount > 0) {
             var dupMsg = window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang);
             _setCheckinProofAlert(dupMsg);
-            if (typeof showToast === 'function') {
-                showToast(dupMsg, 5000);
-            }
         }
         _syncCheckinProofControls();
     }

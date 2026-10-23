@@ -4,7 +4,7 @@ const path = require('node:path');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(__dirname, '..');
 (async () => {
-    const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+    const browser = await chromium.launch({ headless: true, channel: 'chrome', args:['--unsafely-treat-insecure-origin-as-secure=http://fixture.local'] });
     try {
         for (const width of [360, 430]) for (const language of ['ru','en']) {
             const page = await browser.newPage({ viewport:{width,height:850} });
@@ -38,6 +38,8 @@ const root = path.resolve(__dirname, '..');
             assert(!(await page.locator('#checkin-options-modal').evaluate(el=>el.classList.contains('active'))));
             assert((await page.locator('#unified-report-catchup').innerText()).includes('4'));
             assert(await page.locator('#unified-report-info').isVisible(),'Reward information is visible before media selection');
+            assert.equal(await page.locator('#unified-report-close').count(),0,'No upper-right close cross');
+            assert(await page.locator('#unified-report-info').evaluate(el=>el.compareDocumentPosition(document.querySelector('.unified-report-formats')) & Node.DOCUMENT_POSITION_FOLLOWING),'Karma is above the formats');
             assert.equal(await page.locator('#unified-report-info .report-info-progress i').count(),5);
             assert.equal(await page.locator('#unified-report-info .is-filled').count(),0);
             assert.equal(await page.locator('#unified-report-note').evaluate(el=>getComputedStyle(el).resize),'none');
@@ -45,15 +47,29 @@ const root = path.resolve(__dirname, '..');
             assert(formats.every(format=>Math.abs(format.height-44)<.5&&Math.abs(format.top-formats[0].top)<.5),'Format buttons are one equal-height row: '+JSON.stringify(formats));
             assert.equal(await page.locator('.unified-report-formats small').count(),0);
             await page.locator('[data-report-kind="bug"]').click();
+            assert.equal(await page.locator('#unified-report-count').innerText(),'24');
+            await page.locator('#unified-report-note').fill('a'.repeat(24));
+            assert.equal(await page.locator('#unified-report-count').innerText(),'');
+            await page.locator('#unified-report-note').fill('a'.repeat(1001));
+            assert((await page.locator('#unified-report-count').innerText()).includes('−1'));
+            assert(await page.locator('#checkin-proof-submit').isDisabled());
             await page.locator('#unified-report-note').fill('A detailed bug description that explains the problem');
             assert(await page.locator('#checkin-proof-submit').isDisabled(),'Catch-up needs media even on a normal day');
             await page.locator('#checkin-proof-file-input').setInputFiles({name:'screen.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jJtEAAAAASUVORK5CYII=','base64')});
             await page.waitForFunction(()=>_checkinProofUploadState.files.length===1&&!_checkinProofUploadState.checkingFiles);
             assert(!(await page.locator('#checkin-proof-submit').isDisabled()));
+            assert(await page.locator('#unified-report-single-hint').isVisible());
+            await page.evaluate(()=>{window.__duplicateToasts=[];window.__originalShowToast=showToast;window.showToast=(...args)=>window.__duplicateToasts.push(args);});
+            await page.locator('#checkin-proof-file-input').setInputFiles({name:'same.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jJtEAAAAASUVORK5CYII=','base64')});
+            await page.waitForFunction(()=>!_checkinProofUploadState.checkingFiles);
+            assert(await page.locator('#checkin-proof-upload-alert').isVisible());
+            assert.equal(await page.evaluate(()=>__duplicateToasts.length),0,'Selected duplicate is inline only, without a toast');
+            await page.evaluate(()=>window.showToast=window.__originalShowToast);
             await page.locator('[data-report-kind="idea"]').click();
             assert.equal(await page.locator('#unified-report-note').inputValue(),'A detailed bug description that explains the problem');
             assert.equal(await page.locator('.checkin-proof-preview-item').count(),1);
             await page.locator('.checkin-proof-preview-edit').click();
+            await page.locator('.report-editor').waitFor({state:'visible'});
             assert(await page.locator('.report-editor').isVisible());
             await page.locator('.report-editor [data-action="cancel"]').click();
             const geometry=await page.locator('#report-modal .modal-content').evaluate(el=>({width:el.getBoundingClientRect().width,overflow:el.scrollWidth>el.clientWidth}));
@@ -87,6 +103,27 @@ const root = path.resolve(__dirname, '..');
             assert((await page.locator('#unified-report-series').innerText()).includes(language==='ru'?'0,1':'0.1'));
             assert(!(await page.locator('#checkin-proof-submit').isDisabled()),'Three photos enable the default screenshot submission');
             assert.equal(await page.locator('#report-screenshot-boost .screenshot-boost-offer__gift').innerText(),'🎁','Mode rendering must not overwrite the bonus icon');
+            const mediaAmounts=await page.evaluate(()=>{
+                const s=_checkinProofUploadState,saved=s.files;
+                const outputs=[];
+                for(const [photos,videos,kind] of [[4,0,'screenshot'],[5,0,'screenshot'],[0,1,'screenshot'],[0,5,'screenshot'],[3,1,'screenshot'],[4,1,'screenshot'],[3,0,'bug'],[4,1,'idea']]){
+                    s.files=[...Array.from({length:photos},()=>new File(['photo'],'photo.png',{type:'image/png'})),...Array.from({length:videos},()=>new File(['video'],'video.mp4',{type:'video/mp4'}))];
+                    setUnifiedReportKind(kind); outputs.push(document.querySelector('#unified-report-series .checkin-proof-bonus-chip').innerText.trim());
+                }
+                s.files=saved;setUnifiedReportKind('screenshot');return outputs;
+            });
+            const decimal=language==='ru'?',':'.';
+            assert.deepEqual(mediaAmounts,['0.2','0.3','0.3','0.3','0.4','0.5','0.6','1.0'].map(amount=>(language==='ru'?'Бонус: +':'Bonus: +')+amount.replace('.',decimal)));
+            // It is the card's signed Open timer, not a second timer started by this sheet.
+            await page.evaluate(()=>{
+                _checkinOpenTokenState['30']={token:'fixture-open',progressId:300,runIteration:1,actorUserId:String(userId),localDate:getLocalDate(),readyAtMs:Date.now()+15000,expiresAtMs:Date.now()+60000};
+                activeTimerAppId=30;_timerEndTimestamp=_checkinOpenTokenState['30'].readyAtMs;syncUnifiedReport();
+            });
+            assert((await page.locator('#unified-report-plain').innerText()).includes('15'));
+            assert(await page.locator('#unified-report-plain').isDisabled());
+            await page.evaluate(()=>{_checkinOpenTokenState['30'].readyAtMs=Date.now()-1;_timerEndTimestamp=Date.now()-1;syncUnifiedReport();});
+            assert(!(await page.locator('#unified-report-plain').isDisabled()));
+            assert(!(await page.locator('#unified-report-plain').evaluate(el=>el.classList.contains('is-waiting'))));
             if(width===430&&language==='ru') {
                 await page.waitForTimeout(350);
                 await page.screenshot({path:path.resolve(root,'../artifacts/unified-report-screenshot-ru.png')});
@@ -96,13 +133,24 @@ const root = path.resolve(__dirname, '..');
             if(width===430&&language==='ru') { await page.waitForTimeout(350); await page.screenshot({path:path.resolve(root,'../artifacts/unified-report-bug-ru.png')}); }
             await page.setViewportSize({width,height:460});
             await page.locator('#unified-report-note').focus();
+            await page.waitForTimeout(150);
             const submitRect=await page.locator('#checkin-proof-submit').boundingBox();
             assert(submitRect.y>=0&&submitRect.y+submitRect.height<=460,'CTA remains above the reduced viewport/keyboard');
+            const field=await page.locator('#unified-report-note').boundingBox();
+            const scrollBody=await page.locator('.unified-report-body').boundingBox();
+            assert(field.y>=scrollBody.y-1&&field.y+field.height<=scrollBody.y+scrollBody.height+1,'Whole focused field is above the keyboard, inside the scroll area');
             assert(await page.locator('#report-modal-heading').evaluate(el=>el.parentElement.classList.contains('unified-report-body')),'Heading is in the scrolling body');
             await page.locator('.unified-report-body').evaluate(el=>el.scrollTop=el.scrollHeight);
             const scrolled=await page.locator('.unified-report-body').evaluate(el=>document.getElementById('report-modal-heading').getBoundingClientRect().bottom<el.getBoundingClientRect().top);
             assert(scrolled,'Header scrolls away instead of consuming the keyboard viewport');
             await page.setViewportSize({width,height:850});
+            // Mobile Safari-style keyboard: layout viewport stays tall, visual viewport shrinks.
+            await page.locator('#unified-report-note').focus();
+            await page.evaluate(()=>{Object.defineProperty(window.visualViewport,'height',{configurable:true,value:390});window.visualViewport.dispatchEvent(new Event('resize'));});
+            await page.waitForTimeout(150);
+            const keyboardField=await page.locator('#unified-report-note').boundingBox();
+            assert(keyboardField.y>=0&&keyboardField.y+keyboardField.height<=390,'VisualViewport overlay keyboard never covers the focused field');
+            await page.evaluate(()=>{delete window.visualViewport.height;window.visualViewport.dispatchEvent(new Event('resize'));document.getElementById('unified-report-note').blur();});
             if(width===430&&language==='ru') {
                 const originalKey=await page.evaluate(()=>_checkinProofUploadState.idempotencyKey);
                 await page.locator('.checkin-proof-preview-edit').first().click();

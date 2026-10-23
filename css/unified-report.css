@@ -1,5 +1,6 @@
 /* Report sheet only. Shared/external dialogs keep their own geometry. */
 #report-modal.is-proof-upload [hidden] { display: none !important; }
+#report-modal.is-proof-upload { box-sizing: border-box; }
 #report-modal.is-proof-upload .report-modal-sheet {
     --report-accent: 91, 153, 255;
     box-sizing: border-box;
@@ -23,8 +24,6 @@
 #report-modal.is-proof-upload #report-modal-heading { padding-right: 18px; margin-bottom: 15px; }
 #report-modal.is-proof-upload h3 { margin: 0; font-size: 19px; font-weight: 650; line-height: 1.25; text-align: left; }
 #report-modal.is-proof-upload #t-reportModalHint { margin: 5px 0 0; color: var(--hint-color,#9ca5b4); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-.unified-report-close { position: absolute; z-index: 2; top: 6px; right: 10px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; color: var(--hint-color,#aab5c4); background: rgba(128,145,165,.1); font-size: 25px; cursor: pointer; }
-#report-modal:not(.is-proof-upload) .unified-report-close { display: none; }
 #report-modal.is-proof-upload .report-feedback-block { display: none !important; }
 .unified-report-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 #report-modal.is-proof-upload .checkin-proof-picker { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; min-height: 78px; padding: 12px; border: 1px dashed rgba(var(--report-accent),.36); border-radius: 14px; background: rgba(var(--report-accent),.045); text-align: left; }
@@ -43,8 +42,9 @@
 .unified-report-formats button { display: flex; align-items: center; justify-content: center; gap: 5px; height: 44px; min-width: 0; padding: 0 4px; border: 1px solid transparent; border-radius: 10px; color: var(--hint-color,#aab5c4); background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease; }
 .unified-report-formats button.is-selected { color: var(--text-color,#eef2f7); background: rgba(var(--report-accent),.12); border-color: rgba(var(--report-accent),.35); }
 .unified-report-formats button:disabled { opacity: .4; cursor: default; }
-.unified-report-formats button:focus-visible, .unified-report-close:focus-visible { outline: 2px solid rgb(var(--report-accent)); outline-offset: 2px; }
-.unified-report-info { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(128,145,165,.055); color: var(--hint-color,#aab5c4); font-size: 12px; line-height: 1.4; }
+.unified-report-formats button:focus-visible { outline: 2px solid rgb(var(--report-accent)); outline-offset: 2px; }
+.unified-report-info { margin-top: 10px; padding: 11px 12px; border: 1px solid rgba(128,145,165,.12); border-radius: 14px; background: rgba(128,145,165,.055); color: var(--hint-color,#aab5c4); font-size: 12px; line-height: 1.4; }
+.unified-report-single-hint { margin: 8px 2px 0; color: var(--hint-color,#aab5c4); font-size: 11px; line-height: 1.45; }
 .unified-report-info > div:not([hidden]) { animation: report-info-in 140ms ease-out; }
 @keyframes report-info-in { from { opacity: .45; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 .report-info-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px 8px; }
@@ -52,9 +52,12 @@
 .report-info-badge { display: inline-flex; align-items: center; min-height: 23px; padding: 3px 6px; border-radius: 6px; background: rgba(128,145,165,.09); color: var(--text-color,#d5dfea); font-size: 11.5px; line-height: 1.35; font-weight: 500; }
 .report-info-badge.is-earned { color: #72c9aa; background: rgba(74,175,137,.1); }
 .report-info-progress { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 5px; margin: 9px 0 8px; }
-.report-info-progress i { height: 3px; background: rgba(128,145,165,.19); border-radius: 3px; }
-.report-info-progress i.is-filled { background: #719ee6; }
+.report-info-progress i { height: 4px; background: rgba(128,145,165,.12); border-radius: 3px; }
+.report-info-progress i.is-filled { background: #4d8df4; }
 .report-info-progress i:nth-child(4) { margin-left: 3px; }
+.report-info-progress i.is-filled:nth-child(4) { background: linear-gradient(90deg,#088cff,#2dc6d4); box-shadow: 0 0 7px #15b6d044; }
+.report-info-progress i.is-filled:nth-child(5) { background: linear-gradient(90deg,#41cbc0,#ffe22d); box-shadow: 0 0 7px #e6db3544; }
+.report-quality-value { display: inline-block; padding: 0 5px; border: 1px solid rgba(128,145,165,.26); border-radius: 5px; white-space: nowrap; color: var(--text-color,#c8ced8); font-size: 10px; }
 .unified-report-info p { margin: 6px 0 0; font-size: 11px; line-height: 1.45; }
 .report-info-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .report-info-added { margin-top: 7px; color: #72c9aa; font-size: 11px; line-height: 1.45; }
@@ -62,11 +65,13 @@
 .unified-report-text textarea { box-sizing: border-box; resize: none; display: block; min-height: 82px; max-height: 220px; width: 100%; padding: 12px 12px 28px; border-radius: 13px; border: 1px solid var(--border-color,rgba(128,145,165,.22)); background: rgba(128,145,165,.035); color: var(--text-color,#eef2f7); font: inherit; font-size: 16px; line-height: 1.45; }
 .unified-report-text textarea:focus { outline: 1px solid rgba(var(--report-accent),.65); outline-offset: 1px; }
 #unified-report-count { position: absolute; bottom: 9px; right: 12px; color: var(--hint-color,#9ca5b4); font-size: 10px; pointer-events: none; }
+#unified-report-count.is-required { color: #d39489; }
 #report-modal.is-proof-upload .checkin-proof-visibility-note { margin: 9px 0 0; color: var(--hint-color,#9ca5b4); opacity: .8; font-size: 11px; line-height: 1.45; }
 #report-modal.is-proof-upload #report-screenshot-boost { margin: 0 0 12px; box-shadow: none; }
 #report-modal.is-proof-upload .checkin-proof-upload-actions { flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(128,145,165,.13); }
 #report-modal.is-proof-upload .checkin-proof-upload-actions .btn { min-height: 48px; margin: 0; white-space: normal; font-size: 14px; line-height: 1.35; }
-#report-modal.is-proof-upload .checkin-proof-upload-actions .unified-report-plain { background: transparent !important; color: var(--hint-color,#aab5c4) !important; min-height: 34px; padding: 7px; font-size: 11px; font-weight: 400; box-shadow: none; border: 0; }
+#report-modal.is-proof-upload .unified-report-plain { width: 100%; margin: 9px 0 0; background: rgba(128,145,165,.09) !important; color: var(--hint-color,#aab5c4) !important; min-height: 36px; padding: 8px; border-radius: 10px; font-size: 11px; font-weight: 400; box-shadow: none; border: 0; }
+#report-modal.is-proof-upload .unified-report-plain.is-waiting { background: transparent !important; opacity: .7; }
 .unified-report-review { display: block; width: 100%; margin: 5px 0 0; padding: 8px; min-height: 36px; color: var(--hint-color,#aab5c4); background: transparent; border: 0; font: inherit; font-size: 12px; cursor: pointer; }
 #report-modal.is-proof-upload #report-developer { margin-top: 10px; padding-top: 4px; border-top: 1px solid rgba(128,145,165,.1); }
 #report-modal.is-proof-upload #report-developer .checkin-dev-accordion__summary { min-height: 38px; padding: 8px 0; color: var(--hint-color,#9ca5b4); }

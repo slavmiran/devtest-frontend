@@ -4644,7 +4644,12 @@ async function openReportModal(appId, ownerUsername, options) {
 function closeReportModal(event) {
     if (event && event.target !== document.getElementById('report-modal')) return;
     var modal = document.getElementById('report-modal');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.removeProperty('top');
+        modal.style.removeProperty('bottom');
+        modal.style.removeProperty('height');
+    }
     window.clearInterval(window._unifiedReportTimer);
     if (typeof closeReportImageEditor === 'function') closeReportImageEditor();
     if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
@@ -6389,6 +6394,7 @@ function getKarmaSourceLabel(sourceType) {
         checkin_reset: 'karmaSrc_checkin_reset',
         penalty: 'karmaSrc_penalty',
         screenshot_bonus: 'karmaSrc_screenshot_bonus',
+        video_report_bonus: 'karmaSrc_video_report_bonus',
         extra_screenshot: 'karmaSrc_screenshot_bonus',
         other: 'karmaSrc_other',
         good: 'karmaSrc_good_test',
@@ -6435,6 +6441,7 @@ function renderKarmaHowList() {
                 { label: label('karmaHowScreenshots', '3 скриншота за день'), value: '+0.1' },
                 { label: label('karmaHowScreenshots4', '4 скриншота за день'), value: '+0.2' },
                 { label: label('karmaHowScreenshots5', '5 скриншотов за день'), value: '+0.3' },
+                { label: label('karmaHowVideoReport', 'Видеоотчёт за день'), note: label('karmaHowVideoReportNote', 'один раз; с фото — до +0.5 за дневной отчёт'), value: '+0.3' },
                 { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.5' },
                 { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.5' },
                 { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.5' },
@@ -6538,6 +6545,9 @@ async function showKarmaInfo() {
         .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0);
     if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'screenshot_bonus')) {
         rows.push({ source_type: 'screenshot_bonus', amount: 0, count: 0 });
+    }
+    if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'video_report_bonus')) {
+        rows.push({ source_type: 'video_report_bonus', amount: 0, count: 0 });
     }
     const rowHtml = rows.map((item) => {
             const sourceLabel = window.escapeHTML(getKarmaSourceLabel(item.source_type));
