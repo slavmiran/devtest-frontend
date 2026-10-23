@@ -4117,6 +4117,19 @@ function focusProjectFeedbackCard(feedbackId) {
 }
 
 async function fetchProjectFeedbackPayload(appId, statusScope) {
+    var scope = String(statusScope || 'all').trim().toLowerCase() || 'all';
+    var key = String(userId) + ':' + Number(appId) + ':' + scope;
+    if (_projectFeedbackRequests.has(key)) return _projectFeedbackRequests.get(key);
+    var request = _fetchProjectFeedbackPayload(appId, scope);
+    _projectFeedbackRequests.set(key, request);
+    try { return await request; }
+    finally { if (_projectFeedbackRequests.get(key) === request) _projectFeedbackRequests.delete(key); }
+}
+
+var _projectFeedbackRequests = new Map();
+
+async function _fetchProjectFeedbackPayload(appId, statusScope) {
+    var readRevision = _feedbackCommitRevision;
     var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
     var scope = String(statusScope || 'all').trim().toLowerCase() || 'all';
     var statusQ = (scope && scope !== 'all') ? ('&status=' + encodeURIComponent(scope)) : '';
@@ -4129,7 +4142,7 @@ async function fetchProjectFeedbackPayload(appId, statusScope) {
         throw err;
     }
     return {
-        feedback: Array.isArray(data.feedback) ? data.feedback : [],
+        feedback: mergeSettledFeedbackItems(appId, Array.isArray(data.feedback) ? data.feedback : [], readRevision),
         scope: String(data.scope || scope || 'all')
     };
 }
@@ -4141,29 +4154,143 @@ function _isProjectFeedbackModalOpenFor(appId) {
 }
 
 var _projectFeedbackSessionCache = Object.create(null);
+var _feedbackProcessing = new Map();
+var _feedbackSettled = new Map();
+var _feedbackCommitRevision = 0;
+var _feedbackProcessingDrafts = new Map();
 
-function feedbackItemsSignature(items) {
-    return (items || []).map(function (item) {
-        return String(item && item.id || 0) + ':' + String(item && item.status || '');
-    }).join('|');
+function feedbackProcessingKey(appId, feedbackId) {
+    return String(userId) + ':' + Number(appId) + ':' + Number(feedbackId);
 }
 
-function rememberProjectFeedbackSession(appId) {
+function mergeSettledFeedbackItems(appId, items, readRevision) {
+    return (items || []).map(function(item) {
+        var saved = _feedbackSettled.get(feedbackProcessingKey(appId, item.id));
+        // A read started before the POST must not resurrect an already closed ticket.
+        return saved && (saved.revision > readRevision || isOpenFeedbackStatus(item.status))
+            ? Object.assign({}, item, saved.fields) : item;
+    });
+}
+
+function isFeedbackProcessing(appId, feedbackId) {
+    return _feedbackProcessing.has(feedbackProcessingKey(appId, feedbackId));
+}
+
+function syncFeedbackProcessingCards() {
+    document.querySelectorAll('#project-feedback-body .fb-card').forEach(function(card) {
+        var pending = isFeedbackProcessing(_activeProjectFeedbackAppId, card.dataset.feedbackId);
+        card.classList.toggle('fb-card--saving', pending);
+        if (pending) card.setAttribute('aria-busy', 'true');
+        else card.removeAttribute('aria-busy');
+        card.querySelectorAll('.fb-toolbar-decide button').forEach(function(button) {
+            if (pending && !button.hasAttribute('data-saving-disabled')) {
+                button.dataset.savingDisabled = button.disabled ? '1' : '0';
+                button.disabled = true;
+            } else if (!pending && button.hasAttribute('data-saving-disabled')) {
+                button.disabled = button.dataset.savingDisabled === '1';
+                delete button.dataset.savingDisabled;
+            }
+        });
+        var note = card.querySelector('.fb-saving-note');
+        if (pending && !note) {
+            note = document.createElement('div');
+            note.className = 'fb-saving-note';
+            note.setAttribute('role', 'status');
+            note.textContent = window.t('feedbackSaving', {}, lang);
+            card.querySelector('.fb-inbox-main').appendChild(note);
+        } else if (!pending && note) note.remove();
+    });
+}
+
+function beginFeedbackProcessing(appId, feedbackId, draft) {
+    var key = feedbackProcessingKey(appId, feedbackId);
+    if (_feedbackProcessing.has(key)) return false;
+    _feedbackProcessing.set(key, true);
+    _feedbackProcessingDrafts.set(key, draft);
+    syncFeedbackProcessingCards();
+    return true;
+}
+
+function completeFeedbackProcessing(appId, feedbackId, status, fields) {
+    var key = feedbackProcessingKey(appId, feedbackId);
+    if (!_feedbackSettled.has(key)) {
+        ((myProjects || []).concat(archivedProjects || [])).forEach(function(project) {
+            if (Number(project.app_id || project.id) === Number(appId)) {
+                project.feedback_new_count = Math.max(0, Number(project.feedback_new_count || 0) - 1);
+            }
+        });
+    }
+    var saved = Object.assign({ status: status, processed_at: new Date().toISOString() }, fields || {});
+    _feedbackSettled.set(key, { fields: saved, revision: ++_feedbackCommitRevision });
+    _feedbackProcessing.delete(key);
+    _feedbackProcessingDrafts.delete(key);
+    var cached = _projectFeedbackSessionCache[Number(appId)];
+    if (cached) {
+        cached.items = cached.items.map(function(item) { return Number(item.id) === Number(feedbackId) ? Object.assign({}, item, saved) : item; });
+        cached.loadedAt = 0; // Refresh server limits on the next visit.
+    }
+    if (Number(_activeProjectFeedbackAppId) === Number(appId)) {
+        _activeProjectFeedbackItems = (_activeProjectFeedbackItems || []).map(function(item) {
+            return Number(item.id) === Number(feedbackId) ? Object.assign({}, item, saved) : item;
+        });
+        if (typeof window.removeFeedbackCardOptimistic === 'function') {
+            window.removeFeedbackCardOptimistic(feedbackId, status, saved);
+        }
+        syncFeedbackProcessingCards();
+    }
+    if (_projectFeedbackSessionCache[Number(appId)]) _projectFeedbackSessionCache[Number(appId)].loadedAt = 0;
+    // Refresh rewards/counters once after commit, without blocking the next ticket.
+    if (typeof loadProjects === 'function') Promise.resolve().then(function() { return loadProjects(true); }).catch(function() {});
+}
+
+async function recoverFeedbackProcessing(appId, feedbackId, error) {
+    if (!error.payload || ['feedback_already_processed', 'already_processed'].includes(getBackendErrorCode(error.payload))) {
+        try {
+            // A lost POST reply is ambiguous: re-read, never automatically replay a reward.
+            var payload = await _fetchProjectFeedbackPayload(appId, 'all');
+            var saved = payload.feedback.find(function(item) { return Number(item.id) === Number(feedbackId); });
+            if (saved && !isOpenFeedbackStatus(saved.status)) {
+                completeFeedbackProcessing(appId, feedbackId, saved.status, saved);
+                showToast(window.t('feedbackSaveReconciled', { id: feedbackId }, lang));
+                return;
+            }
+        } catch (readError) { console.warn('Feedback save verification failed:', readError); }
+    }
+    failFeedbackProcessing(appId, feedbackId, error);
+}
+
+function failFeedbackProcessing(appId, feedbackId, error) {
+    _feedbackProcessing.delete(feedbackProcessingKey(appId, feedbackId));
+    var cached = _projectFeedbackSessionCache[Number(appId)];
+    if (cached) cached.loadedAt = 0;
+    if (Number(_activeProjectFeedbackAppId) === Number(appId)) syncFeedbackProcessingCards();
+    var detail = getApiErrorMessage(error && (error.payload || error.message), 'networkError');
+    showToast(window.t('feedbackSaveFailed', { id: feedbackId }, lang) + ' ' + detail);
+}
+
+function feedbackItemsSignature(items) {
+    return JSON.stringify(items || []);
+}
+
+function rememberProjectFeedbackSession(appId, refreshed) {
     var safeId = Number(appId || _activeProjectFeedbackAppId || 0);
     if (safeId <= 0) return;
+    var previous = _projectFeedbackSessionCache[safeId];
+    var project = (myProjects || []).concat(archivedProjects || []).find(function(item) { return Number(item.app_id || item.id) === safeId; });
     _projectFeedbackSessionCache[safeId] = {
         items: Array.isArray(_activeProjectFeedbackItems) ? _activeProjectFeedbackItems.slice() : [],
         fullLoaded: !!_activeProjectFeedbackFullLoaded,
         partial: !!_activeProjectFeedbackPartial,
         archived: !!_activeProjectFeedbackArchived,
-        loadedAt: Date.now()
+        loadedAt: refreshed || !previous ? Date.now() : previous.loadedAt,
+        reportedOpen: refreshed || !previous ? Number(project && project.feedback_new_count || 0) : previous.reportedOpen
     };
 }
 window.rememberProjectFeedbackSession = rememberProjectFeedbackSession;
 
 function getProjectFeedbackSession(appId) {
     var cached = _projectFeedbackSessionCache[Number(appId || 0)];
-    if (!cached || !Array.isArray(cached.items) || !cached.items.length) return null;
+    if (!cached || !Array.isArray(cached.items)) return null;
     return cached;
 }
 
@@ -4176,27 +4303,28 @@ function refreshProjectFeedbackInBackground(project, loadSeq, options) {
     options = options || {};
     var appId = Number((project && (project.id || project.app_id)) || 0);
     if (!appId) return;
-    fetchProjectFeedbackPayload(appId, 'all').then(function (fullPayload) {
+    var scope = options.preferUnprocessed ? 'open' : 'all';
+    fetchProjectFeedbackPayload(appId, scope).then(function (fullPayload) {
         if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
         if (Number(_activeProjectFeedbackAppId || 0) !== appId) return;
         var items = fullPayload.feedback || [];
         var previousSig = feedbackItemsSignature(_activeProjectFeedbackItems);
         var nextSig = feedbackItemsSignature(items);
         _activeProjectFeedbackItems = items;
-        _activeProjectFeedbackFullLoaded = true;
-        _activeProjectFeedbackPartial = false;
-        rememberProjectFeedbackSession(appId);
+        _activeProjectFeedbackFullLoaded = scope === 'all';
+        _activeProjectFeedbackPartial = scope !== 'all';
+        rememberProjectFeedbackSession(appId, true);
         if (!_isProjectFeedbackModalOpenFor(appId)) return;
         if (previousSig === nextSig) {
             if (typeof refreshProjectFeedbackHeader === 'function') {
-                refreshProjectFeedbackHeader(project, items, { partialLoad: false });
+                refreshProjectFeedbackHeader(project, items, { partialLoad: scope !== 'all' });
             }
             return;
         }
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, items, {
                 preferUnprocessed: isUnprocessedFeedbackFilter(),
-                partialLoad: false,
+                partialLoad: scope !== 'all',
                 preserveFilters: true
             });
         }
@@ -4220,6 +4348,7 @@ async function ensureFullProjectFeedbackLoaded(options) {
     _activeProjectFeedbackItems = payload.feedback || [];
     _activeProjectFeedbackFullLoaded = true;
     _activeProjectFeedbackPartial = false;
+    rememberProjectFeedbackSession(appId, true);
     return _activeProjectFeedbackItems;
 }
 
@@ -4264,10 +4393,13 @@ async function openProjectFeedback(appId, isArchived, options) {
             if (focusId > 0) {
                 setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
             }
-            refreshProjectFeedbackInBackground(project, loadSeq, {
-                preferUnprocessed: preferUnprocessed,
-                focusId: focusId
-            });
+            var cachedOpen = cached.items.filter(function(item) { return isOpenFeedbackStatus(item.status); }).length;
+            if (Date.now() - cached.loadedAt >= 30000 || (reportedOpen > cachedOpen && reportedOpen !== cached.reportedOpen) || options.force) {
+                refreshProjectFeedbackInBackground(project, loadSeq, {
+                    preferUnprocessed: preferUnprocessed,
+                    focusId: focusId
+                });
+            }
             return;
         }
     }
@@ -4287,62 +4419,35 @@ async function openProjectFeedback(appId, isArchived, options) {
 
         if (preferOpenFirst) {
             var openPayload = await fetchProjectFeedbackPayload(appId, 'open');
-            if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+            if (loadSeq !== _activeProjectFeedbackLoadSeq || !_isProjectFeedbackModalOpenFor(appId)) return;
             stageItems = (openPayload.feedback || []).filter(function(item) {
                 return typeof isOpenFeedbackStatus === 'function'
                     ? isOpenFeedbackStatus(item && item.status)
                     : true;
             });
-            if (stageItems.length > 0) {
-                _activeProjectFeedbackItems = stageItems;
-                _activeProjectFeedbackPartial = true;
-                _activeProjectFeedbackFullLoaded = false;
-                rememberProjectFeedbackSession(appId);
-                if (window.showProjectFeedbackModal) {
-                    window.showProjectFeedbackModal(project, stageItems, {
-                        preferUnprocessed: true,
-                        typeFilter: typeFilter,
-                        partialLoad: true
-                    });
-                }
-                if (focusId > 0) {
-                    setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
-                }
-                fetchProjectFeedbackPayload(appId, 'all').then(function(fullPayload) {
-                    if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
-                    if (Number(_activeProjectFeedbackAppId || 0) !== Number(appId)) return;
-                    _activeProjectFeedbackItems = fullPayload.feedback || [];
-                    _activeProjectFeedbackFullLoaded = true;
-                    _activeProjectFeedbackPartial = false;
-                    rememberProjectFeedbackSession(appId);
-                    if (!_isProjectFeedbackModalOpenFor(appId)) return;
-                    if (isUnprocessedFeedbackFilter()) {
-                        if (typeof refreshProjectFeedbackHeader === 'function') {
-                            refreshProjectFeedbackHeader(project, _activeProjectFeedbackItems, { partialLoad: false });
-                        }
-                        return;
-                    }
-                    if (window.showProjectFeedbackModal) {
-                        window.showProjectFeedbackModal(project, _activeProjectFeedbackItems, {
-                            preferUnprocessed: false,
-                            partialLoad: false,
-                            preserveFilters: true
-                        });
-                    }
-                }).catch(function(bgError) {
-                    console.warn('Background full feedback load failed:', bgError);
+            // History is fetched only when the owner switches off the open-only filter.
+            // An empty open queue is also a valid, cacheable first paint.
+            _activeProjectFeedbackItems = stageItems;
+            _activeProjectFeedbackPartial = true;
+            _activeProjectFeedbackFullLoaded = false;
+            rememberProjectFeedbackSession(appId, true);
+            if (window.showProjectFeedbackModal) {
+                window.showProjectFeedbackModal(project, stageItems, {
+                    preferUnprocessed: true,
+                    typeFilter: typeFilter,
+                    partialLoad: true
                 });
-                return;
             }
+            return;
         }
 
         var fullPayload = await fetchProjectFeedbackPayload(appId, 'all');
-        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (loadSeq !== _activeProjectFeedbackLoadSeq || !_isProjectFeedbackModalOpenFor(appId)) return;
         stageItems = fullPayload.feedback || [];
         _activeProjectFeedbackItems = stageItems;
         _activeProjectFeedbackFullLoaded = true;
         _activeProjectFeedbackPartial = false;
-        rememberProjectFeedbackSession(appId);
+        rememberProjectFeedbackSession(appId, true);
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, stageItems, {
                 preferUnprocessed: preferUnprocessed,
@@ -4357,7 +4462,7 @@ async function openProjectFeedback(appId, isArchived, options) {
             }, 80);
         }
     } catch (error) {
-        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (loadSeq !== _activeProjectFeedbackLoadSeq || !_isProjectFeedbackModalOpenFor(appId)) return;
         console.error('Load project feedback error:', error);
         if (window.showProjectFeedbackModalError) {
             window.showProjectFeedbackModalError(project);
@@ -4387,6 +4492,7 @@ async function sendProjectFeedbackMedia(feedbackId) {
 }
 
 function openFeedbackRewardModal(appId, feedbackId) {
+    if (isFeedbackProcessing(appId, feedbackId)) { showToast(window.t('feedbackSaving', {}, lang)); return; }
     _activeProjectFeedbackAppId = Number(appId);
     _feedbackRewardTargetId = Number(feedbackId);
     _feedbackRewardBust = 0;
@@ -4461,7 +4567,15 @@ function openFeedbackRewardModal(appId, feedbackId) {
         reply.oninput = _syncFeedbackRewardSubmitEnabled;
     }
     syncFeedbackRewardQuickReplyState();
+    var draft = _feedbackProcessingDrafts.get(feedbackProcessingKey(appId, feedbackId));
+    if (draft && draft.kind === 'reward') {
+        setFeedbackRewardBust(draft.bust_amount, { syncLimits: true });
+        setFeedbackRewardKarma(draft.karma_amount, { syncLimits: true });
+        if (reply) reply.value = draft.reply_text;
+    }
     _updateFeedbackRewardSubmitState();
+    _setFeedbackRewardSubmitLoading(_feedbackRewardSubmitting);
+    _syncFeedbackRewardSubmitEnabled();
 }
 
 function closeFeedbackRewardModal() {
@@ -4478,7 +4592,7 @@ function _syncFeedbackRewardSubmitEnabled() {
     if (!btn) return;
     var reply = document.getElementById('feedback-reward-reply');
     var hasReply = !!(reply && reply.value && reply.value.trim());
-    var enabled = hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0;
+    var enabled = !_feedbackRewardSubmitting && (hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0);
     if (btn.disabled !== !enabled) btn.disabled = !enabled;
 }
 
@@ -4529,47 +4643,40 @@ async function submitFeedbackReward() {
         return;
     }
 
+    var processedFeedbackId = Number(_feedbackRewardTargetId);
+    var appId = Number(_activeProjectFeedbackAppId);
+    var rewardedKarma = Number(_feedbackRewardKarma || 0);
+    var fbItem = getFeedbackRewardItem();
+    var fbTesterId = fbItem ? Number(fbItem.user_id || fbItem.tester_id || fbItem.author_id || 0) : 0;
+    var draft = { kind: 'reward', bust_amount: bustAmount, karma_amount: rewardedKarma, reply_text: replyText };
+    if (!beginFeedbackProcessing(appId, processedFeedbackId, draft)) return;
+    // Capture everything before closing: the owner can immediately read another ticket.
+    var requestBody = withInitData({ owner_id: userId, bust_amount: bustAmount, karma_amount: rewardedKarma, reply_text: replyText });
     _feedbackRewardSubmitting = true;
-    _setFeedbackRewardSubmitLoading(true);
+    closeFeedbackRewardModal();
 
     try {
-        const response = await fetch(`${API_BASE}/feedback/${_feedbackRewardTargetId}/reward`, {
+        const response = await fetch(`${API_BASE}/feedback/${processedFeedbackId}/reward`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                owner_id: userId,
-                bust_amount: bustAmount,
-                karma_amount: _feedbackRewardKarma,
-                reply_text: replyText,
-            }))
+            body: JSON.stringify(requestBody)
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
-            _setFeedbackRewardSubmitLoading(false);
-            handleApiError(getBackendErrorCode(data), data.details || {});
-            return;
+            var requestError = new Error(getBackendErrorCode(data) || 'genericError');
+            requestError.payload = data;
+            throw requestError;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        var processedFeedbackId = Number(_feedbackRewardTargetId || 0);
-        var rewardedBust = Number(bustAmount || 0);
-        var rewardedKarma = Number(_feedbackRewardKarma || 0);
-        _setFeedbackRewardSubmitLoading(false);
-        closeFeedbackRewardModal();
-        var fbItem = typeof getFeedbackRewardItem === 'function' ? getFeedbackRewardItem() : null;
-        var fbTesterId = fbItem ? Number(fbItem.user_id || fbItem.tester_id || fbItem.author_id || 0) : 0;
-        if (typeof window.removeFeedbackCardOptimistic === 'function') {
-            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma, tester_id: fbTesterId });
-        }
-        if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+        var saved = data.result || {};
+        completeFeedbackProcessing(appId, processedFeedbackId, 'accepted', {
+            reward_bust: Number(saved.reward_bust == null ? bustAmount : saved.reward_bust),
+            reward_karma: Number(saved.reward_karma == null ? rewardedKarma : saved.reward_karma),
+            developer_reply: saved.developer_reply == null ? replyText : saved.developer_reply,
+            tester_id: fbTesterId
+        });
+        if (Number(_activeProjectFeedbackAppId) === appId && typeof window.triggerFeedbackAutoAdvance === 'function') {
             window.triggerFeedbackAutoAdvance(processedFeedbackId);
-        }
-        // Feedback karma is stored in the same project reward log as a direct
-        // "Наградить" action. Refresh the card so its compact award badge shows
-        // the accumulated issued types immediately.
-        if (typeof loadProjects === 'function') {
-            Promise.resolve()
-                .then(function() { return loadProjects(true); })
-                .catch(function() { /* ignore */ });
         }
         var contribPoints = fbItem ? getFeedbackRewardContributionPoints(fbItem) : 0;
         var lifetimeScore = fbItem ? getFeedbackRewardLifetimeScore(fbItem) : null;
@@ -4583,10 +4690,11 @@ async function submitFeedbackReward() {
         ));
     } catch (error) {
         console.error('Feedback reward error:', error);
-        _setFeedbackRewardSubmitLoading(false);
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        await recoverFeedbackProcessing(appId, processedFeedbackId, error);
     } finally {
         _feedbackRewardSubmitting = false;
+        _setFeedbackRewardSubmitLoading(false);
+        _syncFeedbackRewardSubmitEnabled();
     }
 }
 
@@ -5863,9 +5971,16 @@ function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
 }
 
 function triggerFeedbackAutoAdvance(currentFeedbackId) {
+    var appId = _activeProjectFeedbackAppId;
+    var loadSeq = _activeProjectFeedbackLoadSeq;
     setTimeout(function() {
+        if (appId !== _activeProjectFeedbackAppId || loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (document.querySelector('#feedback-reward-modal.active, #feedback-reject-modal.active, #play-review-reject-modal.active')) return;
         const list = document.querySelector('#project-feedback-body .feedback-list');
         if (!list) return;
+        if (Array.from(list.querySelectorAll('.fb-card--expanded')).some(function(card) {
+            return Number(card.dataset.feedbackId) !== Number(currentFeedbackId);
+        })) return;
         const cards = Array.from(list.querySelectorAll('.fb-card:not(.fb-card--hidden):not(.fb-card--processed)'));
 
         const currentIndex = cards.findIndex(function(card) {

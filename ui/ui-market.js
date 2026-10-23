@@ -3825,6 +3825,8 @@ async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
         openPlayReviewRejectModal(feedbackId, projectId, btnEl);
         return;
     }
+    if (!beginFeedbackProcessing(projectId, feedbackId, { kind: 'play-review-reject', reason: selectedReason })) return;
+    closePlayReviewRejectModal();
     var userId = (window.App && window.App.userId) || window.userId || 0;
     try {
         var apiBase = (window.App && window.App.API_BASE) || '';
@@ -3837,36 +3839,19 @@ async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
             })),
         });
         var data = await resp.json();
-        if (data && data.status === 'success') {
-            if (btnEl) {
-                btnEl.style.display = 'none';
-                var card = btnEl.closest('.fb-card');
-                if (card) {
-                    card.classList.remove('fb-card--new');
-                    card.classList.add('fb-card--rejected');
-                    card.setAttribute('data-feedback-status', 'rejected');
-                    var statusEl = card.querySelector('.fb-status-badge, .fb-status');
-                    if (statusEl) {
-                        statusEl.textContent = window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected';
-                        statusEl.classList.remove('fb-status--new', 'fb-status-badge--new', 'fb-status-badge--closed');
-                        statusEl.classList.add('fb-status-badge--declined');
-                    }
-                    var primaryBtn = card.querySelector('.fb-primary-btn');
-                    if (primaryBtn) primaryBtn.style.display = 'none';
-                }
-            }
+        if (resp.ok && data && data.status === 'success') {
+            completeFeedbackProcessing(projectId, feedbackId, 'rejected', { rejection_reason: selectedReason, type: 'google_play_review_rejected' });
             if (typeof showToast === 'function') {
                 showToast(window.t('playReviewRejectSuccessToast', {}, lang));
             }
         } else {
-            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
-            if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
-            else alert(msg);
+            var error = new Error(getBackendErrorCode(data) || 'genericError');
+            error.payload = data;
+            throw error;
         }
     } catch (e) {
         console.error('rejectPlayReview error:', e);
-        if (window.tg && window.tg.showAlert) window.tg.showAlert('Network error');
-        else alert('Network error');
+        await recoverFeedbackProcessing(projectId, feedbackId, e);
     }
 }
 
@@ -3878,6 +3863,10 @@ var _playReviewRejectState = {
 };
 
 function openPlayReviewRejectModal(feedbackId, projectId, btnEl) {
+    if (typeof isFeedbackProcessing === 'function' && isFeedbackProcessing(projectId, feedbackId)) {
+        showToast(window.t('feedbackSaving', {}, lang));
+        return;
+    }
     _playReviewRejectState = {
         feedbackId: Number(feedbackId || 0),
         projectId: Number(projectId || 0),
@@ -3893,6 +3882,10 @@ function openPlayReviewRejectModal(feedbackId, projectId, btnEl) {
     if (submitBtn) submitBtn.disabled = true;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
     modal.classList.add('active');
+    if (typeof _feedbackProcessingDrafts !== 'undefined') {
+        var draft = _feedbackProcessingDrafts.get(feedbackProcessingKey(projectId, feedbackId));
+        if (draft && draft.kind === 'play-review-reject') selectPlayReviewRejectReason(draft.reason);
+    }
 }
 
 function closePlayReviewRejectModal(event) {
@@ -3920,22 +3913,12 @@ async function confirmPlayReviewReject() {
         }
         return;
     }
-    var submitBtn = document.getElementById('play-review-reject-submit-btn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.6';
-    }
     await rejectPlayReview(
         _playReviewRejectState.feedbackId,
         _playReviewRejectState.projectId,
         _playReviewRejectState.btnEl,
         reason
     );
-    if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-    }
-    closePlayReviewRejectModal();
 }
 
 async function togglePlayReviewModalCheckbox(input) {
@@ -5277,7 +5260,7 @@ function getProjectFeedbackHeader(project, items, meta) {
     const donePct = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
     const avgResponseMs = partialLoad ? null : getFeedbackAvgResponseMs(items);
     const avgResponseText = partialLoad
-        ? '…'
+        ? '—'
         : formatFeedbackAvgResponseHours(avgResponseMs);
     const typeFilter = _projectFeedbackTypeFilter || 'all';
     const statusFilter = _projectFeedbackStatusFilter || 'all';
@@ -5431,7 +5414,7 @@ function toggleFeedbackUnprocessedOnly(checked) {
     var fullLoaded = typeof _activeProjectFeedbackFullLoaded !== 'undefined'
         ? !!_activeProjectFeedbackFullLoaded
         : !!window._activeProjectFeedbackFullLoaded;
-    var needsFetch = !fullLoaded || !feedbackItemsIncludeProcessed(items);
+    var needsFetch = !fullLoaded;
     if (!needsFetch) {
         rerenderActiveFeedbackList(false, items, false);
         return;
@@ -5439,14 +5422,17 @@ function toggleFeedbackUnprocessedOnly(checked) {
 
     var toggleEl = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
     if (toggleEl) toggleEl.disabled = true;
+    var requestedAppId = _activeProjectFeedbackAppId;
+    var requestedSeq = _activeProjectFeedbackLoadSeq;
     var loadPromise = (typeof ensureFullProjectFeedbackLoaded === 'function')
         ? ensureFullProjectFeedbackLoaded({ force: !!fullLoaded })
         : Promise.resolve(items);
     loadPromise.then(function(loaded) {
         if (toggleEl) toggleEl.disabled = false;
-        if (!_isProjectFeedbackModalOpenSafe()) return;
+        if (!_isProjectFeedbackModalOpenSafe() || _activeProjectFeedbackAppId !== requestedAppId || _activeProjectFeedbackLoadSeq !== requestedSeq) return;
         rerenderActiveFeedbackList(false, loaded || activeFeedbackItems(), false);
     }).catch(function(error) {
+        if (_activeProjectFeedbackAppId !== requestedAppId || _activeProjectFeedbackLoadSeq !== requestedSeq) return;
         if (toggleEl) toggleEl.disabled = false;
         console.error('Full feedback load on uncheck failed:', error);
         _projectFeedbackStatusFilter = 'new';
@@ -6136,6 +6122,10 @@ var _feedbackRejectState = {
 };
 
 function openFeedbackRejectModal(feedbackId, projectId, btnEl) {
+    if (typeof isFeedbackProcessing === 'function' && isFeedbackProcessing(projectId, feedbackId)) {
+        showToast(window.t('feedbackSaving', {}, lang));
+        return;
+    }
     _feedbackRejectState = {
         feedbackId: Number(feedbackId || 0),
         projectId: Number(projectId || 0),
@@ -6151,6 +6141,10 @@ function openFeedbackRejectModal(feedbackId, projectId, btnEl) {
     if (submitBtn) submitBtn.disabled = true;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
     modal.classList.add('active');
+    if (typeof _feedbackProcessingDrafts !== 'undefined') {
+        var draft = _feedbackProcessingDrafts.get(feedbackProcessingKey(projectId, feedbackId));
+        if (draft && draft.kind === 'reject') selectFeedbackRejectReason(draft.reason);
+    }
 }
 
 function closeFeedbackRejectModal(event) {
@@ -6249,7 +6243,7 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
     if (Array.isArray(window._activeProjectFeedbackItems)) {
         window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
             if (Number(item && item.id) === safeId) {
-                item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
+                item.status = nextStatus || 'accepted';
                 item.replied_at = new Date().toISOString();
                 if (nextStatus === 'rejected' && rejectionReason) {
                     item.rejection_reason = rejectionReason;
@@ -6296,11 +6290,6 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
         }
     }
 
-    if (typeof loadProjects === 'function') {
-        Promise.resolve()
-            .then(function() { return loadProjects(true); })
-            .catch(function() { /* ignore */ });
-    }
     if (typeof window.rememberProjectFeedbackSession === 'function') {
         window.rememberProjectFeedbackSession();
     }
@@ -6324,52 +6313,35 @@ async function confirmFeedbackReject() {
     var projectId = Number(_feedbackRejectState.projectId || 0);
     if (!feedbackId) return;
 
-    var submitBtn = document.getElementById('feedback-reject-submit-btn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.6';
-    }
+    if (!beginFeedbackProcessing(projectId, feedbackId, { kind: 'reject', reason: reason })) return;
 
     var userIdLocal = (window.App && window.App.userId) || window.userId || 0;
+    var requestBody = withInitData({ owner_id: Number(userIdLocal), reason: reason });
+    closeFeedbackRejectModal();
     try {
         var apiBase = (window.App && window.App.API_BASE) || API_BASE || '';
         var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                owner_id: Number(userIdLocal),
-                reason: reason,
-            })),
+            body: JSON.stringify(requestBody),
         });
         var data = await resp.json();
-        if (data && data.status === 'success') {
-            closeFeedbackRejectModal();
+        if (resp.ok && data && data.status === 'success') {
             if (typeof showToast === 'function') {
                 showToast(window.t('feedbackRejectSuccessToast', {}, lang));
             }
-            if (typeof removeFeedbackCardOptimistic === 'function') {
-                removeFeedbackCardOptimistic(feedbackId, 'rejected', { rejection_reason: reason });
-            } else {
-                _markFeedbackCardRejected(feedbackId);
-            }
-            if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+            completeFeedbackProcessing(projectId, feedbackId, 'rejected', { rejection_reason: reason });
+            if (Number(_activeProjectFeedbackAppId) === projectId && typeof window.triggerFeedbackAutoAdvance === 'function') {
                 window.triggerFeedbackAutoAdvance(feedbackId);
             }
         } else {
-            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
-            if (typeof showToast === 'function') showToast(String(msg));
-            else if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
-            else alert(msg);
+            var error = new Error(getBackendErrorCode(data) || 'genericError');
+            error.payload = data;
+            throw error;
         }
     } catch (e) {
         console.error('confirmFeedbackReject error:', e);
-        if (typeof showToast === 'function') showToast(window.t('networkError', {}, lang) || 'Network error');
-        else alert('Network error');
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = !_feedbackRejectState.reason;
-            submitBtn.style.opacity = '1';
-        }
+        await recoverFeedbackProcessing(projectId, feedbackId, e);
     }
 }
 
@@ -6424,6 +6396,7 @@ function showProjectFeedbackModal(project, items, options) {
     document.getElementById('project-feedback-modal').classList.add('active');
     cacheProjectFeedbackCards();
     applyProjectFeedbackFilters();
+    if (typeof syncFeedbackProcessingCards === 'function') syncFeedbackProcessingCards();
     feedbackScheduleClampMeasure();
     if (focusId > 0) {
         var focusCard = body.querySelector('.fb-card[data-feedback-id="' + focusId + '"]');

@@ -2747,3 +2747,11 @@
     flex: 1 1 auto;
     min-width: 0;
 }
+/* Pending moderation is visible without holding the decision sheet open. */
+.fb-saving-note {
+    margin-top: 4px;
+    color: var(--hint-color, #8e9aaa);
+    font-size: 12px;
+    line-height: 1.4;
+}
+.fb-card--saving .fb-toolbar-decide { opacity: .55; }
