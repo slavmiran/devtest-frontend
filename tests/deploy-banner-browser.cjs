@@ -60,20 +60,36 @@ const root = path.resolve(__dirname, '..');
                 assert(geometry.sheetTop >= geometry.bannerBottom, JSON.stringify(geometry));
                 assert(geometry.buttonTop >= geometry.bannerBottom);
                 assert.equal(geometry.horizontalOverflow, false);
-                if (process.env.DEPLOY_SCREENSHOT_DIR && width === 360 && language === 'ru') {
-                    await page.screenshot({ path: path.join(process.env.DEPLOY_SCREENSHOT_DIR, 'deploy_banner_report_360.png') });
-                }
+                assert.match(await page.locator('#deploy-status-banner').innerText(), /5–10/);
+                assert.doesNotMatch(await page.locator('#deploy-status-banner').innerText(), /недоступна|unavailable|держите|Keep open/i);
+                await page.locator('#checkin-proof-file-input').setInputFiles({ name: 'proof.png', mimeType: 'image/png',
+                    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jJtEAAAAASUVORK5CYII=', 'base64') });
+                await page.waitForFunction(() => !document.getElementById('checkin-proof-submit').disabled);
+                assert.equal(await page.locator('#deploy-status-banner').getAttribute('data-state'), 'updating');
+                // The legacy text field is intentionally hidden in proof mode;
+                // preserve its draft too, while exercising the actual file picker above.
                 await page.evaluate(() => { document.getElementById('report-text').value = 'Keep this draft'; });
+                const disabledBefore = await page.locator('#report-modal button').evaluateAll(items => items.map(el => el.disabled));
+                status = { enabled: true, state: 'idle', deploy_id: 'dep-fixture' };
+                await page.evaluate(() => window.DeployStatus.refresh());
+                assert(await page.locator('#deploy-status-banner').evaluate(el => el.hidden));
+                assert.deepEqual(await page.locator('#report-modal button').evaluateAll(items => items.map(el => el.disabled)), disabledBefore,
+                    'Updating must not disable any report buttons');
                 status = { enabled: true, state: 'complete', deploy_id: 'dep-fixture' };
                 await page.evaluate(() => window.DeployStatus.refresh());
                 assert.equal(await page.locator('#deploy-status-banner').getAttribute('data-state'), 'complete');
                 assert.equal(await page.locator('#report-text').inputValue(), 'Keep this draft');
+                assert.equal(await page.evaluate(() => _checkinProofUploadState.files.length), 1);
+                assert.equal(await page.locator('#checkin-proof-submit').isEnabled(), true);
                 assert(await page.locator('#report-modal').evaluate(el => el.classList.contains('active')));
                 assert.equal(posts, 0, 'Observing an update must not cause a business write');
                 assert.deepEqual(errors, [], 'Full real index and report UI must remain functional');
+                if (process.env.DEPLOY_SCREENSHOT_DIR && width === 360 && language === 'ru') {
+                    await page.screenshot({ path: path.join(process.env.DEPLOY_SCREENSHOT_DIR, 'deploy_available_report_360_ru_20261023.png') });
+                }
                 await page.close();
             }
         }
-        console.log('Deploy browser: real index + report sheet, RU/EN at 360/390px, no overlap/overflow, draft retained on completion, no writes passed');
+        console.log('Deploy browser: real index RU/EN 360/390px, 5–10 minute advisory, editable draft/buttons unchanged, quiet technical states and completion passed');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

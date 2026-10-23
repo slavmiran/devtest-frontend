@@ -1,9 +1,7 @@
 (function () {
     window.I18NEN = {
-            deployStatus_updating: '🔄 DevTestHub is updating. Consider pausing new reports and check-ins briefly. Keep open forms open.',
-            deployStatus_unknown: 'ℹ️ Checking update status. Keep this form open until your submission is confirmed.',
-            deployStatus_complete: '✅ Update complete. You can continue.',
-            deployStatus_failed: 'ℹ️ The update did not complete. This does not mean submitted data was lost.',
+            deployStatus_updating: '🔄 DevTestHub is updating. This usually takes 5–10 minutes. Reports and check-ins remain available, but brief interruptions are possible.',
+            deployStatus_complete: '✅ The platform is available. You can continue.',
             checkinProofDraftRestored: 'Screenshots restored in this tab. You can retry safely without duplicate credit.',
             ppcModalProtectionTitle: "Project under protection 🛡️",
             ppcModalProtectionText: "Testing continues due to synchronization discrepancy with Google Play. The owner has specified the actual testing days. Do not delete the app, otherwise all progress will be reset and you will lose your rewards!",

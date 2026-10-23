@@ -27,22 +27,24 @@
             if (completed === value.deploy_id) return; // Ignore a stale old instance after verified success.
             seen = value.deploy_id;
             completed = '';
-        } else if (seen && completed === seen && state === 'unknown') {
-            return; // A warming-up instance cannot undo verified terminal evidence.
-        } else if (!seen || (value.deploy_id && value.deploy_id !== seen)) {
+        } else if (state !== 'complete') {
+            // Only two public messages. Unverified/stale evidence quietly hides
+            // an active warning; it never claims success or blocks a submission.
+            if (seen && completed === seen) return;
             clearTimeout(expiry); hide(); return;
+        } else if (!seen || value.deploy_id !== seen) {
+            return; // No historical success, and no late response replacing a newer update.
         }
-        if (state === 'complete' || state === 'failed') {
+        if (state === 'complete') {
             if (completed === seen) return; // Polls must not repeatedly re-show a terminal banner.
             clearTimeout(expiry);
             completed = seen;
             render(state);
-            expiry = setTimeout(function () { hide(); seen = ''; }, state === 'complete' ? 10000 : 30000);
+            expiry = setTimeout(function () { hide(); seen = ''; }, 60000);
         } else {
             clearTimeout(expiry);
-            state = state === 'updating' ? state : 'unknown';
             render(state);
-            expiry = setTimeout(function () { if (seen) render('unknown'); },
+            expiry = setTimeout(hide,
                 Math.max(1, Math.min(45, Number(value.valid_for_seconds) || 1)) * 1000);
         }
         if (state !== lastState && typeof loadEvents === 'function') {
@@ -54,7 +56,7 @@
         if (busy || document.hidden || typeof API_BASE === 'undefined') return;
         clearTimeout(timer);
         busy = true;
-        var delay = 10000;
+        var delay = 60000;
         var controller = new AbortController();
         var timeout = setTimeout(function () { controller.abort(); }, 3500);
         try {
@@ -64,9 +66,9 @@
             if (!response.ok) { delay = 30000; return; }
             var value = await response.json();
             accept(value);
-            delay = value.enabled ? 10000 : 60000;
+            delay = value.enabled && value.state === 'updating' ? 10000 : 60000;
         } catch (error) {
-            // The expiry timer changes a stale warning to "status unknown".
+            // The expiry timer quietly hides stale evidence; no technical banner.
             delay = 15000;
         } finally {
             clearTimeout(timeout);
