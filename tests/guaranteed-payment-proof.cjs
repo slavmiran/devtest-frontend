@@ -38,6 +38,8 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
             window.Telegram = {WebApp: {initData: 'fixture-auth', initDataUnsafe: {user: {id: 77}}, openTelegramLink() {}, openLink() {}}};
             window.toasts = [];
             window.showToast = text => toasts.push(text);
+            window.orderTransitions = [];
+            window.openProjectsTab = options => { orderTransitions.push(options); };
         }, {language});
         await page.addScriptTag({path: path.join(root, 'js/guaranteed-test-wizard.js')});
         await page.evaluate(({method, exchange}) => {
@@ -223,6 +225,29 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
             assert(await page.evaluate(() => !!localStorage.dt_gt_wizard_draft), 'Retry must retain the draft and receipt');
             await page.close(); scenarios++;
         }
-        console.log(`Private Testing payment proof: ${scenarios} browser scenarios passed (RU/EN, crypto/PayPal/fiat, upload errors, drafts, races, retries, duplicate order).`);
+        for (const changedPackage of [false, true]) {
+            const {page, calls} = await fixture('en');
+            await page.evaluate(changedPackage => {
+                gtwWizardState.prefillProject = {id: 12, package: 'com.fixture'};
+                gtwWizardState.testingLink = 'https://play.google.com/apps/testing/' + (changedPackage ? 'com.fixture.other' : 'com.fixture');
+            }, changedPackage);
+            await select(page); await uploaded(page); await submit(page);
+            await page.waitForFunction(() => toasts.some(text => /GT-51/.test(text)));
+            assert.equal(calls.orders[0].notes.includes('app_id=12'), !changedPackage, 'Edited package must not retain the original project ID');
+            assert.equal(calls.orders[0].notes.includes('package=com.fixture'), !changedPackage);
+            assert.equal(await page.evaluate(() => orderTransitions.length), 1);
+            assert(await page.evaluate(() => orderTransitions[0].focusOrderId === 51 && orderTransitions[0].confirmation === true && orderTransitions[0].order.app_name === 'Receipt fixture'));
+            await page.close(); scenarios++;
+        }
+        {
+            const {page, calls} = await fixture('en');
+            await page.evaluate(() => { openProjectsTab = async () => { throw new Error('UI-only failure'); }; });
+            await select(page); await uploaded(page); await submit(page);
+            await page.waitForFunction(() => toasts.some(text => /GT-51/.test(text)));
+            assert.equal(calls.orders.length, 1);
+            assert(!(await page.evaluate(() => !!localStorage.dt_gt_wizard_draft)), 'A navigation failure must not retain a committed order for resubmission');
+            await page.close(); scenarios++;
+        }
+        console.log(`Private Testing payment proof: ${scenarios} browser scenarios passed (RU/EN, crypto/PayPal/fiat, upload errors, drafts, races, retries, duplicate order, changed prefill package, post-submit UI failure).`);
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });
