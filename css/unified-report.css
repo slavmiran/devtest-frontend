@@ -43,11 +43,15 @@
 .unified-report-formats button.is-selected { color: var(--text-color,#eef2f7); background: rgba(var(--report-accent),.12); border-color: rgba(var(--report-accent),.35); }
 .unified-report-formats button:disabled { opacity: .4; cursor: default; }
 .unified-report-formats button:focus-visible { outline: 2px solid rgb(var(--report-accent)); outline-offset: 2px; }
-.unified-report-info { margin-top: 10px; padding: 11px 12px; border: 1px solid rgba(128,145,165,.12); border-radius: 14px; background: rgba(128,145,165,.055); color: var(--hint-color,#aab5c4); font-size: 12px; line-height: 1.4; }
+.unified-report-info { margin-top: 10px; padding: 2px; border: 0; background: transparent; color: var(--hint-color,#aab5c4); font-size: 12px; line-height: 1.4; }
 .unified-report-single-hint { margin: 8px 2px 0; color: var(--hint-color,#aab5c4); font-size: 11px; line-height: 1.45; }
 .unified-report-info > div:not([hidden]) { animation: report-info-in 140ms ease-out; }
 @keyframes report-info-in { from { opacity: .45; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
-.report-info-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px 8px; }
+.report-info-top { display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 8px; }
+.report-info-toggle { width: 100%; min-height: 34px; padding: 4px 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.report-info-toggle > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-info-toggle > .checkin-proof-bonus-chip { flex-shrink: 0; white-space: nowrap; }
+.report-info-toggle:focus-visible { outline: 2px solid rgba(var(--report-accent),.6); outline-offset: 3px; border-radius: 5px; }
 .report-info-heading, .report-info-top > span:first-child { color: var(--text-color,#dfe6ef); font-size: 12px; font-weight: 500; }
 .report-info-badge { display: inline-flex; align-items: center; min-height: 23px; padding: 3px 6px; border-radius: 6px; background: rgba(128,145,165,.09); color: var(--text-color,#d5dfea); font-size: 11.5px; line-height: 1.35; font-weight: 500; }
 .report-info-badge.is-earned { color: #72c9aa; background: rgba(74,175,137,.1); }

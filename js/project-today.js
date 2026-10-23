@@ -1530,7 +1530,7 @@
         } else if (type === 'video') {
             title = text('pcContributionVideo', 'Видеоотчёт');
         } else if (type === 'report_note') {
-            title = text('pcContributionNote', 'Отчёт с текстом');
+            title = text('pcContributionNote', 'Скриншот с текстом');
         } else {
             title = imageCount > 1
                 ? text('pcScreenshotSet', 'Серия скриншотов')
@@ -3251,19 +3251,21 @@
             });
         }
         var proofId = Number(item.screenshotRow && item.screenshotRow.proofId || 0);
-        var imageCount = Number(item.screenshotCount || FULL_SCREENSHOT_COUNT);
-        var openClick = proofId > 0
-            ? 'pcOpenProofOverview(' + Number(appId) + ',' + proofId + ',' + imageCount + ')'
+        var topicHtml = proofId > 0
+            ? '<button type="button" class="pc-proof-album-card__topic-btn pc-fullset__topic" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
+                ICONS.topic +
+                '<span class="pc-proof-album-card__topic-label">' +
+                    '<span class="pc-proof-album-card__topic-verb">' + esc(text('pcProofOpenVerb', 'Открыть')) + '</span> ' +
+                    '<span class="pc-proof-album-card__topic-target">' + esc(text('pcProofOpenTopicTail', 'в топике')) + '</span>' +
+                '</span>' +
+            '</button>'
             : '';
         return personRowHtml({
             appId: appId,
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: 'pc-person--contribution pc-person--fullset',
-            metaHtml: openClick
-                ? '<button type="button" class="pc-fullset__meta" onclick="event.stopPropagation(); ' + openClick + '">' +
-                    esc(text('pcFullSetMeta', 'Все 5 скринов')) + '</button>'
-                : '<span class="pc-fullset__meta">' + esc(text('pcFullSetMeta', 'Все 5 скринов')) + '</span>',
+            metaHtml: topicHtml,
             actionsHtml: actionsHtml,
             timeAgoText: formatContributionTimeAgo(item.latestCreatedAt || ''),
             nameSuffixHtml: testerDayNumber(item.tester) > 0
@@ -3285,6 +3287,24 @@
         '</button>';
     }
 
+    function fullSetDieHtml() {
+        return '<svg class="pc-fullset__die" viewBox="0 0 32 32" aria-hidden="true">' +
+            '<ellipse cx="16" cy="28.4" rx="8.2" ry="1.7" fill="rgba(0,0,0,.32)"/>' +
+            '<path d="M6.2 12.4 16 7.4 25.8 12.4 16 17.4Z" fill="#eef5ff"/>' +
+            '<path d="M6.2 12.4 16 17.4 16 26.8 6.2 21.8Z" fill="#7eaeef"/>' +
+            '<path d="M16 17.4 25.8 12.4 25.8 21.8 16 26.8Z" fill="#3c6298"/>' +
+            '<path d="M8 11.5 16 7.6 18.2 8.7 10.1 12.6Z" fill="rgba(255,255,255,.72)"/>' +
+            '<circle cx="8.6" cy="16.6" r="1.05" fill="#163056"/>' +
+            '<circle cx="13.2" cy="18.8" r="1.05" fill="#163056"/>' +
+            '<circle cx="10.9" cy="20.2" r="1.05" fill="#163056"/>' +
+            '<circle cx="8.8" cy="21.6" r="1.05" fill="#163056"/>' +
+            '<circle cx="13.4" cy="23.2" r="1.05" fill="#163056"/>' +
+            '<circle cx="19.3" cy="16.6" r=".85" fill="#d7e7ff"/>' +
+            '<circle cx="22.4" cy="18.2" r=".85" fill="#d7e7ff"/>' +
+            '<circle cx="20.8" cy="20.2" r=".85" fill="#d7e7ff"/>' +
+        '</svg>';
+    }
+
     function fullSetGroupHtml(appId, items, context, sparkle) {
         if (!items.length) return '';
         var open = expandedFullSets.has(Number(appId));
@@ -3296,26 +3316,29 @@
         });
         return '<li class="pc-fullset-wrap">' +
             '<section class="pc-fullset' + (open ? ' is-open' : '') + '" id="pc-fullset-' + Number(appId) + '">' +
-                '<button type="button" class="pc-fullset__head" aria-expanded="' + (open ? 'true' : 'false') + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')">' +
-                    '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--screenshot" aria-hidden="true">' +
-                        ICONS.image +
-                        '<b>' + FULL_SCREENSHOT_COUNT + '</b>' +
-                    '</span>' +
-                    '<span class="pc-fullset__copy">' +
-                        '<strong>' + esc(text('pcFullSetTitle', 'Полные серии')) + '</strong>' +
-                        '<small>' + esc(text('pcFullSetSubtitle', '{people} · все 5 скринов', {
-                            people: pluralPeopleLabel(sorted.length),
-                        })) + '</small>' +
-                    '</span>' +
-                    '<span class="pc-fullset__chev" aria-hidden="true"></span>' +
-                '</button>' +
-                '<div class="pc-fullset__rail">' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
-                '<div class="pc-fullset__tools">' +
-                    '<button type="button" class="pc-fullset__random" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
-                        esc(text('pcFullSetRandom', 'Выбрать случайного')) +
+                '<div class="pc-fullset__head">' +
+                    '<button type="button" class="pc-fullset__toggle" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')">' +
+                        '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--screenshot" aria-hidden="true">' +
+                            ICONS.image +
+                            '<b>' + FULL_SCREENSHOT_COUNT + '</b>' +
+                        '</span>' +
+                        '<span class="pc-fullset__copy">' +
+                            '<strong>' + esc(text('pcFullSetTitle', 'Максимальные серии')) + '</strong>' +
+                            '<small>' + esc(text('pcFullSetSubtitle', '{people} · все 5 скринов', {
+                                people: pluralPeopleLabel(sorted.length),
+                            })) + '</small>' +
+                        '</span>' +
                     '</button>' +
-                    '<span class="pc-fullset__status" hidden></span>' +
+                    '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
+                        '<span class="pc-fullset__random-label" aria-hidden="true">' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '</span>' +
+                        fullSetDieHtml() +
+                    '</button>' +
                 '</div>' +
+                '<div class="pc-fullset__rail-row">' +
+                    '<div class="pc-fullset__rail">' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
+                    '<button type="button" class="pc-fullset__chev" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(text('pcFullSetToggle', 'Показать участников')) + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')"></button>' +
+                '</div>' +
+                '<span class="pc-fullset__status" hidden></span>' +
                 '<div class="pc-fullset__body"' + (open ? '' : ' hidden') + '>' +
                     '<ul class="pc-fullset__members">' +
                         sorted.map(function (item) { return fullSetMemberHtml(appId, item, context, sparkle); }).join('') +
@@ -3332,7 +3355,9 @@
             return contributionPriority(left, context) - contributionPriority(right, context);
         });
         var individual = sorted.filter(function (item) { return individualContributionReasons(item).length > 0; });
-        var fullSets = sorted.filter(isFullScreenshotMember);
+        var fullSets = sorted.filter(function (item) {
+            return isFullScreenshotMember(item) && individualContributionReasons(item).length === 0;
+        });
         if (!individual.length && !fullSets.length) {
             return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
         }
@@ -3379,8 +3404,8 @@
         root.classList.toggle('is-open', open);
         var body = root.querySelector('.pc-fullset__body');
         if (body) body.hidden = !open;
-        var head = root.querySelector('.pc-fullset__head');
-        if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var chevron = root.querySelector('.pc-fullset__chev');
+        if (chevron) chevron.setAttribute('aria-expanded', open ? 'true' : 'false');
     };
 
     window.pcFocusFullSetMember = function (appId, testerId) {
@@ -3392,8 +3417,8 @@
         root.classList.add('is-open');
         var body = root.querySelector('.pc-fullset__body');
         if (body) body.hidden = false;
-        var head = root.querySelector('.pc-fullset__head');
-        if (head) head.setAttribute('aria-expanded', 'true');
+        var chevron = root.querySelector('.pc-fullset__chev');
+        if (chevron) chevron.setAttribute('aria-expanded', 'true');
         var row = root.querySelector('[data-tester-id="' + safeTesterId + '"]');
         if (!row) return;
         root.querySelectorAll('.is-random-pick').forEach(function (el) { el.classList.remove('is-random-pick'); });
@@ -3409,8 +3434,8 @@
         root.classList.add('is-open');
         var body = root.querySelector('.pc-fullset__body');
         if (body) body.hidden = false;
-        var head = root.querySelector('.pc-fullset__head');
-        if (head) head.setAttribute('aria-expanded', 'true');
+        var chevron = root.querySelector('.pc-fullset__chev');
+        if (chevron) chevron.setAttribute('aria-expanded', 'true');
         var rows = Array.prototype.slice.call(root.querySelectorAll('.pc-fullset__members [data-tester-id]'));
         var openRows = rows.filter(function (row) { return !row.querySelector('.is-tester-rewarded-today'); });
         var status = root.querySelector('.pc-fullset__status');
@@ -4449,7 +4474,7 @@
             }).join('') + '</div>';
 
         var hints = {
-            contribution: workspaceText('Фидбэк, видео, текст и полные серии', 'Feedback, video, notes, and full sets'),
+            contribution: workspaceText('Фидбэк, видео, текст и максимальные серии', 'Feedback, video, notes, and maximum sets'),
             attention: text('pcHintAttention', 'Риски срыва и пропуски активности'),
             control: text('pcHintControl', 'Обязательные контрольные отчёты сегодня'),
             testers: workspaceText('Текущий состав команды', 'Current team'),

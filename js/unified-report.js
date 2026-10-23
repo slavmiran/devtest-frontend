@@ -134,6 +134,9 @@
         if (s.reportContext.buffer) s.submissionMode = 'buffer_catchup';
         s.reportKind = options && options.reportKind || s.reportKind;
         s.qualityPercent = null;
+        s.seriesExpanded = false;
+        s.seriesMediaCount = 0;
+        el('unified-report-info').dataset.renderKey = '';
         s.expectedDay = s.reportContext.day;
         s.expectedRun = Number(test.run_iteration || 1);
         s.expectedStart = String(test.start_date || '').slice(0, 10);
@@ -295,7 +298,11 @@
 
     function renderReportInfo(images, videos, eligible) {
         var s = state(), info = el('unified-report-info');
-        var key = [s.reportKind, images, videos, eligible, s.qualityPercent, typeof lang === 'undefined' ? 'en' : lang].join(':');
+        var mediaCount = images + videos;
+        if (mediaCount > (s.seriesMediaCount || 0)) s.seriesExpanded = true;
+        else if (!mediaCount && s.seriesMediaCount) s.seriesExpanded = false;
+        s.seriesMediaCount = mediaCount;
+        var key = [s.reportKind, images, videos, eligible, s.qualityPercent, !!s.seriesExpanded, typeof lang === 'undefined' ? 'en' : lang].join(':');
         if (info.dataset.renderKey === key) return;
         info.dataset.renderKey = key;
         var series = el('unified-report-series'), quality = el('unified-report-quality');
@@ -311,12 +318,19 @@
         if (eligible && (videos ? mediaBonus >= .5 : mediaBonus >= .3)) chip += ' is-boosted is-max';
         var icon = typeof CHECKIN_PROOF_KARMA_ICON_HTML !== 'undefined' ? CHECKIN_PROOF_KARMA_ICON_HTML : '';
         var label = !eligible && screenshot ? t('noDailyBonus') : t('bonusLabel', {amount:amount});
-        series.innerHTML = '<div class="report-info-top"><span>' + escape(t(videos ? 'mediaCount' : images ? 'seriesCount' : 'seriesTitle', {count:images + videos})) + '</span>'
-            + '<span class="' + chip + '">' + escape(label) + (eligible || !screenshot ? ' ' + icon : '') + '</span></div>'
+        series.innerHTML = '<button type="button" class="report-info-top report-info-toggle" aria-expanded="' + !!s.seriesExpanded + '" aria-controls="unified-report-info-details" onclick="toggleUnifiedReportSeries()"><span>' + escape(t(videos ? 'mediaCount' : images ? 'seriesCount' : 'seriesTitle', {count:mediaCount})) + '</span>'
+            + '<span class="' + chip + '">' + escape(label) + (eligible || !screenshot ? ' ' + icon : '') + '</span></button>'
+            + '<div id="unified-report-info-details"' + (s.seriesExpanded ? '' : ' hidden') + '>'
             + '<div class="report-info-progress" aria-hidden="true">' + [1,2,3,4,5].map(function (n) { return '<i class="' + (images + videos >= n ? 'is-filled' : '') + '"></i>'; }).join('') + '</div>'
             + '<p class="report-info-detail">' + (screenshot ? escape(t('privacy')) : escape(t('qualityHint'))
-                + ' <span class="report-quality-value">' + escape(s.qualityPercent == null ? '—' : s.qualityPercent) + '</span>') + '</p>';
+                + ' <span class="report-quality-value">' + escape(s.qualityPercent == null ? '—' : s.qualityPercent) + '</span>') + '</p></div>';
     }
+    window.toggleUnifiedReportSeries = function () {
+        state().seriesExpanded = !state().seriesExpanded;
+        window.syncUnifiedReport();
+        var toggle = document.querySelector('#unified-report-series .report-info-toggle');
+        if (toggle) toggle.focus({preventScroll:true});
+    };
 
     var qualityCache = new Map();
     function loadQuality() {
