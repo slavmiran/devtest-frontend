@@ -12,6 +12,8 @@
     var MAX_DETAIL_LOOKUPS = 6;
     var PROCESSED_STATUSES = ['accepted', 'approved', 'processed', 'tipped', 'rewarded', 'rejected', 'expired', 'closed', 'resolved', 'done'];
     var FEEDBACK_PROOF_TYPES = ['bug', 'idea', 'play_review'];
+    var FULL_SCREENSHOT_COUNT = 5;
+    var NOTE_PREVIEW_LIMIT = 72;
 
     /* appId -> { loadedAt, loading, error, control[], others[], catchupByProgress{} } */
     var cache = new Map();
@@ -20,6 +22,7 @@
     var controlReminderSending = new Set();
     var observer = null;
     var expandedOthers = new Set();
+    var expandedFullSets = new Set();
     var collapsedReceived = new Set();
     var lastSeenReceivedCounts = new Map();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
@@ -395,6 +398,8 @@
         idea: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1Zm3-19a7 7 0 0 0-4.5 12.36c.93.78 1.5 1.92 1.5 3.14V18h6v-.5c0-1.22.57-2.36 1.5-3.14A7 7 0 0 0 12 2Zm2.2 10.83c-.78.66-1.37 1.49-1.7 2.42h-1c-.33-.93-.92-1.76-1.7-2.42A4.98 4.98 0 1 1 14.2 12.83Z"/></svg>',
         play_review: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 2.83 5.74 6.34.92-4.59 4.47 1.08 6.31L12 16.47 6.34 19.44l1.08-6.31L2.83 8.66l6.34-.92L12 2Z"/></svg>',
         screenshots: ICONS.image,
+        video: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 4 17.5v-11Zm13.2 2.15 2.3-1.4A1 1 0 0 1 21 8.1v7.8a1 1 0 0 1-1.5.85l-2.3-1.4V8.65Z"/></svg>',
+        report_note: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4.5A2.5 2.5 0 0 1 7.5 2h9A2.5 2.5 0 0 1 19 4.5v10.8a2.5 2.5 0 0 1-1.1 2.07l-4.4 2.86a2.5 2.5 0 0 1-2.7 0l-4.4-2.86A2.5 2.5 0 0 1 5 15.3V4.5Zm2.5-.5a.5.5 0 0 0-.5.5v10.8a.5.5 0 0 0 .22.41l4.4 2.86a.5.5 0 0 0 .54 0l4.4-2.86a.5.5 0 0 0 .22-.41V4.5a.5.5 0 0 0-.5-.5h-9ZM8 7h8v2H8V7Zm0 3.5h6v2H8v-2Z"/></svg>',
     };
 
     // Reasons in Attention are shown directly on the avatar, just like a
@@ -623,7 +628,9 @@
         var primary = items.some(function (reason) { return reason.kind === 'bug'; }) ? 'bug'
             : items.some(function (reason) { return reason.kind === 'idea'; }) ? 'idea'
                 : items.some(function (reason) { return reason.kind === 'play_review'; }) ? 'play_review'
-                    : 'screenshots';
+                    : items.some(function (reason) { return reason.kind === 'video'; }) ? 'video'
+                        : items.some(function (reason) { return reason.kind === 'report_note'; }) ? 'report_note'
+                            : 'screenshots';
         return '<span class="pc-contribution-marker is-' + esc(primary) + '" aria-hidden="true">' +
             (CONTRIBUTION_ICONS[primary] || CONTRIBUTION_ICONS.screenshots) +
             (items.length > 1 ? '<b>+</b>' : '') +
@@ -1118,6 +1125,15 @@
         return '';
     }
 
+    function proofHasVideo(proof) {
+        if (!proof) return false;
+        if (proof.has_video === true || proof.hasVideo === true) return true;
+        var mime = String(
+            (proof.media && proof.media.mime_type) || proof.media_mime_type || proof.mime_type || ''
+        ).toLowerCase();
+        return mime.indexOf('video/') === 0;
+    }
+
     function buildProofRow(item, proof, thumbnailByProofId) {
         var isScreenshot = String(proof && proof.type || '') === 'screenshot';
         var hasProofMedia = Boolean(proof && (proof.has_media || (proof.image_count && Number(proof.image_count) > 0) || (proof.feedback && proof.feedback.has_media)));
@@ -1139,6 +1155,7 @@
             createdAt: String(proof && proof.created_at || ''),
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
+            hasVideo: isScreenshot && proofHasVideo(proof),
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
@@ -1190,6 +1207,7 @@
             createdAt: String(proof && proof.created_at || ''),
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
+            hasVideo: isScreenshot && proofHasVideo(proof),
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
@@ -1487,6 +1505,12 @@
         } else if (type === 'play_review') {
             iconSvg = CONTRIBUTION_ICONS.play_review;
             iconMod = 'play_review';
+        } else if (type === 'video') {
+            iconSvg = CONTRIBUTION_ICONS.video;
+            iconMod = 'video';
+        } else if (type === 'report_note') {
+            iconSvg = CONTRIBUTION_ICONS.report_note;
+            iconMod = 'note';
         } else {
             iconSvg = ICONS.image;
             iconMod = 'screenshot';
@@ -1495,6 +1519,7 @@
             }
         }
 
+        var reportNote = String(item && (item.note || item.reportNote) || '').trim();
         var title = '';
         if (type === 'bug') {
             title = text('pcBugDetected', 'Обнаружен баг');
@@ -1502,6 +1527,10 @@
             title = text('pcContributionIdea', 'Рекомендация');
         } else if (type === 'play_review') {
             title = text('pcProofReview', 'Отзыв');
+        } else if (type === 'video') {
+            title = text('pcContributionVideo', 'Видеоотчёт');
+        } else if (type === 'report_note') {
+            title = text('pcContributionNote', 'Отчёт с текстом');
         } else {
             title = imageCount > 1
                 ? text('pcScreenshotSet', 'Серия скриншотов')
@@ -1510,8 +1539,17 @@
 
         var subtitle = '';
         if (type === 'screenshot') {
-            var reportNote = String(item && (item.note || item.reportNote) || '').trim();
             subtitle = reportNote ? '💬 ' + reportNote.slice(0, 90) : text('pcProofAlbumOverview', 'Quick overview of all images');
+        } else if (type === 'video' || type === 'report_note') {
+            if (reportNote) {
+                subtitle = reportNote.length > NOTE_PREVIEW_LIMIT
+                    ? (reportNote.slice(0, NOTE_PREVIEW_LIMIT).trim() + '…')
+                    : reportNote;
+            } else if (type === 'video') {
+                subtitle = text('pcContributionVideoHint', 'Ролик к сегодняшнему отчёту');
+            } else {
+                subtitle = text('pcContributionNoteHint', 'К скринам добавлен комментарий');
+            }
         } else {
             var rawText = String(item && (item.feedbackText || item.feedbackTitle || item.label || '')).trim();
             if (rawText === text('pcProofBug', 'Bug') || rawText === text('pcContributionIdea', 'Recommendation') || rawText === text('pcProofReview', 'Review')) {
@@ -1657,6 +1695,14 @@
                 '>' + kBadge + bBadge + todayRewardBadges + '</div>';
         }
 
+        var noteFoldHtml = '';
+        if ((type === 'video' || type === 'report_note') && reportNote.length > NOTE_PREVIEW_LIMIT) {
+            noteFoldHtml = '<div class="pc-note-fold" hidden><p>' + esc(reportNote) + '</p></div>' +
+                '<button type="button" class="pc-note-fold-toggle" aria-expanded="false" onclick="event.stopPropagation(); pcToggleNoteFold(this)">' +
+                    '<span class="pc-note-fold-label">' + esc(text('pcNoteFoldMore', 'Читать дальше')) + '</span>' +
+                '</button>';
+        }
+
         var topHtml = '<button type="button" class="pc-proof-album-card__main" onclick="event.stopPropagation(); ' + mainClick + '">' +
             '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--' + esc(iconMod) + '" aria-hidden="true">' +
                 iconSvg +
@@ -1685,6 +1731,7 @@
 
         return '<div class="pc-proof-album-card pc-proof-album-launch pc-proof-album-card--' + esc(iconMod) + '">' +
             topHtml +
+            noteFoldHtml +
             awardsRowHtml +
             bottomHtml +
         '</div>';
@@ -1696,7 +1743,7 @@
         if (!item) return false;
         var type = String(item.kind || item.proofType || '');
         if (type === 'screenshots') type = 'screenshot';
-        if (type === 'screenshot') {
+        if (type === 'screenshot' || type === 'video' || type === 'report_note') {
             return true;
         }
         var feedbackId = Number(item.feedbackId || item.source_feedback_id || (item.feedback && item.feedback.id) || 0);
@@ -2452,7 +2499,10 @@
     function isValuableRow(row) {
         var type = String(row && row.proofType || '');
         if (FEEDBACK_PROOF_TYPES.indexOf(type) !== -1) return true;
-        return type === 'screenshot' && Number(row.imageCount || 0) >= 3;
+        if (type !== 'screenshot') return false;
+        if (row.hasVideo) return true;
+        if (String(row.note || '').trim()) return true;
+        return Number(row.imageCount || 0) >= FULL_SCREENSHOT_COUNT;
     }
 
     function isTodaysContribution(row) {
@@ -2489,6 +2539,8 @@
                     screenshotCount: 0,
                     screenshotSeriesCount: 0,
                     screenshotRow: null,
+                    video: null,
+                    reportNote: null,
                     bug: null,
                     idea: null,
                     play_review: null,
@@ -2507,16 +2559,20 @@
                 }
             }
             if (row.proofType === 'screenshot') {
-                if (Number(row.imageCount || 0) >= 3) {
+                var shotCount = Number(row.imageCount || 0);
+                var shotNote = String(row.note || '').trim();
+                if (shotCount >= FULL_SCREENSHOT_COUNT) {
                     item.screenshotSeriesCount = (item.screenshotSeriesCount || 0) + 1;
                 }
                 if (Number(row.screenshotSeriesCount || 0) > 0) {
                     item.screenshotSeriesCount = Math.max(item.screenshotSeriesCount || 0, Number(row.screenshotSeriesCount));
                 }
-                if (Number(row.imageCount || 0) > item.screenshotCount) {
-                    item.screenshotCount = Number(row.imageCount || 0);
+                if (shotCount > item.screenshotCount) {
+                    item.screenshotCount = shotCount;
                     item.screenshotRow = row;
                 }
+                if (row.hasVideo && !item.video) item.video = row;
+                if (shotNote && !row.hasVideo && !item.reportNote) item.reportNote = row;
             }
             if (row.proofType === 'bug' && !item.bug) item.bug = row;
             if (row.proofType === 'idea' && !item.idea) item.idea = row;
@@ -2527,7 +2583,7 @@
         return order.map(function (testerId) {
             var item = byTester[testerId];
             var reasons = [];
-            if (item.screenshotCount >= 3 && item.screenshotRow) {
+            if (item.screenshotCount >= FULL_SCREENSHOT_COUNT && item.screenshotRow) {
                 reasons.push({
                     kind: 'screenshots',
                     label: contributionScreenshotsLabel(item.screenshotCount),
@@ -2537,6 +2593,33 @@
                     imageCount: item.screenshotCount,
                     feedbackId: 0,
                     boostBust: Number(item.screenshotRow.boostBust || 0),
+                    rejectionReason: '',
+                });
+            }
+            if (item.video) {
+                reasons.push({
+                    kind: 'video',
+                    label: text('pcContributionVideo', 'Video report'),
+                    proofId: item.video.proofId,
+                    note: item.video.note || '',
+                    progressId: item.video.progressId,
+                    imageCount: Number(item.video.imageCount || 0),
+                    hasVideo: true,
+                    feedbackId: 0,
+                    boostBust: Number(item.video.boostBust || 0),
+                    rejectionReason: '',
+                });
+            }
+            if (item.reportNote && (!item.video || Number(item.reportNote.proofId) !== Number(item.video.proofId))) {
+                reasons.push({
+                    kind: 'report_note',
+                    label: text('pcContributionNote', 'Written report'),
+                    proofId: item.reportNote.proofId,
+                    note: item.reportNote.note || '',
+                    progressId: item.reportNote.progressId,
+                    imageCount: Number(item.reportNote.imageCount || 0),
+                    feedbackId: 0,
+                    boostBust: Number(item.reportNote.boostBust || 0),
                     rejectionReason: '',
                 });
             }
@@ -2991,7 +3074,7 @@
         var seriesCount = Number((item && item.screenshotSeriesCount) || 0);
         if (seriesCount <= 0) {
             seriesCount = reasons.filter(function (r) {
-                return r && (r.kind === 'screenshots' || Number(r.imageCount || 0) >= 3);
+                return r && r.kind === 'screenshots' && Number(r.imageCount || 0) >= FULL_SCREENSHOT_COUNT;
             }).length;
         }
         if (seriesCount <= 0 && item && Number(item.screenshotCount || 0) >= 3) {
@@ -3086,62 +3169,266 @@
         '</button>';
     }
 
+    function individualContributionReasons(item) {
+        return (item && item.reasons || []).filter(function (reason) {
+            return reason && reason.kind !== 'screenshots';
+        });
+    }
+
+    function isFullScreenshotMember(item) {
+        return Number(item && item.screenshotCount || 0) >= FULL_SCREENSHOT_COUNT && !!(item && item.screenshotRow);
+    }
+
+    function pluralPeopleLabel(count) {
+        var amount = Math.max(0, Number(count || 0));
+        var key = 'pcFullSetPeopleMany';
+        if (typeof lang === 'undefined' || lang !== 'ru') {
+            key = amount === 1 ? 'pcFullSetPeopleOne' : 'pcFullSetPeopleMany';
+        } else {
+            var lastTwo = amount % 100;
+            var lastOne = amount % 10;
+            if (lastTwo < 11 || lastTwo > 14) {
+                if (lastOne === 1) key = 'pcFullSetPeopleOne';
+                else if (lastOne >= 2 && lastOne <= 4) key = 'pcFullSetPeopleFew';
+            }
+        }
+        return text(key, '{count} participants', { count: amount });
+    }
+
+    function shortTesterName(tester) {
+        var fullName = String(tester && (tester.full_name || tester.name) || '').trim();
+        if (fullName) return fullName.split(/\s+/)[0];
+        var username = String(tester && tester.username || '').trim().replace(/^@+/, '');
+        return username || handleOf(tester);
+    }
+
+    function contributionPersonHtml(appId, item, context, sparkle, rowClass, reasons) {
+        var rewardState = rewardStateForTester(context, item.testerId);
+        var headerActionsHtml = '';
+        if (rewardState.canReward || rewardState.rewardedToday) {
+            headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                hasSparkle: !!(sparkle && sparkle.testerId === Number(item.testerId) && rewardState.canReward),
+                mode: sparkle && sparkle.mode,
+                tilt: sparkle && sparkle.tilt,
+                duration: '3.8s',
+                rewardedToday: rewardState.rewardedToday,
+            });
+        }
+        var visibleReasons = reasons || item.reasons || [];
+        var subrowsHtml = activityTimelineHtml(appId, visibleReasons, {
+            testerId: item.testerId,
+            context: context,
+            reasons: visibleReasons,
+            item: item,
+            todayRewardBadgesHtml: todayRewardBadgesHtml(appId, item, context),
+        });
+        var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
+        return personRowHtml({
+            appId: appId,
+            tester: item.tester,
+            tone: rewardState.rewardedToday ? 'green' : 'sky',
+            rowClass: rowClass || 'pc-person--contribution',
+            metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
+            actionsHtml: headerActionsHtml,
+            avatarMarkerHtml: contributionAvatarMarkerHtml(visibleReasons),
+            extraHtml: subrowsHtml,
+            timeAgoText: timeAgo,
+            nameSuffixHtml: testerDayNumber(item.tester) > 0
+                ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + testerDayNumber(item.tester)) + '</span>' : '',
+        });
+    }
+
+    function fullSetMemberHtml(appId, item, context, sparkle) {
+        var rewardState = rewardStateForTester(context, item.testerId);
+        var actionsHtml = '';
+        if (rewardState.canReward || rewardState.rewardedToday) {
+            actionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                hasSparkle: !!(sparkle && sparkle.testerId === Number(item.testerId) && rewardState.canReward),
+                mode: sparkle && sparkle.mode,
+                tilt: sparkle && sparkle.tilt,
+                duration: '3.8s',
+                rewardedToday: rewardState.rewardedToday,
+            });
+        }
+        var proofId = Number(item.screenshotRow && item.screenshotRow.proofId || 0);
+        var imageCount = Number(item.screenshotCount || FULL_SCREENSHOT_COUNT);
+        var openClick = proofId > 0
+            ? 'pcOpenProofOverview(' + Number(appId) + ',' + proofId + ',' + imageCount + ')'
+            : '';
+        return personRowHtml({
+            appId: appId,
+            tester: item.tester,
+            tone: rewardState.rewardedToday ? 'green' : 'sky',
+            rowClass: 'pc-person--contribution pc-person--fullset',
+            metaHtml: openClick
+                ? '<button type="button" class="pc-fullset__meta" onclick="event.stopPropagation(); ' + openClick + '">' +
+                    esc(text('pcFullSetMeta', 'Все 5 скринов')) + '</button>'
+                : '<span class="pc-fullset__meta">' + esc(text('pcFullSetMeta', 'Все 5 скринов')) + '</span>',
+            actionsHtml: actionsHtml,
+            timeAgoText: formatContributionTimeAgo(item.latestCreatedAt || ''),
+            nameSuffixHtml: testerDayNumber(item.tester) > 0
+                ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + testerDayNumber(item.tester)) + '</span>' : '',
+        });
+    }
+
+    function fullSetChipHtml(appId, item) {
+        var tester = item.tester || {};
+        var name = shortTesterName(tester);
+        var avatarUrl = teamAvatarUrl(tester);
+        var face = avatarUrl
+            ? '<img src="' + esc(avatarUrl) + '" alt="" loading="lazy">'
+            : '<span>' + esc(teamInitials(tester)) + '</span>';
+        return '<button type="button" class="pc-fullset__chip" onclick="event.stopPropagation(); pcFocusFullSetMember(' +
+            Number(appId) + ',' + Number(item.testerId) + ')">' +
+            '<span class="pc-fullset__chip-face">' + face + '</span>' +
+            '<span class="pc-fullset__chip-name">' + esc(name) + '</span>' +
+        '</button>';
+    }
+
+    function fullSetGroupHtml(appId, items, context, sparkle) {
+        if (!items.length) return '';
+        var open = expandedFullSets.has(Number(appId));
+        var sorted = items.slice().sort(function (left, right) {
+            var leftRewarded = rewardStateForTester(context, left.testerId).rewardedToday ? 1 : 0;
+            var rightRewarded = rewardStateForTester(context, right.testerId).rewardedToday ? 1 : 0;
+            if (leftRewarded !== rightRewarded) return leftRewarded - rightRewarded;
+            return String(shortTesterName(left.tester)).localeCompare(String(shortTesterName(right.tester)));
+        });
+        return '<li class="pc-fullset-wrap">' +
+            '<section class="pc-fullset' + (open ? ' is-open' : '') + '" id="pc-fullset-' + Number(appId) + '">' +
+                '<button type="button" class="pc-fullset__head" aria-expanded="' + (open ? 'true' : 'false') + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')">' +
+                    '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--screenshot" aria-hidden="true">' +
+                        ICONS.image +
+                        '<b>' + FULL_SCREENSHOT_COUNT + '</b>' +
+                    '</span>' +
+                    '<span class="pc-fullset__copy">' +
+                        '<strong>' + esc(text('pcFullSetTitle', 'Полные серии')) + '</strong>' +
+                        '<small>' + esc(text('pcFullSetSubtitle', '{people} · все 5 скринов', {
+                            people: pluralPeopleLabel(sorted.length),
+                        })) + '</small>' +
+                    '</span>' +
+                    '<span class="pc-fullset__chev" aria-hidden="true"></span>' +
+                '</button>' +
+                '<div class="pc-fullset__rail">' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
+                '<div class="pc-fullset__tools">' +
+                    '<button type="button" class="pc-fullset__random" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
+                        esc(text('pcFullSetRandom', 'Выбрать случайного')) +
+                    '</button>' +
+                    '<span class="pc-fullset__status" hidden></span>' +
+                '</div>' +
+                '<div class="pc-fullset__body"' + (open ? '' : ' hidden') + '>' +
+                    '<ul class="pc-fullset__members">' +
+                        sorted.map(function (item) { return fullSetMemberHtml(appId, item, context, sparkle); }).join('') +
+                    '</ul>' +
+                '</div>' +
+            '</section>' +
+        '</li>';
+    }
+
     function contributionSheetHtml(appId, items, context) {
         if (!items.length) return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
 
         var sorted = items.slice().sort(function (left, right) {
             return contributionPriority(left, context) - contributionPriority(right, context);
         });
-
-        var eligibleTesters = sorted.filter(function (it) {
-            return rewardStateForTester(context, it.testerId).canReward;
-        });
-        var initialSparkleTesterId = 0;
-        var initialSparkleMode = SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)];
-        var initialSparkleTilt = (Math.floor(Math.random() * 40) - 20) + 'deg';
-        if (eligibleTesters.length > 0) {
-            var startIdx = Math.floor(Math.random() * eligibleTesters.length);
-            initialSparkleTesterId = Number(eligibleTesters[startIdx].testerId);
+        var individual = sorted.filter(function (item) { return individualContributionReasons(item).length > 0; });
+        var fullSets = sorted.filter(isFullScreenshotMember);
+        if (!individual.length && !fullSets.length) {
+            return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
         }
 
-        return '<ul class="pc-act-list">' + sorted.map(function (item) {
-            var rewardState = rewardStateForTester(context, item.testerId);
-            var headerActionsHtml = '';
-            if (rewardState.canReward || rewardState.rewardedToday) {
-                var isInitialTarget = rewardState.canReward && Number(item.testerId) === initialSparkleTesterId;
-                headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
-                    hasSparkle: isInitialTarget,
-                    mode: initialSparkleMode,
-                    tilt: initialSparkleTilt,
-                    duration: '3.8s',
-                    rewardedToday: rewardState.rewardedToday,
-                });
-            }
-
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons, {
-                testerId: item.testerId,
-                context: context,
-                reasons: item.reasons,
-                item: item,
-                todayRewardBadgesHtml: todayRewardBadgesHtml(appId, item, context),
+        var sparklePool = individual.filter(function (item) {
+            return rewardStateForTester(context, item.testerId).canReward;
+        });
+        if (!sparklePool.length) {
+            sparklePool = fullSets.filter(function (item) {
+                return rewardStateForTester(context, item.testerId).canReward;
             });
-            var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
+        }
+        var sparkle = {
+            testerId: sparklePool.length ? Number(sparklePool[Math.floor(Math.random() * sparklePool.length)].testerId) : 0,
+            mode: SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)],
+            tilt: (Math.floor(Math.random() * 40) - 20) + 'deg',
+        };
 
-            return personRowHtml({
-                appId: appId,
-                tester: item.tester,
-                tone: rewardState.rewardedToday ? 'green' : 'sky',
-                rowClass: 'pc-person--contribution',
-                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
-                actionsHtml: headerActionsHtml,
-                avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
-                extraHtml: subrowsHtml,
-                timeAgoText: timeAgo,
-                nameSuffixHtml: testerDayNumber(item.tester) > 0
-                    ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + testerDayNumber(item.tester)) + '</span>' : '',
-            });
-        }).join('') + '</ul>';
+        var rows = individual.map(function (item) {
+            return contributionPersonHtml(appId, item, context, sparkle, 'pc-person--contribution', individualContributionReasons(item));
+        }).join('');
+        return '<ul class="pc-act-list">' + fullSetGroupHtml(appId, fullSets, context, sparkle) + rows + '</ul>';
     }
+
+    window.pcToggleNoteFold = function (button) {
+        var card = button && button.closest ? button.closest('.pc-proof-album-card') : null;
+        if (!card) return;
+        var fold = card.querySelector('.pc-note-fold');
+        var label = button.querySelector('.pc-note-fold-label');
+        var open = !card.classList.contains('is-note-open');
+        card.classList.toggle('is-note-open', open);
+        if (fold) fold.hidden = !open;
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (label) label.textContent = open ? text('pcNoteFoldLess', 'Свернуть') : text('pcNoteFoldMore', 'Читать дальше');
+    };
+
+    window.pcToggleFullSet = function (appId) {
+        var safeAppId = Number(appId || 0);
+        if (expandedFullSets.has(safeAppId)) expandedFullSets.delete(safeAppId);
+        else expandedFullSets.add(safeAppId);
+        var root = document.getElementById('pc-fullset-' + safeAppId);
+        if (!root) return;
+        var open = expandedFullSets.has(safeAppId);
+        root.classList.toggle('is-open', open);
+        var body = root.querySelector('.pc-fullset__body');
+        if (body) body.hidden = !open;
+        var head = root.querySelector('.pc-fullset__head');
+        if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+
+    window.pcFocusFullSetMember = function (appId, testerId) {
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        expandedFullSets.add(safeAppId);
+        var root = document.getElementById('pc-fullset-' + safeAppId);
+        if (!root) return;
+        root.classList.add('is-open');
+        var body = root.querySelector('.pc-fullset__body');
+        if (body) body.hidden = false;
+        var head = root.querySelector('.pc-fullset__head');
+        if (head) head.setAttribute('aria-expanded', 'true');
+        var row = root.querySelector('[data-tester-id="' + safeTesterId + '"]');
+        if (!row) return;
+        root.querySelectorAll('.is-random-pick').forEach(function (el) { el.classList.remove('is-random-pick'); });
+        row.classList.add('is-random-pick');
+        if (row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    };
+
+    window.pcPickRandomFullSet = function (appId) {
+        var safeAppId = Number(appId || 0);
+        var root = document.getElementById('pc-fullset-' + safeAppId);
+        if (!root) return;
+        expandedFullSets.add(safeAppId);
+        root.classList.add('is-open');
+        var body = root.querySelector('.pc-fullset__body');
+        if (body) body.hidden = false;
+        var head = root.querySelector('.pc-fullset__head');
+        if (head) head.setAttribute('aria-expanded', 'true');
+        var rows = Array.prototype.slice.call(root.querySelectorAll('.pc-fullset__members [data-tester-id]'));
+        var openRows = rows.filter(function (row) { return !row.querySelector('.is-tester-rewarded-today'); });
+        var status = root.querySelector('.pc-fullset__status');
+        if (!openRows.length) {
+            if (status) {
+                status.hidden = false;
+                status.textContent = text('pcFullSetRandomEmpty', 'Все в этом списке уже награждены');
+            }
+            return;
+        }
+        if (status) status.hidden = true;
+        var picked = openRows[Math.floor(Math.random() * openRows.length)];
+        rows.forEach(function (row) { row.classList.remove('is-random-pick'); });
+        picked.classList.add('is-random-pick');
+        if (picked.scrollIntoView) picked.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        var testerId = Number(picked.getAttribute('data-tester-id') || 0);
+        if (testerId > 0) window.pcRewardTester(safeAppId, testerId);
+    };
 
     var expandedAttentionReasons = new Set();
 
@@ -3931,7 +4218,7 @@
 
     function hintForFilter(filter) {
         if (filter === 'contribution') {
-            return text('pcHintContribution', 'Today they did more than a regular check-in: reports, bugs, recommendations, or 3+ screenshots.');
+            return text('pcHintContribution', 'Today they went beyond a check-in: feedback, a video, a written report, or a full set of 5 screenshots.');
         }
         if (filter === 'attention') {
             return text('pcHintAttention', 'Риски срыва и пропуски активности');
@@ -3944,7 +4231,7 @@
 
     function criteriaForFilter(filter) {
         if (filter === 'contribution') {
-            return text('pcHintCriteriaContribution', 'Value: testers who sent a bug, idea, review, or 3+ screenshots today.');
+            return text('pcHintCriteriaContribution', 'Value: feedback, a video, a report with text, or a full set of 5 screenshots. Shorter screenshot series stay in Reports.');
         }
         if (filter === 'attention') {
             return text('pcHintCriteriaAttention', 'Внимание: участники, требующие реакции. Пропуски чекинов (от 1 дня для должников и инвайтов, от 2 дней для взаимки), выходы из проекта, сорванные контрольные отчёты и нарушенные связи. При 3+ пропусках партнёра доступен выход из его теста без штрафа.');
@@ -4162,7 +4449,7 @@
             }).join('') + '</div>';
 
         var hints = {
-            contribution: workspaceText('Больше обычного чекина', 'Beyond a regular check-in'),
+            contribution: workspaceText('Фидбэк, видео, текст и полные серии', 'Feedback, video, notes, and full sets'),
             attention: text('pcHintAttention', 'Риски срыва и пропуски активности'),
             control: text('pcHintControl', 'Обязательные контрольные отчёты сегодня'),
             testers: workspaceText('Текущий состав команды', 'Current team'),
@@ -4520,6 +4807,8 @@
         if (reasons.some(function (reason) { return reason.kind === 'bug'; })) return 'bug';
         if (reasons.some(function (reason) { return reason.kind === 'idea'; })) return 'idea';
         if (reasons.some(function (reason) { return reason.kind === 'play_review'; })) return 'review';
+        if (reasons.some(function (reason) { return reason.kind === 'video'; })) return 'video';
+        if (reasons.some(function (reason) { return reason.kind === 'report_note'; })) return 'note';
         return 'screenshots';
     }
 
@@ -4531,6 +4820,8 @@
             idea: '<path d="M9 18h6M10 21h4M8.5 13.8a5.5 5.5 0 1 1 7 0c-1 .8-1.5 1.8-1.5 3.2h-4c0-1.4-.5-2.4-1.5-3.2Z"/>',
             review: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
             screenshots: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/>',
+            video: '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-3v10l-6-3z"/>',
+            note: '<path d="M6 4h9l3 3v13H6z"/><path d="M15 4v3h3M8 12h8M8 16h5"/>',
             done: '<path d="m5 12.5 4.2 4L19 7"/>',
             waiting: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/>',
         };
@@ -4540,7 +4831,7 @@
     }
 
     function teamContributionScore(item) {
-        var weights = { bug: 40, idea: 30, play_review: 20, screenshots: 10 };
+        var weights = { bug: 40, idea: 30, play_review: 20, video: 18, report_note: 16, screenshots: 10 };
         return (item && item.reasons || []).reduce(function (score, reason) {
             return score + Number(weights[reason.kind] || 0) + Math.min(9, Number(reason.imageCount || 0));
         }, 0);
