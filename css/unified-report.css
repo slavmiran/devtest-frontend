@@ -1,81 +1,112 @@
-/* Scoped: never changes the external/guest report sheet or other dialogs. */
+/* Report sheet only. Shared/external dialogs keep their own geometry. */
 #report-modal.is-proof-upload [hidden] { display: none !important; }
 #report-modal.is-proof-upload .report-modal-sheet {
     --report-accent: 91, 153, 255;
+    box-sizing: border-box;
     position: relative;
     display: flex;
     flex-direction: column;
     gap: 0;
     width: min(100%, 580px);
-    height: min(var(--report-height, 92dvh), calc(var(--tg-viewport-stable-height, 100dvh) - env(safe-area-inset-top, 0px) - 12px));
-    max-height: min(var(--report-height, 92dvh), calc(var(--tg-viewport-stable-height, 100dvh) - env(safe-area-inset-top, 0px) - 12px));
-    padding: 24px 20px max(16px, env(safe-area-inset-bottom, 0px));
+    height: auto;
+    min-height: 0;
+    max-height: min(var(--report-height, 92dvh), calc(var(--tg-viewport-stable-height, 100dvh) - env(safe-area-inset-top, 0px) - 8px));
+    padding: 44px 18px max(14px, env(safe-area-inset-bottom, 0px));
     overflow: hidden;
-    overscroll-behavior: contain;
-    scroll-padding-bottom: 20px;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 28px 28px 0 0;
+    border-radius: 26px 26px 0 0;
 }
-#report-modal.is-proof-upload[data-report-kind="bug"] .report-modal-sheet { --report-accent: 237, 149, 111; }
-#report-modal.is-proof-upload[data-report-kind="idea"] .report-modal-sheet { --report-accent: 84, 191, 169; }
-#report-modal.is-proof-upload .report-proof-upload-block { display: flex; flex-direction: column; min-height: 0; flex: 1; gap: 0; margin-bottom: 0; }
-.unified-report-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; flex: 1; padding: 0 3px 4px 0; }
-#report-modal.is-proof-upload h3 { flex-shrink: 0; margin: 0 38px 6px 0; font-size: 20px; line-height: 1.3; text-align: left; }
-#report-modal.is-proof-upload #t-reportModalHint { margin: 0 36px 18px 0; color: var(--hint-color, #9ca5b4); font-size: 13px; }
-.unified-report-close { position: absolute; z-index: 2; top: 18px; right: 15px; width: 40px; height: 40px; border: 0; border-radius: 50%; color: var(--text-color); background: rgba(128,145,165,.12); font-size: 27px; cursor: pointer; }
+#report-modal.is-proof-upload .report-modal-sheet::before { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); margin: 0; }
+#report-modal.is-proof-upload[data-report-kind="bug"] .report-modal-sheet { --report-accent: 226, 151, 120; }
+#report-modal.is-proof-upload[data-report-kind="idea"] .report-modal-sheet { --report-accent: 91, 190, 170; }
+#report-modal.is-proof-upload .report-proof-upload-block { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; gap: 0; margin: 0; }
+.unified-report-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; flex: 0 1 auto; padding: 0 2px 2px; }
+#report-modal.is-proof-upload #report-modal-heading { padding-right: 18px; margin-bottom: 15px; }
+#report-modal.is-proof-upload h3 { margin: 0; font-size: 19px; font-weight: 650; line-height: 1.25; text-align: left; }
+#report-modal.is-proof-upload #t-reportModalHint { margin: 5px 0 0; color: var(--hint-color,#9ca5b4); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.unified-report-close { position: absolute; z-index: 2; top: 6px; right: 10px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; color: var(--hint-color,#aab5c4); background: rgba(128,145,165,.1); font-size: 25px; cursor: pointer; }
 #report-modal:not(.is-proof-upload) .unified-report-close { display: none; }
 #report-modal.is-proof-upload .report-feedback-block { display: none !important; }
-#report-modal.is-proof-upload .checkin-proof-visibility-note { font-size: 11px; line-height: 1.5; color: var(--hint-color, #9ca5b4); margin: 12px 0; }
-#report-modal.is-proof-upload .checkin-proof-picker { min-height: 112px; border-radius: 16px; padding: 14px; border-color: rgba(var(--report-accent),.35); background: rgba(var(--report-accent),.045); }
-.unified-report-section-label { display: block; margin: 14px 0 8px; color: var(--hint-color,#aab5c4); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.unified-report-body > .unified-report-section-label:first-child { margin-top: 0; }
-#report-modal.is-proof-upload .checkin-proof-preview-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(96px,28%); gap: 8px; overflow-x: auto; padding-bottom: 5px; overscroll-behavior-x: contain; }
-#report-modal.is-proof-upload .checkin-proof-preview-item, #report-modal.is-proof-upload .checkin-proof-preview-add { height: 108px; min-height: 108px; aspect-ratio: auto; border-radius: 13px; }
-#report-modal.is-proof-upload .checkin-proof-preview-edit { z-index: 1; }
-.unified-report-catchup { padding: 14px 15px; margin: 0 0 14px; background: rgba(76,141,255,.09); border-inline-start: 3px solid var(--button-color, #4c8dff); border-radius: 12px; font-size: 13px; line-height: 1.5; }
-.unified-report-catchup strong { display: block; font-weight: 600; color: var(--text-color); }
-.unified-report-catchup p { margin: 5px 0 0; color: var(--hint-color, #aab5c4); }
-.unified-report-catchup small { display: block; margin-top: 6px; font-size: 12px; color: var(--hint-color, #aab5c4); }
-.unified-report-formats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin: 0 0 12px; padding: 4px; background: rgba(128,145,165,.07); border-radius: 15px; }
-.unified-report-formats button { min-height: 52px; padding: 8px 4px; border: 1px solid transparent; border-radius: 11px; color: var(--hint-color,#aab5c4); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
-.unified-report-formats button small { display: block; margin-top: 3px; font-size: 10px; opacity: .7; }
-.unified-report-formats button { transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease; }
-.unified-report-formats button.is-selected { color: var(--text-color,#fff); background: rgba(var(--report-accent),.13); border-color: rgba(var(--report-accent),.5); }
+.unified-report-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+#report-modal.is-proof-upload .checkin-proof-picker { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; min-height: 78px; padding: 12px; border: 1px dashed rgba(var(--report-accent),.36); border-radius: 14px; background: rgba(var(--report-accent),.045); text-align: left; }
+#report-modal.is-proof-upload .checkin-proof-picker__icon { flex: 0 0 32px; width: 32px; height: 32px; font-size: 24px; color: rgb(var(--report-accent)); background: rgba(var(--report-accent),.12); }
+.unified-report-picker-copy { display: grid; min-width: 0; gap: 4px; }
+#report-modal.is-proof-upload #t-checkinProofChoose { color: var(--text-color,#eef2f7); font-size: 14px; font-weight: 550; line-height: 1.3; }
+#report-modal.is-proof-upload #t-checkinProofLimits { color: var(--hint-color,#9ca5b4); font-size: 11px; line-height: 1.45; }
+#report-modal.is-proof-upload .checkin-proof-preview-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 88px; gap: 8px; overflow-x: auto; padding: 1px 1px 5px; overscroll-behavior-x: contain; scrollbar-width: thin; }
+#report-modal.is-proof-upload .checkin-proof-preview-item, #report-modal.is-proof-upload .checkin-proof-preview-add { width: 88px; height: 116px; min-height: 116px; aspect-ratio: auto; border-radius: 12px; }
+#report-modal.is-proof-upload .checkin-proof-preview-remove { top: 4px; right: 4px; width: 22px; height: 22px; font-size: 18px; background: rgba(10,16,24,.72); backdrop-filter: blur(6px); }
+#report-modal.is-proof-upload .checkin-proof-preview-edit { position: absolute; z-index: 1; left: 4px; bottom: 4px; width: 24px; height: 24px; padding: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 7px; background: rgba(10,16,24,.76); color: #fff; font-size: 14px; backdrop-filter: blur(6px); cursor: pointer; }
+#report-modal.is-proof-upload .checkin-proof-preview-edit::after, #report-modal.is-proof-upload .checkin-proof-preview-remove::after { content: ''; position: absolute; inset: -6px; }
+.checkin-proof-preview-item video { width: 100%; height: 100%; object-fit: cover; background: #111; pointer-events: none; }
+.report-video-duration { position: absolute; left: 5px; bottom: 5px; padding: 3px 5px; border-radius: 5px; background: #000b; color: #fff; font-size: 10px; }
+.unified-report-formats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 3px; margin: 14px 0 10px; padding: 3px; background: rgba(128,145,165,.07); border-radius: 13px; }
+.unified-report-formats button { display: flex; align-items: center; justify-content: center; gap: 5px; height: 44px; min-width: 0; padding: 0 4px; border: 1px solid transparent; border-radius: 10px; color: var(--hint-color,#aab5c4); background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease; }
+.unified-report-formats button.is-selected { color: var(--text-color,#eef2f7); background: rgba(var(--report-accent),.12); border-color: rgba(var(--report-accent),.35); }
 .unified-report-formats button:disabled { opacity: .4; cursor: default; }
 .unified-report-formats button:focus-visible, .unified-report-close:focus-visible { outline: 2px solid rgb(var(--report-accent)); outline-offset: 2px; }
+.unified-report-info { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(128,145,165,.055); color: var(--hint-color,#aab5c4); font-size: 12px; line-height: 1.4; }
+.unified-report-info > div:not([hidden]) { animation: report-info-in 140ms ease-out; }
+@keyframes report-info-in { from { opacity: .45; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+.report-info-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px 8px; }
+.report-info-heading, .report-info-top > span:first-child { color: var(--text-color,#dfe6ef); font-size: 12px; font-weight: 500; }
+.report-info-badge { display: inline-flex; align-items: center; min-height: 23px; padding: 3px 6px; border-radius: 6px; background: rgba(128,145,165,.09); color: var(--text-color,#d5dfea); font-size: 11.5px; line-height: 1.35; font-weight: 500; }
+.report-info-badge.is-earned { color: #72c9aa; background: rgba(74,175,137,.1); }
+.report-info-progress { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 5px; margin: 9px 0 8px; }
+.report-info-progress i { height: 3px; background: rgba(128,145,165,.19); border-radius: 3px; }
+.report-info-progress i.is-filled { background: #719ee6; }
+.report-info-progress i:nth-child(4) { margin-left: 3px; }
+.unified-report-info p { margin: 6px 0 0; font-size: 11px; line-height: 1.45; }
+.report-info-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.report-info-added { margin-top: 7px; color: #72c9aa; font-size: 11px; line-height: 1.45; }
 .unified-report-text { position: relative; }
-.unified-report-text textarea { box-sizing: border-box; resize: vertical; min-height: 80px; max-height: 210px; width: 100%; padding: 14px 14px 28px; border-radius: 15px; border: 1px solid var(--border-color,rgba(128,145,165,.23)); background: rgba(128,145,165,.05); color: var(--text-color,#fff); font: inherit; font-size: 16px; line-height: 1.5; }
-.unified-report-text textarea:focus { outline: 2px solid rgba(var(--report-accent),.5); outline-offset: 1px; }
-#unified-report-count { position: absolute; bottom: 10px; right: 12px; color: var(--hint-color,#9ca5b4); font-size: 11px; pointer-events: none; }
-.unified-report-quality, .unified-report-series { color: var(--hint-color,#9ca5b4); font-size: 12px; line-height: 1.5; margin: 10px 0; }
-.unified-report-series { color: var(--text-color,#d6dee8); }
-.unified-report-series .checkin-proof-progress-card { padding: 10px 12px; border-radius: 13px; }
-.unified-report-series .checkin-proof-progress-note { font-size: 11px; }
-#report-modal.is-proof-upload #report-screenshot-boost { margin: 0 0 10px; box-shadow: none; }
-#report-modal.is-proof-upload .checkin-proof-upload-actions { flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(128,145,165,.13); }
-#report-modal.is-proof-upload .checkin-proof-upload-actions .btn { min-height: 50px; margin: 0; white-space: normal; font-size: 15px; line-height: 1.35; }
-#report-modal.is-proof-upload .checkin-proof-upload-actions .unified-report-plain { background: transparent !important; color: var(--hint-color,#aab5c4) !important; min-height: 36px; padding: 8px; font-size: 12px; box-shadow: none; border: 0; }
-.unified-report-review { padding: 10px; min-height: 44px; color: var(--hint-color,#aab5c4); background: transparent; border: 0; font: inherit; font-size: 13px; cursor: pointer; }
-.unified-report-review:disabled { opacity: .6; min-height: 20px; padding: 2px 8px; cursor: default; }
-.checkin-proof-preview-item video { width: 100%; height: 100%; object-fit: cover; background: #111; pointer-events: none; }
-.checkin-proof-preview-edit { position: absolute; left: 4px; bottom: 4px; width: 38px; height: 38px; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; background: rgba(10,16,24,.85); color: #fff; font-size: 17px; }
-.report-video-duration { position: absolute; left: 7px; bottom: 7px; border-radius: 6px; padding: 3px 5px; background: #000b; color: white; font-size: 11px; }
-.report-editor { position: fixed; z-index: 30000; inset: 0; display: flex; flex-direction: column; padding: max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom)); background: #0b1018; color: white; }
-.report-editor__tools { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
-.report-editor button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 10px; background: #202c3b; color: white; font-size: 13px; }
-.report-editor__modes { display: flex; gap: 4px; }
-.report-editor__modes button[aria-pressed="true"] { background: #345a8b; outline: 1px solid #7aa7e3; }
-.report-editor p { font-size: 12px; line-height: 1.4; color: #b0bac8; }
-.report-editor__stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 12px; }
-.report-editor canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; touch-action: none; }
+.unified-report-text textarea { box-sizing: border-box; resize: none; display: block; min-height: 82px; max-height: 220px; width: 100%; padding: 12px 12px 28px; border-radius: 13px; border: 1px solid var(--border-color,rgba(128,145,165,.22)); background: rgba(128,145,165,.035); color: var(--text-color,#eef2f7); font: inherit; font-size: 16px; line-height: 1.45; }
+.unified-report-text textarea:focus { outline: 1px solid rgba(var(--report-accent),.65); outline-offset: 1px; }
+#unified-report-count { position: absolute; bottom: 9px; right: 12px; color: var(--hint-color,#9ca5b4); font-size: 10px; pointer-events: none; }
+#report-modal.is-proof-upload .checkin-proof-visibility-note { margin: 9px 0 0; color: var(--hint-color,#9ca5b4); opacity: .8; font-size: 11px; line-height: 1.45; }
+#report-modal.is-proof-upload #report-screenshot-boost { margin: 0 0 12px; box-shadow: none; }
+#report-modal.is-proof-upload .checkin-proof-upload-actions { flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(128,145,165,.13); }
+#report-modal.is-proof-upload .checkin-proof-upload-actions .btn { min-height: 48px; margin: 0; white-space: normal; font-size: 14px; line-height: 1.35; }
+#report-modal.is-proof-upload .checkin-proof-upload-actions .unified-report-plain { background: transparent !important; color: var(--hint-color,#aab5c4) !important; min-height: 34px; padding: 7px; font-size: 11px; font-weight: 400; box-shadow: none; border: 0; }
+.unified-report-review { display: block; width: 100%; margin: 5px 0 0; padding: 8px; min-height: 36px; color: var(--hint-color,#aab5c4); background: transparent; border: 0; font: inherit; font-size: 12px; cursor: pointer; }
+#report-modal.is-proof-upload #report-developer { margin-top: 10px; padding-top: 4px; border-top: 1px solid rgba(128,145,165,.1); }
+#report-modal.is-proof-upload #report-developer .checkin-dev-accordion__summary { min-height: 38px; padding: 8px 0; color: var(--hint-color,#9ca5b4); }
+#report-modal.is-proof-upload #report-developer .checkin-dev-accordion__row { padding: 6px 0; }
+.report-editor.modal-overlay { box-sizing: border-box; position: fixed; z-index: 30000; inset: 0; display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: max(10px,env(safe-area-inset-top,0px)) 12px max(12px,env(safe-area-inset-bottom,0px)); background: #0c1119; color: #f1f5fa; overscroll-behavior: contain; }
+.report-editor__tools { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 6px; width: min(100%,600px); margin: 0 auto; }
+.report-editor button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.report-editor button:disabled { opacity: .3; cursor: default; }
+.report-editor button:focus-visible { outline: 2px solid #77a7ee; outline-offset: 2px; }
+.report-editor__tools > button { min-height: 40px; padding: 8px 10px; border-radius: 11px; background: transparent; font-size: 13px; justify-self: start; }
+.report-editor__tools > [data-action="done"] { justify-self: end; background: #4587ee; color: #fff; font-weight: 600; }
+.report-editor__history { display: flex; gap: 6px; }
+.report-editor__history button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; background: #1a2433; }
+.report-editor svg { display: block; width: 22px; height: 22px; }
+.report-editor__stage { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.report-editor canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; border-radius: 12px; object-fit: contain; touch-action: none; }
+.report-editor__dock { flex-shrink: 0; width: min(100%,440px); align-self: center; padding: 10px; box-sizing: border-box; border: 1px solid rgba(148,163,184,.13); border-radius: 20px; background: #1a2230; box-shadow: 0 8px 30px #0003; }
+.report-editor__modes { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; }
+.report-editor__modes button { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 5px; min-height: 55px; padding: 6px 3px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: #aebbcf; font-size: 11px; }
+.report-editor__modes button[aria-pressed="true"] { background: #2c4260; border-color: #587bab; color: #eff5ff; }
+.report-editor__settings { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 0; padding: 8px 2px 0; border-top: 1px solid #ffffff0c; }
+.report-editor__palette { display: flex; gap: 3px; }
+.report-editor__palette button { display: grid; place-items: center; width: 30px; height: 32px; padding: 0; border-radius: 50%; background: transparent; }
+.report-editor__palette button::before { content: ''; width: 18px; height: 18px; border-radius: 50%; background: var(--swatch); border: 1px solid #ffffff38; }
+.report-editor__palette button[aria-pressed="true"] { outline: 1.5px solid #b7ccef; outline-offset: -1px; }
+.report-editor__width { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 65px; max-width: 140px; }
+.report-editor__width input { width: 100%; min-width: 0; accent-color: #7da9eb; }
+.report-editor__width output { min-width: 18px; color: #acbad0; font-size: 11px; text-align: right; }
+.report-editor.is-saving canvas, .report-editor.is-saving .report-editor__dock { pointer-events: none; }
+@media (max-height: 540px) {
+    #report-modal.is-proof-upload .report-modal-sheet { padding-top: 40px; }
+    #report-modal.is-proof-upload .checkin-proof-upload-actions { gap: 2px; margin-top: 7px; padding-top: 7px; }
+    .report-editor.modal-overlay { gap: 6px; padding-top: max(6px,env(safe-area-inset-top,0px)); padding-bottom: max(6px,env(safe-area-inset-bottom,0px)); }
+    .report-editor__dock { padding: 6px; }
+    .report-editor__modes button { min-height: 44px; flex-direction: row; }
+    .report-editor__settings { margin-top: 4px; padding-top: 4px; }
+}
+@media (prefers-reduced-motion: reduce) { #report-modal.is-proof-upload .modal-content, .unified-report-formats button { transition: none !important; } .unified-report-info > div { animation: none !important; } }
 .checkin-proof-preview-shell { grid-template-rows: auto auto minmax(0,1fr); }
 .checkin-proof-preview-header { grid-row: 1; }
 .checkin-proof-preview-note { grid-row: 2; padding: 12px 18px; max-height: 120px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #d4deeb; background: #111a27; font-size: 13px; line-height: 1.5; }
 .checkin-proof-preview-body { grid-row: 3; }
 .proof-video-open { position: absolute; z-index: 2; inset: 25% 10%; margin: auto; height: fit-content; min-height: 52px; padding: 16px; color: #fff; background: #182435ed; border: 1px solid #34485f; border-radius: 16px; cursor: pointer; }
-@media (max-height: 540px) {
-    #report-modal.is-proof-upload .report-modal-sheet { padding-top: 18px; }
-    #report-modal.is-proof-upload #t-reportModalHint { margin-bottom: 8px; }
-    #report-modal.is-proof-upload .checkin-proof-upload-actions { gap: 2px; margin-top: 4px; padding-top: 6px; }
-}
-@media (prefers-reduced-motion: reduce) { #report-modal.is-proof-upload .modal-content, .unified-report-formats button { transition: none !important; } }

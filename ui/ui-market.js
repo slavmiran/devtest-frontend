@@ -4494,6 +4494,11 @@ async function openReportModal(appId, ownerUsername, options) {
         ? window.isInternalScreenshotProofUploadEnabled(test)
         : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())));
     var reportModal = document.getElementById('report-modal');
+    // The internal heading scrolls with the form; legacy/external keeps its header.
+    var reportHeading = document.getElementById('report-modal-heading');
+    if (!usesProofUpload && reportHeading) {
+        reportModal.querySelector('.report-modal-sheet').insertBefore(reportHeading, document.getElementById('report-proof-upload-block'));
+    }
     if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
     if (usesProofUpload) {
         var proofOptions = options && typeof options === 'object' ? options : {};

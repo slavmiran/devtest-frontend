@@ -2698,32 +2698,35 @@ function formatCheckinDeveloperAcceptedLabel(count, rate) {
     return String(n);
 }
 
-function collapseCheckinDeveloperAccordion() {
-    var root = document.getElementById('checkin-options-developer');
-    var toggle = document.getElementById('checkin-options-developer-toggle');
+function collapseCheckinDeveloperAccordion(prefix) {
+    prefix = prefix || 'checkin-options-developer';
+    var root = document.getElementById(prefix);
+    var toggle = document.getElementById(prefix + '-toggle');
     if (root) root.classList.remove('is-open');
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
 }
 
-function toggleCheckinDeveloperAccordion(event) {
+function toggleCheckinDeveloperAccordion(event, prefix) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    var root = document.getElementById('checkin-options-developer');
-    var toggle = document.getElementById('checkin-options-developer-toggle');
+    prefix = prefix || 'checkin-options-developer';
+    var root = document.getElementById(prefix);
+    var toggle = document.getElementById(prefix + '-toggle');
     if (!root) return;
     var open = !root.classList.contains('is-open');
     root.classList.toggle('is-open', open);
     if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
-function syncCheckinDeveloperAccordion(appId, fallbackUsername) {
-    var root = document.getElementById('checkin-options-developer');
-    var summary = document.getElementById('checkin-options-developer-summary');
-    var body = document.getElementById('checkin-options-developer-body');
-    var toggle = document.getElementById('checkin-options-developer-toggle');
-    collapseCheckinDeveloperAccordion();
+function syncCheckinDeveloperAccordion(appId, fallbackUsername, prefix) {
+    prefix = prefix || 'checkin-options-developer';
+    var root = document.getElementById(prefix);
+    var summary = document.getElementById(prefix + '-summary');
+    var body = document.getElementById(prefix + '-body');
+    var toggle = document.getElementById(prefix + '-toggle');
+    collapseCheckinDeveloperAccordion(prefix);
     var test = typeof window.getMyTestById === 'function'
         ? window.getMyTestById(appId)
         : ((Array.isArray(myTests) ? myTests : []).find(function(item) {

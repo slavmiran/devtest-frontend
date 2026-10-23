@@ -3,13 +3,22 @@
     'use strict';
     var COPY = {
         ru: {
-            title: 'Подтверждение теста', mediaLabel: '1 · Медиафайлы', formatLabel: '2 · Формат отчёта',
-            noteLabel: '3 · Комментарий', bugLabel: '3 · Опишите проблему', ideaLabel: '3 · Предложите улучшение',
+            title: 'Подтверждение теста', formatLabel: 'Формат отчёта',
+            noteLabel: 'Комментарий', bugLabel: 'Опишите проблему', ideaLabel: 'Предложите улучшение',
             bugPlaceholder: 'Что произошло? Что вы ожидали? Как повторить проблему?',
             ideaPlaceholder: 'Что стоит улучшить и как это поможет пользователям?',
             waiting: 'Быстрое подтверждение — после таймера',
-            media: 'Фото или видео', limits: 'До 5 файлов · фото до 5 МБ · видео до 50 МБ',
-            screenshot: 'Скриншот', bug: 'Баг', idea: 'Идея', note: 'Что стоит заметить? Необязательно.',
+            media: 'Добавить фото или видео', limits: 'До 5 файлов · фото до 5 МБ · видео до 50 МБ',
+            screenshot: 'Скриншот', bug: 'Баг', idea: 'Идея', note: 'Комментарий для разработчика (необязательно)…',
+            privacy: 'Публикуется в Testing Proofs · без личных данных',
+            seriesTitle: 'Бонус за серию экранов', seriesCount: 'Серия экранов: {count} из 5',
+            seriesRange: '+0,1…0,3 кармы', seriesReward: '+{amount} кармы',
+            seriesHint: 'Прикрепите 3–5 разных экранов для бонуса кармы.',
+            seriesActive: 'Бонус активен · ещё +0,1 за следующий экран.', seriesMax: 'Максимальный бонус за серию.',
+            noDailyBonus: 'Без повторной дневной награды', noDailyBonusHint: 'Материалы будут отправлены по текущей задаче.',
+            qualityBadge: 'Принято: {percent}', rewardBadge: '+0,5 кармы после одобрения',
+            qualityHint: 'Награда после проверки автором. Спам и пустые отчёты снижают рейтинг.',
+            seriesAdded: '✓ Ещё +{amount} кармы за {count} фото · бонусы складываются',
             description: 'Что произошло или что предлагаете улучшить?',
             quality: 'После принятия владельцем: +0,5 кармы. Спам и пустые отчёты снижают рейтинг.',
             accepted: 'Принято ваших фидбэков: {percent} · ',
@@ -17,7 +26,9 @@
             catchupSend: 'Отправить досдачу', plain: 'Просто подтвердить день — без отчёта',
             review: 'Отзыв в Google Play', reviewLater: 'Отзыв Google Play доступен с дня 7',
             day: 'День {day} · {name}', close: 'Закрыть', edit: 'Разметить изображение',
-            done: 'Готово', undo: 'Отменить шаг', cancel: 'Отмена', pen: 'Маркер', arrow: 'Стрелка', cover: 'Закрасить',
+            done: 'Готово', undo: 'Отменить шаг', redo: 'Вернуть шаг', cancel: 'Отмена', pen: 'Маркер', arrow: 'Стрелка', cover: 'Скрыть',
+            thickness: 'Толщина', colorRed: 'Красный', colorGreen: 'Зелёный', colorBlue: 'Синий', colorWhite: 'Белый', colorBlack: 'Чёрный',
+            editorTitle: 'Разметка скриншота', editorFailed: 'Не удалось сохранить разметку. Попробуйте ещё раз.',
             annotate: 'Выделите важное. Чёрным маркером можно скрыть личные данные.',
             catchup: 'Досдача за день {day}',
             catchupDaily: 'Этот отчёт закроет один дозапрос и подтвердит сегодняшний день. Бонус $BUST за отчёт не начисляется.',
@@ -32,13 +43,22 @@
             progress: 'Отправляем… {percent}%', processing: 'Обрабатываем отчёт…',
         },
         en: {
-            title: 'Confirm testing', mediaLabel: '1 · Media', formatLabel: '2 · Report type',
-            noteLabel: '3 · Comment', bugLabel: '3 · Describe the issue', ideaLabel: '3 · Suggest an improvement',
+            title: 'Confirm testing', formatLabel: 'Report type',
+            noteLabel: 'Comment', bugLabel: 'Describe the issue', ideaLabel: 'Suggest an improvement',
             bugPlaceholder: 'What happened? What did you expect? How can it be reproduced?',
             ideaPlaceholder: 'What could be improved, and how would it help users?',
             waiting: 'Quick confirmation unlocks after the timer',
-            media: 'Photos or video', limits: 'Up to 5 files · photos up to 5 MB · videos up to 50 MB',
-            screenshot: 'Screenshot', bug: 'Bug', idea: 'Idea', note: 'Anything to point out? Optional.',
+            media: 'Add photos or video', limits: 'Up to 5 files · photos up to 5 MB · videos up to 50 MB',
+            screenshot: 'Screenshot', bug: 'Bug', idea: 'Idea', note: 'Comment for the developer (optional)…',
+            privacy: 'Published in Testing Proofs · no personal data',
+            seriesTitle: 'Screen-series bonus', seriesCount: 'Screen series: {count} of 5',
+            seriesRange: '+0.1…0.3 karma', seriesReward: '+{amount} karma',
+            seriesHint: 'Attach 3–5 different screens for a karma bonus.',
+            seriesActive: 'Bonus active · +0.1 for each next screen.', seriesMax: 'Maximum photo-series bonus.',
+            noDailyBonus: 'No additional daily reward', noDailyBonusHint: 'These materials will fulfil the current task.',
+            qualityBadge: 'Accepted: {percent}', rewardBadge: '+0.5 karma after approval',
+            qualityHint: 'Awarded after the author reviews it. Spam and empty reports lower your rating.',
+            seriesAdded: '✓ Another +{amount} karma for {count} photos · bonuses add up',
             description: 'What happened, or what would you improve?',
             quality: '+0.5 karma after the owner accepts it. Spam and empty reports lower your rating.',
             accepted: 'Your accepted feedback: {percent} · ',
@@ -46,7 +66,9 @@
             catchupSend: 'Submit make-up report', plain: 'Just confirm today — no report',
             review: 'Google Play review', reviewLater: 'Google Play reviews unlock on day 7',
             day: 'Day {day} · {name}', close: 'Close', edit: 'Annotate image',
-            done: 'Done', undo: 'Undo', cancel: 'Cancel', pen: 'Marker', arrow: 'Arrow', cover: 'Redact',
+            done: 'Done', undo: 'Undo', redo: 'Redo', cancel: 'Cancel', pen: 'Marker', arrow: 'Arrow', cover: 'Redact',
+            thickness: 'Thickness', colorRed: 'Red', colorGreen: 'Green', colorBlue: 'Blue', colorWhite: 'White', colorBlack: 'Black',
+            editorTitle: 'Annotate screenshot', editorFailed: 'Could not save the annotation. Please retry.',
             annotate: 'Highlight the issue. Use the black marker to hide personal information.',
             catchup: 'Make-up report for day {day}',
             catchupDaily: 'This report closes one request and confirms today. No screenshot $BUST bonus is awarded.',
@@ -113,13 +135,17 @@
         s.expectedStart = String(test.start_date || '').slice(0, 10);
         s.catchupRequestId = Number(s.reportContext.target && s.reportContext.target.id || 0);
         el('t-reportModalTitle').textContent = t('title');
-        el('unified-report-media-label').textContent = t('mediaLabel');
+        document.querySelector('.unified-report-body').prepend(el('report-modal-heading'));
         el('unified-report-format-label').textContent = t('formatLabel');
         el('unified-report-note').value = s.note;
         el('t-reportModalHint').textContent = t('day', { day: s.expectedDay, name: test.name || '' });
         el('t-checkinProofChoose').textContent = t('media');
         el('t-checkinProofLimits').textContent = t('limits');
         el('unified-report-close').setAttribute('aria-label', t('close'));
+        el('t-checkinProofVisibilityNote').textContent = '🔒 ' + t('privacy');
+        if (typeof window.syncCheckinDeveloperAccordion === 'function') {
+            window.syncCheckinDeveloperAccordion(Number(test.id), test.owner_username || '', 'report-developer');
+        }
         document.querySelectorAll('.unified-report-formats [data-report-kind]').forEach(function (button) {
             button.querySelector('span').textContent = t(button.dataset.reportKind);
             button.disabled = (button.dataset.reportKind === 'bug' && test.accepts_bugs === false)
@@ -194,8 +220,6 @@
         note.maxLength = kind === 'screenshot' ? 500 : 4000;
         note.rows = kind === 'screenshot' ? 2 : 4;
         note.required = kind !== 'screenshot';
-        el('unified-report-quality').hidden = kind === 'screenshot';
-        el('unified-report-quality').textContent = t('quality');
         if (kind !== 'screenshot') loadQuality();
         window.syncUnifiedReport();
     };
@@ -213,20 +237,9 @@
         submit.disabled = s.checkingFiles || !validText || (needsMedia && !files.length);
         el('t-checkinProofSubmit').textContent = t(c.buffer ? 'catchupSend' : (s.reportKind === 'bug' ? 'sendBug' : s.reportKind === 'idea' ? 'sendIdea' : 'send'));
         el('unified-report-count').textContent = s.reportKind === 'screenshot' ? length + '/500' : (length < 25 ? length + '/25' : length + '/4000');
-        var series = el('unified-report-series');
         var test = typeof myTests !== 'undefined' && myTests.find(function (row) { return Number(row.id) === Number(s.appId); });
         var seriesEligible = !c.buffer && !(test && typeof isTestedToday === 'function' && isTestedToday(test));
-        series.hidden = !images || !seriesEligible;
-        // Reuse the familiar 3 + 2 segment indicator. Never count videos as photos.
-        var seriesKey = images + ':' + seriesEligible + ':' + lang;
-        if (series.dataset.renderKey !== seriesKey) {
-            series.innerHTML = seriesEligible ? _renderCheckinProofProgress(images) : '';
-            series.dataset.renderKey = seriesKey;
-        }
-        if (s.reportKind !== 'screenshot') {
-            el('unified-report-quality').textContent = (s.qualityPercent != null ? t('accepted', { percent: s.qualityPercent }) : '')
-                + t('quality') + (images >= 3 && seriesEligible ? ' ' + t('sum') : '');
-        }
+        renderReportInfo(images, seriesEligible);
         var plain = el('unified-report-plain');
         var timer = typeof _getTimerReadyPayload === 'function' ? _getTimerReadyPayload(s.appId)
             : typeof _timerReadyState !== 'undefined' && _timerReadyState[String(s.appId)];
@@ -235,6 +248,34 @@
         plain.disabled = !ready;
         plain.textContent = t(ready ? 'plain' : 'waiting');
     };
+
+    function renderReportInfo(images, eligible) {
+        var s = state(), info = el('unified-report-info');
+        var key = [s.reportKind, images, eligible, s.qualityPercent, typeof lang === 'undefined' ? 'en' : lang].join(':');
+        if (info.dataset.renderKey === key) return;
+        info.dataset.renderKey = key;
+        var series = el('unified-report-series'), quality = el('unified-report-quality');
+        var screenshot = s.reportKind === 'screenshot';
+        series.hidden = !screenshot;
+        quality.hidden = screenshot;
+        var escape = window.escapeHTML;
+        var bonus = Math.max(0, Math.min(5, images) - 2) / 10;
+        var amount = bonus.toFixed(1).replace('.', typeof lang !== 'undefined' && lang === 'ru' ? ',' : '.');
+        if (screenshot) {
+            if (!eligible) {
+                series.innerHTML = '<div class="report-info-heading">' + escape(t('noDailyBonus')) + '</div><p>' + escape(t('noDailyBonusHint')) + '</p>';
+                return;
+            }
+            series.innerHTML = '<div class="report-info-top"><span>' + escape(t(images ? 'seriesCount' : 'seriesTitle', { count: images })) + '</span>'
+                + '<span class="report-info-badge' + (bonus ? ' is-earned' : '') + '">' + escape(t(bonus ? 'seriesReward' : 'seriesRange', { amount: amount })) + '</span></div>'
+                + '<div class="report-info-progress" aria-hidden="true">' + [1,2,3,4,5].map(function (n) { return '<i class="' + (images >= n ? 'is-filled' : '') + '"></i>'; }).join('') + '</div>'
+                + '<p>' + escape(t(images < 3 ? 'seriesHint' : images < 5 ? 'seriesActive' : 'seriesMax')) + '</p>';
+        } else {
+            quality.innerHTML = '<div class="report-info-chips"><span class="report-info-badge">' + escape(t('qualityBadge', { percent: s.qualityPercent == null ? '—' : s.qualityPercent })) + '</span>'
+                + '<span class="report-info-badge">' + escape(t('rewardBadge')) + '</span></div><p>' + escape(t('qualityHint')) + '</p>'
+                + (bonus && eligible ? '<div class="report-info-added">' + escape(t('seriesAdded', { amount: amount, count: images })) + '</div>' : '');
+        }
+    }
 
     var qualityCache = new Map();
     function loadQuality() {
@@ -254,88 +295,218 @@
         }).catch(function () {});
     }
 
-    // The editor keeps vector steps, not one full-resolution bitmap per Undo.
-    var editor = null;
+    // History stores vectors (including colour/width), never full-image snapshots.
+    var editor = null, editorRequest = 0;
+    function editorIcon(name) {
+        var paths = {
+            undo: '<path d="M9 5 3 10l6 5M3 10h10a7 7 0 0 1 7 7v2"/>',
+            redo: '<path d="m15 5 6 5-6 5m6-5H11a7 7 0 0 0-7 7v2"/>',
+            pen: '<path d="m5 16 11-11 3 3L8 19H5v-3Zm9-9 3 3M4 22h16"/>',
+            arrow: '<path d="M5 19 19 5M8 5h11v11"/>',
+            cover: '<rect x="4" y="5" width="16" height="14" rx="3" fill="currentColor" stroke="none"/>'
+        };
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
+    }
     window.openReportImageEditor = function (index) {
         var s = state(), file = s.files[index];
         if (!file || file.type.indexOf('image/') !== 0 || s.checkingFiles) return;
-        var image = new Image();
-        var url = URL.createObjectURL(file), generation = s.selectionGeneration;
+        window.closeReportImageEditor();
+        var request = editorRequest, generation = s.selectionGeneration, returnFocus = document.activeElement;
+        var image = new Image(), url = URL.createObjectURL(file);
         image.onload = function () {
             URL.revokeObjectURL(url);
-            if (generation !== state().selectionGeneration || state().files[index] !== file) return;
+            if (request !== editorRequest || generation !== state().selectionGeneration || state().files[index] !== file) return;
             var overlay = document.createElement('div');
-            overlay.className = 'report-editor';
+            overlay.className = 'report-editor modal-overlay active';
+            overlay.id = 'report-image-editor';
+            // Register with the app's existing Back-layer discovery.
+            overlay.onclick = function (event) { if (event.target === overlay) window.closeReportImageEditor(); };
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
-            overlay.innerHTML = '<div class="report-editor__tools"><button type="button" data-action="cancel"></button><div class="report-editor__modes"><button type="button" data-tool="pen"></button><button type="button" data-tool="arrow"></button><button type="button" data-tool="cover"></button></div><button type="button" data-action="done"></button></div><p></p><div class="report-editor__stage"><canvas></canvas></div><button type="button" data-action="undo"></button>';
-            overlay.querySelector('p').textContent = t('annotate');
-            ['cancel', 'done', 'undo'].forEach(function (a) { overlay.querySelector('[data-action="' + a + '"]').textContent = t(a); });
-            overlay.querySelectorAll('[data-tool]').forEach(function (b) {
-                b.textContent = {pen:'✎',arrow:'↗',cover:'▰'}[b.dataset.tool];
-                b.setAttribute('aria-label', t(b.dataset.tool)); b.title = t(b.dataset.tool);
-                b.setAttribute('aria-pressed', String(b.dataset.tool === 'pen'));
-                b.onclick = function () {
-                    editor.tool = b.dataset.tool;
-                    overlay.querySelectorAll('[data-tool]').forEach(function (tool) {
-                        tool.setAttribute('aria-pressed', String(tool === b));
-                    });
-                };
-            });
+            overlay.setAttribute('aria-label', t('editorTitle'));
+            overlay.innerHTML = '<div class="report-editor__tools"><button type="button" data-action="cancel"></button><div class="report-editor__history"><button type="button" data-action="undo"></button><button type="button" data-action="redo"></button></div><button type="button" data-action="done"></button></div>'
+                + '<div class="report-editor__stage"><canvas></canvas></div>'
+                + '<div class="report-editor__dock"><div class="report-editor__modes"></div><div class="report-editor__settings"><div class="report-editor__palette" role="group"></div>'
+                + '<label class="report-editor__width"><span class="unified-report-sr"></span><input type="range" min="2" max="14" step="1" value="5"><output>5</output></label></div></div>';
             var canvas = overlay.querySelector('canvas');
             var scale = Math.min(1, 2560 / Math.max(image.naturalWidth, image.naturalHeight));
-            canvas.width = Math.round(image.naturalWidth * scale);
-            canvas.height = Math.round(image.naturalHeight * scale);
-            editor = { overlay: overlay, canvas: canvas, image: image, steps: [], tool: 'pen', index: index, file: file, generation: generation };
-            var redraw = function () {
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            var current = { overlay: overlay, canvas: canvas, image: image, steps: [], redoStack: [],
+                tool: 'pen', color: '#ff5148', width: 5, active: null, saving: false, frame: 0,
+                index: index, file: file, generation: generation, returnFocus: returnFocus };
+            editor = current;
+            var undo = overlay.querySelector('[data-action="undo"]'), redo = overlay.querySelector('[data-action="redo"]');
+            ['undo', 'redo'].forEach(function (action) {
+                var button = overlay.querySelector('[data-action="' + action + '"]');
+                button.innerHTML = editorIcon(action);
+                button.setAttribute('aria-label', t(action)); button.title = t(action);
+            });
+            ['cancel', 'done'].forEach(function (action) { overlay.querySelector('[data-action="' + action + '"]').textContent = t(action); });
+            var modes = overlay.querySelector('.report-editor__modes');
+            ['pen','arrow','cover'].forEach(function (tool) {
+                var button = document.createElement('button'); button.type = 'button'; button.dataset.tool = tool;
+                button.innerHTML = editorIcon(tool) + '<span></span>';
+                button.querySelector('span').textContent = t(tool);
+                button.onclick = function () { if (!current.saving) { current.tool = tool; updateControls(); } };
+                modes.appendChild(button);
+            });
+            var palette = overlay.querySelector('.report-editor__palette');
+            palette.setAttribute('aria-label', typeof lang !== 'undefined' && lang === 'ru' ? 'Цвет линии' : 'Line colour');
+            [['#ff5148','colorRed'],['#59ce8a','colorGreen'],['#62a3ff','colorBlue'],['#ffffff','colorWhite'],['#000000','colorBlack']].forEach(function (entry) {
+                var button = document.createElement('button'); button.type = 'button'; button.dataset.color = entry[0];
+                button.style.setProperty('--swatch', entry[0]); button.setAttribute('aria-label', t(entry[1])); button.title = t(entry[1]);
+                button.onclick = function () { current.color = entry[0]; updateControls(); };
+                palette.appendChild(button);
+            });
+            var width = overlay.querySelector('input[type="range"]'), widthOutput = overlay.querySelector('output');
+            width.setAttribute('aria-label', t('thickness'));
+            overlay.querySelector('.report-editor__width .unified-report-sr').textContent = t('thickness');
+            width.oninput = function () { current.width = Number(width.value); widthOutput.textContent = width.value; };
+            function updateControls() {
+                var locked = current.saving || !!current.active;
+                undo.disabled = locked || !current.steps.length;
+                redo.disabled = locked || !current.redoStack.length;
+                modes.querySelectorAll('button').forEach(function (button) {
+                    button.disabled = locked; button.setAttribute('aria-pressed', String(button.dataset.tool === current.tool));
+                });
+                palette.querySelectorAll('button').forEach(function (button) {
+                    button.disabled = locked || current.tool === 'cover';
+                    button.setAttribute('aria-pressed', String(button.dataset.color === (current.tool === 'cover' ? '#000000' : current.color)));
+                });
+                width.disabled = locked || current.tool === 'cover';
+                widthOutput.textContent = current.tool === 'cover' ? '24' : String(current.width);
+                overlay.querySelector('[data-action="done"]').disabled = locked;
+            }
+            function redraw() {
+                current.frame = 0;
+                if (editor !== current) return;
                 var ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-                editor.steps.forEach(function (stroke) {
-                    ctx.strokeStyle = stroke.tool === 'cover' ? '#000' : '#ff453a';
-                    ctx.lineWidth = Math.max(4, canvas.width / (stroke.tool === 'cover' ? 22 : 180));
+                current.steps.forEach(function (stroke) {
+                    var points = stroke.points, first = points[0], last = points[points.length - 1];
+                    ctx.strokeStyle = stroke.color; ctx.fillStyle = stroke.color;
+                    ctx.lineWidth = stroke.width * canvas.width / 360;
                     ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath();
-                    var points = stroke.points;
-                    ctx.moveTo(points[0].x, points[0].y);
+                    if (points.length === 1) {
+                        ctx.arc(first.x, first.y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill(); return;
+                    }
+                    ctx.moveTo(first.x, first.y);
                     if (stroke.tool === 'arrow') {
-                        var end = points[points.length - 1], start = points[0], angle = Math.atan2(end.y - start.y, end.x - start.x), size = canvas.width / 24;
-                        ctx.lineTo(end.x, end.y); ctx.moveTo(end.x - size * Math.cos(angle - Math.PI / 6), end.y - size * Math.sin(angle - Math.PI / 6));
-                        ctx.lineTo(end.x, end.y); ctx.lineTo(end.x - size * Math.cos(angle + Math.PI / 6), end.y - size * Math.sin(angle + Math.PI / 6));
-                    } else points.forEach(function (p) { ctx.lineTo(p.x, p.y); });
+                        var angle = Math.atan2(last.y - first.y, last.x - first.x);
+                        var size = Math.max(ctx.lineWidth * 3, canvas.width / 26);
+                        ctx.lineTo(last.x, last.y);
+                        ctx.moveTo(last.x - size * Math.cos(angle - Math.PI / 6), last.y - size * Math.sin(angle - Math.PI / 6));
+                        ctx.lineTo(last.x, last.y);
+                        ctx.lineTo(last.x - size * Math.cos(angle + Math.PI / 6), last.y - size * Math.sin(angle + Math.PI / 6));
+                    } else points.slice(1).forEach(function (p) { ctx.lineTo(p.x, p.y); });
                     ctx.stroke();
                 });
+            }
+            function scheduleDraw() { if (!current.frame) current.frame = requestAnimationFrame(redraw); }
+            function point(event) {
+                var r = canvas.getBoundingClientRect();
+                return { x: (event.clientX - r.left) * canvas.width / r.width, y: (event.clientY - r.top) * canvas.height / r.height };
+            }
+            canvas.onpointerdown = function (event) {
+                if (editor !== current || !event.isPrimary || event.button !== 0 || current.saving || current.active) return;
+                event.preventDefault(); canvas.setPointerCapture(event.pointerId);
+                current.redoStack = [];
+                current.active = { tool: current.tool, color: current.tool === 'cover' ? '#000000' : current.color,
+                    width: current.tool === 'cover' ? 24 : current.width, points: [point(event)] };
+                current.steps.push(current.active); updateControls(); scheduleDraw();
             };
-            function point(event) { var r = canvas.getBoundingClientRect(); return { x: (event.clientX - r.left) * canvas.width / r.width, y: (event.clientY - r.top) * canvas.height / r.height }; }
-            canvas.onpointerdown = function (event) { if (!event.isPrimary) return; event.preventDefault(); canvas.setPointerCapture(event.pointerId); editor.active = { tool: editor.tool, points: [point(event)] }; editor.steps.push(editor.active); redraw(); };
-            canvas.onpointermove = function (event) { if (!editor.active || !event.isPrimary) return; editor.active.points.push(point(event)); redraw(); };
-            canvas.onpointerup = canvas.onpointercancel = function () { editor.active = null; };
-            overlay.querySelector('[data-action="undo"]').onclick = function () { editor.steps.pop(); redraw(); };
+            canvas.onpointermove = function (event) {
+                if (editor !== current || !current.active || !event.isPrimary) return;
+                if (current.active.tool === 'arrow') current.active.points[1] = point(event);
+                else current.active.points.push(point(event));
+                scheduleDraw();
+            };
+            canvas.onpointerup = canvas.onpointercancel = canvas.onlostpointercapture = function () {
+                if (editor !== current) return;
+                current.active = null; updateControls(); scheduleDraw();
+            };
+            undo.onclick = function () { if (undo.disabled) return; current.redoStack.push(current.steps.pop()); updateControls(); scheduleDraw(); };
+            redo.onclick = function () { if (redo.disabled) return; current.steps.push(current.redoStack.pop()); updateControls(); scheduleDraw(); };
             overlay.querySelector('[data-action="cancel"]').onclick = window.closeReportImageEditor;
-            overlay.querySelector('[data-action="done"]').onclick = function () {
-                var current = editor;
-                if (!current.steps.length) return window.closeReportImageEditor();
-                this.disabled = true;
-                canvas.toBlob(async function (blob) {
-                    if (!blob || editor !== current || generation !== state().selectionGeneration || state().files[index] !== file) return;
-                    var replacement = new File([blob], file.name.replace(/\.[^.]+$/, '') + '-marked.jpg', { type: 'image/jpeg', lastModified: Date.now() });
-                    if (blob.size > 5 * 1024 * 1024) { showToast(t('videoLimit')); current.overlay.querySelector('[data-action="done"]').disabled = false; return; }
-                    state().checkingFiles = true;
-                    try {
-                        var fingerprint = await _checkinProofFileFingerprint(replacement);
-                        if (generation !== state().selectionGeneration || state().files[index] !== file) return;
-                        URL.revokeObjectURL(state().previewUrls[index]);
-                        state().files[index] = replacement;
-                        state().fingerprints[index] = fingerprint;
-                        state().previewUrls[index] = URL.createObjectURL(replacement);
-                        // Editing a retry is a new submission, never a mutation of an accepted UUID.
-                        state().idempotencyKey = _newCheckinProofUuid();
-                        _renderCheckinProofPreviews();
-                    } finally { state().checkingFiles = false; _syncCheckinProofControls(); window.closeReportImageEditor(); }
-                }, 'image/jpeg', 0.9);
+            overlay.onkeydown = function (event) {
+                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); window.closeReportImageEditor(); }
+                if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+                    event.preventDefault(); (event.shiftKey ? redo : undo).click();
+                }
+                if (event.key === 'Tab') {
+                    var controls = Array.from(overlay.querySelectorAll('button:not(:disabled),input:not(:disabled)'));
+                    var first = controls[0], last = controls[controls.length - 1];
+                    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+                }
             };
-            document.body.append(overlay); redraw();
+            overlay.querySelector('[data-action="done"]').onclick = function () {
+                if (current.saving || current.active) return;
+                if (!current.steps.length) return window.closeReportImageEditor();
+                current.saving = true; current.ownsChecking = true; state().checkingFiles = true;
+                overlay.classList.add('is-saving'); overlay.setAttribute('aria-busy', 'true'); updateControls();
+                cancelAnimationFrame(current.frame); redraw();
+                function recover(message) {
+                    if (editor !== current) return;
+                    current.saving = false; current.ownsChecking = false; state().checkingFiles = false;
+                    overlay.classList.remove('is-saving'); overlay.removeAttribute('aria-busy'); updateControls(); _syncCheckinProofControls();
+                    if (typeof showToast === 'function') showToast(message);
+                }
+                try {
+                    canvas.toBlob(async function (blob) {
+                        if (editor !== current || generation !== state().selectionGeneration || state().files[index] !== file) return;
+                        if (!blob) return recover(t('editorFailed'));
+                        if (blob.size > 5 * 1024 * 1024) return recover(t('videoLimit'));
+                        var replacement = new File([blob], file.name.replace(/\.[^.]+$/, '') + '-marked.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+                        try {
+                            var fingerprint = await _checkinProofFileFingerprint(replacement);
+                            if (editor !== current || generation !== state().selectionGeneration || state().files[index] !== file) return;
+                            URL.revokeObjectURL(state().previewUrls[index]);
+                            state().files[index] = replacement; state().fingerprints[index] = fingerprint;
+                            state().previewUrls[index] = URL.createObjectURL(replacement);
+                            state().idempotencyKey = _newCheckinProofUuid();
+                            _renderCheckinProofPreviews();
+                            window.closeReportImageEditor();
+                        } catch (_) { recover(t('editorFailed')); }
+                    }, 'image/jpeg', .9);
+                } catch (_) { recover(t('editorFailed')); }
+            };
+            document.body.appendChild(overlay);
+            var stage = overlay.querySelector('.report-editor__stage');
+            current.fitCanvas = function () {
+                if (editor !== current) return;
+                var fit = Math.min(stage.clientWidth / canvas.width, stage.clientHeight / canvas.height);
+                canvas.style.width = Math.max(1, canvas.width * fit) + 'px';
+                canvas.style.height = Math.max(1, canvas.height * fit) + 'px';
+            };
+            if (typeof ResizeObserver !== 'undefined') {
+                current.resizeObserver = new ResizeObserver(current.fitCanvas);
+                current.resizeObserver.observe(stage);
+            } else window.addEventListener('resize', current.fitCanvas);
+            current.fitCanvas(); updateControls(); redraw();
+            if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
+            overlay.querySelector('[data-action="cancel"]').focus({ preventScroll: true });
         };
-        image.onerror = function () { URL.revokeObjectURL(url); };
+        image.onerror = function () { URL.revokeObjectURL(url); if (request === editorRequest && typeof showToast === 'function') showToast(t('editorFailed')); };
         image.src = url;
     };
-    window.closeReportImageEditor = function () { if (editor) editor.overlay.remove(); editor = null; };
+    window.closeReportImageEditor = function () {
+        editorRequest += 1;
+        if (!editor) return;
+        var current = editor; editor = null;
+        cancelAnimationFrame(current.frame);
+        if (current.resizeObserver) current.resizeObserver.disconnect();
+        else window.removeEventListener('resize', current.fitCanvas);
+        if (current.ownsChecking && current.generation === state().selectionGeneration) {
+            state().checkingFiles = false; _syncCheckinProofControls();
+        }
+        current.overlay.remove();
+        if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
+        var preview = el('checkin-proof-preview-grid').children[current.index];
+        var focus = current.returnFocus && current.returnFocus.isConnected ? current.returnFocus
+            : preview && preview.querySelector('.checkin-proof-preview-edit');
+        if (focus) focus.focus({ preventScroll: true });
+    };
 })();
