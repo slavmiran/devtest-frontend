@@ -2511,7 +2511,7 @@ function getScreenshotBoostOffer(test, testingDay) {
     // A make-up control proof always owns the first eligible screenshot of the day.
     // The database also records a zero-value day claim, so a retry cannot bypass it.
     var catchups = Array.isArray(test.control_proof_catchups) ? test.control_proof_catchups : [];
-    if (catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
+    if ([1,4,7,10,14].indexOf(day) < 0 && catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
 
     var isControlDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day);
     // The first successful check-in always carries the mandatory first-launch

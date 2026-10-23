@@ -3600,6 +3600,9 @@ async function initiateProjectFeedback(appId, options) {
         feedbackType = 'bug';
     }
     var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    if (test && !test.is_external && !test.is_guest && typeof openReportModal === 'function') {
+        return openReportModal(appId, test.owner_username || '', { reportKind: feedbackType });
+    }
     var isEligibleForCheckin = test && (test.status === 'new' || test.status === 'daily' || test.status === 'opened');
     
     if (!options.checkinContext && isEligibleForCheckin) {

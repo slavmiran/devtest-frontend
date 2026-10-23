@@ -741,11 +741,14 @@
                 (variant === 'medium' ? previewMediumCachePut : previewThumbnailCachePut)(proofId, Number(ticket.media_index), secureMediaUrl(ticket.url), Number(ticket.expires_at) * 1000);
             });
             var details = {
+                note: String(payload.note || ''),
+                media_items: payload.media_items || [],
                 image_count: Number(payload.image_count || count),
                 original_message_urls: payload.original_message_urls || [],
                 dimensions: Array.isArray(payload.dimensions) ? payload.dimensions : [],
             };
             state.albumDetails.set(Number(proofId), details);
+            if (Number(state.previewProofId) === Number(proofId)) renderReportMetadata(proofId);
             return details;
         })();
         state.albumTicketLoading.set(key, task);
@@ -958,6 +961,7 @@
     }
 
     async function hydrateAlbumThumbnail(proofId, mediaIndex) {
+        if (isReportVideo(proofId, mediaIndex)) return;
         var body = document.getElementById('checkin-proof-preview-body');
         var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
         var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
@@ -979,6 +983,7 @@
     }
 
     async function hydrateAlbumMedium(proofId, mediaIndex) {
+        if (isReportVideo(proofId, mediaIndex)) return;
         var body = document.getElementById('checkin-proof-preview-body');
         var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
         var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
@@ -1008,6 +1013,7 @@
     }
 
     async function hydrateAlbumFull(proofId, mediaIndex) {
+        if (isReportVideo(proofId, mediaIndex)) return;
         var album = document.querySelector('#checkin-proof-preview-body .checkin-proof-preview-album');
         if (!album || Number(album.dataset.proofId) !== Number(proofId)) return;
         var slide = album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex) + '"]');
@@ -1409,7 +1415,32 @@
         return { appId: appId, testerId: testerId };
     }
 
+    function isReportVideo(proofId, index) {
+        var detail = state.albumDetails.get(Number(proofId)) || {};
+        var item = (detail.media_items || [])[Number(index || 0)] || {};
+        return String(item.mime_type || '').indexOf('video/') === 0;
+    }
+
+    function renderReportMetadata(proofId) {
+        var detail = state.albumDetails.get(Number(proofId)) || {};
+        var note = document.getElementById('checkin-proof-preview-note');
+        if (note) { note.textContent = detail.note ? '💬 ' + detail.note : ''; note.hidden = !detail.note; }
+        window.requestAnimationFrame(function () {
+            if (Number(state.previewProofId) !== Number(proofId)) return;
+            document.querySelectorAll('#checkin-proof-preview-body [data-media-index]').forEach(function (slide) {
+                var index = Number(slide.dataset.mediaIndex || 0);
+                if (!isReportVideo(proofId, index) || slide.querySelector('.proof-video-open')) return;
+                slide.classList.remove('is-error', 'is-loading');
+                var button = document.createElement('button'); button.type = 'button'; button.className = 'proof-video-open';
+                button.textContent = typeof lang !== 'undefined' && lang === 'ru' ? '▶ Видео · Смотреть в Telegram' : '▶ Video · Watch in Telegram';
+                button.onclick = function (event) { event.stopPropagation(); openCheckinProofOriginal(proofId, index, event); };
+                slide.appendChild(button);
+            });
+        });
+    }
+
     function renderProofOverview(body, proofId, count) {
+        renderReportMetadata(proofId);
         var tiles = [];
         for (var index = 0; index < count; index++) {
             var source = previewThumbnailCacheGet(proofId, index);
@@ -1581,6 +1612,7 @@
         var subtitle = document.getElementById('checkin-proof-preview-subtitle');
         if (title) title.textContent = meta.title;
         if (subtitle) subtitle.textContent = meta.subtitle;
+        renderReportMetadata(safeProofId);
         syncProofPreviewViewport();
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
@@ -1650,6 +1682,8 @@
         var meta = previewMeta(safeProofId);
         state.previewProofId = safeProofId;
         state.previewMode = 'feedback';
+        var reportNote = document.getElementById('checkin-proof-preview-note');
+        if (reportNote) { reportNote.textContent = ''; reportNote.hidden = true; }
         body.classList.remove('is-proof-album');
         body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
         var title = document.getElementById('checkin-proof-preview-title');
@@ -1664,7 +1698,9 @@
             var details = await requestProofDetails(safeProofId);
             if (state.previewProofId !== safeProofId || !modal.classList.contains('active')) return;
             var mediaHtml = '';
-            if (details.feedback && details.feedback.has_media) {
+            if (details.media_items && details.media_items[0] && String(details.media_items[0].mime_type || '').indexOf('video/') === 0) {
+                mediaHtml = '<button type="button" class="btn btn-secondary" onclick="openCheckinProofOriginal(' + safeProofId + ',0,event)">▶ ' + escape(typeof lang !== 'undefined' && lang === 'ru' ? 'Смотреть в Telegram' : 'Watch in Telegram') + '</button>';
+            } else if (details.feedback && details.feedback.has_media) {
                 var source = await loadPreviewMediaSource(safeProofId);
                 if (state.previewProofId !== safeProofId || !modal.classList.contains('active')) return;
                 mediaHtml = '<img class="checkin-proof-preview-image checkin-proof-preview-image--feedback" alt="" src="' + escape(source) + '">';

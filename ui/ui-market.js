@@ -3453,96 +3453,8 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (test && (test.is_external || test.is_guest || String(test.flow || '') === 'external')) {
         return openExternalCheckinOptionsModal(appId, ownerUsername);
     }
-    _checkinOptionsAppId = appId;
-    _checkinOptionsOwner = ownerUsername || '';
-    _checkinOptionsFlow = 'regular';
-    var testingDay = test ? getResolvedTestingDay(test) : null;
-    _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
-    if (_checkinOptionsIsControlDay && isScreenshotOnlyControlDay(testingDay)) {
-        if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
-            window.markScreenshotBoostAdvertisedInChooser(appId, false);
-        }
-        handleScreenshotAndConfirm(appId, ownerUsername || '');
-        return;
-    }
-    const modal = document.getElementById('checkin-options-modal');
-    if (!modal) return;
-    const titleEl = document.getElementById('t-checkinOptionsTitle');
-    const subtitleEl = document.getElementById('t-checkinOptionsSubtitle');
-    const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
-    const bugBtn = document.getElementById('t-checkinOptionsSendBug');
-    const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
-    const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
-    if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
-    if (subtitleEl) subtitleEl.innerText = window.tInternalCheckinCopy
-        ? window.tInternalCheckinCopy(
-            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle',
-            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitleProof' : 'checkinOptionsSubtitle'
-        )
-        : window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
-    var screenshotBoostOffer = test && typeof window.getScreenshotBoostOffer === 'function'
-        ? window.getScreenshotBoostOffer(test, testingDay)
-        : null;
-    // Screenshot, bug and idea all result in screenshot-proof. A Google Play
-    // review deliberately remains neutral: it does not qualify for this pool.
-    setScreenshotBoostActionButton(screenshotBtn, window.t('checkinOptionsSendScreenshot', {}, lang), screenshotBoostOffer);
-    setScreenshotBoostActionButton(bugBtn, window.t('checkinOptionsSendBug', {}, lang), screenshotBoostOffer);
-    setScreenshotBoostActionButton(ideaBtn, window.t('checkinOptionsSendIdea', {}, lang), screenshotBoostOffer);
-    if (confirmBtn) {
-        confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
-        if (_checkinOptionsIsControlDay) {
-            confirmBtn.style.display = 'none';
-            confirmBtn.disabled = false;
-            confirmBtn.style.cursor = '';
-            confirmBtn.style.opacity = '';
-        } else {
-            confirmBtn.style.display = 'block';
-            var timerRemaining = typeof window.getCheckinTimerRemainingSeconds === 'function'
-                ? window.getCheckinTimerRemainingSeconds(appId)
-                : 0;
-            if (timerRemaining > 0) {
-                // While the anti-fraud timer runs, Just Confirm shows the same countdown.
-                confirmBtn.disabled = true;
-                confirmBtn.style.cursor = 'not-allowed';
-                confirmBtn.style.opacity = '0.75';
-                confirmBtn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', timerRemaining);
-            } else {
-                confirmBtn.disabled = false;
-                confirmBtn.style.cursor = '';
-                confirmBtn.style.opacity = '';
-            }
-        }
-    }
-    var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
-    if (reviewBtn) {
-        var testingDay = test ? getResolvedTestingDay(test) : null;
-        var reviewStatus = typeof window.getPlayReviewStatus === 'function' ? window.getPlayReviewStatus(test) : String(test && test.play_review_status || 'none').toLowerCase();
-        var canReview = !!(test && test.request_reviews && testingDay && testingDay >= 7);
-        var reviewLabel = window.t('checkinOptionsSendReview', {}, lang);
-        if (reviewStatus === 'pending') reviewLabel = '⏳ ' + window.t('playReviewDetailsPendingChip', {}, lang);
-        else if (reviewStatus === 'approved') reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
-        else if (reviewStatus === 'rejected') reviewLabel = '❌ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
-        setScreenshotBoostActionButton(reviewBtn, reviewLabel, null);
-        reviewBtn.classList.toggle('is-review-pending', reviewStatus === 'pending');
-        reviewBtn.classList.toggle('is-review-approved', reviewStatus === 'approved');
-        reviewBtn.classList.toggle('is-review-rejected', reviewStatus === 'rejected');
-        reviewBtn.style.display = canReview ? 'block' : 'none';
-    }
-    renderCheckinReviewOptions();
-    if (typeof window.syncScreenshotBoostOfferUi === 'function') {
-        window.syncScreenshotBoostOfferUi(appId, { report: false });
-    }
-    if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
-        window.markScreenshotBoostAdvertisedInChooser(appId, !!screenshotBoostOffer);
-    }
-    if (typeof window.syncCheckinCatchupNoteUi === 'function') {
-        window.syncCheckinCatchupNoteUi(appId);
-    }
-    if (typeof window.syncCheckinDeveloperAccordion === 'function') {
-        window.syncCheckinDeveloperAccordion(appId, ownerUsername || (test && test.owner_username) || '');
-    }
-    modal.classList.add('active');
-    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    // Internal reports use one sheet; external tests keep their existing chooser.
+    return openReportModal(appId, ownerUsername || '');
 }
 
 function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
@@ -3989,6 +3901,7 @@ function closePlayReviewModal(event) {
     if (modal) modal.classList.remove('active');
     _playReviewModalSource = 'badge';
     _playReviewModalAppId = null;
+    if (typeof window.resumeUnifiedReportAfterReview === 'function') window.resumeUnifiedReportAfterReview();
 }
 
 function openPlayReviewStore() {
@@ -4564,8 +4477,10 @@ function setReportMessageLanguage(nextLang) {
 async function openReportModal(appId, ownerUsername, options) {
     var reportTest = typeof _checkinProofTest === 'function' ? _checkinProofTest(appId) : null;
     var isExternalReport = !!(reportTest && (reportTest.is_external || reportTest.is_guest || String(reportTest.flow || '') === 'external'));
+    // Opening the sheet never waits for runtime/config requests. Submission is
+    // independently validated by the server; stale/missing config refreshes later.
     if (!isExternalReport && typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) {
-        if (!await ensureRuntimeConfigReady()) return false;
+        ensureRuntimeConfigReady().catch(function() {});
     }
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
@@ -4575,9 +4490,9 @@ async function openReportModal(appId, ownerUsername, options) {
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
     var safeAppId = Number(appId || 0);
     var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
-    var usesProofUpload = !isExternalReport && (typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+    var usesProofUpload = !isExternalReport && ((typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) || (typeof window.isInternalScreenshotProofUploadEnabled === 'function'
         ? window.isInternalScreenshotProofUploadEnabled(test)
-        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled()));
+        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())));
     var reportModal = document.getElementById('report-modal');
     if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
     if (usesProofUpload) {
@@ -4589,7 +4504,9 @@ async function openReportModal(appId, ownerUsername, options) {
             if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
             _checkinProofUploadState.appId = safeAppId;
             _checkinProofUploadState.progressId = progressId;
-            _checkinProofUploadState.idempotencyKey = _loadOrCreateCheckinProofKey(progressId);
+            // A new report has its own identity; a retry restores its original key below.
+            _checkinProofUploadState.idempotencyKey = typeof initUnifiedReport === 'function'
+                ? _newCheckinProofUuid() : _loadOrCreateCheckinProofKey(progressId);
             _checkinProofUploadState.submissionMode = isBufferCatchup ? 'buffer_catchup' : 'standard';
             _checkinProofUploadState.catchupRequested = isCatchupSubmission;
             if (typeof _setCheckinProofStatus === 'function') _setCheckinProofStatus('', '');
@@ -4715,6 +4632,7 @@ async function openReportModal(appId, ownerUsername, options) {
     }
 
     reportModal.classList.add('active');
+    if (usesProofUpload && typeof initUnifiedReport === 'function') initUnifiedReport(test, options || {});
     if (!usesProofUpload) setTimeout(_syncReportTextareaLayout, 40);
 }
 
@@ -4722,9 +4640,13 @@ function closeReportModal(event) {
     if (event && event.target !== document.getElementById('report-modal')) return;
     var modal = document.getElementById('report-modal');
     if (modal) modal.classList.remove('active');
+    window.clearInterval(window._unifiedReportTimer);
+    if (typeof closeReportImageEditor === 'function') closeReportImageEditor();
     if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
     if (typeof _resetCheckinProofSubmissionMode === 'function') _resetCheckinProofSubmissionMode();
+    var closingReportAppId = _reportAppId;
     setTimeout(() => {
+        if ((modal && modal.classList.contains('active')) || _reportAppId !== closingReportAppId) return;
         _reportAppId = null;
         _reportOwnerUsername = null;
         _reportMessageLang = null;
@@ -5708,7 +5630,11 @@ function renderProjectFeedbackCards(project, items) {
             window.feedbackCaptionRegistry[item.id] = item.message_text || '';
 
             var mediaHtml = '';
-            if (resolvedMediaUrls.length > 0) {
+            if (item.report_has_video && Number(item.report_proof_id) > 0) {
+                window.feedbackMediaRegistry[item.id] = [];
+                var videoLabel = lang === 'ru' ? 'Видео и вложения · Смотреть в Telegram' : 'Video and attachments · Watch in Telegram';
+                mediaHtml = '<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openCheckinProofOriginal(' + Number(item.report_proof_id) + ',0,event)">▶ ' + window.escapeHTML(videoLabel) + '</button>';
+            } else if (resolvedMediaUrls.length > 0) {
                 const total = resolvedMediaUrls.length;
                 const MAX_THUMB = 3;
                 const shown = Math.min(total, MAX_THUMB);

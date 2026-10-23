@@ -1135,6 +1135,7 @@
             received: true,
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
+            note: String(proof && proof.note || ''),
             createdAt: String(proof && proof.created_at || ''),
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
@@ -1185,6 +1186,7 @@
             timeline: item.timeline || [],
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
+            note: String(proof && proof.note || ''),
             createdAt: String(proof && proof.created_at || ''),
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
@@ -1508,7 +1510,8 @@
 
         var subtitle = '';
         if (type === 'screenshot') {
-            subtitle = text('pcProofAlbumOverview', 'Quick overview of all images');
+            var reportNote = String(item && (item.note || item.reportNote) || '').trim();
+            subtitle = reportNote ? '💬 ' + reportNote.slice(0, 90) : text('pcProofAlbumOverview', 'Quick overview of all images');
         } else {
             var rawText = String(item && (item.feedbackText || item.feedbackTitle || item.label || '')).trim();
             if (rawText === text('pcProofBug', 'Bug') || rawText === text('pcContributionIdea', 'Recommendation') || rawText === text('pcProofReview', 'Review')) {
@@ -2529,6 +2532,7 @@
                     kind: 'screenshots',
                     label: contributionScreenshotsLabel(item.screenshotCount),
                     proofId: item.screenshotRow.proofId,
+                    note: item.screenshotRow.note || '',
                     progressId: item.screenshotRow.progressId,
                     imageCount: item.screenshotCount,
                     feedbackId: 0,

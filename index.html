@@ -41,11 +41,11 @@
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
-    <script src="./ui/ui-tests.js?v=20261020-access-pause-v1"></script>
+    <script src="./ui/ui-tests.js?v=20261023-unified-report-v2"></script>
     <script src="./ui/ui-projects.js?v=20261023-restart-buttons-v1"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
     <script src="./js/project-parameters.js?v=20261014-single-email-v1"></script>
-    <script src="./ui/ui-market.js?v=20261023-feedback-speed-v1"></script>
+    <script src="./ui/ui-market.js?v=20261023-unified-report-v2"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261012-geo-radar-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -58,12 +58,14 @@
     <script src="./js/checkin-recovery.js?v=20261022-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20261023-feedback-speed-v1"></script>
-    <script src="./js/checkin-proof-upload.js?v=20261022-timer-retry-v2"></script>
-    <script src="./js/testing-control.js?v=20261005-model-catalog-v2"></script>
+    <script src="./js/app-actions.js?v=20261023-unified-report-v2"></script>
+    <script src="./js/checkin-proof-upload.js?v=20261023-unified-report-v2"></script>
+    <script src="./js/unified-report.js?v=20261023-v2"></script>
+    <link rel="stylesheet" href="./css/unified-report.css?v=20261023-v2">
+    <script src="./js/testing-control.js?v=20261023-unified-report-v2"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20261019-activity-context-v1"></script>
-    <script src="./js/project-today.js?v=20261019-activity-context-v1"></script>
+    <script src="./js/project-today.js?v=20261023-unified-report-v2"></script>
     <script src="./js/smart-ping.js?v=20261014-activity-digest-v1"></script>
     <script src="./js/proof-ping.js?v=20261011-preference-consistency-v1"></script>
     <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
@@ -1735,15 +1737,18 @@
     <!-- Report Modal / Check-in Proof Modal -->
     <div id="report-modal" class="modal-overlay" onclick="closeReportModal(event)">
         <div class="modal-content report-modal-sheet" onclick="event.stopPropagation()">
+            <button type="button" id="unified-report-close" class="unified-report-close" onclick="closeReportModal()" aria-label="Close">×</button>
             <h3 id="t-reportModalTitle" data-i18n="reportModalTitle">📸 Отправка отчёта</h3>
             <p id="t-reportModalHint" data-i18n="reportModalHint">Подтвердите, что приложение скачано и запущено — любым из трёх способов.</p>
 
             <!-- Check-in Proof Screenshot Upload Block (shown when proof upload is active) -->
             <div class="report-proof-upload-block" id="report-proof-upload-block">
+                <div class="unified-report-body">
+                <div id="unified-report-catchup" class="unified-report-catchup" role="status" hidden></div>
                 <div id="report-screenshot-boost" class="screenshot-boost-offer" hidden></div>
-                <p class="checkin-proof-visibility-note" id="t-checkinProofVisibilityNote" data-i18n="checkinProofVisibilityNote">Скриншот публикуется в теме Testing Proofs. Убедитесь, что на нём нет личных данных.</p>
+                <div id="unified-report-media-label" class="unified-report-section-label"></div>
 
-                <input id="checkin-proof-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onchange="handleCheckinProofFileSelected(event)">
+                <input id="checkin-proof-file-input" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov" multiple hidden onchange="handleCheckinProofFileSelected(event)">
                 <button type="button" id="checkin-proof-picker" class="checkin-proof-picker" onclick="chooseCheckinProofFile()">
                     <span class="checkin-proof-picker__icon" aria-hidden="true">＋</span>
                     <strong id="t-checkinProofChoose" data-i18n="checkinProofChoose">Выбрать изображения</strong>
@@ -1756,10 +1761,27 @@
 
                 <div id="checkin-proof-upload-alert" class="checkin-proof-upload-alert" role="alert" hidden></div>
                 <div id="checkin-proof-upload-status" class="checkin-proof-upload-status" role="status" aria-live="polite" hidden></div>
+                <div id="unified-report-series" class="unified-report-series" hidden></div>
+                <div id="unified-report-format-label" class="unified-report-section-label"></div>
+                <div class="unified-report-formats" role="group" aria-labelledby="unified-report-format-label">
+                    <button type="button" data-report-kind="screenshot" onclick="setUnifiedReportKind('screenshot')">📸 <span>Report</span></button>
+                    <button type="button" data-report-kind="bug" onclick="setUnifiedReportKind('bug')">🐞 <span>Bug</span><small>+0.5 ☯</small></button>
+                    <button type="button" data-report-kind="idea" onclick="setUnifiedReportKind('idea')">💡 <span>Idea</span><small>+0.5 ☯</small></button>
+                </div>
+                <label id="unified-report-note-label" class="unified-report-section-label" for="unified-report-note"></label>
+                <div class="unified-report-text">
+                    <textarea id="unified-report-note" rows="2" maxlength="500" aria-describedby="unified-report-quality" oninput="syncUnifiedReport()"></textarea>
+                    <span id="unified-report-count" aria-live="polite"></span>
+                </div>
+                <p id="unified-report-quality" class="unified-report-quality" hidden></p>
+                <p class="checkin-proof-visibility-note" id="t-checkinProofVisibilityNote" data-i18n="checkinProofVisibilityNote">Скриншот публикуется в теме Testing Proofs. Убедитесь, что на нём нет личных данных.</p>
+                </div>
                 <div class="checkin-proof-upload-actions">
                     <button type="button" class="btn btn-primary" id="checkin-proof-submit" onclick="submitCheckinProofScreenshot()" disabled>
                         <span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">Подтвердить тестирование</span>
                     </button>
+                    <button type="button" id="unified-report-plain" class="btn unified-report-plain" hidden></button>
+                    <button type="button" id="unified-report-review" class="unified-report-review" hidden></button>
                 </div>
             </div>
 
@@ -2742,6 +2764,7 @@
                     <div id="checkin-proof-preview-subtitle" class="testing-control-subtitle"></div>
                 </div>
             </div>
+            <div id="checkin-proof-preview-note" class="checkin-proof-preview-note" hidden></div>
             <div id="checkin-proof-preview-body" class="checkin-proof-preview-body"></div>
         </div>
     </div>
