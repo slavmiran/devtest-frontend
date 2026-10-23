@@ -6060,7 +6060,18 @@ function closeEditModal(event) {
         return;
     }
     document.getElementById('edit-project-modal').classList.remove('active');
+    // The same controls are reused by the next project's editor after a successful restart.
+    var saveBtn = document.getElementById('t-editSave');
+    if (typeof applyActionButtonProcessing === 'function') {
+        applyActionButtonProcessing(saveBtn, false);
+    } else if (saveBtn) {
+        saveBtn.disabled = false;
+    }
+    var cancelBtn = document.getElementById('t-editCancel');
+    if (cancelBtn) cancelBtn.disabled = false;
     setTimeout(() => {
+        // A new editor may already be open while the previous close animation ends.
+        if (document.getElementById('edit-project-modal').classList.contains('active')) return;
         projectToEdit = null;
         _editModalSnapshot = null;
         _editSaveAndCloseRequested = false;
