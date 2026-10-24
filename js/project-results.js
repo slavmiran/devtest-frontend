@@ -133,6 +133,10 @@
         saveProjectResultsSeenState(appId, current);
         if (originalSeenCount === current.seen_tuples.length + current.seen_countries.length) return;
 
+        refreshProjectResultsCard(appId);
+    }
+
+    function refreshProjectResultsCard(appId) {
         // Refresh Results blocks on visible project card
         var card = document.getElementById('project-card-' + appId);
         if (card && typeof window.myProjects !== 'undefined') {
@@ -3161,6 +3165,7 @@
         openCoverage: openProjectCoverage,
         markSeen: markProjectCoverageSeen,
         getUnseenCounts: getProjectCoverageUnseenCounts,
+        refreshCard: refreshProjectResultsCard,
         openContinuousGallery: openContinuousCoverageGallery,
         toggleDefect: toggleScreenshotDefect,
         isDefect: isScreenshotDefect

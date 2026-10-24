@@ -68,7 +68,18 @@ const root = path.resolve(__dirname, '..');
                 document.body.classList.remove('no-username-blocked');
                 document.getElementById('no-username-overlay').classList.remove('active');
                 myProjects = [30, 40, 50, 60, 70, 80].map(id => ({ id, name: 'Project ' + id, testers: [],
-                    feedback_new_count: id === 30 ? 5 : 1, feedback_total_count: id === 30 ? 5 : 1 }));
+                    feedback_new_count: id === 30 ? 5 : 1, feedback_total_count: id === 30 ? 5 : 1,
+                    bugs_new_count: id === 30 ? 3 : 1, bugs_total_count: id === 30 ? 3 : 1,
+                    ideas_new_count: id === 30 ? 1 : 0, ideas_total_count: id === 30 ? 1 : 0,
+                    reviews_new_count: id === 30 ? 1 : 0, reviews_total_count: id === 30 ? 1 : 0,
+                    results_summary: { bugs_new_count: id === 30 ? 3 : 1, ideas_new_count: id === 30 ? 1 : 0,
+                        reviews_new_count: id === 30 ? 1 : 0 } }));
+                document.getElementById('projects-list').innerHTML = myProjects.map(project =>
+                    '<article id="project-card-' + project.id + '" class="card card-testers-collapsed"><input class="unrelated-draft" value="Keep card state"><div class="pc-results-block-slot"></div><div class="pc-results-collapsed-slot"></div></article>'
+                ).join('');
+                myProjects.forEach(project => ProjectResults.refreshCard(project.id));
+                window.projectApiSnapshot = JSON.parse(JSON.stringify(myProjects)).map(project => ({ ...project, app_id: project.id }));
+                window.projectsReadRevision = _feedbackCommitRevision;
                 archivedProjects = []; visibilityStats = { balance_bust: 1000 };
                 window.toasts = []; showToast = value => toasts.push(value);
                 window.projectRefreshes = 0; loadProjects = async () => { projectRefreshes++; };
@@ -104,6 +115,7 @@ const root = path.resolve(__dirname, '..');
             await firstCard.locator('.fb-inbox-date').click();
             assert(await firstCard.evaluate(card => card.classList.contains('fb-card--expanded')));
             await reward(101);
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile--bugs .pc-results-tile__val').innerText(), '+3', 'Results keep the pending count until the server confirms');
             assert.equal(await page.locator('.fb-card[data-feedback-id="101"][aria-busy="true"]').count(), 1);
             assert(await page.locator('.fb-card[data-feedback-id="101"] .fb-saving-note').isVisible());
             assert(await firstCard.evaluate(card => card.classList.contains('fb-card--collapsed') && !card.classList.contains('fb-card--expanded')), 'Submitting a decision collapses the card to the existing inbox row');
@@ -129,6 +141,26 @@ const root = path.resolve(__dirname, '..');
             assert.equal(await page.locator('#feedback-reward-submit-btn.btn-loading').count(), 0, 'Another ticket must not inherit the old spinner');
             waitingPosts.get(101)('success');
             await waitRewardDone(101);
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile--bugs .pc-results-tile__val').innerText(), '+2', 'Results counters update immediately, without a dashboard GET');
+            assert.equal(await page.locator('#project-card-30 .pc-results-collapsed__metric.is-bugs strong').innerText(), '+2');
+            assert.equal(await page.locator('#project-card-40 .pc-results-collapsed__metric.is-bugs strong').innerText(), '+1', 'Other project counts do not change');
+            assert.equal(await page.locator('#project-card-30 .unrelated-draft').inputValue(), 'Keep card state');
+            assert(await page.locator('#project-card-30').evaluate(card => card.classList.contains('card-testers-collapsed')), 'Updating Results does not rebuild the card');
+            const lateSnapshot = await page.evaluate(() => {
+                const mapped = _mapProjectsFromApi({ projects: projectApiSnapshot }, undefined, projectsReadRevision);
+                return mapped.find(project => project.id === 30);
+            });
+            assert.equal(lateSnapshot.bugs_new_count, 2, 'A late dashboard read cannot restore the old +3 badge');
+            assert.equal(lateSnapshot.feedback_new_count, 4);
+            assert.equal(lateSnapshot.results_summary.bugs_new_count, 2);
+            assert.equal(lateSnapshot.bugs_total_count, 3, 'Historical totals are not reduced');
+            const alreadyCommittedSnapshot = await page.evaluate(() => {
+                const response = JSON.parse(JSON.stringify(projectApiSnapshot));
+                response[0].bugs_new_count = 2; response[0].feedback_new_count = 4;
+                response[0].results_summary.bugs_new_count = 2;
+                return _mapProjectsFromApi({ projects: response }, undefined, projectsReadRevision)[0];
+            });
+            assert.equal(alreadyCommittedSnapshot.bugs_new_count, 2, 'An overlapping read may already contain the decision: never subtract it twice');
             assert.equal(await firstCard.locator('.fb-saving-note').count(), 0, 'Processing indicator clears only after success');
             assert.equal(await page.locator('#feedback-reward-modal.active').count(), 1);
             assert.equal(await page.locator('#feedback-reward-reply').inputValue(), 'Next draft must survive the previous response');
@@ -144,6 +176,7 @@ const root = path.resolve(__dirname, '..');
             await reward(103, 'Keep this failed reply', 10);
             waitingPosts.get(103)('error');
             await waitRewardDone(103);
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile--bugs .pc-results-tile__val').innerText(), '+2', 'A rejected save must not remove the pending highlight');
             assert.equal(await page.locator('.fb-card[data-feedback-id="103"][aria-busy="true"]').count(), 0);
             assert.equal(await page.locator('.fb-card[data-feedback-id="103"] .fb-saving-note').count(), 0, 'Failed saves clear the indicator and retain the pending ticket');
             assert.equal(await page.evaluate(() => _activeProjectFeedbackItems.find(row => row.id === 103).status), 'pending');
@@ -159,6 +192,7 @@ const root = path.resolve(__dirname, '..');
             assert.equal(await page.locator('#feedback-reward-reply').inputValue(), 'Other project draft');
             assert.equal(await page.evaluate(() => _feedbackRewardTargetId), 201);
             assert.equal(await page.evaluate(() => getProjectFeedbackSession(30).items.find(row => row.id === 103).status), 'accepted');
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile--bugs .pc-results-tile__val').innerText(), '+1', 'The original project updates even while another center is open');
             assert.equal(await page.evaluate(() => _activeProjectFeedbackItems[0].status), 'pending');
             await page.evaluate(async () => { closeFeedbackRewardModal(); closeProjectFeedbackModal(); await openProjectFeedback(30, false); });
 
@@ -178,6 +212,8 @@ const root = path.resolve(__dirname, '..');
             await page.evaluate(() => { openFeedbackRejectModal(105, 30); selectFeedbackRejectReason('spam'); });
             waitingPosts.get(102)('success');
             await page.waitForFunction(() => !isFeedbackProcessing(30, 102));
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile--ideas.has-new').count(), 0, 'Final processed recommendation loses its highlight');
+            assert.equal(await page.locator('#project-card-30 .pc-results-collapsed__metric.is-ideas').count(), 0, 'The collapsed card no longer lists the processed recommendation as new');
             assert.equal(await page.locator('#feedback-reject-modal.active').count(), 1, 'Old success must not close the next decision');
             assert.equal(await page.evaluate(() => _feedbackRejectState.reason), 'spam');
             await page.evaluate(() => closeFeedbackRejectModal());
@@ -196,6 +232,7 @@ const root = path.resolve(__dirname, '..');
             await waitPost(104);
             waitingPosts.get(104)('success');
             await page.waitForFunction(() => !isFeedbackProcessing(30, 104));
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile--reviews.has-new').count(), 0, 'Review rejection clears its new counter too');
 
             await reward(105, 'Saved despite lost response', 0);
             const beforeLost = posts.length;
@@ -203,6 +240,21 @@ const root = path.resolve(__dirname, '..');
             await waitRewardDone(105);
             assert.equal(posts.length, beforeLost, 'Lost reply must trigger a read, not another reward POST');
             assert.equal(await page.evaluate(() => _activeProjectFeedbackItems.find(row => row.id === 105).status), 'accepted');
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile.has-new').count(), 0, 'Lost-response reconciliation also clears pending highlights');
+            assert.equal(await page.locator('#project-card-30 .pc-results-collapsed').count(), 0, 'Collapsed Results disappear when there are no new findings');
+            assert.equal(await page.locator('#project-card-30 .pc-results-tile--bugs .pc-results-tile__val').innerText(), '3', 'History remains in the expanded Results');
+            const afterRepeatedCommit = await page.evaluate(() => {
+                const revision = _feedbackCommitRevision;
+                completeFeedbackProcessing(30, 105, 'accepted', { reward_bust: 0 });
+                const fresh = JSON.parse(JSON.stringify(myProjects)).map(project => ({ ...project, app_id: project.id }));
+                fresh[0].bugs_new_count = 1; fresh[0].feedback_new_count = 1;
+                fresh[0].results_summary.bugs_new_count = 1;
+                return { revisionUnchanged: revision === _feedbackCommitRevision,
+                    fresh: _mapProjectsFromApi({ projects: fresh }, undefined, revision)[0] };
+            });
+            assert(afterRepeatedCommit.revisionUnchanged, 'Repeat settlement is not a second counter event');
+            assert.equal(afterRepeatedCommit.fresh.bugs_new_count, 1, 'A fresh read with a newly arrived report is authoritative');
+            assert.equal(await page.evaluate(() => myProjects.find(project => project.id === 30).bugs_new_count), 0);
 
             // Multiple decisions can leave the shared modal immediately. Financial
             // mutations retain their old order in the background, not in the UI.
@@ -288,6 +340,6 @@ const root = path.resolve(__dirname, '..');
             assert.deepEqual(errors, []);
             await page.close();
         }
-        console.log('Feedback RU/EN 360/390: collapse on submit, expandable pending cards with persistent indicators, independent ticket buttons, immediate queued decisions, ordered financial mutations, concurrent reply-only POSTs, duplicate protection, drafts, cross-project/out-of-order responses, stale reads and lost-reply reconciliation passed');
+        console.log('Feedback RU/EN 360/390: immediate expanded/collapsed Results counters, category highlights, no double decrement or stale badge restoration, preserved history/card state, collapse on submit, independent/queued decisions, financial ordering, concurrent replies, drafts, cross-project responses and lost-reply reconciliation passed');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

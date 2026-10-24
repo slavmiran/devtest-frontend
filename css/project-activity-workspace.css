@@ -2272,8 +2272,15 @@
 .pc-dossier-heading { flex-shrink:0; margin:0 0 14px; padding:2px 0 12px; border-bottom:1px solid rgba(148,163,184,.1); }
 .pc-dossier-heading h2 { font-size:15px; line-height:1.35; font-weight:600; margin:0; color:#cbd5e1; text-align:left; }
 /* ── Unified Contributor Rewards Section ── */
+.pc-dossier-rewards-section {
+    min-width: 0;
+    max-width: 100%;
+}
+
 .pc-dossier-rewards-unified {
     margin: 12px 0 0;
+    max-width: 100%;
+    box-sizing: border-box;
     border: 1px solid rgba(148, 163, 184, .12);
     border-radius: 14px;
     background: rgba(15, 23, 42, 0.45);
@@ -2366,38 +2373,52 @@
 
 .pc-dossier-rewards-unified__sub-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
     width: 100%;
     min-width: 0;
-    flex-wrap: wrap;
 }
 
 .pc-dossier-rewards-unified__subtitle {
-    font-size: 10.5px;
+    min-width: 0;
+    font-size: 11px;
     color: #8493a7;
-    line-height: 1.25;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
 }
 
 .pc-dossier-rewards-unified__meta {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
-    margin-left: auto;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
 }
 
 .pc-dossier-reward-sum-chip {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
-    padding: 2.5px 7px;
+    max-width: 100%;
+    min-height: 22px;
+    box-sizing: border-box;
+    padding: 3px 8px;
     border-radius: 999px;
-    font-size: 10.5px;
-    font-weight: 600;
-    line-height: 1.2;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1;
     white-space: nowrap;
+}
+
+.pc-dossier-reward-sum-chip .karma-yin-icon {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
 }
 
 .pc-dossier-reward-sum-chip.is-karma {
@@ -2435,23 +2456,30 @@
     margin-bottom: 4px;
 }
 
-.pc-dossier-rewards-current, .pc-dossier-previous-rewards { margin:10px 0 0; border-top:1px solid rgba(148,163,184,.1); padding-top:4px; }
+.pc-dossier-previous-rewards { margin:10px 0 0; border-top:1px solid rgba(148,163,184,.1); padding-top:4px; }
 .pc-dossier-rewards-unified .pc-dossier-previous-rewards { border-top: 1px solid rgba(148,163,184,.08); margin: 8px 0 0; }
-.pc-dossier-rewards-current > summary, .pc-dossier-previous-rewards > summary { display:flex; align-items:center; gap:8px; padding:8px 0; font-size:11px; line-height:1.4; color:#94a3b8; cursor:pointer; list-style:none; }
-.pc-dossier-rewards-current > summary::after, .pc-dossier-previous-rewards > summary::after { content:'›'; font-size:14px; margin-left:2px; }
-.pc-dossier-rewards-current[open] > summary::after, .pc-dossier-previous-rewards[open] > summary::after { transform:rotate(90deg); }
+.pc-dossier-previous-rewards > summary { display:flex; align-items:center; gap:8px; padding:8px 0; font-size:11px; line-height:1.4; color:#94a3b8; cursor:pointer; list-style:none; }
+.pc-dossier-previous-rewards > summary::after { content:'›'; font-size:14px; margin-left:2px; }
+.pc-dossier-previous-rewards[open] > summary::after { transform:rotate(90deg); }
+.pc-dossier-rewards-unified.pc-dossier-rewards-current > summary {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+}
 .pc-dossier-rewards-count { color:#8493a7; margin-left:auto; }
 .pc-dossier-reward { border-bottom:1px solid rgba(148,163,184,.07); margin:0; scroll-margin:8px; }
 .pc-dossier-reward:last-child { border-bottom:0; }
 .pc-dossier-reward.is-focused { background:rgba(148,163,184,.045); }
-.pc-dossier-reward > summary, .pc-dossier-reward__summary { display:grid; grid-template-columns:minmax(0,1fr) auto 8px; align-items:center; gap:8px; padding:8px 0; list-style:none; }
+.pc-dossier-reward > summary, .pc-dossier-reward__summary { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,max-content) 8px; align-items:center; gap:8px; padding:8px 0; list-style:none; min-width:0; }
 .pc-dossier-reward > summary { cursor:pointer; }
 .pc-dossier-reward > summary::after { content:'›'; color:#8493a7; font-size:12px; }
 .pc-dossier-reward[open] > summary::after { transform:rotate(90deg); }
 .pc-dossier-reward > summary::-webkit-details-marker, .pc-dossier-rewards-current > summary::-webkit-details-marker, .pc-dossier-previous-rewards > summary::-webkit-details-marker { display:none; }
 .pc-dossier-reward__main { min-width:0; display:flex; flex-direction:column; gap:2px; }
-.pc-dossier-reward__label { color:#a7b5c9; font-size:11px; line-height:1.35; }
-.pc-dossier-reward__amount { color:#a7b5c9; font-size:11px; font-weight:500; white-space:nowrap; }
+.pc-dossier-reward__label { color:#a7b5c9; font-size:11px; line-height:1.35; overflow-wrap:anywhere; }
+.pc-dossier-reward__amount { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:2px 4px; max-width:100%; color:#a7b5c9; font-size:11px; font-weight:500; }
 .pc-dossier-reward__date { font-size:10px; line-height:1.35; color:#8493a7; }
 .pc-dossier-reward__detail { padding:0 0 10px; }
 .pc-dossier-reward__reason { font-size:11px; line-height:1.5; color:#94a3b8; margin:0; overflow-wrap:anywhere; }

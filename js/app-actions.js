@@ -4225,20 +4225,65 @@ function beginFeedbackProcessing(appId, feedbackId, draft) {
     return true;
 }
 
+function projectFeedbackCounterKeys(type) {
+    var normalized = String(type || '').toLowerCase();
+    var category = normalized === 'bug' ? 'bugs_new_count' : normalized === 'idea' ? 'ideas_new_count'
+        : normalized.indexOf('review') !== -1 ? 'reviews_new_count' : '';
+    return ['feedback_new_count', category].filter(Boolean);
+}
+
+function decrementProjectFeedbackCounters(project, type) {
+    projectFeedbackCounterKeys(type).forEach(function(key) {
+        var summary = project.results_summary;
+        var value = project[key] != null ? project[key] : (summary && summary[key]);
+        if (value != null) project[key] = Math.max(0, Number(value || 0) - 1);
+        if (summary && summary[key] != null) summary[key] = Math.max(0, Number(summary[key] || 0) - 1);
+    });
+}
+
+function reconcileSettledProjectFeedbackCounters(projects, readRevision) {
+    if (typeof readRevision !== 'number') return;
+    _feedbackSettled.forEach(function(saved, key) {
+        if (saved.revision <= readRevision || key.indexOf(String(userId) + ':') !== 0) return;
+        var current = ((myProjects || []).concat(archivedProjects || [])).find(function(project) {
+            return Number(project.app_id || project.id) === saved.appId;
+        });
+        if (!current) return;
+        (projects || []).forEach(function(project) {
+            if (Number(project.app_id || project.id) !== saved.appId) return;
+            // Aggregate responses have no per-ticket version. Keep the confirmed
+            // local counters for this overlapping read instead of subtracting
+            // again: its DB snapshot may already include the completed decision.
+            projectFeedbackCounterKeys(saved.fields.type).forEach(function(counter) {
+                if (current[counter] != null) project[counter] = current[counter];
+                if (project.results_summary && current.results_summary && current.results_summary[counter] != null) {
+                    project.results_summary[counter] = current.results_summary[counter];
+                }
+            });
+        });
+    });
+}
+
 function completeFeedbackProcessing(appId, feedbackId, status, fields) {
     var key = feedbackProcessingKey(appId, feedbackId);
-    if (!_feedbackSettled.has(key)) {
+    var previousSettlement = _feedbackSettled.get(key);
+    var cached = _projectFeedbackSessionCache[Number(appId)];
+    var sourceItems = cached ? cached.items : (Number(_activeProjectFeedbackAppId) === Number(appId) ? _activeProjectFeedbackItems : []);
+    var original = (sourceItems || []).find(function(item) { return Number(item.id) === Number(feedbackId); });
+    var saved = Object.assign({ status: status, processed_at: new Date().toISOString(),
+        type: original && original.type || previousSettlement && previousSettlement.fields.type || '' }, fields || {});
+    var firstCommit = !previousSettlement;
+    if (firstCommit) {
         ((myProjects || []).concat(archivedProjects || [])).forEach(function(project) {
             if (Number(project.app_id || project.id) === Number(appId)) {
-                project.feedback_new_count = Math.max(0, Number(project.feedback_new_count || 0) - 1);
+                decrementProjectFeedbackCounters(project, saved.type);
             }
         });
     }
-    var saved = Object.assign({ status: status, processed_at: new Date().toISOString() }, fields || {});
-    _feedbackSettled.set(key, { fields: saved, revision: ++_feedbackCommitRevision });
+    _feedbackSettled.set(key, { fields: saved, appId: Number(appId),
+        revision: firstCommit ? ++_feedbackCommitRevision : previousSettlement.revision });
     _feedbackProcessing.delete(key);
     _feedbackProcessingDrafts.delete(key);
-    var cached = _projectFeedbackSessionCache[Number(appId)];
     if (cached) {
         cached.items = cached.items.map(function(item) { return Number(item.id) === Number(feedbackId) ? Object.assign({}, item, saved) : item; });
         cached.loadedAt = 0; // Refresh server limits on the next visit.
@@ -4251,6 +4296,11 @@ function completeFeedbackProcessing(appId, feedbackId, status, fields) {
             window.removeFeedbackCardOptimistic(feedbackId, status, saved);
         }
         syncFeedbackProcessingCards();
+    }
+    // Refresh only the Results slots, without waiting for a throttled dashboard
+    // reload or replacing the whole card (and its expanded state/scroll).
+    if (window.ProjectResults && typeof window.ProjectResults.refreshCard === 'function') {
+        window.ProjectResults.refreshCard(appId);
     }
     if (_projectFeedbackSessionCache[Number(appId)]) _projectFeedbackSessionCache[Number(appId)].loadedAt = 0;
     // Refresh rewards/counters once after commit, without blocking the next ticket.
