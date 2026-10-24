@@ -97,6 +97,12 @@
 .report-editor__modes button { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 5px; min-height: 55px; padding: 6px 3px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: #aebbcf; font-size: 11px; }
 .report-editor__modes button[aria-pressed="true"] { background: #2c4260; border-color: #587bab; color: #eff5ff; }
 .report-editor__settings { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 0; padding: 8px 2px 0; border-top: 1px solid #ffffff0c; }
+.report-editor__settings[hidden] { display: none; }
+.report-editor__hint { margin: 8px 3px 0; color: #acbad0; font-size: 11px; line-height: 1.45; }
+#report-modal.is-proof-upload .checkin-proof-preview-item.is-invalid { outline: 2px solid #f36d78; outline-offset: -2px; }
+#report-modal.is-proof-upload .checkin-proof-preview-item.is-invalid::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; background: rgba(156,35,49,.24); pointer-events: none; }
+#report-modal.is-proof-upload .is-invalid .checkin-proof-preview-remove { z-index: 3; }
+#report-modal.is-proof-upload .checkin-proof-preview-error { position: absolute; z-index: 2; left: 3px; right: 3px; bottom: 3px; padding: 4px 3px; border-radius: 5px; background: rgba(96,17,28,.94); color: #fff0f2; font-size: 9px; font-weight: 600; line-height: 1.25; text-align: center; overflow-wrap: anywhere; pointer-events: none; }
 .report-editor__palette { display: flex; gap: 3px; }
 .report-editor__palette button { display: grid; place-items: center; width: 30px; height: 32px; padding: 0; border-radius: 50%; background: transparent; }
 .report-editor__palette button::before { content: ''; width: 18px; height: 18px; border-radius: 50%; background: var(--swatch); border: 1px solid #ffffff38; }

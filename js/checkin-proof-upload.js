@@ -8,6 +8,8 @@ var _checkinProofUploadState = {
     files: [],
     previewUrls: [],
     fingerprints: [],
+    invalidFingerprints: [],
+    invalidFileReason: '',
     checkingFiles: false,
     selectionGeneration: 0,
     idempotencyKey: '',
@@ -36,6 +38,8 @@ function restoreCheckinProofRetryDraft() {
     state.files = draft.files.slice();
     state.idempotencyKey = draft.idempotencyKey;
     state.fingerprints = draft.fingerprints ? draft.fingerprints.slice() : state.files.map(_checkinProofMetadataFingerprint);
+    state.invalidFingerprints = (draft.invalidFingerprints || []).slice();
+    state.invalidFileReason = draft.invalidFileReason || '';
     state.reportKind = draft.reportKind || 'screenshot';
     state.note = draft.note || '';
     var restoredNote = document.getElementById('unified-report-note');
@@ -44,7 +48,7 @@ function restoreCheckinProofRetryDraft() {
     state.previewUrls = state.files.map(function(file) { return URL.createObjectURL(file); });
     _renderCheckinProofPreviews();
     _syncCheckinProofControls();
-    _setCheckinProofAlert(window.t('checkinProofDraftRestored', {}, lang));
+    _setCheckinProofAlert(window.t(_checkinProofHasInvalidFiles() ? 'checkinProofUsedFilesHint' : 'checkinProofDraftRestored', {}, lang));
     return true;
 }
 
@@ -265,6 +269,17 @@ function _renderCheckinProofPreviews() {
         var item = document.createElement('div');
         item.className = 'checkin-proof-preview-item';
         var file = _checkinProofUploadState.files[index];
+        var invalid = (_checkinProofUploadState.invalidFingerprints || []).indexOf(_checkinProofUploadState.fingerprints[index]) >= 0;
+        if (invalid) {
+            item.classList.add('is-invalid');
+            item.setAttribute('aria-invalid', 'true');
+            var label = document.createElement('span');
+            label.className = 'checkin-proof-preview-error';
+            label.textContent = window.t(_checkinProofUploadState.invalidFileReason === 'duplicate_screenshot_selected'
+                ? 'checkinProofRepeatedFile' : 'checkinProofAlreadyUsed', {}, lang);
+            item.title = label.textContent;
+            item.appendChild(label);
+        }
         var isVideo = file && file.type.indexOf('video/') === 0;
         var image = document.createElement(isVideo ? 'video' : 'img');
         image.src = url;
@@ -277,7 +292,7 @@ function _renderCheckinProofPreviews() {
                 duration.textContent = '▶ ' + Math.floor(seconds / 60) + ':' + String(Math.floor(seconds % 60)).padStart(2, '0');
             };
             item.appendChild(duration);
-        } else if (typeof openReportImageEditor === 'function') {
+        } else if (!invalid && typeof openReportImageEditor === 'function') {
             var edit = document.createElement('button'); edit.type = 'button';
             edit.className = 'checkin-proof-preview-edit'; edit.textContent = '✎';
             edit.setAttribute('aria-label', reportCopy('edit'));
@@ -312,9 +327,14 @@ function _renderCheckinProofPreviews() {
     if (picker) picker.hidden = _checkinProofUploadState.files.length > 0;
 }
 
+function _checkinProofHasInvalidFiles() {
+    var invalid = _checkinProofUploadState.invalidFingerprints || [];
+    return (_checkinProofUploadState.fingerprints || []).some(function(value) { return invalid.indexOf(value) >= 0; });
+}
+
 function _syncCheckinProofControls() {
     var submit = document.getElementById('checkin-proof-submit');
-    if (submit) submit.disabled = _checkinProofUploadState.files.length < 1 || _checkinProofUploadState.checkingFiles;
+    if (submit) submit.disabled = _checkinProofUploadState.files.length < 1 || _checkinProofUploadState.checkingFiles || _checkinProofHasInvalidFiles();
     var picker = document.getElementById('checkin-proof-picker');
     if (picker) picker.disabled = _checkinProofUploadState.checkingFiles;
     document.querySelectorAll('.checkin-proof-preview-add').forEach(function(addButton) {
@@ -329,6 +349,8 @@ function _resetCheckinProofSelection() {
     _revokeCheckinProofPreviews();
     _checkinProofUploadState.files = [];
     _checkinProofUploadState.fingerprints = [];
+    _checkinProofUploadState.invalidFingerprints = [];
+    _checkinProofUploadState.invalidFileReason = '';
     _checkinProofUploadState.reportKind = 'screenshot';
     _checkinProofUploadState.note = '';
     _checkinProofUploadState.reportContext = null;
@@ -420,40 +442,25 @@ async function handleCheckinProofFileSelected(event) {
     }
     var selected = Array.from(event && event.target && event.target.files || []);
     if (!selected.length) return;
-    if (_checkinProofUploadState.files.length + selected.length > CHECKIN_PROOF_MAX_FILES) {
-        var warning = window.t('checkinProofTooMany', { max: CHECKIN_PROOF_MAX_FILES }, lang);
-        _setCheckinProofAlert(warning);
-        if (typeof showToast === 'function') showToast(warning);
-        if (event.target) event.target.value = '';
-        return;
-    }
     var allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
-    for (var i = 0; i < selected.length; i += 1) {
-        if (Number(selected[i].size || 0) <= 0 || allowedTypes.indexOf(String(selected[i].type || '').toLowerCase()) === -1) {
-            var typeMsg = window.t('invalid_image_type', {}, lang);
-            _setCheckinProofAlert(typeMsg);
-            if (typeof showToast === 'function') showToast(typeMsg);
-            if (event.target) event.target.value = '';
-            return;
-        }
-        if (Number(selected[i].size || 0) > (selected[i].type.indexOf('video/') === 0 ? 50 : 5) * 1024 * 1024) {
-            var sizeMsg = typeof reportCopy === 'function' ? reportCopy('videoLimit') : window.t('file_too_large', {}, lang);
-            _setCheckinProofAlert(sizeMsg);
-            if (typeof showToast === 'function') showToast(sizeMsg);
-            if (event.target) event.target.value = '';
-            return;
-        }
-    }
     _checkinProofUploadState.checkingFiles = true;
     var selectionGeneration = _checkinProofUploadState.selectionGeneration;
     _setCheckinProofAlert('');
     _syncCheckinProofControls();
     var known = new Set(_checkinProofUploadState.fingerprints || []);
     var duplicateCount = 0;
+    var excessCount = 0, invalidCount = 0, oversizedCount = 0, addedCount = 0;
     try {
         // Sequential hashing keeps peak memory small on budget Android devices.
         for (var selectedIndex = 0; selectedIndex < selected.length; selectedIndex += 1) {
+            if (_checkinProofUploadState.files.length >= CHECKIN_PROOF_MAX_FILES) {
+                excessCount = selected.length - selectedIndex;
+                break;
+            }
             var selectedFile = selected[selectedIndex];
+            var type = String(selectedFile.type || '').toLowerCase();
+            if (Number(selectedFile.size || 0) <= 0 || allowedTypes.indexOf(type) === -1) { invalidCount++; continue; }
+            if (Number(selectedFile.size || 0) > (type.indexOf('video/') === 0 ? 50 : 5) * 1024 * 1024) { oversizedCount++; continue; }
             var fingerprint = await _checkinProofFileFingerprint(selectedFile);
             if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
             if (known.has(fingerprint)) {
@@ -464,6 +471,7 @@ async function handleCheckinProofFileSelected(event) {
             _checkinProofUploadState.files.push(selectedFile);
             _checkinProofUploadState.fingerprints.push(fingerprint);
             _checkinProofUploadState.previewUrls.push(URL.createObjectURL(selectedFile));
+            addedCount++;
         }
     } finally {
         if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
@@ -471,9 +479,15 @@ async function handleCheckinProofFileSelected(event) {
         if (event.target) event.target.value = '';
         _renderCheckinProofPreviews();
         _updateCheckinProofFileStatus();
-        if (duplicateCount > 0) {
-            var dupMsg = window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang);
-            _setCheckinProofAlert(dupMsg);
+        var warnings = [];
+        if (excessCount) warnings.push(window.t('checkinProofExtraSkipped', { added: addedCount, count: excessCount, max: CHECKIN_PROOF_MAX_FILES }, lang));
+        if (duplicateCount) warnings.push(window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang));
+        if (invalidCount) warnings.push(window.t('invalid_image_type', {}, lang));
+        if (oversizedCount) warnings.push(typeof reportCopy === 'function' ? reportCopy('videoLimit') : window.t('file_too_large', {}, lang));
+        if (_checkinProofHasInvalidFiles()) warnings.push(window.t('checkinProofUsedFilesHint', {}, lang));
+        if (warnings.length) {
+            _setCheckinProofAlert(warnings.join(' '));
+            if ((excessCount || invalidCount || oversizedCount) && typeof showToast === 'function') showToast(warnings.join(' '));
         }
         _syncCheckinProofControls();
     }
@@ -489,7 +503,7 @@ function removeCheckinProofFile(index) {
     _checkinProofUploadState.previewUrls.splice(safeIndex, 1);
     _checkinProofUploadState.fingerprints.splice(safeIndex, 1);
     _checkinProofRetryDrafts.delete(_proofDraftKey(_checkinProofUploadState.progressId, _checkinProofUploadState.submissionMode));
-    _setCheckinProofAlert('');
+    _setCheckinProofAlert(_checkinProofHasInvalidFiles() ? window.t('checkinProofUsedFilesHint', {}, lang) : '');
     _renderCheckinProofPreviews();
     _updateCheckinProofFileStatus();
     _syncCheckinProofControls();
@@ -714,6 +728,16 @@ async function _runCheckinProofUploadJob(job) {
             return;
         }
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
+        if (['duplicate_screenshot_in_run', 'duplicate_screenshot_selected'].indexOf(payload.code) >= 0) {
+            var indices = payload.details && payload.details.duplicate_indices;
+            // Older servers cannot identify an album member. Never mark good
+            // files as used on a guess; a one-file request is unambiguous.
+            if (!Array.isArray(indices) || !indices.length) indices = job.files.length === 1 ? [0] : [];
+            job.invalidFingerprints = indices.filter(function(index) {
+                return Number.isInteger(index) && index >= 0 && index < job.files.length;
+            }).map(function(index) { return (job.fingerprints || [])[index] || _checkinProofMetadataFingerprint(job.files[index]); });
+            job.invalidFileReason = payload.code;
+        }
         var retryable = !(error && error.isApiError) || (error && error.retryable === true) || payload.code === 'proof_attach_incomplete'
             || payload.code === 'network_error' || (payload.details && payload.details.retryable === true);
         if ((retryable || ['duplicate_screenshot_in_run', 'duplicate_screenshot_selected', 'report_description_too_short', 'report_storage_unavailable', 'catchup_request_changed'].indexOf(payload.code) >= 0)
@@ -748,6 +772,7 @@ function submitCheckinProofScreenshot() {
     if (typeof syncUnifiedReport === 'function') syncUnifiedReport();
     var submitButton = document.getElementById('checkin-proof-submit');
     if (submitButton && submitButton.disabled) return;
+    if (_checkinProofHasInvalidFiles()) return;
     var appId = Number(_checkinProofUploadState.appId || 0);
     var progressId = Number(_checkinProofUploadState.progressId || 0);
     if (appId <= 0 || progressId <= 0 || isScreenshotProofUploadPending(appId)) return;

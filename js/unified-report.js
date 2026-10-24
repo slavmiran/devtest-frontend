@@ -31,7 +31,8 @@
             done: 'Готово', undo: 'Отменить шаг', redo: 'Вернуть шаг', cancel: 'Отмена', pen: 'Маркер', arrow: 'Стрелка', cover: 'Скрыть',
             thickness: 'Толщина', colorRed: 'Красный', colorGreen: 'Зелёный', colorBlue: 'Синий', colorWhite: 'Белый', colorBlack: 'Чёрный',
             editorTitle: 'Разметка скриншота', editorFailed: 'Не удалось сохранить разметку. Попробуйте ещё раз.',
-            annotate: 'Выделите важное. Чёрным маркером можно скрыть личные данные.',
+            annotate: 'Выделите важное маркером или стрелкой. «Скрыть» закрывает область с личными данными.',
+            coverHint: 'Протяните прямоугольник: содержимое будет полностью закрыто непрозрачной маской.',
             catchup: 'Досдача за день {day}',
             catchupDaily: 'Этот отчёт закроет один дозапрос и подтвердит сегодняшний день. Бонус $BUST за отчёт не начисляется.',
             catchupBuffer: 'Этот отчёт закроет только один дозапрос. В Buffer нет ежедневного чекина и наград.',
@@ -73,7 +74,8 @@
             done: 'Done', undo: 'Undo', redo: 'Redo', cancel: 'Cancel', pen: 'Marker', arrow: 'Arrow', cover: 'Redact',
             thickness: 'Thickness', colorRed: 'Red', colorGreen: 'Green', colorBlue: 'Blue', colorWhite: 'White', colorBlack: 'Black',
             editorTitle: 'Annotate screenshot', editorFailed: 'Could not save the annotation. Please retry.',
-            annotate: 'Highlight the issue. Use the black marker to hide personal information.',
+            annotate: 'Highlight with a marker or arrow. Use Redact to cover personal information.',
+            coverHint: 'Drag a rectangle: an opaque mask will completely cover its contents.',
             catchup: 'Make-up report for day {day}',
             catchupDaily: 'This report closes one request and confirms today. No screenshot $BUST bonus is awarded.',
             catchupBuffer: 'This report closes one request only. Buffer has no daily check-in or rewards.',
@@ -240,14 +242,15 @@
         s.note = el('unified-report-note').value;
         var length = Array.from(s.note.trim().replace(/\s+/g, ' ')).length;
         var files = s.files || [];
-        var images = files.filter(function (file) { return file.type.indexOf('image/') === 0; }).length;
+        var validFiles = files.filter(function (file, index) { return (s.invalidFingerprints || []).indexOf((s.fingerprints || [])[index]) < 0; });
+        var images = validFiles.filter(function (file) { return file.type.indexOf('image/') === 0; }).length;
         var rawLength = Array.from(s.note.trim()).length;
         var limit = s.reportKind === 'screenshot' ? 500 : 1000;
         var validText = s.reportKind === 'screenshot' ? rawLength <= limit : length >= 24 && rawLength <= limit && /[\p{L}\p{N}]/u.test(s.note);
         // A standard report and any catch-up need media. Bug/idea on a regular day can be text-only.
         var needsMedia = s.reportKind === 'screenshot' || c.control || c.firstMandatory || c.buffer || !!c.target;
         var submit = el('checkin-proof-submit');
-        submit.disabled = s.checkingFiles || !validText || (needsMedia && !files.length);
+        submit.disabled = s.checkingFiles || !validText || (needsMedia && !files.length) || _checkinProofHasInvalidFiles();
         el('t-checkinProofSubmit').textContent = t(c.buffer ? 'catchupSend' : (s.reportKind === 'bug' ? 'sendBug' : s.reportKind === 'idea' ? 'sendIdea' : 'send'));
         var counter = el('unified-report-count');
         counter.textContent = rawLength > limit ? t('excess', {count: rawLength - limit})
@@ -255,7 +258,7 @@
         counter.classList.toggle('is-required', s.reportKind !== 'screenshot' && length < 24 || rawLength > limit);
         var test = typeof myTests !== 'undefined' && myTests.find(function (row) { return Number(row.id) === Number(s.appId); });
         var seriesEligible = !c.buffer && !(test && typeof isTestedToday === 'function' && isTestedToday(test));
-        var videos = files.filter(function (file) { return file.type.indexOf('video/') === 0; }).length;
+        var videos = validFiles.filter(function (file) { return file.type.indexOf('video/') === 0; }).length;
         renderReportInfo(images, videos, seriesEligible);
         var singleHint = el('unified-report-single-hint');
         singleHint.hidden = images !== 1 || videos > 0;
@@ -358,13 +361,13 @@
             redo: '<path d="m15 5 6 5-6 5m6-5H11a7 7 0 0 0-7 7v2"/>',
             pen: '<path d="m5 16 11-11 3 3L8 19H5v-3Zm9-9 3 3M4 22h16"/>',
             arrow: '<path d="M5 19 19 5M8 5h11v11"/>',
-            cover: '<rect x="4" y="5" width="16" height="14" rx="3" fill="currentColor" stroke="none"/>'
+            cover: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/><path d="M5 5h7v7H5zM12 12h7v7h-7z" fill="currentColor" stroke="none"/>'
         };
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
     }
     window.openReportImageEditor = function (index) {
         var s = state(), file = s.files[index];
-        if (!file || file.type.indexOf('image/') !== 0 || s.checkingFiles) return;
+        if (!file || file.type.indexOf('image/') !== 0 || s.checkingFiles || (s.invalidFingerprints || []).indexOf(s.fingerprints[index]) >= 0) return;
         window.closeReportImageEditor();
         var request = editorRequest, generation = s.selectionGeneration, returnFocus = document.activeElement;
         var image = new Image(), url = URL.createObjectURL(file);
@@ -381,7 +384,7 @@
             overlay.setAttribute('aria-label', t('editorTitle'));
             overlay.innerHTML = '<div class="report-editor__tools"><button type="button" data-action="cancel"></button><div class="report-editor__history"><button type="button" data-action="undo"></button><button type="button" data-action="redo"></button></div><button type="button" data-action="done"></button></div>'
                 + '<div class="report-editor__stage"><canvas></canvas></div>'
-                + '<div class="report-editor__dock"><div class="report-editor__modes"></div><div class="report-editor__settings"><div class="report-editor__palette" role="group"></div>'
+                + '<div class="report-editor__dock"><div class="report-editor__modes"></div><p class="report-editor__hint" aria-live="polite"></p><div class="report-editor__settings"><div class="report-editor__palette" role="group"></div>'
                 + '<label class="report-editor__width"><span class="unified-report-sr"></span><input type="range" min="2" max="14" step="1" value="5"><output>5</output></label></div></div>';
             var canvas = overlay.querySelector('canvas');
             var scale = Math.min(1, 2560 / Math.max(image.naturalWidth, image.naturalHeight));
@@ -431,6 +434,8 @@
                 });
                 width.disabled = locked || current.tool === 'cover';
                 widthOutput.textContent = current.tool === 'cover' ? '24' : String(current.width);
+                overlay.querySelector('.report-editor__settings').hidden = current.tool === 'cover';
+                overlay.querySelector('.report-editor__hint').textContent = t(current.tool === 'cover' ? 'coverHint' : 'annotate');
                 overlay.querySelector('[data-action="done"]').disabled = locked;
             }
             function redraw() {
@@ -439,8 +444,27 @@
                 var ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                if (!current.maskPattern) {
+                    // The pattern contains no source pixels: unlike blur or
+                    // pixelation, small text cannot remain legible underneath.
+                    var tile = document.createElement('canvas');
+                    var cell = Math.max(4, Math.round(canvas.width * 6 / 360));
+                    tile.width = tile.height = cell * 2;
+                    var tileCtx = tile.getContext('2d');
+                    tileCtx.fillStyle = '#282e38'; tileCtx.fillRect(0, 0, tile.width, tile.height);
+                    tileCtx.fillStyle = '#4b5563'; tileCtx.fillRect(0, 0, cell, cell); tileCtx.fillRect(cell, cell, cell, cell);
+                    current.maskPattern = ctx.createPattern(tile, 'repeat');
+                }
                 current.steps.forEach(function (stroke) {
                     var points = stroke.points, first = points[0], last = points[points.length - 1];
+                    if (stroke.tool === 'cover') {
+                        var minimum = Math.max(1, canvas.width * (points.length === 1 ? 24 : 8) / 360);
+                        ctx.fillStyle = current.maskPattern;
+                        ctx.fillRect(Math.floor(Math.min(first.x, last.x)), Math.floor(Math.min(first.y, last.y)),
+                            Math.max(minimum, Math.ceil(Math.max(first.x, last.x)) - Math.floor(Math.min(first.x, last.x))),
+                            Math.max(minimum, Math.ceil(Math.max(first.y, last.y)) - Math.floor(Math.min(first.y, last.y))));
+                        return;
+                    }
                     ctx.strokeStyle = stroke.color; ctx.fillStyle = stroke.color;
                     ctx.lineWidth = stroke.width * canvas.width / 360;
                     ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath();
@@ -474,7 +498,7 @@
             };
             canvas.onpointermove = function (event) {
                 if (editor !== current || !current.active || !event.isPrimary) return;
-                if (current.active.tool === 'arrow') current.active.points[1] = point(event);
+                if (current.active.tool === 'arrow' || current.active.tool === 'cover') current.active.points[1] = point(event);
                 else current.active.points.push(point(event));
                 scheduleDraw();
             };
