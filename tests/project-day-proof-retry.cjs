@@ -25,7 +25,7 @@ context._getCheckinOpenToken = () => 'open-token';
 context.renderTests = () => {};
 context.loadTasks = () => Promise.resolve();
 context.loadProjects = () => Promise.resolve();
-const job = { appId: 1193, progressId: 13008, idempotencyKey: '508fdf3e-12fa-4ff7-8622-228734a408e3', files: [{ name: 'one.png' }], submissionMode: 'standard' };
+const job = { appId: 1193, progressId: 13008, idempotencyKey: '508fdf3e-12fa-4ff7-8622-228734a408e3', files: [{ name: 'one.png', type: 'image/png' }], submissionMode: 'standard' };
 const accepted = { status: 'success', proof: { state: 'attached', media_count: 1 }, checkin: { last_check_date: '2026-10-12', checkins_count: 1 } };
 const response = (status, result) => ({ ok: status < 400, status, json: async () => result });
 function reset() {

@@ -2479,7 +2479,7 @@ function getScreenshotBoostOffer(test, testingDay) {
     // A make-up control proof always owns the first eligible screenshot of the day.
     // The database also records a zero-value day claim, so a retry cannot bypass it.
     var catchups = Array.isArray(test.control_proof_catchups) ? test.control_proof_catchups : [];
-    if (catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
+    if ([1,4,7,10,14].indexOf(day) < 0 && catchups.some(function(item) { return Number(item && item.missed_testing_day || 0) > 0; })) return null;
 
     var isControlDay = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day,test);
     // The first successful check-in always carries the mandatory first-launch
@@ -2666,32 +2666,35 @@ function formatCheckinDeveloperAcceptedLabel(count, rate) {
     return String(n);
 }
 
-function collapseCheckinDeveloperAccordion() {
-    var root = document.getElementById('checkin-options-developer');
-    var toggle = document.getElementById('checkin-options-developer-toggle');
+function collapseCheckinDeveloperAccordion(prefix) {
+    prefix = prefix || 'checkin-options-developer';
+    var root = document.getElementById(prefix);
+    var toggle = document.getElementById(prefix + '-toggle');
     if (root) root.classList.remove('is-open');
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
 }
 
-function toggleCheckinDeveloperAccordion(event) {
+function toggleCheckinDeveloperAccordion(event, prefix) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    var root = document.getElementById('checkin-options-developer');
-    var toggle = document.getElementById('checkin-options-developer-toggle');
+    prefix = prefix || 'checkin-options-developer';
+    var root = document.getElementById(prefix);
+    var toggle = document.getElementById(prefix + '-toggle');
     if (!root) return;
     var open = !root.classList.contains('is-open');
     root.classList.toggle('is-open', open);
     if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
-function syncCheckinDeveloperAccordion(appId, fallbackUsername) {
-    var root = document.getElementById('checkin-options-developer');
-    var summary = document.getElementById('checkin-options-developer-summary');
-    var body = document.getElementById('checkin-options-developer-body');
-    var toggle = document.getElementById('checkin-options-developer-toggle');
-    collapseCheckinDeveloperAccordion();
+function syncCheckinDeveloperAccordion(appId, fallbackUsername, prefix) {
+    prefix = prefix || 'checkin-options-developer';
+    var root = document.getElementById(prefix);
+    var summary = document.getElementById(prefix + '-summary');
+    var body = document.getElementById(prefix + '-body');
+    var toggle = document.getElementById(prefix + '-toggle');
+    collapseCheckinDeveloperAccordion(prefix);
     var test = typeof window.getMyTestById === 'function'
         ? window.getMyTestById(appId)
         : ((Array.isArray(myTests) ? myTests : []).find(function(item) {

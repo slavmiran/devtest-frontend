@@ -8,6 +8,8 @@ var _checkinProofUploadState = {
     files: [],
     previewUrls: [],
     fingerprints: [],
+    invalidFingerprints: [],
+    invalidFileReason: '',
     checkingFiles: false,
     selectionGeneration: 0,
     idempotencyKey: '',
@@ -17,6 +19,38 @@ var _checkinProofUploadState = {
 var _checkinProofPendingAppIds = {};
 var _checkinProofUploadQueue = [];
 var _checkinProofActiveJobs = 0;
+// File objects stay only in this open tab, never in persistent web storage.
+var _checkinProofRetryDrafts = new Map();
+
+function _proofDraftKey(progressId, mode) {
+    var actor = typeof userId === 'undefined' ? '' : String(userId);
+    var test = typeof myTests !== 'undefined' && Array.isArray(myTests)
+        ? myTests.find(function(item) { return Number(item.progress_id) === Number(progressId); }) : null;
+    return actor + ':' + _checkinProofSessionKey(progressId) + ':' + (mode || 'standard')
+        + ':' + Number(test && test.run_iteration || 1);
+}
+
+function restoreCheckinProofRetryDraft() {
+    var state = _checkinProofUploadState;
+    var key = _proofDraftKey(state.progressId, state.submissionMode);
+    var draft = _checkinProofRetryDrafts.get(key);
+    if (!draft || draft.appId !== state.appId || draft.catchupRequested !== state.catchupRequested) return false;
+    state.files = draft.files.slice();
+    state.idempotencyKey = draft.idempotencyKey;
+    state.fingerprints = draft.fingerprints ? draft.fingerprints.slice() : state.files.map(_checkinProofMetadataFingerprint);
+    state.invalidFingerprints = (draft.invalidFingerprints || []).slice();
+    state.invalidFileReason = draft.invalidFileReason || '';
+    state.reportKind = draft.reportKind || 'screenshot';
+    state.note = draft.note || '';
+    var restoredNote = document.getElementById('unified-report-note');
+    if (restoredNote) restoredNote.value = state.note;
+    state.retrySignature = JSON.stringify([state.reportKind, state.note, state.fingerprints]);
+    state.previewUrls = state.files.map(function(file) { return URL.createObjectURL(file); });
+    _renderCheckinProofPreviews();
+    _syncCheckinProofControls();
+    _setCheckinProofAlert(window.t(_checkinProofHasInvalidFiles() ? 'checkinProofUsedFilesHint' : 'checkinProofDraftRestored', {}, lang));
+    return true;
+}
 
 function isScreenshotProofUploadEnabled() {
     return !!(window.App && window.App.screenshotProofUploadEnabled === true);
@@ -199,6 +233,11 @@ function _renderCheckinProofProgress(count) {
 }
 
 function _updateCheckinProofFileStatus() {
+    if (typeof syncUnifiedReport === 'function' && _checkinProofUploadState.reportContext) {
+        _setCheckinProofStatus('', '');
+        syncUnifiedReport();
+        return;
+    }
     var count = _checkinProofUploadState.files.length;
     if (count <= 0) {
         _setCheckinProofStatus('', '');
@@ -229,8 +268,37 @@ function _renderCheckinProofPreviews() {
     _checkinProofUploadState.previewUrls.forEach(function(url, index) {
         var item = document.createElement('div');
         item.className = 'checkin-proof-preview-item';
-        var image = document.createElement('img');
+        var file = _checkinProofUploadState.files[index];
+        var invalid = (_checkinProofUploadState.invalidFingerprints || []).indexOf(_checkinProofUploadState.fingerprints[index]) >= 0;
+        if (invalid) {
+            item.classList.add('is-invalid');
+            item.setAttribute('aria-invalid', 'true');
+            var label = document.createElement('span');
+            label.className = 'checkin-proof-preview-error';
+            label.textContent = window.t(_checkinProofUploadState.invalidFileReason === 'duplicate_screenshot_selected'
+                ? 'checkinProofRepeatedFile' : 'checkinProofAlreadyUsed', {}, lang);
+            item.title = label.textContent;
+            item.appendChild(label);
+        }
+        var isVideo = file && file.type.indexOf('video/') === 0;
+        var image = document.createElement(isVideo ? 'video' : 'img');
         image.src = url;
+        if (isVideo) {
+            image.preload = 'metadata'; image.muted = true; image.playsInline = true;
+            var duration = document.createElement('span');
+            duration.className = 'report-video-duration'; duration.textContent = '▶';
+            image.onloadedmetadata = function() {
+                var seconds = Number(image.duration || 0);
+                duration.textContent = '▶ ' + Math.floor(seconds / 60) + ':' + String(Math.floor(seconds % 60)).padStart(2, '0');
+            };
+            item.appendChild(duration);
+        } else if (!invalid && typeof openReportImageEditor === 'function') {
+            var edit = document.createElement('button'); edit.type = 'button';
+            edit.className = 'checkin-proof-preview-edit'; edit.textContent = '✎';
+            edit.setAttribute('aria-label', reportCopy('edit'));
+            edit.onclick = function() { openReportImageEditor(index); };
+            item.appendChild(edit);
+        }
         image.alt = window.t('checkinProofPreviewAlt', {}, lang);
         var remove = document.createElement('button');
         remove.type = 'button';
@@ -259,9 +327,14 @@ function _renderCheckinProofPreviews() {
     if (picker) picker.hidden = _checkinProofUploadState.files.length > 0;
 }
 
+function _checkinProofHasInvalidFiles() {
+    var invalid = _checkinProofUploadState.invalidFingerprints || [];
+    return (_checkinProofUploadState.fingerprints || []).some(function(value) { return invalid.indexOf(value) >= 0; });
+}
+
 function _syncCheckinProofControls() {
     var submit = document.getElementById('checkin-proof-submit');
-    if (submit) submit.disabled = _checkinProofUploadState.files.length < 1 || _checkinProofUploadState.checkingFiles;
+    if (submit) submit.disabled = _checkinProofUploadState.files.length < 1 || _checkinProofUploadState.checkingFiles || _checkinProofHasInvalidFiles();
     var picker = document.getElementById('checkin-proof-picker');
     if (picker) picker.disabled = _checkinProofUploadState.checkingFiles;
     document.querySelectorAll('.checkin-proof-preview-add').forEach(function(addButton) {
@@ -269,12 +342,21 @@ function _syncCheckinProofControls() {
     });
     var label = document.getElementById('t-checkinProofSubmit');
     if (label) label.textContent = window.t('checkinProofSubmit', {}, lang);
+    if (typeof syncUnifiedReport === 'function') syncUnifiedReport();
 }
 
 function _resetCheckinProofSelection() {
     _revokeCheckinProofPreviews();
     _checkinProofUploadState.files = [];
     _checkinProofUploadState.fingerprints = [];
+    _checkinProofUploadState.invalidFingerprints = [];
+    _checkinProofUploadState.invalidFileReason = '';
+    _checkinProofUploadState.reportKind = 'screenshot';
+    _checkinProofUploadState.note = '';
+    _checkinProofUploadState.reportContext = null;
+    _checkinProofUploadState.retrySignature = null;
+    var noteInput = document.getElementById('unified-report-note');
+    if (noteInput) noteInput.value = '';
     _checkinProofUploadState.checkingFiles = false;
     _checkinProofUploadState.selectionGeneration += 1;
     var input = document.getElementById('checkin-proof-file-input');
@@ -333,6 +415,9 @@ function _checkinProofMetadataFingerprint(file) {
 }
 
 async function _checkinProofFileFingerprint(file) {
+    // Avoid allocating a 50MB ArrayBuffer in a small Android WebView. The
+    // server streams and hashes all video bytes authoritatively before upload.
+    if (file && file.type.indexOf('video/') === 0 && file.size > 5 * 1024 * 1024) return _checkinProofMetadataFingerprint(file);
     if (
         window.crypto && window.crypto.subtle &&
         typeof window.crypto.subtle.digest === 'function' &&
@@ -357,40 +442,25 @@ async function handleCheckinProofFileSelected(event) {
     }
     var selected = Array.from(event && event.target && event.target.files || []);
     if (!selected.length) return;
-    if (_checkinProofUploadState.files.length + selected.length > CHECKIN_PROOF_MAX_FILES) {
-        var warning = window.t('checkinProofTooMany', { max: CHECKIN_PROOF_MAX_FILES }, lang);
-        _setCheckinProofAlert(warning);
-        if (typeof showToast === 'function') showToast(warning);
-        if (event.target) event.target.value = '';
-        return;
-    }
-    var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    for (var i = 0; i < selected.length; i += 1) {
-        if (Number(selected[i].size || 0) <= 0 || allowedTypes.indexOf(String(selected[i].type || '').toLowerCase()) === -1) {
-            var typeMsg = window.t('invalid_image_type', {}, lang);
-            _setCheckinProofAlert(typeMsg);
-            if (typeof showToast === 'function') showToast(typeMsg);
-            if (event.target) event.target.value = '';
-            return;
-        }
-        if (Number(selected[i].size || 0) > 5 * 1024 * 1024) {
-            var sizeMsg = window.t('file_too_large', {}, lang);
-            _setCheckinProofAlert(sizeMsg);
-            if (typeof showToast === 'function') showToast(sizeMsg);
-            if (event.target) event.target.value = '';
-            return;
-        }
-    }
+    var allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
     _checkinProofUploadState.checkingFiles = true;
     var selectionGeneration = _checkinProofUploadState.selectionGeneration;
     _setCheckinProofAlert('');
     _syncCheckinProofControls();
     var known = new Set(_checkinProofUploadState.fingerprints || []);
     var duplicateCount = 0;
+    var excessCount = 0, invalidCount = 0, oversizedCount = 0, addedCount = 0;
     try {
         // Sequential hashing keeps peak memory small on budget Android devices.
         for (var selectedIndex = 0; selectedIndex < selected.length; selectedIndex += 1) {
+            if (_checkinProofUploadState.files.length >= CHECKIN_PROOF_MAX_FILES) {
+                excessCount = selected.length - selectedIndex;
+                break;
+            }
             var selectedFile = selected[selectedIndex];
+            var type = String(selectedFile.type || '').toLowerCase();
+            if (Number(selectedFile.size || 0) <= 0 || allowedTypes.indexOf(type) === -1) { invalidCount++; continue; }
+            if (Number(selectedFile.size || 0) > (type.indexOf('video/') === 0 ? 50 : 5) * 1024 * 1024) { oversizedCount++; continue; }
             var fingerprint = await _checkinProofFileFingerprint(selectedFile);
             if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
             if (known.has(fingerprint)) {
@@ -401,6 +471,7 @@ async function handleCheckinProofFileSelected(event) {
             _checkinProofUploadState.files.push(selectedFile);
             _checkinProofUploadState.fingerprints.push(fingerprint);
             _checkinProofUploadState.previewUrls.push(URL.createObjectURL(selectedFile));
+            addedCount++;
         }
     } finally {
         if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
@@ -408,12 +479,15 @@ async function handleCheckinProofFileSelected(event) {
         if (event.target) event.target.value = '';
         _renderCheckinProofPreviews();
         _updateCheckinProofFileStatus();
-        if (duplicateCount > 0) {
-            var dupMsg = window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang);
-            _setCheckinProofAlert(dupMsg);
-            if (typeof showToast === 'function') {
-                showToast(dupMsg, 5000);
-            }
+        var warnings = [];
+        if (excessCount) warnings.push(window.t('checkinProofExtraSkipped', { added: addedCount, count: excessCount, max: CHECKIN_PROOF_MAX_FILES }, lang));
+        if (duplicateCount) warnings.push(window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang));
+        if (invalidCount) warnings.push(window.t('invalid_image_type', {}, lang));
+        if (oversizedCount) warnings.push(typeof reportCopy === 'function' ? reportCopy('videoLimit') : window.t('file_too_large', {}, lang));
+        if (_checkinProofHasInvalidFiles()) warnings.push(window.t('checkinProofUsedFilesHint', {}, lang));
+        if (warnings.length) {
+            _setCheckinProofAlert(warnings.join(' '));
+            if ((excessCount || invalidCount || oversizedCount) && typeof showToast === 'function') showToast(warnings.join(' '));
         }
         _syncCheckinProofControls();
     }
@@ -428,13 +502,15 @@ function removeCheckinProofFile(index) {
     _checkinProofUploadState.files.splice(safeIndex, 1);
     _checkinProofUploadState.previewUrls.splice(safeIndex, 1);
     _checkinProofUploadState.fingerprints.splice(safeIndex, 1);
-    _setCheckinProofAlert('');
+    _checkinProofRetryDrafts.delete(_proofDraftKey(_checkinProofUploadState.progressId, _checkinProofUploadState.submissionMode));
+    _setCheckinProofAlert(_checkinProofHasInvalidFiles() ? window.t('checkinProofUsedFilesHint', {}, lang) : '');
     _renderCheckinProofPreviews();
     _updateCheckinProofFileStatus();
     _syncCheckinProofControls();
 }
 
 function _checkinProofErrorMessage(result) {
+    if (typeof reportErrorCopy === 'function' && result && reportErrorCopy(result.code)) return reportErrorCopy(result.code);
     var code = result && (result.code || result.detail);
     if (code === 'network_error') return window.t('networkError', {}, lang);
     if (code === 'checkin_already_proved') return window.t('checkinProofAlreadyReceived', {}, lang);
@@ -516,15 +592,29 @@ function _applyBufferCatchupProofResult(appId, result) {
     }, 250);
 }
 
-async function _postCheckinProofScreenshot(url, form) {
+async function _postCheckinProofScreenshot(url, form, onProgress) {
     // Replay the SAME UUID and files, once. The endpoint resolves the existing
     // proof first and uses the same-day check-in winner to prevent double credit.
     for (var attempt = 0; attempt < 2; attempt += 1) {
         var response;
         var result;
         try {
-            response = await fetch(url, { method: 'POST', body: form });
-            result = await response.json();
+            if (typeof XMLHttpRequest !== 'undefined' && typeof onProgress === 'function') {
+                var sent = await new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest(); xhr.open('POST', url); xhr.timeout = 15 * 60 * 1000;
+                    xhr.upload.onprogress = function(event) { if (event.lengthComputable) onProgress(Math.min(99, Math.round(event.loaded * 100 / event.total))); };
+                    xhr.onerror = xhr.ontimeout = function() { reject(new Error('network_error')); };
+                    xhr.onload = function() {
+                        try { resolve({ response: { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, headers: { get: function(name) { return xhr.getResponseHeader(name); } } }, result: JSON.parse(xhr.responseText) }); }
+                        catch (e) { reject(e); }
+                    };
+                    xhr.send(form);
+                });
+                response = sent.response; result = sent.result;
+            } else {
+                response = await fetch(url, { method: 'POST', body: form });
+                result = await response.json();
+            }
         } catch (error) {
             if (attempt === 1) throw error;
             await new Promise(function(resolve) { setTimeout(resolve, 1000); });
@@ -547,12 +637,13 @@ async function _postCheckinProofScreenshot(url, form) {
             await new Promise(function(resolve) { setTimeout(resolve, retryDelay); });
             continue;
         }
-        return { response: response, result: result };
+        return { response: response, result: result, retryable: retryable };
     }
 }
 
 async function _runCheckinProofUploadJob(job) {
     var confirmedResult = null;
+    var draftKey = job.draftKey || _proofDraftKey(job.progressId, job.submissionMode);
     try {
         var openToken = typeof _getCheckinOpenToken === 'function' ? _getCheckinOpenToken(job.appId) : '';
         if (!openToken && typeof _requestCheckinOpenToken === 'function') {
@@ -562,19 +653,32 @@ async function _runCheckinProofUploadJob(job) {
             } catch (error) {}
         }
         var form = new FormData();
-        form.append('init_data', typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : String((tg && tg.initData) || ''));
+        form.append('init_data', job.initData || (typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : String((tg && tg.initData) || '')));
         form.append('open_token', String(openToken || ''));
         form.append('idempotency_key', job.idempotencyKey);
+        form.append('report_kind', job.reportKind || 'screenshot');
+        form.append('report_text', job.note || '');
+        form.append('expected_day', String(job.expectedDay || 0));
+        form.append('expected_run', String(job.expectedRun || 1));
+        form.append('expected_start', job.expectedStart || '');
+        form.append('catchup_request_id', String(job.catchupRequestId || 0));
         if (job.submissionMode === 'buffer_catchup') form.append('catchup_only', 'true');
         job.files.forEach(function(file, index) {
             form.append('files', file, file.name || ('checkin-proof-' + (index + 1)));
         });
-        var sent = await _postCheckinProofScreenshot(API_BASE + '/testing/' + job.progressId + '/checkin-proof/screenshot', form);
+        var sent = await _postCheckinProofScreenshot(API_BASE + '/testing/' + job.progressId + '/checkin-proof/report', form, function(percent) {
+            var card = document.getElementById('test-card-' + job.appId);
+            var label = card && card.querySelector('.screenshot-proof-upload-pending__status > span:last-child');
+            if (!label && card) label = card.querySelector('.test-screenshot-proof-upload-status');
+            if (label) label.textContent = reportCopy(percent >= 99 ? 'processing' : 'progress', { percent: percent });
+            job.uploadPercent = percent;
+        });
         var response = sent.response;
         var result = sent.result;
-        if (!response.ok || !result || result.status !== 'success' || !result.proof || result.proof.state !== 'attached') {
+        if (!response.ok || !result || result.status !== 'success' || !result.proof || (result.proof.state !== 'attached' && !result.report_only)) {
             var code = result && result.code;
             if (code === 'checkin_already_proved') {
+                _checkinProofRetryDrafts.delete(draftKey);
                 _clearCheckinProofKey(job.progressId);
                 _setCheckinProofBackgroundCard(job.appId, false);
                 if (typeof showToast === 'function') showToast(window.t('checkinProofAlreadyReceived', {}, lang));
@@ -582,14 +686,28 @@ async function _runCheckinProofUploadJob(job) {
                 return;
             }
             if (code === 'proof_source_conflict' || code === 'invalid_idempotency_key') _clearCheckinProofKey(job.progressId);
-            throw { isApiError: true, payload: result || { code: 'checkinProofUploadFailed' } };
+            if (['open_required', 'open_invalid', 'open_mismatch', 'open_expired', 'day_boundary_moved'].indexOf(code) !== -1
+                && typeof invalidateCheckinOpenToken === 'function') invalidateCheckinOpenToken(job.appId);
+            throw { isApiError: true, retryable: sent.retryable,
+                payload: result || { code: 'checkinProofUploadFailed' } };
         }
         confirmedResult = result;
+        _checkinProofRetryDrafts.delete(draftKey);
         _clearCheckinProofKey(job.progressId);
-        if (result.buffer_catchup_only === true || job.submissionMode === 'buffer_catchup') {
+        var currentTest = _checkinProofTest(job.appId);
+        if ((job.actor && String(userId) !== job.actor)
+            || (currentTest && (Number(currentTest.progress_id) !== Number(job.progressId)
+                || (job.expectedRun && Number(currentTest.run_iteration || 1) !== Number(job.expectedRun))))) {
+            delete _checkinProofPendingAppIds[Number(job.appId)];
+            return;
+        }
+        if (result.report_only) {
+            _setCheckinProofBackgroundCard(job.appId, false);
+            if (typeof showToast === 'function') showToast(typeof lang !== 'undefined' && lang === 'ru' ? 'Отчёт отправлен разработчику' : 'Report sent to the developer');
+        } else if (result.buffer_catchup_only === true || result.catchup_only === true || job.submissionMode === 'buffer_catchup') {
             _applyBufferCatchupProofResult(job.appId, result);
         } else {
-            _applyScreenshotCheckinResult(job.appId, result, job.files ? job.files.length : 1);
+            _applyScreenshotCheckinResult(job.appId, result, job.files ? job.files.filter(function(file) { return file.type.indexOf('image/') === 0; }).length : 0);
         }
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
@@ -599,7 +717,8 @@ async function _runCheckinProofUploadJob(job) {
             console.error('Screenshot proof saved; local UI update failed:', error);
             delete _checkinProofPendingAppIds[Number(job.appId || 0)];
             var savedTest = _checkinProofTest(job.appId);
-            if (savedTest && job.submissionMode !== 'buffer_catchup' && !confirmedResult.buffer_catchup_only) {
+            if (savedTest && job.submissionMode !== 'buffer_catchup' && !confirmedResult.buffer_catchup_only
+                && !confirmedResult.catchup_only && !confirmedResult.report_only) {
                 savedTest.status = 'done';
                 savedTest.last_check_date = (confirmedResult.checkin || {}).last_check_date || savedTest.last_check_date;
                 if (typeof rememberConfirmedTestCheckin === 'function') rememberConfirmedTestCheckin(savedTest);
@@ -609,6 +728,26 @@ async function _runCheckinProofUploadJob(job) {
             return;
         }
         var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
+        if (['duplicate_screenshot_in_run', 'duplicate_screenshot_selected'].indexOf(payload.code) >= 0) {
+            var indices = payload.details && payload.details.duplicate_indices;
+            // Older servers cannot identify an album member. Never mark good
+            // files as used on a guess; a one-file request is unambiguous.
+            if (!Array.isArray(indices) || !indices.length) indices = job.files.length === 1 ? [0] : [];
+            job.invalidFingerprints = indices.filter(function(index) {
+                return Number.isInteger(index) && index >= 0 && index < job.files.length;
+            }).map(function(index) { return (job.fingerprints || [])[index] || _checkinProofMetadataFingerprint(job.files[index]); });
+            job.invalidFileReason = payload.code;
+        }
+        var retryable = !(error && error.isApiError) || (error && error.retryable === true) || payload.code === 'proof_attach_incomplete'
+            || payload.code === 'network_error' || (payload.details && payload.details.retryable === true);
+        if ((retryable || ['duplicate_screenshot_in_run', 'duplicate_screenshot_selected', 'report_description_too_short', 'report_storage_unavailable', 'catchup_request_changed'].indexOf(payload.code) >= 0)
+            && draftKey === _proofDraftKey(job.progressId, job.submissionMode)) {
+            // Bounded memory even if many different projects fail offline.
+            if (_checkinProofRetryDrafts.size >= 5) _checkinProofRetryDrafts.delete(_checkinProofRetryDrafts.keys().next().value);
+            _checkinProofRetryDrafts.set(draftKey, job);
+        } else {
+            _checkinProofRetryDrafts.delete(draftKey);
+        }
         _setCheckinProofBackgroundCard(job.appId, false);
         if (typeof showToast === 'function') {
             showToast(_checkinProofErrorMessage(payload) + '\n' + window.t('checkinProofBackgroundRetry', {}, lang), 5000);
@@ -630,18 +769,38 @@ function _drainCheckinProofUploadQueue() {
 }
 
 function submitCheckinProofScreenshot() {
-    if (!_checkinProofUploadState.files.length) return;
+    if (typeof syncUnifiedReport === 'function') syncUnifiedReport();
+    var submitButton = document.getElementById('checkin-proof-submit');
+    if (submitButton && submitButton.disabled) return;
+    if (_checkinProofHasInvalidFiles()) return;
     var appId = Number(_checkinProofUploadState.appId || 0);
     var progressId = Number(_checkinProofUploadState.progressId || 0);
     if (appId <= 0 || progressId <= 0 || isScreenshotProofUploadPending(appId)) return;
+    var signature = JSON.stringify([_checkinProofUploadState.reportKind || 'screenshot', _checkinProofUploadState.note || '', _checkinProofUploadState.fingerprints]);
+    if (_checkinProofUploadState.retrySignature && signature !== _checkinProofUploadState.retrySignature) {
+        _checkinProofUploadState.idempotencyKey = _newCheckinProofUuid();
+    }
+    if (window.DeployStatus) Promise.resolve().then(function() {
+        return window.DeployStatus.refresh();
+    }).catch(function() {});
     _setCheckinProofBackgroundCard(appId, true);
     _checkinProofUploadQueue.push({
         appId: appId,
+        actor: String(userId),
+        initData: typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : String((tg && tg.initData) || ''),
         progressId: progressId,
         files: _checkinProofUploadState.files.slice(0, CHECKIN_PROOF_MAX_FILES),
+        fingerprints: _checkinProofUploadState.fingerprints.slice(0, CHECKIN_PROOF_MAX_FILES),
         idempotencyKey: _checkinProofUploadState.idempotencyKey,
         submissionMode: _checkinProofUploadState.submissionMode,
         catchupRequested: _checkinProofUploadState.catchupRequested,
+        reportKind: _checkinProofUploadState.reportKind || 'screenshot',
+        note: _checkinProofUploadState.note || '',
+        expectedDay: _checkinProofUploadState.expectedDay,
+        expectedRun: _checkinProofUploadState.expectedRun,
+        expectedStart: _checkinProofUploadState.expectedStart,
+        catchupRequestId: _checkinProofUploadState.catchupRequestId,
+        draftKey: _proofDraftKey(progressId, _checkinProofUploadState.submissionMode),
     });
     closeCheckinProofUploadModal();
     _drainCheckinProofUploadQueue();

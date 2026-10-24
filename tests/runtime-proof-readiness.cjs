@@ -58,11 +58,23 @@ async function main() {
     assert.equal(calls.fetch, 3); assert.equal(c.App.runtimeConfigStatus, 'error');
     assert.equal(calls.legacy + calls.dm + calls.upload, 0, 'failure must not fall back to DM/check-in');
     c._reportAppId = 42; c._reportOwnerUsername = 'owner';
-    c.document = {getElementById: () => ({value: 'draft report'})};
+    const classes = new Set();
+    const elements = {
+        'report-text': {value: 'draft report'},
+        'report-modal': {classList: {
+            toggle: (name, enabled) => enabled ? classes.add(name) : classes.delete(name),
+            add: name => classes.add(name),
+        }},
+        't-reportModalTitle': {}, 't-reportModalHint': {},
+    };
+    c.document = {getElementById: id => elements[id] || null, querySelector: () => null};
     await c.sendReport();
     assert.equal(c._reportAppId, 42, 'failed readiness must preserve the existing draft');
-    assert.equal(await c.openReportModal(43, 'other'), false);
-    assert.equal(c._reportAppId, 42, 'failed modal open must not replace existing form state');
+    const opening = c.openReportModal(42, 'owner');
+    assert(classes.has('active') && classes.has('is-proof-upload'), 'The internal report sheet opens synchronously while config refreshes');
+    assert.equal(elements['report-text'].value, 'draft report', 'Opening must not discard the draft');
+    assert.equal(calls.legacy + calls.dm + calls.upload, 0, 'Opening alone cannot dispatch a report or fall back to DM');
+    await opening;
     c.fetch = async () => ({ok: true, json: async () => payload(true)});
     await c.sendCheckpointScreenshotAndConfirm(42, 'owner');
     assert.equal(calls.upload, 1, 'next click must recover from failure');

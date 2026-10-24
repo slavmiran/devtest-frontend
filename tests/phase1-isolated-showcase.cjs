@@ -18,6 +18,7 @@ const section = fs.readFileSync(path.join(root, 'index.html'), 'utf8').match(/<d
             await page.evaluate(language => {
                 window.lang=language; window.currentLang=language; Object.assign(window.t, language==='ru'?I18NRU:I18NEN);
                 document.querySelectorAll('[data-i18n]').forEach(el => el.textContent=t(el.dataset.i18n, {}, lang));
+                window.myTests=[];
                 window.mutualSeeking=[]; window.mutualPrelaunch=[]; window.mutualIsolated=[]; window.mutualReturns=[];
                 window.marketCache=null; window.MARKET_CACHE_KEY='isolated-fixture'; window._marketInFlight={};
                 window._lastFetchTimes={}; window._marketLoadedOnce=false; window.API_BASE='/api'; window.userId=11;

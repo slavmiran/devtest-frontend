@@ -25,7 +25,7 @@ const root=path.resolve(__dirname,'..');
             document.getElementById('feed').innerHTML=renderFeedCard(item,'mutual-seeking');
         });
         assert.equal(await page.locator('#feed button[disabled]').count(),0);
-        assert.match(await page.locator('#feed button').innerText(),/Already in a mutual test/);
+        assert.match(await page.locator('#feed button').innerText(),/Your exchange/);
         assert.match(await page.locator('#feed button').getAttribute('onclick'),/openMutualExchangeDetails/);
         await page.evaluate(()=>{
             myTests=[];
@@ -34,7 +34,7 @@ const root=path.resolve(__dirname,'..');
             document.getElementById('feed').innerHTML=renderFeedCard(item,'mutual-seeking');
         });
         assert.equal(await page.locator('#feed button[disabled]').count(),0);
-        assert.match(await page.locator('#feed button').innerText(),/Exchange unavailable.*Details/);
+        assert.match(await page.locator('#feed button').innerText(),/Why unavailable\?/);
         await page.evaluate(()=>{
             myProjects.push({id:31,mode:'mutual',status:'active',testers:[],limit_mutual:12});
             document.getElementById('feed').innerHTML=renderFeedCard(item,'mutual-seeking');

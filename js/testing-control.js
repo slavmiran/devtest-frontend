@@ -741,11 +741,14 @@
                 (variant === 'medium' ? previewMediumCachePut : previewThumbnailCachePut)(proofId, Number(ticket.media_index), secureMediaUrl(ticket.url), Number(ticket.expires_at) * 1000);
             });
             var details = {
+                note: String(payload.note || ''),
+                media_items: payload.media_items || [],
                 image_count: Number(payload.image_count || count),
                 original_message_urls: payload.original_message_urls || [],
                 dimensions: Array.isArray(payload.dimensions) ? payload.dimensions : [],
             };
             state.albumDetails.set(Number(proofId), details);
+            if (Number(state.previewProofId) === Number(proofId)) renderReportMetadata(proofId);
             return details;
         })();
         state.albumTicketLoading.set(key, task);
@@ -958,6 +961,7 @@
     }
 
     async function hydrateAlbumThumbnail(proofId, mediaIndex) {
+        if (isReportVideo(proofId, mediaIndex)) return;
         var body = document.getElementById('checkin-proof-preview-body');
         var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
         var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
@@ -979,6 +983,7 @@
     }
 
     async function hydrateAlbumMedium(proofId, mediaIndex) {
+        if (isReportVideo(proofId, mediaIndex)) return;
         var body = document.getElementById('checkin-proof-preview-body');
         var album = body && body.querySelector('.checkin-proof-preview-album[data-proof-id="' + Number(proofId || 0) + '"]');
         var slide = album && album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex || 0) + '"]');
@@ -1008,6 +1013,7 @@
     }
 
     async function hydrateAlbumFull(proofId, mediaIndex) {
+        if (isReportVideo(proofId, mediaIndex)) return;
         var album = document.querySelector('#checkin-proof-preview-body .checkin-proof-preview-album');
         if (!album || Number(album.dataset.proofId) !== Number(proofId)) return;
         var slide = album.querySelector('.checkin-proof-preview-slide[data-media-index="' + Number(mediaIndex) + '"]');
@@ -1270,6 +1276,80 @@
         return m ? ('A' + m[1]) : String(rawAv).trim();
     }
 
+    function previewPerson(proofId) {
+        var fallback = state.previewFallback;
+        var matchedFallback = fallback && Number(fallback.proofId) === Number(proofId) ? fallback : null;
+        var galleryItem = findGalleryProof(proofId);
+        var galleryTester = galleryItem && galleryItem.tester;
+        var found = findProof(proofId);
+        var foundTester = found && found.item && found.item.tester;
+        var source = galleryTester || foundTester || null;
+        var person = {
+            fullName: String(source && (source.name || source.full_name) || '').trim(),
+            username: String(source && source.username || '').replace(/^@+/, '').trim(),
+            testerId: Number(source && (source.id || source.tester_id) || 0),
+        };
+        if (matchedFallback) {
+            if (!person.fullName) person.fullName = String(matchedFallback.fullName || '').trim();
+            if (!person.username) person.username = String(matchedFallback.username || '').replace(/^@+/, '').trim();
+            if (person.testerId <= 0) person.testerId = Number(matchedFallback.testerId || 0);
+        }
+        return person;
+    }
+
+    function previewIdentityHtml(person) {
+        person = person || {};
+        var fullName = String(person.fullName || '').trim();
+        var username = String(person.username || '').replace(/^@+/, '').trim();
+        var testerId = Number(person.testerId || 0);
+        if (!fullName && !username && testerId <= 0) return '';
+        var safeUser = username.replace(/\\/g, '\\\\').replace(/'/g, '\\\'');
+        var open = 'event.stopPropagation(); openPreviewTesterChat(\'' + safeUser + '\',' + testerId + ',event)';
+        var html = '<span class="checkin-proof-preview-identity">';
+        if (fullName) {
+            html += '<button type="button" class="checkin-proof-preview-name" onclick="' + open + '">' + escape(fullName) + '</button>';
+        }
+        if (username) {
+            html += '<button type="button" class="checkin-proof-preview-nick" onclick="' + open + '">@' + escape(username) + '</button>';
+        } else if (!fullName && testerId > 0) {
+            html += '<button type="button" class="checkin-proof-preview-name" onclick="' + open + '">' + escape(text('idLabel', 'ID {id}', { id: testerId })) + '</button>';
+        }
+        html += '</span>';
+        return html;
+    }
+
+    function paintPreviewHeading(proofId, subtitleExtra) {
+        var meta = previewMeta(proofId);
+        var title = document.getElementById('checkin-proof-preview-title');
+        var subtitle = document.getElementById('checkin-proof-preview-subtitle');
+        var identity = previewIdentityHtml(previewPerson(proofId));
+        if (title) {
+            if (identity) title.innerHTML = identity;
+            else title.textContent = meta.title || '';
+        }
+        if (subtitle) {
+            var line = meta.subtitle || '';
+            if (subtitleExtra) line = [line, subtitleExtra].filter(Boolean).join(' • ');
+            subtitle.textContent = line;
+        }
+    }
+
+    function openPreviewTesterChat(username, testerId, event) {
+        if (event && event.stopPropagation) event.stopPropagation();
+        var clean = String(username || '').replace(/^@+/, '').trim();
+        var safeId = Number(testerId || 0);
+        var url = clean
+            ? ('https://t.me/' + encodeURIComponent(clean))
+            : (safeId > 0 ? ('tg://user?id=' + safeId) : '');
+        if (!url) return;
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(url);
+        } else if (window.tg && typeof window.tg.openTelegramLink === 'function') {
+            window.tg.openTelegramLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    }
     function previewMeta(proofId) {
         var galleryItem = findGalleryProof(proofId);
         if (galleryItem) {
@@ -1280,7 +1360,7 @@
             var gTester = galleryTesterLabel(galleryItem);
             return {
                 title: gModel || gTester,
-                subtitle: [gDay, gAv, gTester].filter(Boolean).join(' · '),
+                subtitle: [gDay, gAv].filter(Boolean).join(' · '),
             };
         }
         var found = findProof(proofId);
@@ -1292,7 +1372,7 @@
             var fTester = testerLabel(found.item);
             return {
                 title: fModel || fTester,
-                subtitle: [fDay, fAv, fTester].filter(Boolean).join(' · '),
+                subtitle: [fDay, fAv].filter(Boolean).join(' · '),
             };
         }
         var fallback = state.previewFallback;
@@ -1409,7 +1489,32 @@
         return { appId: appId, testerId: testerId };
     }
 
+    function isReportVideo(proofId, index) {
+        var detail = state.albumDetails.get(Number(proofId)) || {};
+        var item = (detail.media_items || [])[Number(index || 0)] || {};
+        return String(item.mime_type || '').indexOf('video/') === 0;
+    }
+
+    function renderReportMetadata(proofId) {
+        var detail = state.albumDetails.get(Number(proofId)) || {};
+        var note = document.getElementById('checkin-proof-preview-note');
+        if (note) { note.textContent = detail.note ? '💬 ' + detail.note : ''; note.hidden = !detail.note; }
+        window.requestAnimationFrame(function () {
+            if (Number(state.previewProofId) !== Number(proofId)) return;
+            document.querySelectorAll('#checkin-proof-preview-body [data-media-index]').forEach(function (slide) {
+                var index = Number(slide.dataset.mediaIndex || 0);
+                if (!isReportVideo(proofId, index) || slide.querySelector('.proof-video-open')) return;
+                slide.classList.remove('is-error', 'is-loading');
+                var button = document.createElement('button'); button.type = 'button'; button.className = 'proof-video-open';
+                button.textContent = typeof lang !== 'undefined' && lang === 'ru' ? '▶ Видео · Смотреть в Telegram' : '▶ Video · Watch in Telegram';
+                button.onclick = function (event) { event.stopPropagation(); openCheckinProofOriginal(proofId, index, event); };
+                slide.appendChild(button);
+            });
+        });
+    }
+
     function renderProofOverview(body, proofId, count) {
+        renderReportMetadata(proofId);
         var tiles = [];
         for (var index = 0; index < count; index++) {
             var source = previewThumbnailCacheGet(proofId, index);
@@ -1487,6 +1592,8 @@
                 subtitle: String(options.subtitle || (prevFallback && prevFallback.proofId === id ? prevFallback.subtitle : '')),
                 appId: Number(options.appId || (prevFallback && prevFallback.proofId === id ? prevFallback.appId : 0)),
                 testerId: Number(options.testerId || (prevFallback && prevFallback.proofId === id ? prevFallback.testerId : 0)),
+                fullName: String(options.fullName || (prevFallback && prevFallback.proofId === id ? prevFallback.fullName : '') || ''),
+                username: String(options.username || (prevFallback && prevFallback.proofId === id ? prevFallback.username : '') || ''),
               }
             : (prevFallback && prevFallback.proofId === id ? prevFallback : null);
         if (fallback) state.previewFallback = fallback;
@@ -1507,11 +1614,7 @@
             state.previewMode = 'overview';
             body.classList.remove('is-proof-album');
             body.classList.add('is-proof-overview');
-            var meta = previewMeta(id);
-            var title = document.getElementById('checkin-proof-preview-title');
-            var subtitle = document.getElementById('checkin-proof-preview-subtitle');
-            if (title) title.textContent = meta.title;
-            if (subtitle) subtitle.textContent = meta.subtitle;
+            paintPreviewHeading(id);
             renderProofOverview(body, id, count);
             syncProofPreviewViewport();
             modal.classList.add('active');
@@ -1547,6 +1650,8 @@
                 subtitle: String(options.subtitle || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.subtitle : '')),
                 appId: Number(options.appId || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.appId : 0)),
                 testerId: Number(options.testerId || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.testerId : 0)),
+                fullName: String(options.fullName || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.fullName : '') || ''),
+                username: String(options.username || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.username : '') || ''),
             };
         } else if (prevFallback && Number(prevFallback.proofId) !== safeProofId) {
             state.previewFallback = null;
@@ -1565,7 +1670,6 @@
         state.previewMode = 'screenshot';
         body.classList.remove('is-proof-overview');
         body.classList.add('is-proof-album');
-        var meta = previewMeta(safeProofId);
         if (keepCurrentFrame) {
             setAlbumIndex(body.querySelector('.checkin-proof-preview-album'), safeProofId, safeIndex, imageCount, true);
         } else {
@@ -1577,10 +1681,8 @@
         if (imageCount > 1 && album && !album.querySelector('.checkin-proof-album-overview-link')) {
             album.insertAdjacentHTML('beforeend', '<button type="button" class="checkin-proof-album-overview-link" onclick="openCheckinProofOverview(' + safeProofId + ')">▦ ' + escape(text('pcProofOverviewTitle', 'All screenshots')) + '</button>');
         }
-        var title = document.getElementById('checkin-proof-preview-title');
-        var subtitle = document.getElementById('checkin-proof-preview-subtitle');
-        if (title) title.textContent = meta.title;
-        if (subtitle) subtitle.textContent = meta.subtitle;
+        paintPreviewHeading(safeProofId);
+        renderReportMetadata(safeProofId);
         syncProofPreviewViewport();
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
@@ -1647,24 +1749,22 @@
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
         var found = findProof(safeProofId);
-        var meta = previewMeta(safeProofId);
         state.previewProofId = safeProofId;
         state.previewMode = 'feedback';
+        var reportNote = document.getElementById('checkin-proof-preview-note');
+        if (reportNote) { reportNote.textContent = ''; reportNote.hidden = true; }
         body.classList.remove('is-proof-album');
         body.innerHTML = '<div class="checkin-proof-preview-loading"><span></span><span></span><span></span></div>';
-        var title = document.getElementById('checkin-proof-preview-title');
-        var subtitle = document.getElementById('checkin-proof-preview-subtitle');
-        if (title) title.textContent = meta.title;
-        if (subtitle) {
-            subtitle.textContent = [meta.subtitle, proofLabel(found && found.proof && found.proof.type)].filter(Boolean).join(' • ');
-        }
+        paintPreviewHeading(safeProofId, proofLabel(found && found.proof && found.proof.type));
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
         try {
             var details = await requestProofDetails(safeProofId);
             if (state.previewProofId !== safeProofId || !modal.classList.contains('active')) return;
             var mediaHtml = '';
-            if (details.feedback && details.feedback.has_media) {
+            if (details.media_items && details.media_items[0] && String(details.media_items[0].mime_type || '').indexOf('video/') === 0) {
+                mediaHtml = '<button type="button" class="btn btn-secondary" onclick="openCheckinProofOriginal(' + safeProofId + ',0,event)">▶ ' + escape(typeof lang !== 'undefined' && lang === 'ru' ? 'Смотреть в Telegram' : 'Watch in Telegram') + '</button>';
+            } else if (details.feedback && details.feedback.has_media) {
                 var source = await loadPreviewMediaSource(safeProofId);
                 if (state.previewProofId !== safeProofId || !modal.classList.contains('active')) return;
                 mediaHtml = '<img class="checkin-proof-preview-image checkin-proof-preview-image--feedback" alt="" src="' + escape(source) + '">';
@@ -1798,6 +1898,7 @@
     window.closeTestingControlProofMeta = closeTestingControlProofMeta;
     window.openCheckinProofPreview = openCheckinProofPreview;
     window.openCheckinProofOverview = openCheckinProofOverview;
+    window.openPreviewTesterChat = openPreviewTesterChat;
     window.stepCheckinProofPreview = stepCheckinProofPreview;
     window.openCheckinProofOriginal = openCheckinProofOriginal;
     window.openCurrentCheckinProofOriginal = openCurrentCheckinProofOriginal;

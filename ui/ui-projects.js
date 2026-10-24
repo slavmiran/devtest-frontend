@@ -309,6 +309,7 @@ function getProjectDailyProgressMeta(project) {
         statusChip: statusChip,
         isOverachieved: isOverachieved,
         peakColor: peakColor,
+        teamActivityColor: teamPercent >= 100 || todayDone >= 12 ? peakColor : 'rgba(197, 211, 233, 0.60)',
     };
 }
 
@@ -429,7 +430,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
     ].filter(Boolean).join(' ');
 
     const ringSvgHtml = `
-        <div class="${ringClasses}" onclick="openDailyProgressDetailsModal(${appId}, event);" role="button" tabindex="0" aria-label="Суточный план чекинов ${todayDone} из 12">
+        <div class="${ringClasses}" ${options && options.interactive === false ? 'role="img"' : `onclick="openDailyProgressDetailsModal(${appId}, event);" role="button" tabindex="0"`} aria-label="${window.t('dprRingAria', { done: todayDone }, typeof lang !== 'undefined' ? lang : 'ru')}">
             <svg viewBox="0 0 100 100" class="pc-ring__svg" aria-hidden="true">
                 <defs>
                     <filter id="${glowId}" x="-50%" y="-50%" width="200%" height="200%">
@@ -447,7 +448,7 @@ function buildProjectDailyProgressRingHtml(project, options) {
                 ${pinHtml}
             </svg>
             <div class="pc-ring__center">
-                <span class="pc-ring__count">${todayDone}&nbsp;/&nbsp;12</span>
+                <span class="pc-ring__count"><span class="pc-ring__done"${options && options.compactLabel ? ` style="color: ${meta.teamActivityColor};"` : ''}>${todayDone}</span>&nbsp;/&nbsp;12</span>
                 <span class="pc-ring__label">${compactLabel}</span>
             </div>
         </div>
@@ -2281,10 +2282,7 @@ function renderProjects(force) {
         const remainingRecruitmentSlots = Math.max(0, testerTargetCount - currentRegularTestersCount);
         const isFullActivity = Number(dailyMeta.teamPercent || 0) >= 100;
         const activityLightning = isFullActivity ? '<span aria-hidden="true">⚡ </span>' : '';
-        const peakColor = dailyMeta.peakColor || (typeof getDailyActivityProgressColor === 'function' ? getDailyActivityProgressColor(dailyMeta.todayDone) : '#30d158');
-        const valueStyle = (isFullActivity || Number(dailyMeta.todayDone || 0) >= 12)
-            ? 'color: ' + peakColor + '; font-weight: 700;'
-            : '';
+        const valueStyle = 'color: ' + dailyMeta.teamActivityColor + '; font-weight: 700;';
         const dailyActivityHtml = '<span class="pc-metric-footer__line pc-daily-activity-line' + (isFullActivity ? ' is-complete' : '') + '">' +
             activityLightning +
             metricFooterPairHtml(
@@ -6253,7 +6251,18 @@ function closeEditModal(event) {
         return;
     }
     document.getElementById('edit-project-modal').classList.remove('active');
+    // The same controls are reused by the next project's editor after a successful restart.
+    var saveBtn = document.getElementById('t-editSave');
+    if (typeof applyActionButtonProcessing === 'function') {
+        applyActionButtonProcessing(saveBtn, false);
+    } else if (saveBtn) {
+        saveBtn.disabled = false;
+    }
+    var cancelBtn = document.getElementById('t-editCancel');
+    if (cancelBtn) cancelBtn.disabled = false;
     setTimeout(() => {
+        // A new editor may already be open while the previous close animation ends.
+        if (document.getElementById('edit-project-modal').classList.contains('active')) return;
         projectToEdit = null;
         _editModalSnapshot = null;
         _editSaveAndCloseRequested = false;
@@ -8179,10 +8188,10 @@ function openDailyProgressDetailsModal(projectId, event) {
     const uiLang = typeof lang !== 'undefined' ? lang : 'ru';
     const tr = (k, p, def) => (typeof window.t === 'function' ? window.t(k, p || {}, uiLang) : (def || k));
 
-    titleEl.textContent = tr('dprModalTitle', {}, 'Суточный план и рекомендации');
+    titleEl.textContent = tr('dprModalTitle', {}, 'Активность и рекомендации');
 
     const modalRingHtml = typeof buildProjectDailyProgressRingHtml === 'function'
-        ? buildProjectDailyProgressRingHtml(project)
+        ? buildProjectDailyProgressRingHtml(project, { interactive: false })
         : '';
 
     const recommended = Math.max(0, 20 - totalTesters);
@@ -8211,9 +8220,11 @@ function openDailyProgressDetailsModal(projectId, event) {
 
     bodyEl.innerHTML = `
             <div class="dp-sheet__card">
-                <div class="dp-sheet__ring-hero">
+                <section id="daily-activity-history" class="daily-activity-history">
+                  <div class="dp-sheet__ring-hero">
                     ${modalRingHtml}
-                </div>
+                  </div>
+                </section>
                 ${recommendHtml}
                 ${hintsHtml}
             </div>
@@ -8233,6 +8244,7 @@ function openDailyProgressDetailsModal(projectId, event) {
     }
 
     modal.classList.add('active');
+    if (window.ProjectActivityHistory) window.ProjectActivityHistory.open(project, document.getElementById('daily-activity-history'));
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
@@ -8242,6 +8254,7 @@ function closeDailyProgressDetailsModal(event) {
     }
     const modal = document.getElementById('daily-progress-modal');
     if (modal) modal.classList.remove('active');
+    if (window.ProjectActivityHistory) window.ProjectActivityHistory.close();
     if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
 }
 
@@ -8380,6 +8393,7 @@ var _gtArchivedOrdersCache = null;
 var _gtArchivedOrdersCacheAt = 0;
 var _gtArchivedOrdersInFlight = null;
 var _gtStatusModalOrder = null;
+var PRIVATE_TEST_DURATION_DAYS = 15;
 
 function invalidateGuaranteedOrdersCache() {
     _gtActiveOrdersCache = null;
@@ -8390,7 +8404,9 @@ function invalidateGuaranteedOrdersCache() {
 window.invalidateGuaranteedOrdersCache = invalidateGuaranteedOrdersCache;
 
 function formatGuaranteedOrderDate(value) {
-    var timestamp = Date.parse(String(value || ''));
+    var raw = String(value || '');
+    // A DATE is a calendar date, not midnight UTC (which is yesterday in US).
+    var timestamp = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw + 'T12:00:00' : raw);
     if (!Number.isFinite(timestamp)) return '—';
     try {
         return new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
@@ -8433,17 +8449,17 @@ function getGuaranteedOrderCardMeta(order) {
     if (status === 'completed') {
         return {
             variant: 'done',
-            day: 14,
+            day: PRIVATE_TEST_DURATION_DAYS,
             badge: getProjectUiText('gtStatusCompleted', 'Completed'),
             hint: getProjectUiText('gtHintCompleted', 'Your private testing cycle has been completed.')
         };
     }
-    if (status === 'in_progress' && Number.isFinite(startedAt) && (now - startedAt) >= 43200000) {
-        var day = Math.min(14, Math.max(1, Math.floor((now - startedAt) / 86400000) + 1));
+    if (status === 'in_progress' && Number.isFinite(startedAt)) {
+        var day = Math.min(PRIVATE_TEST_DURATION_DAYS, Math.max(1, Math.floor((now - startedAt) / 86400000) + 1));
         return {
             variant: 'active',
             day: day,
-            badge: getProjectUiText('gtStatusTestingDay', 'Day {day} of 14', { day: day }),
+            badge: getProjectUiText('gtStatusTestingDay', 'Day {day} of 15', { day: day }),
             hint: getProjectUiText('gtHintTesting', 'Testing is underway. Estimated completion: {completion_date}.', { completion_date: completionDate })
         };
     }
@@ -8540,6 +8556,12 @@ function buildGuaranteedOrderCardHtml(order, options) {
     var ownerUsername = String((order && order.owner_username) || '').trim().replace(/^@+/, '');
     var ownerLabel = [ownerName, ownerUsername ? '@' + ownerUsername : ''].filter(Boolean).join(' ')
         || getProjectUiText('gtContactOwnerFallback', 'Contact owner');
+    var coordinatorId = Number(order.coordinator_id || 0);
+    var coordinatorName = String(order.coordinator_name || order.coordinator_username || coordinatorId).trim();
+    var coordinatorUsername = String(order.coordinator_username || '').trim().replace(/^@+/, '');
+    var coordinatorLabel = getProjectUiText('gtCoordinatorContact', '👤 Coordinator: {name}', {
+        name: coordinatorName + (coordinatorUsername ? ' (@' + coordinatorUsername + ')' : '')
+    });
     var coordinatorChip = isCoordinator
         ? '<span class="guaranteed-order-card__coordinator-chip">' +
             window.escapeHTML(getProjectUiText('gtManagedBadge', '🛡 In management')) +
@@ -8548,8 +8570,8 @@ function buildGuaranteedOrderCardHtml(order, options) {
 
     var actions =
         '<button type="button" class="btn btn-secondary guaranteed-order-action" onclick="' +
-            (isCoordinator ? 'openGuaranteedOrderOwnerChat(' : 'openGuaranteedOrderSupport(') + id + ')">' +
-            window.escapeHTML(isCoordinator ? ownerLabel : getProjectUiText('gtContactManager', 'Contact manager')) +
+            (isCoordinator ? 'openGuaranteedOrderOwnerChat(' : (coordinatorId > 0 ? 'openGuaranteedOrderCoordinatorChat(' : 'openGuaranteedOrderSupport(')) + id + ')">' +
+            window.escapeHTML(isCoordinator ? ownerLabel : (coordinatorId > 0 ? coordinatorLabel : getProjectUiText('gtContactManager', 'Contact manager'))) +
         '</button>';
     if (isCompleted && !isArchivedView && !isCoordinator) {
         actions +=
@@ -8560,14 +8582,14 @@ function buildGuaranteedOrderCardHtml(order, options) {
 
     var progress = '';
     if (Number.isFinite(meta.day) && meta.day > 0) {
-        var percent = Math.max(4, Math.min(100, Math.round((meta.day / 14) * 100)));
+        var percent = Math.max(4, Math.min(100, Math.round((meta.day / PRIVATE_TEST_DURATION_DAYS) * 100)));
         progress =
             '<div class="guaranteed-order-card__progress">' +
                 '<div class="guaranteed-order-card__progress-track">' +
                     '<div class="guaranteed-order-card__progress-fill" style="width: ' + percent + '%;"></div>' +
                 '</div>' +
                 '<span class="guaranteed-order-card__progress-label">' +
-                    window.escapeHTML(getProjectUiText('gtProgressLabel', 'Day {day} of 14', { day: meta.day })) +
+                    window.escapeHTML(getProjectUiText('gtProgressLabel', 'Day {day} of 15', { day: meta.day })) +
                 '</span>' +
             '</div>';
     }
@@ -8580,6 +8602,12 @@ function buildGuaranteedOrderCardHtml(order, options) {
 
     var hasArchiveAction = isCompleted && !isArchivedView && !isCoordinator;
     var actionsClass = 'guaranteed-order-card__actions' + (hasArchiveAction ? '' : ' guaranteed-order-card__actions--single');
+    var badge = '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>';
+    if (order.can_adjust_day === true && !isArchivedView) {
+        badge = '<button type="button" class="guaranteed-order-card__badge guaranteed-order-card__badge--editable" onclick="openPrivateOrderDayModal(' + id + ')" aria-label="' +
+            window.escapeHTML(getProjectUiText('gtAdjustDay', 'Adjust testing day')) + '">' + window.escapeHTML(meta.badge) +
+            ' <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m16 3 5 5L8 21H3v-5L16 3Z"/><path d="m13 6 5 5"/></svg></button>';
+    }
 
     return (
         '<article class="guaranteed-order-card guaranteed-order-card--' + (meta.variant || 'pending') + (isArchivedView ? ' guaranteed-order-card--archived' : '') + '" data-gt-order-id="' + id + '">' +
@@ -8587,7 +8615,7 @@ function buildGuaranteedOrderCardHtml(order, options) {
                 '<h3 class="guaranteed-order-card__name">' + window.escapeHTML(String(order.app_name || getProjectUiText('unknownLabel', 'Unknown app'))) + '</h3>' +
                 '<div class="guaranteed-order-card__badges">' +
                     coordinatorChip +
-                    '<span class="guaranteed-order-card__badge">' + window.escapeHTML(meta.badge) + '</span>' +
+                    badge +
                 '</div>' +
             '</div>' +
             codeRow +
@@ -8744,8 +8772,19 @@ function openGuaranteedOrderOwnerChat(orderId) {
     var order = getGuaranteedOrderById(orderId);
     if (!order || !order.is_coordinator) return;
 
-    var username = String(order.owner_username || '').trim().replace(/^@+/, '');
-    var ownerId = Number(order.user_id);
+    openGuaranteedOrderPersonChat(order.user_id, order.owner_username);
+}
+window.openGuaranteedOrderOwnerChat = openGuaranteedOrderOwnerChat;
+
+function openGuaranteedOrderCoordinatorChat(orderId) {
+    var order = getGuaranteedOrderById(orderId);
+    if (order && Number(order.coordinator_id) > 0) openGuaranteedOrderPersonChat(order.coordinator_id, order.coordinator_username);
+}
+window.openGuaranteedOrderCoordinatorChat = openGuaranteedOrderCoordinatorChat;
+
+function openGuaranteedOrderPersonChat(personId, personUsername) {
+    var username = String(personUsername || '').trim().replace(/^@+/, '');
+    var ownerId = Number(personId);
     var targetUrl = username
         ? 'https://t.me/' + encodeURIComponent(username)
         : (Number.isFinite(ownerId) && ownerId > 0 ? 'tg://user?id=' + ownerId : '');
@@ -8763,7 +8802,6 @@ function openGuaranteedOrderOwnerChat(orderId) {
         window.open(targetUrl, '_blank');
     }
 }
-window.openGuaranteedOrderOwnerChat = openGuaranteedOrderOwnerChat;
 
 async function archiveGuaranteedTestOrder(orderId) {
     var id = Number(orderId);
@@ -8798,24 +8836,53 @@ async function archiveGuaranteedTestOrder(orderId) {
 }
 window.archiveGuaranteedTestOrder = archiveGuaranteedTestOrder;
 
+function getGuaranteedTestingPackage(value) {
+    var raw = String(value || '').trim();
+    if (/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(raw)) return raw;
+    try {
+        var url = new URL(raw);
+        if (!/^https?:$/.test(url.protocol) || url.hostname !== 'play.google.com') return '';
+        var path = url.pathname.replace(/\/+$/, '');
+        var match = path.match(/^\/apps\/testing\/([^/]+)$/);
+        var pkg = match ? decodeURIComponent(match[1])
+            : (path === '/store/apps/details' ? url.searchParams.get('id') || '' : '');
+        return /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(pkg) ? pkg : '';
+    } catch (_) {
+        return '';
+    }
+}
+
+function getGuaranteedOrderNotesIdentity(notes) {
+    var fields = Object.create(null);
+    String(notes || '').split(';').forEach(function(part) {
+        var equals = part.indexOf('=');
+        if (equals > 0) fields[part.slice(0, equals).trim().toLowerCase()] = part.slice(equals + 1).trim();
+    });
+    return fields;
+}
+
 function findActiveGuaranteedOrderForProject(project, orders) {
     if (!project || !Array.isArray(orders) || !orders.length) return null;
-    var projectId = String(project.id || '');
-    var pkg = String(project.package || project.package_name || '').trim().toLowerCase();
-    var name = String(project.name || '').trim().toLowerCase();
+    var projectId = Number(project.id || project.app_id || 0);
+    var pkg = getGuaranteedTestingPackage(project.package || project.package_name);
 
     for (var i = 0; i < orders.length; i++) {
         var order = orders[i] || {};
-        var status = String(order.status || '').toLowerCase();
+        var status = String(order.status || '').trim().toLowerCase();
         // `/mine` now includes completed non-archived orders for the dashboard;
         // they must not block a new private-testing order for the same app.
-        if (status === 'completed' || status === 'archived') continue;
-        var notes = String(order.notes || '');
-        var link = String(order.testing_link || '').toLowerCase();
-        var orderName = String(order.app_name || '').trim().toLowerCase();
-        if (projectId && notes.indexOf('app_id=' + projectId) !== -1) return order;
-        if (pkg && (link.indexOf(pkg) !== -1 || notes.toLowerCase().indexOf('package=' + pkg) !== -1)) return order;
-        if (name && orderName === name) return order;
+        if (['awaiting_payment', 'pending', 'paid', 'in_progress'].indexOf(status) === -1 || order.archived_at) continue;
+        // `/mine` includes coordinator orders, not just the customer's orders.
+        var viewerId = Number(window.App && window.App.userId || 0);
+        if (order.is_coordinator && Number(order.user_id) !== viewerId) continue;
+        var notes = getGuaranteedOrderNotesIdentity(order.notes);
+        // The submitted Play link is authoritative if prefill metadata is stale.
+        var orderPkg = getGuaranteedTestingPackage(order.testing_link) || getGuaranteedTestingPackage(notes.package);
+        if (pkg && orderPkg) {
+            if (pkg === orderPkg) return order;
+            continue;
+        }
+        if (projectId > 0 && /^\d+$/.test(notes.app_id || '') && Number(notes.app_id) === projectId) return order;
     }
     return null;
 }
@@ -8837,7 +8904,7 @@ function openHandsFreeOrderStatusModal(order) {
     var overlay = document.getElementById('gtw-order-status-overlay');
     if (!overlay || !order) return;
 
-    var code = String(order.public_code || ('GT-' + (10000 + Number(order.id || 0))));
+    var code = String(order.public_code || ('GT-' + (24766 + Number(order.id || 0) * 41)));
     var statusLabel = getGuaranteedOrderStatusLabel(order);
     var titleEl = document.getElementById('gtw-order-status-title');
     var codeEl = document.getElementById('gtw-order-status-code');
@@ -8850,10 +8917,75 @@ function openHandsFreeOrderStatusModal(order) {
     if (appEl) appEl.textContent = String(order.app_name || '—');
     if (statusEl) statusEl.textContent = statusLabel;
     if (linkEl) linkEl.textContent = String(order.testing_link || '—');
+    [['code', 'Заказ', 'Order'], ['app', 'Приложение', 'App'], ['value', 'Статус', 'Status']].forEach(function(row) {
+        var value = document.getElementById('gtw-order-status-' + row[0]);
+        if (value && value.previousElementSibling) value.previousElementSibling.textContent = lang === 'ru' ? row[1] : row[2];
+    });
+    var note = overlay.querySelector('.gtw-order-status-note');
+    if (note) note.textContent = lang === 'ru'
+        ? 'Заказ для этого приложения уже в работе. По вопросам — напишите в поддержку.'
+        : 'An order for this app is already in progress. Contact support if you need help.';
+    var support = overlay.querySelector('.gtw-continue-btn');
+    if (support) support.textContent = lang === 'ru' ? 'Связаться с поддержкой' : 'Contact support';
+    var close = document.getElementById('gtw-order-status-close');
+    if (close) close.textContent = lang === 'ru' ? 'Закрыть' : 'Close';
 
     overlay.style.display = 'flex';
 }
 window.openHandsFreeOrderStatusModal = openHandsFreeOrderStatusModal;
+
+async function focusGuaranteedTestOrder(orderId, options) {
+    options = options || {};
+    var id = Number(orderId);
+    if (!Number.isSafeInteger(id) || id <= 0) return;
+    var order = getGuaranteedOrderById(id);
+    if (!order) {
+        // A successful submission may have invalidated the cache since the
+        // sheet was painted. Recover once instead of leaving a dead button.
+        return loadVisibleGuaranteedOrders(false).then(function() {
+            if (getGuaranteedOrderById(id)) return focusGuaranteedTestOrder(id, options);
+            else if (typeof showToast === 'function') showToast(lang === 'ru'
+                ? 'Заказ сейчас недоступен. Обновите список проектов.'
+                : 'This order is unavailable. Please refresh your projects.');
+        });
+    }
+    closeAttractTestersSheet();
+    var tab = document.getElementById('tab-projects');
+    if (tab && !tab.classList.contains('active') && typeof window.switchTab === 'function') window.switchTab('projects');
+
+    function focusCard() {
+        var card = document.querySelector('#tab-projects .guaranteed-order-card[data-gt-order-id="' + id + '"]');
+        if (!card || !card.getClientRects().length) return false;
+        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        card.setAttribute('tabindex', '-1');
+        card.focus({ preventScroll: true });
+        card.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+        card.classList.remove('guaranteed-order-card--focused');
+        void card.offsetWidth;
+        card.classList.add('guaranteed-order-card--focused');
+        clearTimeout(card._gtFocusTimer);
+        card._gtFocusTimer = setTimeout(function() { card.classList.remove('guaranteed-order-card--focused'); }, options.highlightMs || 4000);
+        return true;
+    }
+    if (focusCard()) return true;
+    // Normally the confirmed cache has already painted the card. Also handle
+    // a deferred dashboard render without refetching orders or polling the API.
+    return new Promise(function(resolve) {
+        var observer = new MutationObserver(function() {
+            if (focusCard()) { observer.disconnect(); clearTimeout(timeout); resolve(true); }
+        });
+        if (tab) observer.observe(tab, { childList: true, subtree: true });
+        var timeout = setTimeout(function() {
+            observer.disconnect();
+            var focused = focusCard();
+            if (!focused && !options.confirmation && (!tab || tab.classList.contains('active'))) openHandsFreeOrderStatusModal(order);
+            resolve(focused);
+        }, 1500);
+        if (typeof window.reconcileProjectsView === 'function') window.reconcileProjectsView();
+        else if (typeof renderProjects === 'function') renderProjects(true);
+    });
+}
+window.focusGuaranteedTestOrder = focusGuaranteedTestOrder;
 
 function closeHandsFreeOrderStatusModal(event) {
     var overlay = document.getElementById('gtw-order-status-overlay');
@@ -8888,7 +9020,7 @@ function ensureHandsFreeStatusModal() {
     var div = document.createElement('div');
     div.innerHTML =
         '<div id="gtw-order-status-overlay" class="gtw-order-status-overlay" style="display:none;" onclick="closeHandsFreeOrderStatusModal(event)">' +
-            '<div class="gtw-order-status-card" onclick="event.stopPropagation()">' +
+            '<div class="gtw-order-status-card" role="dialog" aria-modal="true" aria-labelledby="gtw-order-status-title" onclick="event.stopPropagation()">' +
                 '<h3 id="gtw-order-status-title" class="gtw-order-status-title">Order in progress</h3>' +
                 '<div class="gtw-order-status-row"><span>Order</span><strong id="gtw-order-status-code">—</strong></div>' +
                 '<div class="gtw-order-status-row"><span>App</span><strong id="gtw-order-status-app">—</strong></div>' +
@@ -8924,14 +9056,13 @@ function _buildAttractHandsFreeItemHtml(projectId, project, activeOrders) {
     var activeGtOrder = findActiveGuaranteedOrderForProject(project, activeOrders);
     var gtKey = _attractGtOrderKey(project, activeOrders);
     if (activeGtOrder) {
-        var orderPayload = encodeURIComponent(JSON.stringify(activeGtOrder));
         var statusLabel = window.escapeHTML(getGuaranteedOrderStatusLabel(activeGtOrder));
         var code = window.escapeHTML(String(activeGtOrder.public_code || ''));
         var subtitle = lang === 'ru'
-            ? ('Заявка #' + code + ' уже в работе. Повторная отправка недоступна.')
-            : ('Order #' + code + ' is already in progress. Resubmit is locked.');
+            ? ('Заявка #' + code + ' уже в работе. Нажмите, чтобы перейти к заказу.')
+            : ('Order #' + code + ' is in progress. Tap to view your order.');
         return (
-            '<div id="attract-gt-slot" class="attract-sheet-item attract-sheet-item--gt-active" data-gt-key="' + window.escapeHTML(gtKey) + '" onclick="closeAttractTestersSheet(); openHandsFreeOrderStatusModal(JSON.parse(decodeURIComponent(\'' + orderPayload + '\')));">' +
+            '<button type="button" id="attract-gt-slot" class="attract-sheet-item attract-sheet-item--gt-active" data-gt-key="' + window.escapeHTML(gtKey) + '" onclick="focusGuaranteedTestOrder(' + Number(activeGtOrder.id) + ');">' +
                 '<div class="attract-sheet-item-icon">🛡️</div>' +
                 '<div class="attract-sheet-item-info">' +
                     '<div class="attract-sheet-item-title-row">' +
@@ -8941,7 +9072,7 @@ function _buildAttractHandsFreeItemHtml(projectId, project, activeOrders) {
                     '<div class="attract-sheet-item-subtitle">' + window.escapeHTML(subtitle) + '</div>' +
                 '</div>' +
                 '<span class="attract-sheet-item-chevron">›</span>' +
-            '</div>'
+            '</button>'
         );
     }
     return (
@@ -9183,7 +9314,7 @@ function openHandsFreeTestingWizard(projectId) {
     fetchActiveGuaranteedOrders(false).then(function (orders) {
         var active = findActiveGuaranteedOrderForProject(project, orders);
         if (active) {
-            openHandsFreeOrderStatusModal(active);
+            focusGuaranteedTestOrder(active.id);
             return;
         }
         if (typeof window.showGuaranteedTestWizardStep1 === 'function') {
