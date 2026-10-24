@@ -28,7 +28,8 @@
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
-    var ACTIVITY_FILTERS = ['testers', 'attention', 'contribution', 'control'];
+    var ACTIVITY_FILTERS = ['testers', 'attention', 'control'];
+    var REPORT_GROUPS = ['value', 'screens', 'waiting'];
     var optimisticFeedbackBustByTester = {};
     if (typeof window !== 'undefined') {
         window._optimisticFeedbackBustByTester = optimisticFeedbackBustByTester;
@@ -2530,6 +2531,10 @@
         return count >= 1 && count < FULL_SCREENSHOT_COUNT;
     }
 
+    function plainScreenshotRow(row) {
+        return regularScreenshotRow(row) && !String(row.note || '').trim();
+    }
+
     function distinctTesterCount(rows, predicate) {
         var seen = {};
         var count = 0;
@@ -3280,13 +3285,12 @@
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: rowClass || 'pc-person--contribution',
-            metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
+            metaHtml: contributionControlDayHtml(item.tester) + contributionTesterStatsChipHtml(appId, item.tester, item, context),
             actionsHtml: headerActionsHtml,
             avatarMarkerHtml: contributionAvatarMarkerHtml(visibleReasons),
             extraHtml: subrowsHtml,
             timeAgoText: timeAgo,
-            nameSuffixHtml: testerDayNumber(item.tester) > 0
-                ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + testerDayNumber(item.tester)) + '</span>' : '',
+            nameSuffixHtml: contributionDaySuffixHtml(item.tester),
         });
     }
 
@@ -3317,12 +3321,26 @@
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: 'pc-person--contribution pc-person--fullset',
-            metaHtml: topicHtml,
+            metaHtml: contributionControlDayHtml(item.tester) + topicHtml,
             actionsHtml: actionsHtml,
             timeAgoText: formatContributionTimeAgo(item.latestCreatedAt || ''),
-            nameSuffixHtml: testerDayNumber(item.tester) > 0
-                ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + testerDayNumber(item.tester)) + '</span>' : '',
+            nameSuffixHtml: contributionDaySuffixHtml(item.tester),
         });
+    }
+
+    function contributionDaySuffixHtml(tester) {
+        var dayNum = testerDayNumber(tester);
+        if (dayNum <= 0 || isControlDay(dayNum)) return '';
+        return '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + dayNum) + '</span>';
+    }
+
+    function contributionControlDayHtml(tester) {
+        var dayNum = testerDayNumber(tester);
+        if (!isControlDay(dayNum)) return '';
+        return '<span class="pc-person__day pc-person__day--control is-control-accent">' +
+            '<svg class="pc-person__day-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
+            esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
+        '</span>';
     }
 
     function fullSetChipHtml(appId, item) {
@@ -4039,75 +4057,122 @@
         return '';
     }
 
-    function controlNowHtml(appId, rows, context, regularReceivedRows) {
-        var regularRows = regularReceivedRows || [];
-        if (!rows.length && !regularRows.length) return emptySheetHtml(text('pcControlEmpty', 'No reports today'));
+    function reportChipIcon(key) {
+        if (key === 'value') return filterIcon('contribution');
+        if (key === 'screens') return filterIcon('control');
+        return '<svg class="pc-report-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg>';
+    }
+
+    function reportInfoButtonHtml() {
+        return '<button type="button" class="pc-activity__info pc-report-toggle__info" aria-label="' +
+            esc(text('pcHintInfoAria', 'Filter criteria')) +
+            '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'control\')"><svg viewBox="0 0 16 16" width="10" height="10"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/><path fill="currentColor" d="M7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM8.5 11.5h-1V7h1v4.5Z"/></svg></button>';
+    }
+
+    function reportConstructorHtml(appId, project) {
+        var counts = reportGroupCounts(activityCounts(project));
+        var enabled = enabledReportGroups(readPrefs(appId), counts);
+        var chips = [
+            { key: 'value', label: text('pcReportChipValue', 'Вклад') },
+            { key: 'screens', label: text('pcReportChipScreens', 'Скрины') },
+            { key: 'waiting', label: text('pcReportChipWaiting', 'Ждём') },
+        ].filter(function (chip) { return counts[chip.key] > 0; });
+        return '<div class="pc-report-toggles" role="group" aria-label="' + esc(text('pcFilterControl', 'Отчёты')) + '">' +
+            chips.map(function (chip) {
+                var on = !!enabled[chip.key];
+                return '<button type="button" class="pc-report-toggle' + (on ? ' is-on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '" onclick="event.stopPropagation(); pcToggleReportSection(' + Number(appId) + ',\'' + chip.key + '\')">' +
+                    reportChipIcon(chip.key) +
+                    '<span>' + esc(chip.label) + '</span>' +
+                    '<strong>' + counts[chip.key] + '</strong>' +
+                '</button>';
+            }).join('') +
+            reportInfoButtonHtml() +
+        '</div>';
+    }
+
+    function reportSectionHtml(appId, key, title, count, bodyHtml) {
+        return '<section class="pc-report-section" data-report-section="' + key + '">' +
+            '<button type="button" class="pc-report-section__head" aria-expanded="true" onclick="event.stopPropagation(); pcToggleReportSection(' + Number(appId) + ',\'' + key + '\')">' +
+                '<svg class="pc-report-section__chevron" viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
+                reportChipIcon(key) +
+                '<span>' + esc(title) + '</span>' +
+                '<strong>' + count + '</strong>' +
+            '</button>' +
+            '<div class="pc-report-section__body">' + bodyHtml + '</div>' +
+        '</section>';
+    }
+
+    function controlReminderPanelHtml(appId, count) {
+        if (count <= 0) return '';
+        var state = controlReminderStates.get(Number(appId));
+        var sending = controlReminderSending.has(Number(appId));
+        return '<div class="pc-control-reminder-panel">' +
+            '<button type="button" class="pc-control-remind-all-btn' + (sending ? ' is-sending' : '') + '" onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>' +
+                '<span>' + esc(text('pcControlRemindAll', 'Напомнить всем')) + ' (' + count + ')</span>' +
+            '</button>' +
+            '<div class="pc-control-reminder-feedback">' + controlReminderFeedbackHtml(state) + '</div>' +
+        '</div>';
+    }
+
+    function prepareWaitingAssessments(appId, rows) {
         var project = projectById(appId);
-        var pendingRows = rows.filter(function (row) { return !row.received; });
-        pendingRows.forEach(function (row) {
-            if (!row.activityAssessment) {
-                var assessment = calculateTesterControlActivityAssessment(row, project);
-                row.activityAssessment = assessment;
-                row.activity_assessment = assessment;
-                if (row.tester) {
-                    row.tester.activityAssessment = assessment;
-                    row.tester.activity_assessment = assessment;
-                }
+        (rows || []).forEach(function (row) {
+            if (!row || row.activityAssessment) return;
+            var assessment = calculateTesterControlActivityAssessment(row, project);
+            row.activityAssessment = assessment;
+            row.activity_assessment = assessment;
+            if (row.tester) {
+                row.tester.activityAssessment = assessment;
+                row.tester.activity_assessment = assessment;
             }
         });
-        // Regular-day proofs are received reports too, but never become
-        // expected control reports. Keep that distinction in the two sections.
-        var receivedRows = rows.filter(function (row) { return row.received; }).concat(regularRows);
-        receivedRows.sort(function (left, right) {
-            return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
-        });
-        var receivedCount = receivedRows.length;
+    }
 
-        var pendingSectionHtml = '';
-        if (pendingRows.length > 0) {
-            pendingSectionHtml = '<div class="pc-control-section pc-control-section--pending">' +
-                '<div class="pc-control-section-title">' +
-                    '<span>' + esc(text('pcControlSectionPending', 'Pending')) + '</span>' +
-                    '<span class="pc-control-section-badge pc-control-section-count' + (String(pendingRows.length).length <= 1 ? ' is-circle' : '') + '">' + pendingRows.length + '</span>' +
-                '</div>' +
+    function reportsNowHtml(appId, data, context) {
+        var sections = reportSections(data);
+        var counts = reportGroupCounts(data);
+        var enabled = enabledReportGroups(readPrefs(appId), counts);
+        prepareWaitingAssessments(appId, sections.waiting);
+        var html = '';
+        if (enabled.value && counts.value) {
+            html += reportSectionHtml(
+                appId,
+                'value',
+                text('pcReportSectionValue', 'Особый вклад'),
+                counts.value,
+                contributionSheetHtml(appId, sections.value, context)
+            );
+        }
+        if (enabled.screens && counts.screens) {
+            html += reportSectionHtml(
+                appId,
+                'screens',
+                text('pcReportSectionScreens', 'Обычные отчёты'),
+                counts.screens,
                 '<ul class="pc-act-list pc-activity-control">' +
-                    pendingRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
-                '</ul>' +
-            '</div>';
+                    sections.screens.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+                '</ul>'
+            );
         }
-
-        var receivedSectionHtml = '';
-        if (receivedRows.length > 0) {
-            var isReceivedExpanded = !collapsedReceived.has(Number(appId));
-            if (isReceivedExpanded) {
-                lastSeenReceivedCounts.set(Number(appId), receivedCount);
-            }
-            var lastSeen = lastSeenReceivedCounts.get(Number(appId));
-            var hasNewReceived = !isReceivedExpanded && receivedCount > 0 && (lastSeen == null ? true : receivedCount > lastSeen);
-
-            receivedSectionHtml = '<div class="pc-control-section pc-control-section--received' + (isReceivedExpanded ? ' is-expanded' : ' is-collapsed') + '">' +
-                '<button type="button" class="pc-control-section-title pc-control-section-toggle" onclick="event.stopPropagation(); pcToggleReceivedSection(' + Number(appId) + ')" aria-expanded="' + isReceivedExpanded + '">' +
-                    '<span class="pc-control-section-toggle__left">' +
-                        '<span>' + esc(text('pcControlSectionReceived', 'Received')) + '</span>' +
-                        '<span class="pc-control-section-badge pc-control-section-count' + (String(receivedCount).length <= 1 ? ' is-circle' : '') + (hasNewReceived ? ' is-highlight' : '') + '">' + receivedCount + '</span>' +
-                    '</span>' +
-                    '<span class="pc-control-section-chevron' + (isReceivedExpanded ? ' is-expanded' : '') + '" aria-hidden="true">' +
-                        '<svg viewBox="0 0 12 12" width="10" height="10"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
-                    '</span>' +
-                '</button>' +
-                '<ul class="pc-act-list pc-activity-control"' + (isReceivedExpanded ? '' : ' hidden style="display:none"') + '>' +
-                    receivedRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+        if (enabled.waiting && counts.waiting) {
+            html += reportSectionHtml(
+                appId,
+                'waiting',
+                text('pcReportSectionWaiting', 'Ожидаем контрольный отчёт'),
+                counts.waiting,
+                '<ul class="pc-act-list pc-activity-control">' +
+                    sections.waiting.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
                 '</ul>' +
-            '</div>';
+                controlReminderPanelHtml(appId, counts.waiting)
+            );
         }
-
-        return pendingSectionHtml + receivedSectionHtml;
+        return html || emptySheetHtml(text('pcControlEmpty', 'No reports today'));
     }
 
     function nowHtmlForFilter(project, filter, data, context) {
-        if (filter === 'contribution') return contributionSheetHtml(project.id, data.contribution, context);
         if (filter === 'attention') return attentionSheetHtml(project.id, data.attention, context);
-        if (filter === 'control') return controlNowHtml(project.id, data.controlRows, context, data.regularReportRows);
+        if (filter === 'control' || filter === 'contribution') return reportsNowHtml(project.id, data, context);
         return testersNowHtml(project);
     }
 
@@ -4141,6 +4206,7 @@
             regularReportRows: regularReportRows,
             controlDone: controlRows.filter(function (row) { return row.received; }).length,
             shortScreenshotCount: shortScreenshotReportCount(rosterControl.concat(rosterOthers)),
+            plainScreenshotRows: rosterControl.concat(rosterOthers).filter(plainScreenshotRow),
             controlDueCount: distinctTesterCount(rosterControl),
             contribution: collectContribution(
                 hydrated ? (entry.control || []) : [],
@@ -4180,20 +4246,36 @@
         ACTIVITY_FILTERS.forEach(function (modeKey) {
             modes[modeKey] = stored[modeKey] === 'history' ? 'history' : 'now';
         });
+        var filter = parsed.filter === 'contribution' ? 'control' : parsed.filter;
+        var reportSections = null;
+        if (parsed.filter === 'contribution') {
+            reportSections = { value: true, screens: false, waiting: false };
+        } else if (parsed.reportSections && typeof parsed.reportSections === 'object') {
+            reportSections = {};
+            REPORT_GROUPS.forEach(function (key) {
+                if (parsed.reportSections[key] == null) return;
+                reportSections[key] = parsed.reportSections[key] !== false;
+            });
+        }
         return {
-            filter: ACTIVITY_FILTERS.indexOf(parsed.filter) !== -1 ? parsed.filter : 'testers',
+            filter: ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers',
             modes: modes,
+            reportSections: reportSections,
             touched: true,
         };
     }
 
     function writePrefs(appId, prefs) {
         try {
-            localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify({
+            var payload = {
                 filter: prefs.filter,
                 modes: prefs.modes,
                 touched: true,
-            }));
+            };
+            if (prefs.reportSections && typeof prefs.reportSections === 'object') {
+                payload.reportSections = prefs.reportSections;
+            }
+            localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify(payload));
         } catch (_) {}
     }
 
@@ -4279,9 +4361,7 @@
     function visibleFilters(data) {
         var list = ['testers'];
         if (data.attention && data.attention.length) list.push('attention');
-        if (data.contribution && data.contribution.length) list.push('contribution');
-        if ((data.controlRows && data.controlRows.length)
-            || (data.regularReportRows && data.regularReportRows.length)) list.push('control');
+        if (filterCount('control', data) > 0) list.push('control');
         return list;
     }
 
@@ -4291,13 +4371,9 @@
         return 'testers';
     }
 
-    function scopeForFilter(filter, data) {
+    function scopeForFilter(filter, data, appId) {
         if (filter === 'testers') return { testerIds: null, progressIds: null };
-        var rows = filter === 'contribution'
-            ? (data.contribution || [])
-            : (filter === 'attention'
-                ? (data.attention || [])
-                : (data.controlRows || []).concat(data.regularReportRows || []));
+        var rows = filter === 'attention' ? (data.attention || []) : visibleReportRows(data, readPrefs(appId));
         var testerIds = [];
         var progressIds = [];
         rows.forEach(function (item) {
@@ -4362,18 +4438,92 @@
         });
     }
 
+    function reportSections(data) {
+        var value = (data && data.contribution || []).slice();
+        var valueIds = {};
+        value.forEach(function (item) {
+            valueIds[Number(item && item.testerId || 0)] = true;
+        });
+        var screens = [];
+        var screenIds = {};
+        (data && data.plainScreenshotRows || []).forEach(function (row) {
+            var id = Number(row && row.testerId || 0);
+            if (id <= 0 || valueIds[id] || screenIds[id]) return;
+            screenIds[id] = true;
+            screens.push(row);
+        });
+        var waiting = [];
+        var waitingIds = {};
+        (data && data.controlRows || []).forEach(function (row) {
+            if (!row || row.received) return;
+            var id = Number(row.testerId || 0);
+            if (id <= 0 || valueIds[id] || screenIds[id] || waitingIds[id]) return;
+            waitingIds[id] = true;
+            waiting.push(row);
+        });
+        return { value: value, screens: screens, waiting: waiting };
+    }
+
+    function reportGroupCounts(data) {
+        var sections = reportSections(data);
+        return {
+            value: sections.value.length,
+            screens: sections.screens.length,
+            waiting: sections.waiting.length,
+        };
+    }
+
+    function enabledReportGroups(prefs, counts) {
+        var stored = prefs && prefs.reportSections;
+        var enabled = {};
+        REPORT_GROUPS.forEach(function (key) {
+            if (!counts || counts[key] <= 0) enabled[key] = false;
+            else if (!stored || stored[key] == null) enabled[key] = true;
+            else enabled[key] = stored[key] !== false;
+        });
+        var anyOn = REPORT_GROUPS.some(function (key) { return enabled[key]; });
+        if (!anyOn) {
+            REPORT_GROUPS.forEach(function (key) {
+                enabled[key] = !!(counts && counts[key] > 0);
+            });
+        }
+        return enabled;
+    }
+
+    function visibleReportRows(data, prefs) {
+        var sections = reportSections(data);
+        var enabled = enabledReportGroups(prefs, reportGroupCounts(data));
+        var rows = [];
+        REPORT_GROUPS.forEach(function (key) {
+            if (enabled[key]) rows = rows.concat(sections[key] || []);
+        });
+        return rows;
+    }
+
+    function reportedPeopleCount(data) {
+        var counts = reportGroupCounts(data);
+        return counts.value + counts.screens;
+    }
+
+    function controlShowsRatio(data) {
+        return Number(data && data.controlDueCount || 0) > 0;
+    }
+
     function filterCount(key, data) {
         if (key === 'contribution') return (data && data.contribution || []).length;
         if (key === 'attention') return (data && data.attention || []).length;
         if (key === 'control') {
-            return (data && data.controlRows || []).length + (data && data.regularReportRows || []).length;
+            var counts = reportGroupCounts(data);
+            return counts.value + counts.screens + counts.waiting;
         }
         return Math.max(0, Number(data && data.rosterCount || 0));
     }
 
     function filterBadgeText(key, data) {
         if (key === 'control') {
-            return Number(data && data.shortScreenshotCount || 0) + '/' + Number(data && data.controlDueCount || 0);
+            var reported = reportedPeopleCount(data);
+            var due = Number(data && data.controlDueCount || 0);
+            return due > 0 ? (reported + '/' + due) : String(reported);
         }
         return String(filterCount(key, data));
     }
@@ -4391,8 +4541,9 @@
 
     function filterBadgeHtml(key, data, project) {
         if (key !== 'control') return esc(String(filterCount(key, data)));
-        var reported = Number(data && data.shortScreenshotCount || 0);
+        var reported = reportedPeopleCount(data);
         var due = Number(data && data.controlDueCount || 0);
+        if (due <= 0) return esc(String(reported));
         var color = activityPercentColor(project);
         var style = color ? ' style="--pc-activity-ratio-x:' + color + '"' : '';
         return '<span class="pc-activity__ratio-x"' + style + '>' + reported + '</span>/' + due;
@@ -4429,14 +4580,15 @@
             }).join(';');
         }
         if (key === 'control') {
-            var control = data.controlRows || data.control || [];
-            var regular = data.regularReportRows || data.others || [];
-            var received = control.filter(function (r) { return r.received; }).concat(regular.filter(function (r) {
-                return r && r.received && !isControlDay(Number(r.day || 0));
-            }));
-            return control.length + ':' + received.length + ':' + received.map(function (r) {
-                return (r.testerId || 0) + '-' + (r.proofId || 0);
-            }).join(',');
+            var sections = reportSections(data);
+            return REPORT_GROUPS.map(function (group) {
+                return (sections[group] || []).map(function (row) {
+                    var reasonSig = (row.reasons || []).map(function (reason) {
+                        return (reason.kind || reason.code || '') + (reason.proofId || 0) + (reason.feedbackId || 0);
+                    }).join('.');
+                    return (row.testerId || 0) + '-' + (row.proofId || 0) + '-' + reasonSig;
+                }).join(',');
+            }).join('|');
         }
         return '';
     }
@@ -4473,7 +4625,7 @@
         var countEl = btn.querySelector('.pc-activity__count');
         if (countEl) {
             countEl.innerHTML = filterBadgeHtml(key, data, projectById(appId));
-            countEl.classList.toggle('is-ratio', key === 'control');
+            countEl.classList.toggle('is-ratio', key === 'control' && controlShowsRatio(data));
             countEl.classList.toggle('is-warn', !!isAttentionWarn);
             countEl.classList.toggle('has-unread', !!hasUnread);
         }
@@ -4505,7 +4657,7 @@
                 if (isActive) markTabSeen(appId, key, data);
                 var hasUnread = tabIsUnread(appId, key, isActive, count, data);
                 var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
-                var countHtml = '<span class="pc-activity__count' + (key === 'control' ? ' is-ratio' : '') + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + filterBadgeHtml(key, data, project) + '</span>';
+                var countHtml = '<span class="pc-activity__count' + (key === 'control' && controlShowsRatio(data) ? ' is-ratio' : '') + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + filterBadgeHtml(key, data, project) + '</span>';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
                     '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
@@ -4586,7 +4738,9 @@
             testers: workspaceText('Текущий состав команды', 'Current team'),
         };
         var hintText = historyOn ? workspaceText('Выбранная категория за всё время', 'Selected category over time') : hints[filter];
-        var hintHtml = hintText ? (
+        var hintHtml = filter === 'control'
+            ? reportConstructorHtml(appId, project)
+            : (hintText ? (
             '<div class="pc-activity__hint-wrap" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')" role="button" tabindex="0" title="' + esc(text('pcHintInfoAria', 'Критерии фильтра · Нажмите для подробностей')) + '">' +
                 '<div class="pc-activity__hint-scroll">' +
                     '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
@@ -4595,7 +4749,7 @@
                         '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')"><svg viewBox="0 0 16 16" width="10" height="10"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/><path fill="currentColor" d="M7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM8.5 11.5h-1V7h1v4.5Z"/></svg></button>' +
                 '</div>' +
             '</div>'
-        ) : '<div class="pc-activity__hint-wrap"></div>';
+        ) : '<div class="pc-activity__hint-wrap"></div>');
 
         return '<div class="pc-activity__caption pc-activity__subbar">' +
             hintHtml +
@@ -4618,7 +4772,7 @@
     async function loadFilterHistory(appId, filter, data) {
         var pane = document.getElementById('pc-activity-history-' + Number(appId));
         if (!pane) return;
-        var scope = scopeForFilter(filter, data);
+        var scope = scopeForFilter(filter, data, appId);
         if (typeof window.renderTestingControlHistoryInto === 'function') {
             pane.innerHTML = '<div class="pc-activity-empty">' + esc(text('pcActivityHistoryLoading', 'Loading history…')) + '</div>';
             try {
@@ -4658,11 +4812,12 @@
         if (mode === 'history') {
             loadFilterHistory(appId, filter, data);
             stopKarmaSparkle(Number(appId));
-        } else if (filter === 'control') {
+        } else if (filter === 'control' || filter === 'contribution') {
             loadControlReminderStatus(Number(appId));
-            stopKarmaSparkle(Number(appId));
-        } else if (filter === 'contribution') {
-            initKarmaSparkleCycle(Number(appId));
+            var reportCounts = reportGroupCounts(data);
+            var reportEnabled = enabledReportGroups(prefs, reportCounts);
+            if (reportEnabled.value && reportCounts.value > 0) initKarmaSparkleCycle(Number(appId));
+            else stopKarmaSparkle(Number(appId));
         } else {
             stopKarmaSparkle(Number(appId));
         }
@@ -4688,7 +4843,7 @@
         if (!project) return;
         var data = activityCounts(project);
         var next = document.createElement('div');
-        next.innerHTML = controlNowHtml(project.id, data.controlRows, contextFor(project), data.regularReportRows);
+        next.innerHTML = reportsNowHtml(project.id, data, contextFor(project));
         var currentPanel = nowEl.querySelector('.pc-control-reminder-panel');
         var nextPanel = next.querySelector('.pc-control-reminder-panel');
         if (currentPanel && nextPanel) currentPanel.replaceWith(nextPanel);
@@ -5073,7 +5228,6 @@
         var quickTabs = [
             { key: 'attention', warn: hasCriticalAttentionIssue(data.attention) },
             { key: 'control', warn: false },
-            { key: 'contribution', warn: false },
         ].map(function (tab) {
             tab.count = filterCount(tab.key, data);
             tab.label = filterBadgeText(tab.key, data);
@@ -5116,7 +5270,6 @@
         var quickTabs = [
             { key: 'attention', warn: hasCriticalAttentionIssue(data.attention) },
             { key: 'control', warn: false },
-            { key: 'contribution', warn: false },
         ].map(function (tab) {
             tab.count = filterCount(tab.key, data);
             tab.label = filterBadgeText(tab.key, data);
@@ -5374,21 +5527,41 @@
     window.pcSetActivityFilter = function (appId, filter) {
         setParticipantsCollapsed(appId, false);
         var prefs = readPrefs(appId);
-        prefs.filter = ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers';
-        if (prefs.filter === 'contribution') {
-            prefs.modes.contribution = 'now';
+        if (filter === 'contribution') {
+            prefs.filter = 'control';
+            prefs.reportSections = { value: true, screens: false, waiting: false };
+        } else {
+            prefs.filter = ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers';
         }
         writePrefs(appId, prefs);
-        var entry = getCacheEntry(appId);
-        if (entry) {
-            markTabSeen(appId, prefs.filter, {
-                control: entry.control || [],
-                others: entry.others || [],
-                contribution: collectContribution(entry.control, entry.others, projectById(appId)),
-                attention: collectAttention(projectById(appId)),
-            });
-        }
+        var project = projectById(appId);
+        if (project) markTabSeen(appId, prefs.filter, activityCounts(project));
         refreshActivityWorkspace(appId);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
+    window.pcToggleReportSection = function (appId, key) {
+        var safeAppId = Number(appId || 0);
+        var project = projectById(safeAppId);
+        if (!project || REPORT_GROUPS.indexOf(key) === -1) return;
+        var data = activityCounts(project);
+        var counts = reportGroupCounts(data);
+        if (counts[key] <= 0) return;
+        var prefs = readPrefs(safeAppId);
+        var enabled = enabledReportGroups(prefs, counts);
+        var nonEmpty = REPORT_GROUPS.filter(function (item) { return counts[item] > 0; });
+        var enabledKeys = nonEmpty.filter(function (item) { return enabled[item]; });
+        if (enabled[key] && enabledKeys.length === 1) {
+            nonEmpty.forEach(function (item) { enabled[item] = true; });
+        } else {
+            enabled[key] = !enabled[key];
+        }
+        var stored = {};
+        nonEmpty.forEach(function (item) { stored[item] = !!enabled[item]; });
+        prefs.reportSections = stored;
+        prefs.filter = 'control';
+        writePrefs(safeAppId, prefs);
+        refreshActivityWorkspace(safeAppId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 

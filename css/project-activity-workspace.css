@@ -1748,6 +1748,93 @@
     border-bottom: 1px solid rgba(150, 169, 197, .08);
 }
 
+.pc-activity--workspace .pc-report-toggles {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.pc-activity--workspace .pc-report-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    max-width: 100%;
+    margin: 0;
+    padding: 0 7px;
+    border: 1px solid rgba(116, 164, 231, .28);
+    border-radius: 999px;
+    background: rgba(98, 152, 230, .14);
+    color: #d7e4f5;
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 680;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pc-activity--workspace .pc-report-toggle:not(.is-on) {
+    border-color: rgba(150, 169, 197, .12);
+    background: transparent;
+    color: rgba(176, 190, 210, .48);
+}
+
+.pc-activity--workspace .pc-report-toggle svg,
+.pc-activity--workspace .pc-report-section__head svg {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+}
+
+.pc-activity--workspace .pc-report-toggle strong,
+.pc-activity--workspace .pc-report-section__head strong {
+    font-variant-numeric: tabular-nums;
+    font-weight: 750;
+}
+
+.pc-activity--workspace .pc-report-toggle__info {
+    flex: 0 0 auto;
+}
+
+.pc-activity--workspace .pc-report-section {
+    margin: 2px 0 10px;
+}
+
+.pc-activity--workspace .pc-report-section__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 28px;
+    margin: 0;
+    padding: 2px 2px 6px;
+    border: 0;
+    background: transparent;
+    color: #c9d6ea;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: .02em;
+    text-align: left;
+    cursor: pointer;
+}
+
+.pc-activity--workspace .pc-report-section__head span {
+    min-width: 0;
+}
+
+.pc-activity--workspace .pc-report-section__body .pc-act-list {
+    margin-top: 0;
+}
+
+.pc-activity--workspace .pc-person__meta .pc-person__day {
+    margin-right: 6px;
+}
+
 .pc-activity--workspace .pc-activity__folder-body .pc-activity__hint-wrap {
     -webkit-mask-image: none !important;
     mask-image: none !important;
