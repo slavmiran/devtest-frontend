@@ -8,11 +8,11 @@
     var COPY = {
         headerTitle: ['Private Testing', 'Приватное тестирование'],
         headerSubtitle: ['Closed testing, handled for you', 'Закрытое тестирование под ключ'],
-        badge: ['14 days of continuous testing', '14 дней непрерывного тестирования'],
+        badge: ['15 days of managed testing', '15 дней тестирования с сопровождением'],
         title: ['Google Play access without your involvement', 'Доступ в Google Play без вашего участия'],
         lead: [
-            'We assemble the tester team, run the full 14-day cycle and bring your app to the production review.',
-            'Мы собираем команду тестировщиков, ведем полный 14-дневный цикл и доводим приложение до заявки на production.'
+            'We assemble the tester team, manage a 15-day cycle and help prepare your production access application.',
+            'Мы собираем команду тестировщиков, ведём 15-дневный цикл и помогаем подготовить заявку на доступ к production.'
         ],
         price: ['$20', '$20'],
         priceNote: ['one-time payment for one app', 'разовый платеж за одно приложение'],
@@ -235,7 +235,11 @@
                 rawParam === 'guaranteed' ||
                 rawParam === 'order_gt'
             ) {
-                showGuaranteedTestOfferModal();
+                if (typeof window._openGuaranteedTestOfferWhenReady === 'function') {
+                    window._openGuaranteedTestOfferWhenReady();
+                } else {
+                    showGuaranteedTestOfferModal();
+                }
             }
         } catch (e) {}
     }

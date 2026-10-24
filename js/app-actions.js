@@ -1063,6 +1063,10 @@ function _loadTimerReadyState() {
                     readyAtMs: Number(payload.readyAtMs || 0) || 0,
                     expiresAtMs: Number(payload.expiresAtMs || 0) || 0,
                     progressId: Number(payload.progressId || 0) || 0,
+                    runIteration: Number(payload.runIteration || 0),
+                    actorUserId: String(payload.actorUserId || ''),
+                    serverNowMs: Number(payload.serverNowMs || 0),
+                    receivedAtMs: Number(payload.receivedAtMs || 0),
                 };
                 if (nextState[key].openToken) {
                     _checkinOpenTokenState[key] = {
@@ -1071,6 +1075,10 @@ function _loadTimerReadyState() {
                         expiresAtMs: nextState[key].expiresAtMs,
                         progressId: nextState[key].progressId,
                         localDate: today,
+                        runIteration: nextState[key].runIteration,
+                        actorUserId: nextState[key].actorUserId,
+                        serverNowMs: nextState[key].serverNowMs,
+                        receivedAtMs: nextState[key].receivedAtMs,
                     };
                 }
             });
@@ -1100,6 +1108,10 @@ function setTimerReadyForConfirm(appId, isReady, isScreenshot, ownerUsername, de
             readyAtMs: Number(openMeta.readyAtMs || 0) || 0,
             expiresAtMs: Number(openMeta.expiresAtMs || 0) || 0,
             progressId: Number(openMeta.progressId || 0) || 0,
+            runIteration: Number(openMeta.runIteration || 0),
+            actorUserId: String(openMeta.actorUserId || ''),
+            serverNowMs: Number(openMeta.serverNowMs || 0),
+            receivedAtMs: Number(openMeta.receivedAtMs || 0),
         };
     } else {
         delete _timerReadyState[key];
@@ -1123,8 +1135,21 @@ function _getTimerReadyPayload(appId) {
     var key = String(Number(appId) || 0);
     if (key === '0') return null;
     var payload = _timerReadyState[key];
+    if (!payload) {
+        // A rerender/retry can lose the UI flag while the signed Open token
+        // is still mature. Recover readiness, not a second 15-second session.
+        var meta = _getReusableCheckinOpenMeta(appId);
+        if (meta && _checkinTokenNow(meta) >= Number(meta.readyAtMs || 0)) {
+            var test = (myTests || []).find(function(item) { return Number(item.id) === Number(appId); });
+            var day = typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : Number(test && test.testing_days || 0);
+            var screenshot = typeof isMandatoryScreenshotDay === 'function' && isMandatoryScreenshotDay(day);
+            setTimerReadyForConfirm(appId, true, screenshot, test && test.owner_username || '', true);
+            payload = _timerReadyState[key];
+        }
+    }
     if (!payload || typeof payload !== 'object') return null;
-    if (String(payload.localDate || '') !== getLocalDate()) {
+    if (!_checkinOpenMetaMatches(appId, payload)
+        || (Number(payload.expiresAtMs || 0) > 0 && _checkinTokenNow(payload) > Number(payload.expiresAtMs))) {
         delete _timerReadyState[key];
         _persistTimerReadyState();
         return null;
@@ -2377,24 +2402,62 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
     }
 }
 
+function _checkinOpenMetaMatches(appId, meta) {
+    if (!meta || String(meta.localDate || '') !== getLocalDate()) return false;
+    if (meta.actorUserId && String(meta.actorUserId) !== String(userId)) return false;
+    var test = (myTests || []).find(function(item) { return Number(item.id) === Number(appId); });
+    if (!test) return false;
+    if (meta.progressId && Number(meta.progressId) !== Number(test.progress_id)) return false;
+    if (meta.runIteration && Number(meta.runIteration) !== Number(test.run_iteration || 1)) return false;
+    return true;
+}
+
+function _checkinTokenNow(meta) {
+    return meta.serverNowMs && meta.receivedAtMs
+        ? Number(meta.serverNowMs) + Math.max(0, Date.now() - Number(meta.receivedAtMs)) : Date.now();
+}
+
+function _getReusableCheckinOpenMeta(appId) {
+    var key = String(Number(appId) || 0);
+    var meta = _checkinOpenTokenState[key];
+    if (!meta || !meta.token || !meta.progressId || !_checkinOpenMetaMatches(appId, meta)) return null;
+    if (Number(meta.expiresAtMs || 0) > 0 && _checkinTokenNow(meta) > Number(meta.expiresAtMs)) return null;
+    return meta;
+}
+
+function invalidateCheckinOpenToken(appId) {
+    delete _checkinOpenTokenState[String(Number(appId))];
+    setTimerReadyForConfirm(appId, false);
+}
+
 function _getCheckinOpenToken(appId) {
     var key = String(Number(appId) || 0);
     if (key === '0') return '';
     var readyPayload = _timerReadyState[key];
-    if (readyPayload && String(readyPayload.localDate || '') === getLocalDate() && readyPayload.openToken) {
+    if (readyPayload && _checkinOpenMetaMatches(appId, readyPayload) && readyPayload.openToken
+        && !(Number(readyPayload.expiresAtMs || 0) > 0 && _checkinTokenNow(readyPayload) > Number(readyPayload.expiresAtMs))) {
         return String(readyPayload.openToken || '');
     }
-    var live = _checkinOpenTokenState[key];
-    if (live && String(live.localDate || '') === getLocalDate() && live.token) {
+    var live = _getReusableCheckinOpenMeta(appId);
+    if (live) {
         return String(live.token || '');
     }
     return '';
 }
 
+var _checkinOpenTokenRequests = new Map();
 async function _requestCheckinOpenToken(appId) {
     var test = (Array.isArray(myTests) ? myTests : []).find(function(item) {
         return Number(item && item.id) === Number(appId);
     });
+    var identity = { date: getLocalDate(), progress: Number(test && test.progress_id || 0),
+        run: Number(test && test.run_iteration || 1), actor: String(userId) };
+    var cached = _getReusableCheckinOpenMeta(appId);
+    if (cached) return { required: true, token: cached.token, progress_id: cached.progressId,
+        ready_at_ms: cached.readyAtMs, expires_at_ms: cached.expiresAtMs, server_now_ms: _checkinTokenNow(cached) };
+    var requestKey = [identity.actor, appId, identity.progress, identity.run, identity.date].join(':');
+    if (_checkinOpenTokenRequests.has(requestKey)) return _checkinOpenTokenRequests.get(requestKey);
+    var pending = (async function() {
     var response = await fetch(API_BASE + '/checkin/open', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2415,6 +2478,9 @@ async function _requestCheckinOpenToken(appId) {
         return null;
     }
     var key = String(Number(appId) || 0);
+    var current = (myTests || []).find(function(item) { return Number(item.id) === Number(appId); });
+    if (getLocalDate() !== identity.date || String(userId) !== identity.actor || !current
+        || Number(current.progress_id || 0) !== identity.progress || Number(current.run_iteration || 1) !== identity.run) return null;
     if (result.required === false) {
         if (_checkinOpenTokenState) delete _checkinOpenTokenState[key];
         return result;
@@ -2426,8 +2492,19 @@ async function _requestCheckinOpenToken(appId) {
         progressId: Number(result.progress_id || 0) || 0,
         localDate: getLocalDate(),
         serverNowMs: Number(result.server_now_ms || 0) || Date.now(),
+        receivedAtMs: Date.now(),
+        actorUserId: identity.actor,
+        runIteration: identity.run,
     };
+    if (_timerReadyState[key]) {
+        var ready = _timerReadyState[key];
+        setTimerReadyForConfirm(appId, true, ready.isScreenshot, ready.ownerUsername, true);
+    }
     return result;
+    })();
+    _checkinOpenTokenRequests.set(requestKey, pending);
+    try { return await pending; }
+    finally { if (_checkinOpenTokenRequests.get(requestKey) === pending) _checkinOpenTokenRequests.delete(requestKey); }
 }
 
 let _activeTimerSwitchAttempts = 0;
@@ -2701,6 +2778,13 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         tg.openLink(`https://play.google.com/store/apps/details?id=${pkg}`);
         _onStoreLinkClickedForIssueFlow(id);
         return;
+    }
+
+    var existingOpen = _getReusableCheckinOpenMeta(id);
+    if (existingOpen) {
+        resolvedDurationSeconds = Math.max(1, Math.ceil(
+            (Number(existingOpen.readyAtMs || 0) - _checkinTokenNow(existingOpen)) / 1000
+        ));
     }
 
     if (activeTimerAppId !== null && activeTimerAppId !== id) {
@@ -3516,6 +3600,9 @@ async function initiateProjectFeedback(appId, options) {
         feedbackType = 'bug';
     }
     var test = typeof getMyTestById === 'function' ? getMyTestById(appId) : null;
+    if (test && !test.is_external && !test.is_guest && typeof openReportModal === 'function') {
+        return openReportModal(appId, test.owner_username || '', { reportKind: feedbackType });
+    }
     var isEligibleForCheckin = test && (test.status === 'new' || test.status === 'daily' || test.status === 'opened');
     
     if (!options.checkinContext && isEligibleForCheckin) {
@@ -4033,6 +4120,19 @@ function focusProjectFeedbackCard(feedbackId) {
 }
 
 async function fetchProjectFeedbackPayload(appId, statusScope) {
+    var scope = String(statusScope || 'all').trim().toLowerCase() || 'all';
+    var key = String(userId) + ':' + Number(appId) + ':' + scope;
+    if (_projectFeedbackRequests.has(key)) return _projectFeedbackRequests.get(key);
+    var request = _fetchProjectFeedbackPayload(appId, scope);
+    _projectFeedbackRequests.set(key, request);
+    try { return await request; }
+    finally { if (_projectFeedbackRequests.get(key) === request) _projectFeedbackRequests.delete(key); }
+}
+
+var _projectFeedbackRequests = new Map();
+
+async function _fetchProjectFeedbackPayload(appId, statusScope) {
+    var readRevision = _feedbackCommitRevision;
     var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
     var scope = String(statusScope || 'all').trim().toLowerCase() || 'all';
     var statusQ = (scope && scope !== 'all') ? ('&status=' + encodeURIComponent(scope)) : '';
@@ -4045,7 +4145,7 @@ async function fetchProjectFeedbackPayload(appId, statusScope) {
         throw err;
     }
     return {
-        feedback: Array.isArray(data.feedback) ? data.feedback : [],
+        feedback: mergeSettledFeedbackItems(appId, Array.isArray(data.feedback) ? data.feedback : [], readRevision),
         scope: String(data.scope || scope || 'all')
     };
 }
@@ -4057,29 +4157,204 @@ function _isProjectFeedbackModalOpenFor(appId) {
 }
 
 var _projectFeedbackSessionCache = Object.create(null);
+var _feedbackProcessing = new Map();
+var _feedbackSettled = new Map();
+var _feedbackCommitRevision = 0;
+var _feedbackProcessingDrafts = new Map();
 
-function feedbackItemsSignature(items) {
-    return (items || []).map(function (item) {
-        return String(item && item.id || 0) + ':' + String(item && item.status || '');
-    }).join('|');
+function feedbackProcessingKey(appId, feedbackId) {
+    return String(userId) + ':' + Number(appId) + ':' + Number(feedbackId);
 }
 
-function rememberProjectFeedbackSession(appId) {
+function mergeSettledFeedbackItems(appId, items, readRevision) {
+    return (items || []).map(function(item) {
+        var saved = _feedbackSettled.get(feedbackProcessingKey(appId, item.id));
+        // A read started before the POST must not resurrect an already closed ticket.
+        return saved && (saved.revision > readRevision || isOpenFeedbackStatus(item.status))
+            ? Object.assign({}, item, saved.fields) : item;
+    });
+}
+
+function isFeedbackProcessing(appId, feedbackId) {
+    return _feedbackProcessing.has(feedbackProcessingKey(appId, feedbackId));
+}
+
+function syncFeedbackProcessingCards() {
+    document.querySelectorAll('#project-feedback-body .fb-card').forEach(function(card) {
+        var pending = isFeedbackProcessing(_activeProjectFeedbackAppId, card.dataset.feedbackId);
+        // Collapse once when the decision is queued, not on every status sync:
+        // users may reopen a pending ticket to read its details.
+        if (pending && !card.classList.contains('fb-card--saving')) {
+            card.classList.remove('fb-card--expanded');
+            card.classList.add('fb-card--collapsed');
+        }
+        card.classList.toggle('fb-card--saving', pending);
+        if (pending) card.setAttribute('aria-busy', 'true');
+        else card.removeAttribute('aria-busy');
+        card.querySelectorAll('.fb-toolbar-decide button').forEach(function(button) {
+            if (pending && !button.hasAttribute('data-saving-disabled')) {
+                button.dataset.savingDisabled = button.disabled ? '1' : '0';
+                button.disabled = true;
+            } else if (!pending && button.hasAttribute('data-saving-disabled')) {
+                button.disabled = button.dataset.savingDisabled === '1';
+                delete button.dataset.savingDisabled;
+            }
+        });
+        var note = card.querySelector('.fb-saving-note');
+        if (pending && !note) {
+            note = document.createElement('div');
+            note.className = 'fb-saving-note';
+            note.setAttribute('role', 'status');
+            note.setAttribute('aria-atomic', 'true');
+            note.innerHTML = '<span class="fb-saving-spinner" aria-hidden="true"></span><span class="fb-saving-label"></span>';
+            card.querySelector('.fb-inbox-main').appendChild(note);
+        } else if (!pending && note) note.remove();
+        if (pending && note) {
+            note.querySelector('.fb-saving-label').textContent = window.t('feedbackProcessingLabel', {}, lang);
+            note.title = window.t('feedbackSaving', {}, lang);
+        }
+    });
+}
+
+function beginFeedbackProcessing(appId, feedbackId, draft) {
+    var key = feedbackProcessingKey(appId, feedbackId);
+    if (_feedbackProcessing.has(key)) return false;
+    _feedbackProcessing.set(key, true);
+    _feedbackProcessingDrafts.set(key, draft);
+    syncFeedbackProcessingCards();
+    return true;
+}
+
+function projectFeedbackCounterKeys(type) {
+    var normalized = String(type || '').toLowerCase();
+    var category = normalized === 'bug' ? 'bugs_new_count' : normalized === 'idea' ? 'ideas_new_count'
+        : normalized.indexOf('review') !== -1 ? 'reviews_new_count' : '';
+    return ['feedback_new_count', category].filter(Boolean);
+}
+
+function decrementProjectFeedbackCounters(project, type) {
+    projectFeedbackCounterKeys(type).forEach(function(key) {
+        var summary = project.results_summary;
+        var value = project[key] != null ? project[key] : (summary && summary[key]);
+        if (value != null) project[key] = Math.max(0, Number(value || 0) - 1);
+        if (summary && summary[key] != null) summary[key] = Math.max(0, Number(summary[key] || 0) - 1);
+    });
+}
+
+function reconcileSettledProjectFeedbackCounters(projects, readRevision) {
+    if (typeof readRevision !== 'number') return;
+    _feedbackSettled.forEach(function(saved, key) {
+        if (saved.revision <= readRevision || key.indexOf(String(userId) + ':') !== 0) return;
+        var current = ((myProjects || []).concat(archivedProjects || [])).find(function(project) {
+            return Number(project.app_id || project.id) === saved.appId;
+        });
+        if (!current) return;
+        (projects || []).forEach(function(project) {
+            if (Number(project.app_id || project.id) !== saved.appId) return;
+            // Aggregate responses have no per-ticket version. Keep the confirmed
+            // local counters for this overlapping read instead of subtracting
+            // again: its DB snapshot may already include the completed decision.
+            projectFeedbackCounterKeys(saved.fields.type).forEach(function(counter) {
+                if (current[counter] != null) project[counter] = current[counter];
+                if (project.results_summary && current.results_summary && current.results_summary[counter] != null) {
+                    project.results_summary[counter] = current.results_summary[counter];
+                }
+            });
+        });
+    });
+}
+
+function completeFeedbackProcessing(appId, feedbackId, status, fields) {
+    var key = feedbackProcessingKey(appId, feedbackId);
+    var previousSettlement = _feedbackSettled.get(key);
+    var cached = _projectFeedbackSessionCache[Number(appId)];
+    var sourceItems = cached ? cached.items : (Number(_activeProjectFeedbackAppId) === Number(appId) ? _activeProjectFeedbackItems : []);
+    var original = (sourceItems || []).find(function(item) { return Number(item.id) === Number(feedbackId); });
+    var saved = Object.assign({ status: status, processed_at: new Date().toISOString(),
+        type: original && original.type || previousSettlement && previousSettlement.fields.type || '' }, fields || {});
+    var firstCommit = !previousSettlement;
+    if (firstCommit) {
+        ((myProjects || []).concat(archivedProjects || [])).forEach(function(project) {
+            if (Number(project.app_id || project.id) === Number(appId)) {
+                decrementProjectFeedbackCounters(project, saved.type);
+            }
+        });
+    }
+    _feedbackSettled.set(key, { fields: saved, appId: Number(appId),
+        revision: firstCommit ? ++_feedbackCommitRevision : previousSettlement.revision });
+    _feedbackProcessing.delete(key);
+    _feedbackProcessingDrafts.delete(key);
+    if (cached) {
+        cached.items = cached.items.map(function(item) { return Number(item.id) === Number(feedbackId) ? Object.assign({}, item, saved) : item; });
+        cached.loadedAt = 0; // Refresh server limits on the next visit.
+    }
+    if (Number(_activeProjectFeedbackAppId) === Number(appId)) {
+        _activeProjectFeedbackItems = (_activeProjectFeedbackItems || []).map(function(item) {
+            return Number(item.id) === Number(feedbackId) ? Object.assign({}, item, saved) : item;
+        });
+        if (typeof window.removeFeedbackCardOptimistic === 'function') {
+            window.removeFeedbackCardOptimistic(feedbackId, status, saved);
+        }
+        syncFeedbackProcessingCards();
+    }
+    // Refresh only the Results slots, without waiting for a throttled dashboard
+    // reload or replacing the whole card (and its expanded state/scroll).
+    if (window.ProjectResults && typeof window.ProjectResults.refreshCard === 'function') {
+        window.ProjectResults.refreshCard(appId);
+    }
+    if (_projectFeedbackSessionCache[Number(appId)]) _projectFeedbackSessionCache[Number(appId)].loadedAt = 0;
+    // Refresh rewards/counters once after commit, without blocking the next ticket.
+    if (typeof loadProjects === 'function') Promise.resolve().then(function() { return loadProjects(true); }).catch(function() {});
+}
+
+async function recoverFeedbackProcessing(appId, feedbackId, error) {
+    if (!error.payload || ['feedback_already_processed', 'already_processed'].includes(getBackendErrorCode(error.payload))) {
+        try {
+            // A lost POST reply is ambiguous: re-read, never automatically replay a reward.
+            var payload = await _fetchProjectFeedbackPayload(appId, 'all');
+            var saved = payload.feedback.find(function(item) { return Number(item.id) === Number(feedbackId); });
+            if (saved && !isOpenFeedbackStatus(saved.status)) {
+                completeFeedbackProcessing(appId, feedbackId, saved.status, saved);
+                showToast(window.t('feedbackSaveReconciled', { id: feedbackId }, lang));
+                return;
+            }
+        } catch (readError) { console.warn('Feedback save verification failed:', readError); }
+    }
+    failFeedbackProcessing(appId, feedbackId, error);
+}
+
+function failFeedbackProcessing(appId, feedbackId, error) {
+    _feedbackProcessing.delete(feedbackProcessingKey(appId, feedbackId));
+    var cached = _projectFeedbackSessionCache[Number(appId)];
+    if (cached) cached.loadedAt = 0;
+    if (Number(_activeProjectFeedbackAppId) === Number(appId)) syncFeedbackProcessingCards();
+    var detail = getApiErrorMessage(error && (error.payload || error.message), 'networkError');
+    showToast(window.t('feedbackSaveFailed', { id: feedbackId }, lang) + ' ' + detail);
+}
+
+function feedbackItemsSignature(items) {
+    return JSON.stringify(items || []);
+}
+
+function rememberProjectFeedbackSession(appId, refreshed) {
     var safeId = Number(appId || _activeProjectFeedbackAppId || 0);
     if (safeId <= 0) return;
+    var previous = _projectFeedbackSessionCache[safeId];
+    var project = (myProjects || []).concat(archivedProjects || []).find(function(item) { return Number(item.app_id || item.id) === safeId; });
     _projectFeedbackSessionCache[safeId] = {
         items: Array.isArray(_activeProjectFeedbackItems) ? _activeProjectFeedbackItems.slice() : [],
         fullLoaded: !!_activeProjectFeedbackFullLoaded,
         partial: !!_activeProjectFeedbackPartial,
         archived: !!_activeProjectFeedbackArchived,
-        loadedAt: Date.now()
+        loadedAt: refreshed || !previous ? Date.now() : previous.loadedAt,
+        reportedOpen: refreshed || !previous ? Number(project && project.feedback_new_count || 0) : previous.reportedOpen
     };
 }
 window.rememberProjectFeedbackSession = rememberProjectFeedbackSession;
 
 function getProjectFeedbackSession(appId) {
     var cached = _projectFeedbackSessionCache[Number(appId || 0)];
-    if (!cached || !Array.isArray(cached.items) || !cached.items.length) return null;
+    if (!cached || !Array.isArray(cached.items)) return null;
     return cached;
 }
 
@@ -4092,27 +4367,28 @@ function refreshProjectFeedbackInBackground(project, loadSeq, options) {
     options = options || {};
     var appId = Number((project && (project.id || project.app_id)) || 0);
     if (!appId) return;
-    fetchProjectFeedbackPayload(appId, 'all').then(function (fullPayload) {
+    var scope = options.preferUnprocessed ? 'open' : 'all';
+    fetchProjectFeedbackPayload(appId, scope).then(function (fullPayload) {
         if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
         if (Number(_activeProjectFeedbackAppId || 0) !== appId) return;
         var items = fullPayload.feedback || [];
         var previousSig = feedbackItemsSignature(_activeProjectFeedbackItems);
         var nextSig = feedbackItemsSignature(items);
         _activeProjectFeedbackItems = items;
-        _activeProjectFeedbackFullLoaded = true;
-        _activeProjectFeedbackPartial = false;
-        rememberProjectFeedbackSession(appId);
+        _activeProjectFeedbackFullLoaded = scope === 'all';
+        _activeProjectFeedbackPartial = scope !== 'all';
+        rememberProjectFeedbackSession(appId, true);
         if (!_isProjectFeedbackModalOpenFor(appId)) return;
         if (previousSig === nextSig) {
             if (typeof refreshProjectFeedbackHeader === 'function') {
-                refreshProjectFeedbackHeader(project, items, { partialLoad: false });
+                refreshProjectFeedbackHeader(project, items, { partialLoad: scope !== 'all' });
             }
             return;
         }
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, items, {
                 preferUnprocessed: isUnprocessedFeedbackFilter(),
-                partialLoad: false,
+                partialLoad: scope !== 'all',
                 preserveFilters: true
             });
         }
@@ -4136,6 +4412,7 @@ async function ensureFullProjectFeedbackLoaded(options) {
     _activeProjectFeedbackItems = payload.feedback || [];
     _activeProjectFeedbackFullLoaded = true;
     _activeProjectFeedbackPartial = false;
+    rememberProjectFeedbackSession(appId, true);
     return _activeProjectFeedbackItems;
 }
 
@@ -4180,10 +4457,13 @@ async function openProjectFeedback(appId, isArchived, options) {
             if (focusId > 0) {
                 setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
             }
-            refreshProjectFeedbackInBackground(project, loadSeq, {
-                preferUnprocessed: preferUnprocessed,
-                focusId: focusId
-            });
+            var cachedOpen = cached.items.filter(function(item) { return isOpenFeedbackStatus(item.status); }).length;
+            if (Date.now() - cached.loadedAt >= 30000 || (reportedOpen > cachedOpen && reportedOpen !== cached.reportedOpen) || options.force) {
+                refreshProjectFeedbackInBackground(project, loadSeq, {
+                    preferUnprocessed: preferUnprocessed,
+                    focusId: focusId
+                });
+            }
             return;
         }
     }
@@ -4203,62 +4483,35 @@ async function openProjectFeedback(appId, isArchived, options) {
 
         if (preferOpenFirst) {
             var openPayload = await fetchProjectFeedbackPayload(appId, 'open');
-            if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+            if (loadSeq !== _activeProjectFeedbackLoadSeq || !_isProjectFeedbackModalOpenFor(appId)) return;
             stageItems = (openPayload.feedback || []).filter(function(item) {
                 return typeof isOpenFeedbackStatus === 'function'
                     ? isOpenFeedbackStatus(item && item.status)
                     : true;
             });
-            if (stageItems.length > 0) {
-                _activeProjectFeedbackItems = stageItems;
-                _activeProjectFeedbackPartial = true;
-                _activeProjectFeedbackFullLoaded = false;
-                rememberProjectFeedbackSession(appId);
-                if (window.showProjectFeedbackModal) {
-                    window.showProjectFeedbackModal(project, stageItems, {
-                        preferUnprocessed: true,
-                        typeFilter: typeFilter,
-                        partialLoad: true
-                    });
-                }
-                if (focusId > 0) {
-                    setTimeout(function () { focusProjectFeedbackCard(focusId); }, 80);
-                }
-                fetchProjectFeedbackPayload(appId, 'all').then(function(fullPayload) {
-                    if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
-                    if (Number(_activeProjectFeedbackAppId || 0) !== Number(appId)) return;
-                    _activeProjectFeedbackItems = fullPayload.feedback || [];
-                    _activeProjectFeedbackFullLoaded = true;
-                    _activeProjectFeedbackPartial = false;
-                    rememberProjectFeedbackSession(appId);
-                    if (!_isProjectFeedbackModalOpenFor(appId)) return;
-                    if (isUnprocessedFeedbackFilter()) {
-                        if (typeof refreshProjectFeedbackHeader === 'function') {
-                            refreshProjectFeedbackHeader(project, _activeProjectFeedbackItems, { partialLoad: false });
-                        }
-                        return;
-                    }
-                    if (window.showProjectFeedbackModal) {
-                        window.showProjectFeedbackModal(project, _activeProjectFeedbackItems, {
-                            preferUnprocessed: false,
-                            partialLoad: false,
-                            preserveFilters: true
-                        });
-                    }
-                }).catch(function(bgError) {
-                    console.warn('Background full feedback load failed:', bgError);
+            // History is fetched only when the owner switches off the open-only filter.
+            // An empty open queue is also a valid, cacheable first paint.
+            _activeProjectFeedbackItems = stageItems;
+            _activeProjectFeedbackPartial = true;
+            _activeProjectFeedbackFullLoaded = false;
+            rememberProjectFeedbackSession(appId, true);
+            if (window.showProjectFeedbackModal) {
+                window.showProjectFeedbackModal(project, stageItems, {
+                    preferUnprocessed: true,
+                    typeFilter: typeFilter,
+                    partialLoad: true
                 });
-                return;
             }
+            return;
         }
 
         var fullPayload = await fetchProjectFeedbackPayload(appId, 'all');
-        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (loadSeq !== _activeProjectFeedbackLoadSeq || !_isProjectFeedbackModalOpenFor(appId)) return;
         stageItems = fullPayload.feedback || [];
         _activeProjectFeedbackItems = stageItems;
         _activeProjectFeedbackFullLoaded = true;
         _activeProjectFeedbackPartial = false;
-        rememberProjectFeedbackSession(appId);
+        rememberProjectFeedbackSession(appId, true);
         if (window.showProjectFeedbackModal) {
             window.showProjectFeedbackModal(project, stageItems, {
                 preferUnprocessed: preferUnprocessed,
@@ -4273,7 +4526,7 @@ async function openProjectFeedback(appId, isArchived, options) {
             }, 80);
         }
     } catch (error) {
-        if (loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (loadSeq !== _activeProjectFeedbackLoadSeq || !_isProjectFeedbackModalOpenFor(appId)) return;
         console.error('Load project feedback error:', error);
         if (window.showProjectFeedbackModalError) {
             window.showProjectFeedbackModalError(project);
@@ -4303,6 +4556,7 @@ async function sendProjectFeedbackMedia(feedbackId) {
 }
 
 function openFeedbackRewardModal(appId, feedbackId) {
+    if (isFeedbackProcessing(appId, feedbackId)) { showToast(window.t('feedbackSaving', {}, lang)); return; }
     _activeProjectFeedbackAppId = Number(appId);
     _feedbackRewardTargetId = Number(feedbackId);
     _feedbackRewardBust = 0;
@@ -4377,7 +4631,14 @@ function openFeedbackRewardModal(appId, feedbackId) {
         reply.oninput = _syncFeedbackRewardSubmitEnabled;
     }
     syncFeedbackRewardQuickReplyState();
+    var draft = _feedbackProcessingDrafts.get(feedbackProcessingKey(appId, feedbackId));
+    if (draft && draft.kind === 'reward') {
+        setFeedbackRewardBust(draft.bust_amount, { syncLimits: true });
+        setFeedbackRewardKarma(draft.karma_amount, { syncLimits: true });
+        if (reply) reply.value = draft.reply_text;
+    }
     _updateFeedbackRewardSubmitState();
+    _syncFeedbackRewardSubmitEnabled();
 }
 
 function closeFeedbackRewardModal() {
@@ -4392,9 +4653,11 @@ function closeFeedbackRewardModal() {
 function _syncFeedbackRewardSubmitEnabled() {
     var btn = document.getElementById('feedback-reward-submit-btn');
     if (!btn) return;
+    var submitting = !!_feedbackRewardTargetId && isFeedbackProcessing(_activeProjectFeedbackAppId, _feedbackRewardTargetId);
+    _setFeedbackRewardSubmitLoading(submitting);
     var reply = document.getElementById('feedback-reward-reply');
     var hasReply = !!(reply && reply.value && reply.value.trim());
-    var enabled = hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0;
+    var enabled = !submitting && (hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0);
     if (btn.disabled !== !enabled) btn.disabled = !enabled;
 }
 
@@ -4403,7 +4666,9 @@ function _updateFeedbackRewardSubmitState() {
     updateFeedbackRewardSummary();
 }
 
-var _feedbackRewardSubmitting = false;
+// Preserve the existing ordering of wallet/karma mutations without locking
+// the shared modal. Reply-only decisions can be sent independently.
+var _feedbackRewardFinancialQueue = Promise.resolve();
 
 function _setFeedbackRewardSubmitLoading(isLoading) {
     var btn = document.getElementById('feedback-reward-submit-btn');
@@ -4425,7 +4690,6 @@ function _setFeedbackRewardSubmitLoading(isLoading) {
 }
 
 async function submitFeedbackReward() {
-    if (_feedbackRewardSubmitting) return;
     if (!_feedbackRewardTargetId || !_activeProjectFeedbackAppId) return;
 
     const bustInput = document.getElementById('feedback-reward-bust-input');
@@ -4445,47 +4709,46 @@ async function submitFeedbackReward() {
         return;
     }
 
-    _feedbackRewardSubmitting = true;
-    _setFeedbackRewardSubmitLoading(true);
+    var processedFeedbackId = Number(_feedbackRewardTargetId);
+    var appId = Number(_activeProjectFeedbackAppId);
+    var rewardedKarma = Number(_feedbackRewardKarma || 0);
+    var fbItem = getFeedbackRewardItem();
+    var fbTesterId = fbItem ? Number(fbItem.user_id || fbItem.tester_id || fbItem.author_id || 0) : 0;
+    var draft = { kind: 'reward', bust_amount: bustAmount, karma_amount: rewardedKarma, reply_text: replyText };
+    if (!beginFeedbackProcessing(appId, processedFeedbackId, draft)) return;
+    // Capture everything before closing: the owner can immediately read another ticket.
+    var requestBody = withInitData({ owner_id: userId, bust_amount: bustAmount, karma_amount: rewardedKarma, reply_text: replyText });
+    var previousFinancialReward = null;
+    var releaseFinancialReward = null;
+    if (bustAmount > 0 || rewardedKarma > 0) {
+        previousFinancialReward = _feedbackRewardFinancialQueue;
+        _feedbackRewardFinancialQueue = new Promise(function(resolve) { releaseFinancialReward = resolve; });
+    }
 
     try {
-        const response = await fetch(`${API_BASE}/feedback/${_feedbackRewardTargetId}/reward`, {
+        closeFeedbackRewardModal();
+        if (previousFinancialReward) await previousFinancialReward;
+        const response = await fetch(`${API_BASE}/feedback/${processedFeedbackId}/reward`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                owner_id: userId,
-                bust_amount: bustAmount,
-                karma_amount: _feedbackRewardKarma,
-                reply_text: replyText,
-            }))
+            body: JSON.stringify(requestBody)
         });
         const data = await response.json();
         if (!response.ok || data.status !== 'success') {
-            _setFeedbackRewardSubmitLoading(false);
-            handleApiError(getBackendErrorCode(data), data.details || {});
-            return;
+            var requestError = new Error(getBackendErrorCode(data) || 'genericError');
+            requestError.payload = data;
+            throw requestError;
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        var processedFeedbackId = Number(_feedbackRewardTargetId || 0);
-        var rewardedBust = Number(bustAmount || 0);
-        var rewardedKarma = Number(_feedbackRewardKarma || 0);
-        _setFeedbackRewardSubmitLoading(false);
-        closeFeedbackRewardModal();
-        var fbItem = typeof getFeedbackRewardItem === 'function' ? getFeedbackRewardItem() : null;
-        var fbTesterId = fbItem ? Number(fbItem.user_id || fbItem.tester_id || fbItem.author_id || 0) : 0;
-        if (typeof window.removeFeedbackCardOptimistic === 'function') {
-            window.removeFeedbackCardOptimistic(processedFeedbackId, 'accepted', { reward_bust: rewardedBust, reward_karma: rewardedKarma, tester_id: fbTesterId });
-        }
-        if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+        var saved = data.result || {};
+        completeFeedbackProcessing(appId, processedFeedbackId, 'accepted', {
+            reward_bust: Number(saved.reward_bust == null ? bustAmount : saved.reward_bust),
+            reward_karma: Number(saved.reward_karma == null ? rewardedKarma : saved.reward_karma),
+            developer_reply: saved.developer_reply == null ? replyText : saved.developer_reply,
+            tester_id: fbTesterId
+        });
+        if (Number(_activeProjectFeedbackAppId) === appId && typeof window.triggerFeedbackAutoAdvance === 'function') {
             window.triggerFeedbackAutoAdvance(processedFeedbackId);
-        }
-        // Feedback karma is stored in the same project reward log as a direct
-        // "Наградить" action. Refresh the card so its compact award badge shows
-        // the accumulated issued types immediately.
-        if (typeof loadProjects === 'function') {
-            Promise.resolve()
-                .then(function() { return loadProjects(true); })
-                .catch(function() { /* ignore */ });
         }
         var contribPoints = fbItem ? getFeedbackRewardContributionPoints(fbItem) : 0;
         var lifetimeScore = fbItem ? getFeedbackRewardLifetimeScore(fbItem) : null;
@@ -4499,10 +4762,11 @@ async function submitFeedbackReward() {
         ));
     } catch (error) {
         console.error('Feedback reward error:', error);
-        _setFeedbackRewardSubmitLoading(false);
-        showToast(getApiErrorMessage(error && error.message, 'networkError'));
+        await recoverFeedbackProcessing(appId, processedFeedbackId, error);
     } finally {
-        _feedbackRewardSubmitting = false;
+        if (releaseFinancialReward) releaseFinancialReward();
+        // A late result belongs to its captured ticket, not the currently open form.
+        _syncFeedbackRewardSubmitEnabled();
     }
 }
 
@@ -5116,6 +5380,21 @@ async function confirmStart(id, options) {
 
     // --- 1. INSTANT OPTIMISTIC UI: Save rollback snapshot & mark test done immediately ---
     var prevTestSnapshot = test ? JSON.parse(JSON.stringify(test)) : null;
+    var checkinIdentity = { actor: String(userId), appId: Number(id),
+        progressId: Number(test && test.progress_id || 0),
+        run: Number(test && test.run_iteration || 0), date: getLocalDate() };
+    var checkinConfirmed = false;
+    var previousCheckinReady = _timerReadyState[String(id)]
+        ? Object.assign({}, _timerReadyState[String(id)]) : null;
+    function restoreTransientCheckinReadiness() {
+        if (!previousCheckinReady || getLocalDate() !== checkinIdentity.date
+            || String(userId) !== checkinIdentity.actor) return;
+        var current = myTests.find(function(item) { return Number(item.id) === Number(id); });
+        if (!current || Number(current.progress_id) !== checkinIdentity.progressId
+            || Number(current.run_iteration || 0) !== checkinIdentity.run) return;
+        _timerReadyState[String(id)] = previousCheckinReady;
+        _persistTimerReadyState();
+    }
     if (test) {
         test.status = 'done';
         test.last_check_date = getLocalDate();
@@ -5154,18 +5433,19 @@ async function confirmStart(id, options) {
                 } catch (e) {}
             }
 
-            const response = await fetch(`${API_BASE}/checkin`, {
+            const sendCheckin = typeof fetchCheckinWithRecovery === 'function' ? fetchCheckinWithRecovery : fetch;
+            const response = await sendCheckin(`${API_BASE}/checkin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(withInitData({
                     tester_id: userId,
                     app_id: id,
-                    local_date: getLocalDate(),
+                    local_date: checkinIdentity.date,
                     play_feedback_submitted: shouldSubmitPlayFeedback,
                     open_token: token,
                     proof_kind: proofKind,
                 }))
-            });
+            }, checkinIdentity);
 
             let result = null;
             try {
@@ -5173,6 +5453,7 @@ async function confirmStart(id, options) {
             } catch (parseError) {
                 result = null;
             }
+            checkinConfirmed = !!(response.ok && result && result.status === 'success');
 
             // Wait for animation to finish before applying final server merge or rollback
             await animPromise;
@@ -5181,6 +5462,9 @@ async function confirmStart(id, options) {
                 // --- ROLLBACK ON ERROR ---
                 if (test && prevTestSnapshot) {
                     Object.assign(test, prevTestSnapshot);
+                }
+                if (!result || response.status >= 500 || result.code === 'database_error') {
+                    restoreTransientCheckinReadiness();
                 }
                 setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
                 renderTests(true);
@@ -5220,6 +5504,7 @@ async function confirmStart(id, options) {
                     ) {
                         if (!(proofKind === 'checkpoint_screenshot' && errorCode === 'open_not_ready')) {
                             setTimerReadyForConfirm(id, false);
+                            if (errorCode !== 'open_not_ready') invalidateCheckinOpenToken(id);
                             clearActiveTimerForApp(id);
                             if (typeof window.renderTests === 'function') {
                                 window.renderTests(true);
@@ -5236,6 +5521,19 @@ async function confirmStart(id, options) {
             }
 
             // --- SUCCESS: Merge authoritative server data & show rewards ---
+            var currentCheckinTest = myTests.find(function(item) { return Number(item.id) === Number(id); });
+            if (getLocalDate() !== checkinIdentity.date || String(userId) !== checkinIdentity.actor
+                || !currentCheckinTest || Number(currentCheckinTest.progress_id) !== checkinIdentity.progressId
+                || Number(currentCheckinTest.run_iteration || 0) !== checkinIdentity.run) {
+                // A reply for yesterday or a previous participation must never
+                // mark today's/new participation's card as confirmed.
+                if (currentCheckinTest === test && getLocalDate() !== checkinIdentity.date) {
+                    test.status = 'daily';
+                    if (typeof recomputeLocalTestState === 'function') recomputeLocalTestState(test);
+                }
+                loadTasks(false).catch(function() {});
+                return true;
+            }
             const earnedBust = Number(result.earned_bust || 0);
             const earnedKarma = Number(result.earned_karma || 0);
             const sourceType = String(result.source_type || '').toLowerCase();
@@ -5325,9 +5623,15 @@ async function confirmStart(id, options) {
         } catch (error) {
             console.error('Checkin background error:', error);
             await animPromise;
+            if (checkinConfirmed) {
+                // A rendering/toast failure must not roll back a saved check-in.
+                setTimeout(function() { loadTasks(true).catch(function() {}); }, 150);
+                return true;
+            }
             if (test && prevTestSnapshot) {
                 Object.assign(test, prevTestSnapshot);
             }
+            restoreTransientCheckinReadiness();
             setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
             renderTests(true);
             if (typeof _highlightTestCard === 'function') {
@@ -5739,9 +6043,16 @@ function handleFeedbackAcceptClick(projectId, feedbackId, btnEl, event) {
 }
 
 function triggerFeedbackAutoAdvance(currentFeedbackId) {
+    var appId = _activeProjectFeedbackAppId;
+    var loadSeq = _activeProjectFeedbackLoadSeq;
     setTimeout(function() {
+        if (appId !== _activeProjectFeedbackAppId || loadSeq !== _activeProjectFeedbackLoadSeq) return;
+        if (document.querySelector('#feedback-reward-modal.active, #feedback-reject-modal.active, #play-review-reject-modal.active')) return;
         const list = document.querySelector('#project-feedback-body .feedback-list');
         if (!list) return;
+        if (Array.from(list.querySelectorAll('.fb-card--expanded')).some(function(card) {
+            return Number(card.dataset.feedbackId) !== Number(currentFeedbackId);
+        })) return;
         const cards = Array.from(list.querySelectorAll('.fb-card:not(.fb-card--hidden):not(.fb-card--processed)'));
 
         const currentIndex = cards.findIndex(function(card) {

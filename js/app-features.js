@@ -1808,6 +1808,7 @@ async function syncTelegramProfile() {
             is_banned: Boolean(result.is_banned),
             ban_reason: result.ban_reason || '',
             banned_at: result.banned_at || '',
+            banned_until: result.banned_until || '',
             appeal_status: result.appeal_status || 'none',
             appeal_text: result.appeal_text || '',
         };
@@ -1829,6 +1830,7 @@ async function syncTelegramProfile() {
             is_banned: Boolean(result.is_banned),
             ban_reason: result.ban_reason || '',
             banned_at: result.banned_at || '',
+            banned_until: result.banned_until || '',
             appeal_status: result.appeal_status || 'none',
             appeal_text: result.appeal_text || '',
         };
@@ -4978,6 +4980,23 @@ function showBanScreen(banData) {
     var reasonEl = document.getElementById('ban-screen-reason');
     if (reasonEl) {
         reasonEl.textContent = banReason;
+    }
+
+    var untilEl = document.getElementById('ban-screen-until');
+    if (untilEl) {
+        var untilRaw = String(data.banned_until || '').trim();
+        var untilText = '';
+        if (!untilRaw) {
+            untilText = window.t ? window.t('banScreenUntilForever', {}, lang) : '';
+        } else {
+            var parsedUntil = new Date(untilRaw);
+            var untilLabel = isNaN(parsedUntil.getTime())
+                ? untilRaw.slice(0, 16).replace('T', ' ')
+                : parsedUntil.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+            untilText = window.t ? window.t('banScreenUntil', { date: untilLabel }, lang) : untilLabel;
+        }
+        untilEl.textContent = untilText;
+        untilEl.hidden = !untilText;
     }
 
     var formState = document.getElementById('ban-appeal-form-state');

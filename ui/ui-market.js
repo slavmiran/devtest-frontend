@@ -865,7 +865,18 @@ function getMutualFeedJoinUnavailableLabel(item) {
             || project.is_accepting_new_testers === false
             || (String(project.test_mode || '') === 'email_list' && item.owner_has_email === false);
     });
-    return allUnavailable ? window.t('mutualNoAvailableProjectBtn', {}, lang) : '';
+    if (!allUnavailable) return '';
+    var hasExchange = choices.some(function(project) {
+        var link = _getProjectOwnerLinkMeta(project, item.owner_id);
+        return link && link.linkedProjectId > 0;
+    });
+    return window.t(hasExchange ? 'mutualTargetLinkedDetailsBtn' : 'mutualNoAvailableProjectBtn', {}, lang);
+}
+
+// Keep apps from "Already testing" out of all recruitment feeds, not other apps by the same owner.
+function _showcaseAvailableFeedItems(items) {
+    const testingIds = new Set(_showcaseActiveTestsItems().map(test => Number(test.id)));
+    return (Array.isArray(items) ? items : []).filter(item => !testingIds.has(Number(item.app_id)));
 }
 
 function renderFeedCard(item, kind) {
@@ -1153,23 +1164,25 @@ function renderMutualFeed(force) {
 
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.mutual));
     const feedState = window.getMarketFeedState ? window.getMarketFeedState('mutual') : { confirmedEmpty: false };
+    const seekingItems = _showcaseAvailableFeedItems(mutualSeeking);
+    const prelaunchItems = _showcaseAvailableFeedItems(mutualPrelaunch);
 
-    if (!mutualSeeking.length) {
-        if (isLoading || !feedState.confirmedEmpty) {
+    if (!seekingItems.length) {
+        if (!mutualSeeking.length && (isLoading || !feedState.confirmedEmpty)) {
             if (window._marketForceSkeleton) showSkeleton('mutual-seeking-list');
             else showMarketLoading('mutual-seeking-list');
         } else seekingEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
-        seekingEl.innerHTML = mutualSeeking.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
+        seekingEl.innerHTML = seekingItems.map((item) => renderFeedCard(item, 'mutual-seeking')).join('');
     }
 
-    if (!mutualPrelaunch.length) {
-        if (isLoading || !feedState.confirmedEmpty) {
+    if (!prelaunchItems.length) {
+        if (!mutualPrelaunch.length && (isLoading || !feedState.confirmedEmpty)) {
             if (window._marketForceSkeleton) showSkeleton('mutual-prelaunch-list');
             else showMarketLoading('mutual-prelaunch-list');
         } else prelaunchEl.innerHTML = `<p class="no-testers">${t.mutualEmpty}</p>`;
     } else {
-        prelaunchEl.innerHTML = mutualPrelaunch.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
+        prelaunchEl.innerHTML = prelaunchItems.map((item) => renderFeedCard(item, 'mutual-prelaunch')).join('');
     }
 
     renderGuestProjectsSection(true);
@@ -2841,14 +2854,15 @@ function renderBountyFeed(force) {
     if (!bountyEl) return;
     const isLoading = !!(window._marketInFlight && (window._marketInFlight.bounty));
     const feedState = window.getMarketFeedState ? window.getMarketFeedState('bounty') : { confirmedEmpty: false };
-    if (!bountyContracts.length) {
-        if (isLoading || !feedState.confirmedEmpty) {
+    const bountyItems = _showcaseAvailableFeedItems(bountyContracts);
+    if (!bountyItems.length) {
+        if (!bountyContracts.length && (isLoading || !feedState.confirmedEmpty)) {
             if (window._marketForceSkeleton) showSkeleton('bounty-list');
             else showMarketLoading('bounty-list');
         } else bountyEl.innerHTML = `<p class="no-testers" style="margin-top: 10px;">${t.bountyEmpty}</p>`;
         return;
     }
-    bountyEl.innerHTML = bountyContracts.map((item) => renderFeedCard(item, 'bounty')).join('');
+    bountyEl.innerHTML = bountyItems.map((item) => renderFeedCard(item, 'bounty')).join('');
 }
 
 function toggleDetailsWithAnimation(detailsEl) {
@@ -3439,96 +3453,8 @@ function openCheckinOptionsModal(appId, ownerUsername) {
     if (test && (test.is_external || test.is_guest || String(test.flow || '') === 'external')) {
         return openExternalCheckinOptionsModal(appId, ownerUsername);
     }
-    _checkinOptionsAppId = appId;
-    _checkinOptionsOwner = ownerUsername || '';
-    _checkinOptionsFlow = 'regular';
-    var testingDay = test ? getResolvedTestingDay(test) : null;
-    _checkinOptionsIsControlDay = !!(testingDay && isMandatoryScreenshotDay(testingDay));
-    if (_checkinOptionsIsControlDay && isScreenshotOnlyControlDay(testingDay)) {
-        if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
-            window.markScreenshotBoostAdvertisedInChooser(appId, false);
-        }
-        handleScreenshotAndConfirm(appId, ownerUsername || '');
-        return;
-    }
-    const modal = document.getElementById('checkin-options-modal');
-    if (!modal) return;
-    const titleEl = document.getElementById('t-checkinOptionsTitle');
-    const subtitleEl = document.getElementById('t-checkinOptionsSubtitle');
-    const screenshotBtn = document.getElementById('t-checkinOptionsSendScreenshot');
-    const bugBtn = document.getElementById('t-checkinOptionsSendBug');
-    const ideaBtn = document.getElementById('t-checkinOptionsSendIdea');
-    const confirmBtn = document.getElementById('t-checkinOptionsJustConfirm');
-    if (titleEl) titleEl.innerText = window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinTitle' : 'checkinOptionsTitle', {}, lang);
-    if (subtitleEl) subtitleEl.innerText = window.tInternalCheckinCopy
-        ? window.tInternalCheckinCopy(
-            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle',
-            _checkinOptionsIsControlDay ? 'controlDayCheckinSubtitleProof' : 'checkinOptionsSubtitle'
-        )
-        : window.t(_checkinOptionsIsControlDay ? 'controlDayCheckinSubtitle' : 'checkinOptionsSubtitle', {}, lang);
-    var screenshotBoostOffer = test && typeof window.getScreenshotBoostOffer === 'function'
-        ? window.getScreenshotBoostOffer(test, testingDay)
-        : null;
-    // Screenshot, bug and idea all result in screenshot-proof. A Google Play
-    // review deliberately remains neutral: it does not qualify for this pool.
-    setScreenshotBoostActionButton(screenshotBtn, window.t('checkinOptionsSendScreenshot', {}, lang), screenshotBoostOffer);
-    setScreenshotBoostActionButton(bugBtn, window.t('checkinOptionsSendBug', {}, lang), screenshotBoostOffer);
-    setScreenshotBoostActionButton(ideaBtn, window.t('checkinOptionsSendIdea', {}, lang), screenshotBoostOffer);
-    if (confirmBtn) {
-        confirmBtn.innerText = window.t('checkinOptionsJustConfirm', {}, lang);
-        if (_checkinOptionsIsControlDay) {
-            confirmBtn.style.display = 'none';
-            confirmBtn.disabled = false;
-            confirmBtn.style.cursor = '';
-            confirmBtn.style.opacity = '';
-        } else {
-            confirmBtn.style.display = 'block';
-            var timerRemaining = typeof window.getCheckinTimerRemainingSeconds === 'function'
-                ? window.getCheckinTimerRemainingSeconds(appId)
-                : 0;
-            if (timerRemaining > 0) {
-                // While the anti-fraud timer runs, Just Confirm shows the same countdown.
-                confirmBtn.disabled = true;
-                confirmBtn.style.cursor = 'not-allowed';
-                confirmBtn.style.opacity = '0.75';
-                confirmBtn.innerText = window.t('timerRemaining', {}, lang).replace('{sec}', timerRemaining);
-            } else {
-                confirmBtn.disabled = false;
-                confirmBtn.style.cursor = '';
-                confirmBtn.style.opacity = '';
-            }
-        }
-    }
-    var reviewBtn = document.getElementById('t-checkinOptionsSendReview');
-    if (reviewBtn) {
-        var testingDay = test ? getResolvedTestingDay(test) : null;
-        var reviewStatus = typeof window.getPlayReviewStatus === 'function' ? window.getPlayReviewStatus(test) : String(test && test.play_review_status || 'none').toLowerCase();
-        var canReview = !!(test && test.request_reviews && testingDay && testingDay >= 7);
-        var reviewLabel = window.t('checkinOptionsSendReview', {}, lang);
-        if (reviewStatus === 'pending') reviewLabel = '⏳ ' + window.t('playReviewDetailsPendingChip', {}, lang);
-        else if (reviewStatus === 'approved') reviewLabel = '✅ ' + window.t('playReviewDetailsCompletedChip', {}, lang);
-        else if (reviewStatus === 'rejected') reviewLabel = '❌ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
-        setScreenshotBoostActionButton(reviewBtn, reviewLabel, null);
-        reviewBtn.classList.toggle('is-review-pending', reviewStatus === 'pending');
-        reviewBtn.classList.toggle('is-review-approved', reviewStatus === 'approved');
-        reviewBtn.classList.toggle('is-review-rejected', reviewStatus === 'rejected');
-        reviewBtn.style.display = canReview ? 'block' : 'none';
-    }
-    renderCheckinReviewOptions();
-    if (typeof window.syncScreenshotBoostOfferUi === 'function') {
-        window.syncScreenshotBoostOfferUi(appId, { report: false });
-    }
-    if (typeof window.markScreenshotBoostAdvertisedInChooser === 'function') {
-        window.markScreenshotBoostAdvertisedInChooser(appId, !!screenshotBoostOffer);
-    }
-    if (typeof window.syncCheckinCatchupNoteUi === 'function') {
-        window.syncCheckinCatchupNoteUi(appId);
-    }
-    if (typeof window.syncCheckinDeveloperAccordion === 'function') {
-        window.syncCheckinDeveloperAccordion(appId, ownerUsername || (test && test.owner_username) || '');
-    }
-    modal.classList.add('active');
-    if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
+    // Internal reports use one sheet; external tests keep their existing chooser.
+    return openReportModal(appId, ownerUsername || '');
 }
 
 function openExternalCheckinOptionsModal(appId, ownerUsername, event) {
@@ -3811,6 +3737,8 @@ async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
         openPlayReviewRejectModal(feedbackId, projectId, btnEl);
         return;
     }
+    if (!beginFeedbackProcessing(projectId, feedbackId, { kind: 'play-review-reject', reason: selectedReason })) return;
+    closePlayReviewRejectModal();
     var userId = (window.App && window.App.userId) || window.userId || 0;
     try {
         var apiBase = (window.App && window.App.API_BASE) || '';
@@ -3823,36 +3751,19 @@ async function rejectPlayReview(feedbackId, projectId, btnEl, reason) {
             })),
         });
         var data = await resp.json();
-        if (data && data.status === 'success') {
-            if (btnEl) {
-                btnEl.style.display = 'none';
-                var card = btnEl.closest('.fb-card');
-                if (card) {
-                    card.classList.remove('fb-card--new');
-                    card.classList.add('fb-card--rejected');
-                    card.setAttribute('data-feedback-status', 'rejected');
-                    var statusEl = card.querySelector('.fb-status-badge, .fb-status');
-                    if (statusEl) {
-                        statusEl.textContent = window.t('projectFeedbackRejectedBadge', {}, lang) || 'Rejected';
-                        statusEl.classList.remove('fb-status--new', 'fb-status-badge--new', 'fb-status-badge--closed');
-                        statusEl.classList.add('fb-status-badge--declined');
-                    }
-                    var primaryBtn = card.querySelector('.fb-primary-btn');
-                    if (primaryBtn) primaryBtn.style.display = 'none';
-                }
-            }
+        if (resp.ok && data && data.status === 'success') {
+            completeFeedbackProcessing(projectId, feedbackId, 'rejected', { rejection_reason: selectedReason, type: 'google_play_review_rejected' });
             if (typeof showToast === 'function') {
                 showToast(window.t('playReviewRejectSuccessToast', {}, lang));
             }
         } else {
-            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
-            if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
-            else alert(msg);
+            var error = new Error(getBackendErrorCode(data) || 'genericError');
+            error.payload = data;
+            throw error;
         }
     } catch (e) {
         console.error('rejectPlayReview error:', e);
-        if (window.tg && window.tg.showAlert) window.tg.showAlert('Network error');
-        else alert('Network error');
+        await recoverFeedbackProcessing(projectId, feedbackId, e);
     }
 }
 
@@ -3864,6 +3775,10 @@ var _playReviewRejectState = {
 };
 
 function openPlayReviewRejectModal(feedbackId, projectId, btnEl) {
+    if (typeof isFeedbackProcessing === 'function' && isFeedbackProcessing(projectId, feedbackId)) {
+        showToast(window.t('feedbackSaving', {}, lang));
+        return;
+    }
     _playReviewRejectState = {
         feedbackId: Number(feedbackId || 0),
         projectId: Number(projectId || 0),
@@ -3879,6 +3794,10 @@ function openPlayReviewRejectModal(feedbackId, projectId, btnEl) {
     if (submitBtn) submitBtn.disabled = true;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
     modal.classList.add('active');
+    if (typeof _feedbackProcessingDrafts !== 'undefined') {
+        var draft = _feedbackProcessingDrafts.get(feedbackProcessingKey(projectId, feedbackId));
+        if (draft && draft.kind === 'play-review-reject') selectPlayReviewRejectReason(draft.reason);
+    }
 }
 
 function closePlayReviewRejectModal(event) {
@@ -3906,22 +3825,12 @@ async function confirmPlayReviewReject() {
         }
         return;
     }
-    var submitBtn = document.getElementById('play-review-reject-submit-btn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.6';
-    }
     await rejectPlayReview(
         _playReviewRejectState.feedbackId,
         _playReviewRejectState.projectId,
         _playReviewRejectState.btnEl,
         reason
     );
-    if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-    }
-    closePlayReviewRejectModal();
 }
 
 async function togglePlayReviewModalCheckbox(input) {
@@ -3992,6 +3901,7 @@ function closePlayReviewModal(event) {
     if (modal) modal.classList.remove('active');
     _playReviewModalSource = 'badge';
     _playReviewModalAppId = null;
+    if (typeof window.resumeUnifiedReportAfterReview === 'function') window.resumeUnifiedReportAfterReview();
 }
 
 function openPlayReviewStore() {
@@ -4567,8 +4477,10 @@ function setReportMessageLanguage(nextLang) {
 async function openReportModal(appId, ownerUsername, options) {
     var reportTest = typeof _checkinProofTest === 'function' ? _checkinProofTest(appId) : null;
     var isExternalReport = !!(reportTest && (reportTest.is_external || reportTest.is_guest || String(reportTest.flow || '') === 'external'));
+    // Opening the sheet never waits for runtime/config requests. Submission is
+    // independently validated by the server; stale/missing config refreshes later.
     if (!isExternalReport && typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) {
-        if (!await ensureRuntimeConfigReady()) return false;
+        ensureRuntimeConfigReady().catch(function() {});
     }
     _reportAppId = appId;
     _reportOwnerUsername = ownerUsername;
@@ -4578,10 +4490,15 @@ async function openReportModal(appId, ownerUsername, options) {
         : (typeof window.normalizeGuestInviteLanguage === 'function' ? window.normalizeGuestInviteLanguage(lang, lang) : lang);
     var safeAppId = Number(appId || 0);
     var test = typeof _checkinProofTest === 'function' ? _checkinProofTest(safeAppId) : (typeof window.getMyTestById === 'function' ? window.getMyTestById(safeAppId) : null);
-    var usesProofUpload = !isExternalReport && (typeof window.isInternalScreenshotProofUploadEnabled === 'function'
+    var usesProofUpload = !isExternalReport && ((typeof isRuntimeConfigReady === 'function' && !isRuntimeConfigReady()) || (typeof window.isInternalScreenshotProofUploadEnabled === 'function'
         ? window.isInternalScreenshotProofUploadEnabled(test)
-        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled()));
+        : (typeof window.isScreenshotProofUploadEnabled === 'function' && window.isScreenshotProofUploadEnabled())));
     var reportModal = document.getElementById('report-modal');
+    // The internal heading scrolls with the form; legacy/external keeps its header.
+    var reportHeading = document.getElementById('report-modal-heading');
+    if (!usesProofUpload && reportHeading) {
+        reportModal.querySelector('.report-modal-sheet').insertBefore(reportHeading, document.getElementById('report-proof-upload-block'));
+    }
     if (reportModal) reportModal.classList.toggle('is-proof-upload', usesProofUpload);
     if (usesProofUpload) {
         var proofOptions = options && typeof options === 'object' ? options : {};
@@ -4592,10 +4509,13 @@ async function openReportModal(appId, ownerUsername, options) {
             if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
             _checkinProofUploadState.appId = safeAppId;
             _checkinProofUploadState.progressId = progressId;
-            _checkinProofUploadState.idempotencyKey = _loadOrCreateCheckinProofKey(progressId);
+            // A new report has its own identity; a retry restores its original key below.
+            _checkinProofUploadState.idempotencyKey = typeof initUnifiedReport === 'function'
+                ? _newCheckinProofUuid() : _loadOrCreateCheckinProofKey(progressId);
             _checkinProofUploadState.submissionMode = isBufferCatchup ? 'buffer_catchup' : 'standard';
             _checkinProofUploadState.catchupRequested = isCatchupSubmission;
             if (typeof _setCheckinProofStatus === 'function') _setCheckinProofStatus('', '');
+            if (typeof restoreCheckinProofRetryDraft === 'function') restoreCheckinProofRetryDraft();
         }
         var visibilityNote = document.getElementById('t-checkinProofVisibilityNote');
         if (visibilityNote) visibilityNote.textContent = window.t('checkinProofVisibilityNote', {}, lang);
@@ -4717,16 +4637,26 @@ async function openReportModal(appId, ownerUsername, options) {
     }
 
     reportModal.classList.add('active');
+    if (usesProofUpload && typeof initUnifiedReport === 'function') initUnifiedReport(test, options || {});
     if (!usesProofUpload) setTimeout(_syncReportTextareaLayout, 40);
 }
 
 function closeReportModal(event) {
     if (event && event.target !== document.getElementById('report-modal')) return;
     var modal = document.getElementById('report-modal');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.removeProperty('top');
+        modal.style.removeProperty('bottom');
+        modal.style.removeProperty('height');
+    }
+    window.clearInterval(window._unifiedReportTimer);
+    if (typeof closeReportImageEditor === 'function') closeReportImageEditor();
     if (typeof _resetCheckinProofSelection === 'function') _resetCheckinProofSelection();
     if (typeof _resetCheckinProofSubmissionMode === 'function') _resetCheckinProofSubmissionMode();
+    var closingReportAppId = _reportAppId;
     setTimeout(() => {
+        if ((modal && modal.classList.contains('active')) || _reportAppId !== closingReportAppId) return;
         _reportAppId = null;
         _reportOwnerUsername = null;
         _reportMessageLang = null;
@@ -5262,7 +5192,7 @@ function getProjectFeedbackHeader(project, items, meta) {
     const donePct = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
     const avgResponseMs = partialLoad ? null : getFeedbackAvgResponseMs(items);
     const avgResponseText = partialLoad
-        ? '…'
+        ? '—'
         : formatFeedbackAvgResponseHours(avgResponseMs);
     const typeFilter = _projectFeedbackTypeFilter || 'all';
     const statusFilter = _projectFeedbackStatusFilter || 'all';
@@ -5416,7 +5346,7 @@ function toggleFeedbackUnprocessedOnly(checked) {
     var fullLoaded = typeof _activeProjectFeedbackFullLoaded !== 'undefined'
         ? !!_activeProjectFeedbackFullLoaded
         : !!window._activeProjectFeedbackFullLoaded;
-    var needsFetch = !fullLoaded || !feedbackItemsIncludeProcessed(items);
+    var needsFetch = !fullLoaded;
     if (!needsFetch) {
         rerenderActiveFeedbackList(false, items, false);
         return;
@@ -5424,14 +5354,17 @@ function toggleFeedbackUnprocessedOnly(checked) {
 
     var toggleEl = document.querySelector('#project-feedback-body .feedback-unprocessed-toggle input');
     if (toggleEl) toggleEl.disabled = true;
+    var requestedAppId = _activeProjectFeedbackAppId;
+    var requestedSeq = _activeProjectFeedbackLoadSeq;
     var loadPromise = (typeof ensureFullProjectFeedbackLoaded === 'function')
         ? ensureFullProjectFeedbackLoaded({ force: !!fullLoaded })
         : Promise.resolve(items);
     loadPromise.then(function(loaded) {
         if (toggleEl) toggleEl.disabled = false;
-        if (!_isProjectFeedbackModalOpenSafe()) return;
+        if (!_isProjectFeedbackModalOpenSafe() || _activeProjectFeedbackAppId !== requestedAppId || _activeProjectFeedbackLoadSeq !== requestedSeq) return;
         rerenderActiveFeedbackList(false, loaded || activeFeedbackItems(), false);
     }).catch(function(error) {
+        if (_activeProjectFeedbackAppId !== requestedAppId || _activeProjectFeedbackLoadSeq !== requestedSeq) return;
         if (toggleEl) toggleEl.disabled = false;
         console.error('Full feedback load on uncheck failed:', error);
         _projectFeedbackStatusFilter = 'new';
@@ -5707,7 +5640,11 @@ function renderProjectFeedbackCards(project, items) {
             window.feedbackCaptionRegistry[item.id] = item.message_text || '';
 
             var mediaHtml = '';
-            if (resolvedMediaUrls.length > 0) {
+            if (item.report_has_video && Number(item.report_proof_id) > 0) {
+                window.feedbackMediaRegistry[item.id] = [];
+                var videoLabel = lang === 'ru' ? 'Видео и вложения · Смотреть в Telegram' : 'Video and attachments · Watch in Telegram';
+                mediaHtml = '<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openCheckinProofOriginal(' + Number(item.report_proof_id) + ',0,event)">▶ ' + window.escapeHTML(videoLabel) + '</button>';
+            } else if (resolvedMediaUrls.length > 0) {
                 const total = resolvedMediaUrls.length;
                 const MAX_THUMB = 3;
                 const shown = Math.min(total, MAX_THUMB);
@@ -6121,6 +6058,10 @@ var _feedbackRejectState = {
 };
 
 function openFeedbackRejectModal(feedbackId, projectId, btnEl) {
+    if (typeof isFeedbackProcessing === 'function' && isFeedbackProcessing(projectId, feedbackId)) {
+        showToast(window.t('feedbackSaving', {}, lang));
+        return;
+    }
     _feedbackRejectState = {
         feedbackId: Number(feedbackId || 0),
         projectId: Number(projectId || 0),
@@ -6136,6 +6077,10 @@ function openFeedbackRejectModal(feedbackId, projectId, btnEl) {
     if (submitBtn) submitBtn.disabled = true;
     if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
     modal.classList.add('active');
+    if (typeof _feedbackProcessingDrafts !== 'undefined') {
+        var draft = _feedbackProcessingDrafts.get(feedbackProcessingKey(projectId, feedbackId));
+        if (draft && draft.kind === 'reject') selectFeedbackRejectReason(draft.reason);
+    }
 }
 
 function closeFeedbackRejectModal(event) {
@@ -6234,7 +6179,7 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
     if (Array.isArray(window._activeProjectFeedbackItems)) {
         window._activeProjectFeedbackItems = window._activeProjectFeedbackItems.map(function(item) {
             if (Number(item && item.id) === safeId) {
-                item.status = nextStatus === 'rejected' ? 'rejected' : 'closed';
+                item.status = nextStatus || 'accepted';
                 item.replied_at = new Date().toISOString();
                 if (nextStatus === 'rejected' && rejectionReason) {
                     item.rejection_reason = rejectionReason;
@@ -6281,11 +6226,6 @@ function removeFeedbackCardOptimistic(feedbackId, nextStatus, extra) {
         }
     }
 
-    if (typeof loadProjects === 'function') {
-        Promise.resolve()
-            .then(function() { return loadProjects(true); })
-            .catch(function() { /* ignore */ });
-    }
     if (typeof window.rememberProjectFeedbackSession === 'function') {
         window.rememberProjectFeedbackSession();
     }
@@ -6309,52 +6249,35 @@ async function confirmFeedbackReject() {
     var projectId = Number(_feedbackRejectState.projectId || 0);
     if (!feedbackId) return;
 
-    var submitBtn = document.getElementById('feedback-reject-submit-btn');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.6';
-    }
+    if (!beginFeedbackProcessing(projectId, feedbackId, { kind: 'reject', reason: reason })) return;
 
     var userIdLocal = (window.App && window.App.userId) || window.userId || 0;
+    var requestBody = withInitData({ owner_id: Number(userIdLocal), reason: reason });
+    closeFeedbackRejectModal();
     try {
         var apiBase = (window.App && window.App.API_BASE) || API_BASE || '';
         var resp = await fetch(apiBase + '/feedback/' + feedbackId + '/reject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({
-                owner_id: Number(userIdLocal),
-                reason: reason,
-            })),
+            body: JSON.stringify(requestBody),
         });
         var data = await resp.json();
-        if (data && data.status === 'success') {
-            closeFeedbackRejectModal();
+        if (resp.ok && data && data.status === 'success') {
             if (typeof showToast === 'function') {
                 showToast(window.t('feedbackRejectSuccessToast', {}, lang));
             }
-            if (typeof removeFeedbackCardOptimistic === 'function') {
-                removeFeedbackCardOptimistic(feedbackId, 'rejected', { rejection_reason: reason });
-            } else {
-                _markFeedbackCardRejected(feedbackId);
-            }
-            if (typeof window.triggerFeedbackAutoAdvance === 'function') {
+            completeFeedbackProcessing(projectId, feedbackId, 'rejected', { rejection_reason: reason });
+            if (Number(_activeProjectFeedbackAppId) === projectId && typeof window.triggerFeedbackAutoAdvance === 'function') {
                 window.triggerFeedbackAutoAdvance(feedbackId);
             }
         } else {
-            var msg = (data && (data.message || data.code)) ? (data.message || data.code) : 'Reject failed';
-            if (typeof showToast === 'function') showToast(String(msg));
-            else if (window.tg && window.tg.showAlert) window.tg.showAlert(String(msg));
-            else alert(msg);
+            var error = new Error(getBackendErrorCode(data) || 'genericError');
+            error.payload = data;
+            throw error;
         }
     } catch (e) {
         console.error('confirmFeedbackReject error:', e);
-        if (typeof showToast === 'function') showToast(window.t('networkError', {}, lang) || 'Network error');
-        else alert('Network error');
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = !_feedbackRejectState.reason;
-            submitBtn.style.opacity = '1';
-        }
+        await recoverFeedbackProcessing(projectId, feedbackId, e);
     }
 }
 
@@ -6409,6 +6332,7 @@ function showProjectFeedbackModal(project, items, options) {
     document.getElementById('project-feedback-modal').classList.add('active');
     cacheProjectFeedbackCards();
     applyProjectFeedbackFilters();
+    if (typeof syncFeedbackProcessingCards === 'function') syncFeedbackProcessingCards();
     feedbackScheduleClampMeasure();
     if (focusId > 0) {
         var focusCard = body.querySelector('.fb-card[data-feedback-id="' + focusId + '"]');
@@ -6470,6 +6394,7 @@ function getKarmaSourceLabel(sourceType) {
         checkin_reset: 'karmaSrc_checkin_reset',
         penalty: 'karmaSrc_penalty',
         screenshot_bonus: 'karmaSrc_screenshot_bonus',
+        video_report_bonus: 'karmaSrc_video_report_bonus',
         extra_screenshot: 'karmaSrc_screenshot_bonus',
         other: 'karmaSrc_other',
         good: 'karmaSrc_good_test',
@@ -6516,6 +6441,7 @@ function renderKarmaHowList() {
                 { label: label('karmaHowScreenshots', '3 скриншота за день'), value: '+0.1' },
                 { label: label('karmaHowScreenshots4', '4 скриншота за день'), value: '+0.2' },
                 { label: label('karmaHowScreenshots5', '5 скриншотов за день'), value: '+0.3' },
+                { label: label('karmaHowVideoReport', 'Видеоотчёт за день'), note: label('karmaHowVideoReportNote', 'один раз; с фото — до +0.5 за дневной отчёт'), value: '+0.3' },
                 { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.5' },
                 { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.5' },
                 { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.5' },
@@ -6619,6 +6545,9 @@ async function showKarmaInfo() {
         .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0);
     if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'screenshot_bonus')) {
         rows.push({ source_type: 'screenshot_bonus', amount: 0, count: 0 });
+    }
+    if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'video_report_bonus')) {
+        rows.push({ source_type: 'video_report_bonus', amount: 0, count: 0 });
     }
     const rowHtml = rows.map((item) => {
             const sourceLabel = window.escapeHTML(getKarmaSourceLabel(item.source_type));
@@ -10729,27 +10658,34 @@ window.openTimelineStatsSheet = openTimelineStatsSheet;
 window.closeTimelineStatsSheet = closeTimelineStatsSheet;
 
 function _getProjectOwnerLinkMeta(project, targetOwnerId) {
+    if (!project || !['active', 'pending_completion'].includes(String(project.status || project.app_status || 'active').toLowerCase())) return null;
     const testers = Array.isArray(project && project.testers) ? project.testers : [];
     const ownerTester = testers.find(function(tester) {
         return tester && !tester.is_left_soft && String(tester.progress_status || 'active').toLowerCase() === 'active'
             && Number(tester.tester_id || 0) === Number(targetOwnerId);
     });
-    if (!ownerTester) return null;
-
-    let linkedProjectName = String(ownerTester.reciprocal_app_name || ownerTester.reciprocal_app_package_name || '').trim();
-    if (!linkedProjectName) {
-        const myLinkedTest = (myTests || []).find(function(test) {
-            return Number(test && test.owner_id || 0) === Number(targetOwnerId)
-                && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0)
-                && String(test.progress_status || 'active').toLowerCase() === 'active' && !test.is_left_soft;
-        });
-        if (myLinkedTest) {
-            linkedProjectName = String(myLinkedTest.name || myLinkedTest.package || '').trim();
-        }
+    const myLinkedTest = (myTests || []).find(function(test) {
+        return test && Number(test.owner_id || 0) === Number(targetOwnerId)
+            && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0)
+            && String(test.progress_status || 'active').toLowerCase() === 'active' && !test.is_left_soft
+            && !test.is_external && !test.is_guest
+            && ['active', 'pending_completion'].includes(String(test.app_status || 'active').toLowerCase());
+    });
+    if (!ownerTester && !myLinkedTest) return null;
+    const linkedProjectId = Number(ownerTester && ownerTester.reciprocal_app_id || myLinkedTest && myLinkedTest.id || 0);
+    let linkedProjectName = linkedProjectId > 0
+        ? String(ownerTester && (ownerTester.reciprocal_app_name || ownerTester.reciprocal_app_package_name) || '').trim() : '';
+    if (!linkedProjectName && myLinkedTest && Number(myLinkedTest.id) === linkedProjectId) {
+        linkedProjectName = String(myLinkedTest.name || myLinkedTest.package || '').trim();
+    }
+    if (!linkedProjectName && linkedProjectId > 0 && typeof window.getMarketCandidateByAppId === 'function') {
+        const linkedApp = window.getMarketCandidateByAppId(linkedProjectId);
+        linkedProjectName = String(linkedApp && linkedApp.name || '').trim();
     }
     return {
         linkedProjectName: linkedProjectName,
-        joinType: String(ownerTester.join_type || '').toLowerCase(),
+        linkedProjectId: linkedProjectId,
+        joinType: String(ownerTester && ownerTester.join_type || myLinkedTest && myLinkedTest.join_type || '').toLowerCase(),
     };
 }
 
@@ -10837,6 +10773,13 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
                 ? window.t('projectSelectOwnerLinkedDetails', { owner_app: ownerLinkMeta.linkedProjectName }, lang)
                 : window.t('projectSelectOwnerAlreadyTestingDetails', {}, lang);
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(ownerLinkReason)}</span>`;
+            if (readOnly && ownerLinkMeta.linkedProjectName) {
+                reasonHtml = `<span class="project-select-pair">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg>
+                    <span><span class="project-select-pair__label">${window.escapeHTML(window.t('mutualExchangePartnerApp', {}, lang))}</span>
+                    <strong class="notranslate">${window.escapeHTML(ownerLinkMeta.linkedProjectName)}</strong></span>
+                </span><span class="project-select-reason">${window.escapeHTML(window.t('mutualExchangePairedProjectHint', {}, lang))}</span>`;
+            }
         } else if (targetLinked) {
             const linkedReason = pairedProject
                 ? window.t('mutualTargetPairedWithDetails', { my_app: pairedProject.name }, lang)
@@ -10872,6 +10815,7 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         return `${openTag}
             <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
             <span class="project-select-text">
+                ${readOnly && ownerLinkMeta && ownerLinkMeta.linkedProjectName ? `<span class="project-select-pair__label">${window.escapeHTML(window.t('mutualExchangeYourApp', {}, lang))}</span>` : ''}
                 <span class="project-select-name">${safeName}</span>
                 ${reasonHtml}
             </span>
@@ -10933,7 +10877,13 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
     }
     if (readOnly) {
         const targetName = options && options.targetAppName || window.t('unknownLabel', {}, lang);
-        listEl.insertAdjacentHTML('afterbegin', `<p class="project-select-overview">${window.escapeHTML(window.t('mutualExchangeDetailsIntro', { target_app: targetName }, lang))}</p>`);
+        const hasOtherExchange = availableProjects.some(project => {
+            const link = _getProjectOwnerLinkMeta(project, targetOwnerId);
+            return link && link.linkedProjectId > 0 && link.linkedProjectId !== Number(targetAppId);
+        });
+        const introKey = targetLinked ? 'mutualExchangeCurrentProjectIntro'
+            : hasOtherExchange ? 'mutualExchangeOtherProjectIntro' : 'mutualExchangeDetailsIntro';
+        listEl.insertAdjacentHTML('afterbegin', `<p class="project-select-overview">${window.escapeHTML(window.t(introKey, { target_app: targetName }, lang))}</p>`);
     }
     modal.classList.add('active');
 }

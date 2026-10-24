@@ -1923,6 +1923,11 @@ body.wizard-open .bottom-nav {
     z-index: 1000;
 }
 
+/* Phase-2 retest confirmation must remain above its project settings editor. */
+.modal-overlay.moderation-retest-overlay {
+    z-index: 10000;
+}
+
 .edit-project-page {
     background: var(--bg-color);
 }

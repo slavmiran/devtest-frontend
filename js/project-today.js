@@ -12,6 +12,8 @@
     var MAX_DETAIL_LOOKUPS = 6;
     var PROCESSED_STATUSES = ['accepted', 'approved', 'processed', 'tipped', 'rewarded', 'rejected', 'expired', 'closed', 'resolved', 'done'];
     var FEEDBACK_PROOF_TYPES = ['bug', 'idea', 'play_review'];
+    var FULL_SCREENSHOT_COUNT = 5;
+    var NOTE_PREVIEW_LIMIT = 72;
 
     /* appId -> { loadedAt, loading, error, control[], others[], catchupByProgress{} } */
     var cache = new Map();
@@ -20,12 +22,14 @@
     var controlReminderSending = new Set();
     var observer = null;
     var expandedOthers = new Set();
+    var expandedFullSets = new Set();
     var collapsedReceived = new Set();
     var lastSeenReceivedCounts = new Map();
     var sheetState = { appId: 0, mode: '', testersTab: 'state', historyLoaded: false };
     var PREFS_PREFIX = 'pc_activity_prefs_v2_';
     var ACTIVITY_CACHE_PREFIX = 'pc_activity_cache_v2_';
-    var ACTIVITY_FILTERS = ['testers', 'attention', 'contribution', 'control'];
+    var ACTIVITY_FILTERS = ['testers', 'attention', 'control'];
+    var REPORT_GROUPS = ['value', 'screens', 'waiting'];
     var optimisticFeedbackBustByTester = {};
     if (typeof window !== 'undefined') {
         window._optimisticFeedbackBustByTester = optimisticFeedbackBustByTester;
@@ -362,6 +366,15 @@
         }
     };
 
+    function testerIdentity(source) {
+        source = source || {};
+        return {
+            fullName: String(source.full_name || source.name || '').trim(),
+            username: String(source.username || '').trim().replace(/^@+/, ''),
+            testerId: Number(source.tester_id || source.id || 0),
+        };
+    }
+
     function handleOf(source) {
         var username = String(source && source.username || '').trim().replace(/^@+/, '');
         if (username) return '@' + username;
@@ -395,6 +408,8 @@
         idea: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1Zm3-19a7 7 0 0 0-4.5 12.36c.93.78 1.5 1.92 1.5 3.14V18h6v-.5c0-1.22.57-2.36 1.5-3.14A7 7 0 0 0 12 2Zm2.2 10.83c-.78.66-1.37 1.49-1.7 2.42h-1c-.33-.93-.92-1.76-1.7-2.42A4.98 4.98 0 1 1 14.2 12.83Z"/></svg>',
         play_review: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2 2.83 5.74 6.34.92-4.59 4.47 1.08 6.31L12 16.47 6.34 19.44l1.08-6.31L2.83 8.66l6.34-.92L12 2Z"/></svg>',
         screenshots: ICONS.image,
+        video: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 4 17.5v-11Zm13.2 2.15 2.3-1.4A1 1 0 0 1 21 8.1v7.8a1 1 0 0 1-1.5.85l-2.3-1.4V8.65Z"/></svg>',
+        report_note: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 4.5A2.5 2.5 0 0 1 7.5 2h9A2.5 2.5 0 0 1 19 4.5v10.8a2.5 2.5 0 0 1-1.1 2.07l-4.4 2.86a2.5 2.5 0 0 1-2.7 0l-4.4-2.86A2.5 2.5 0 0 1 5 15.3V4.5Zm2.5-.5a.5.5 0 0 0-.5.5v10.8a.5.5 0 0 0 .22.41l4.4 2.86a.5.5 0 0 0 .54 0l4.4-2.86a.5.5 0 0 0 .22-.41V4.5a.5.5 0 0 0-.5-.5h-9ZM8 7h8v2H8V7Zm0 3.5h6v2H8v-2Z"/></svg>',
     };
 
     // Reasons in Attention are shown directly on the avatar, just like a
@@ -623,7 +638,9 @@
         var primary = items.some(function (reason) { return reason.kind === 'bug'; }) ? 'bug'
             : items.some(function (reason) { return reason.kind === 'idea'; }) ? 'idea'
                 : items.some(function (reason) { return reason.kind === 'play_review'; }) ? 'play_review'
-                    : 'screenshots';
+                    : items.some(function (reason) { return reason.kind === 'video'; }) ? 'video'
+                        : items.some(function (reason) { return reason.kind === 'report_note'; }) ? 'report_note'
+                            : 'screenshots';
         return '<span class="pc-contribution-marker is-' + esc(primary) + '" aria-hidden="true">' +
             (CONTRIBUTION_ICONS[primary] || CONTRIBUTION_ICONS.screenshots) +
             (items.length > 1 ? '<b>+</b>' : '') +
@@ -1118,6 +1135,15 @@
         return '';
     }
 
+    function proofHasVideo(proof) {
+        if (!proof) return false;
+        if (proof.has_video === true || proof.hasVideo === true) return true;
+        var mime = String(
+            (proof.media && proof.media.mime_type) || proof.media_mime_type || proof.mime_type || ''
+        ).toLowerCase();
+        return mime.indexOf('video/') === 0;
+    }
+
     function buildProofRow(item, proof, thumbnailByProofId) {
         var isScreenshot = String(proof && proof.type || '') === 'screenshot';
         var hasProofMedia = Boolean(proof && (proof.has_media || (proof.image_count && Number(proof.image_count) > 0) || (proof.feedback && proof.feedback.has_media)));
@@ -1135,9 +1161,12 @@
             received: true,
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
+            note: String(proof && proof.note || ''),
             createdAt: String(proof && proof.created_at || ''),
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
+            hasVideo: isScreenshot && proofHasVideo(proof),
+            videoCount: isScreenshot ? Number(proof && proof.video_count || (proofHasVideo(proof) ? 1 : 0)) : 0,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
@@ -1185,9 +1214,12 @@
             timeline: item.timeline || [],
             proofId: Number(proof && proof.id || 0),
             proofType: String(proof && proof.type || ''),
+            note: String(proof && proof.note || ''),
             createdAt: String(proof && proof.created_at || ''),
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
+            hasVideo: isScreenshot && proofHasVideo(proof),
+            videoCount: isScreenshot ? Number(proof && proof.video_count || (proofHasVideo(proof) ? 1 : 0)) : 0,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
@@ -1485,6 +1517,12 @@
         } else if (type === 'play_review') {
             iconSvg = CONTRIBUTION_ICONS.play_review;
             iconMod = 'play_review';
+        } else if (type === 'video') {
+            iconSvg = CONTRIBUTION_ICONS.video;
+            iconMod = 'video';
+        } else if (type === 'report_note') {
+            iconSvg = CONTRIBUTION_ICONS.report_note;
+            iconMod = 'note';
         } else {
             iconSvg = ICONS.image;
             iconMod = 'screenshot';
@@ -1493,6 +1531,7 @@
             }
         }
 
+        var reportNote = String(item && (item.note || item.reportNote) || '').trim();
         var title = '';
         if (type === 'bug') {
             title = text('pcBugDetected', 'Обнаружен баг');
@@ -1500,6 +1539,10 @@
             title = text('pcContributionIdea', 'Рекомендация');
         } else if (type === 'play_review') {
             title = text('pcProofReview', 'Отзыв');
+        } else if (type === 'video') {
+            title = text('pcContributionVideo', 'Видео-отчёт');
+        } else if (type === 'report_note') {
+            title = text('pcContributionNote', 'Скрин-отчёт с комментарием');
         } else {
             title = imageCount > 1
                 ? text('pcScreenshotSet', 'Серия скриншотов')
@@ -1508,7 +1551,17 @@
 
         var subtitle = '';
         if (type === 'screenshot') {
-            subtitle = text('pcProofAlbumOverview', 'Quick overview of all images');
+            subtitle = reportNote ? '💬 ' + reportNote.slice(0, 90) : text('pcProofAlbumOverview', 'Quick overview of all images');
+        } else if (type === 'video' || type === 'report_note') {
+            if (reportNote) {
+                subtitle = reportNote.length > NOTE_PREVIEW_LIMIT
+                    ? (reportNote.slice(0, NOTE_PREVIEW_LIMIT).trim() + '…')
+                    : reportNote;
+            } else if (type === 'video') {
+                subtitle = text('pcContributionVideoHint', 'Ролик к сегодняшнему отчёту');
+            } else {
+                subtitle = text('pcContributionNoteHint', 'К скринам добавлен комментарий');
+            }
         } else {
             var rawText = String(item && (item.feedbackText || item.feedbackTitle || item.label || '')).trim();
             if (rawText === text('pcProofBug', 'Bug') || rawText === text('pcContributionIdea', 'Recommendation') || rawText === text('pcProofReview', 'Review')) {
@@ -1654,6 +1707,14 @@
                 '>' + kBadge + bBadge + todayRewardBadges + '</div>';
         }
 
+        var noteFoldHtml = '';
+        if ((type === 'video' || type === 'report_note') && reportNote.length > NOTE_PREVIEW_LIMIT) {
+            noteFoldHtml = '<div class="pc-note-fold" hidden><p>' + esc(reportNote) + '</p></div>' +
+                '<button type="button" class="pc-note-fold-toggle" aria-expanded="false" onclick="event.stopPropagation(); pcToggleNoteFold(this)">' +
+                    '<span class="pc-note-fold-label">' + esc(text('pcNoteFoldMore', 'Читать дальше')) + '</span>' +
+                '</button>';
+        }
+
         var topHtml = '<button type="button" class="pc-proof-album-card__main" onclick="event.stopPropagation(); ' + mainClick + '">' +
             '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--' + esc(iconMod) + '" aria-hidden="true">' +
                 iconSvg +
@@ -1682,6 +1743,7 @@
 
         return '<div class="pc-proof-album-card pc-proof-album-launch pc-proof-album-card--' + esc(iconMod) + '">' +
             topHtml +
+            noteFoldHtml +
             awardsRowHtml +
             bottomHtml +
         '</div>';
@@ -1693,7 +1755,7 @@
         if (!item) return false;
         var type = String(item.kind || item.proofType || '');
         if (type === 'screenshots') type = 'screenshot';
-        if (type === 'screenshot') {
+        if (type === 'screenshot' || type === 'video' || type === 'report_note') {
             return true;
         }
         var feedbackId = Number(item.feedbackId || item.source_feedback_id || (item.feedback && item.feedback.id) || 0);
@@ -2449,7 +2511,55 @@
     function isValuableRow(row) {
         var type = String(row && row.proofType || '');
         if (FEEDBACK_PROOF_TYPES.indexOf(type) !== -1) return true;
-        return type === 'screenshot' && Number(row.imageCount || 0) >= 3;
+        if (type !== 'screenshot') return false;
+        if (row.hasVideo) return true;
+        if (String(row.note || '').trim()) return true;
+        return Number(row.imageCount || 0) >= FULL_SCREENSHOT_COUNT;
+    }
+
+    function controlRowStaysInReports(row) {
+        if (!row) return false;
+        if (!row.received) return true;
+        if (row.hasVideo) return false;
+        return !(String(row.proofType || '') === 'screenshot' && Number(row.imageCount || 0) >= FULL_SCREENSHOT_COUNT);
+    }
+
+    function regularScreenshotRow(row) {
+        if (!row || !row.received || row.hasVideo) return false;
+        if (String(row.proofType || '') !== 'screenshot') return false;
+        var count = Number(row.imageCount || 0);
+        return count >= 1 && count < FULL_SCREENSHOT_COUNT;
+    }
+
+    function plainScreenshotRow(row) {
+        return regularScreenshotRow(row) && !String(row.note || '').trim();
+    }
+
+    function distinctTesterCount(rows, predicate) {
+        var seen = {};
+        var count = 0;
+        (rows || []).forEach(function (row) {
+            if (predicate && !predicate(row)) return;
+            var testerId = Number(row && row.testerId || 0);
+            if (testerId <= 0 || seen[testerId]) return;
+            seen[testerId] = true;
+            count += 1;
+        });
+        return count;
+    }
+
+    function shortScreenshotReportCount(rows) {
+        var seen = {};
+        var count = 0;
+        (rows || []).forEach(function (row) {
+            if (!regularScreenshotRow(row)) return;
+            var proofId = Number(row.proofId || 0);
+            var key = proofId > 0 ? ('p' + proofId) : ('t' + Number(row.testerId || 0));
+            if (seen[key]) return;
+            seen[key] = true;
+            count += 1;
+        });
+        return count;
     }
 
     function isTodaysContribution(row) {
@@ -2486,6 +2596,8 @@
                     screenshotCount: 0,
                     screenshotSeriesCount: 0,
                     screenshotRow: null,
+                    video: null,
+                    reportNote: null,
                     bug: null,
                     idea: null,
                     play_review: null,
@@ -2504,16 +2616,20 @@
                 }
             }
             if (row.proofType === 'screenshot') {
-                if (Number(row.imageCount || 0) >= 3) {
+                var shotCount = Number(row.imageCount || 0);
+                var shotNote = String(row.note || '').trim();
+                if (shotCount >= FULL_SCREENSHOT_COUNT) {
                     item.screenshotSeriesCount = (item.screenshotSeriesCount || 0) + 1;
                 }
                 if (Number(row.screenshotSeriesCount || 0) > 0) {
                     item.screenshotSeriesCount = Math.max(item.screenshotSeriesCount || 0, Number(row.screenshotSeriesCount));
                 }
-                if (Number(row.imageCount || 0) > item.screenshotCount) {
-                    item.screenshotCount = Number(row.imageCount || 0);
+                if (shotCount > item.screenshotCount) {
+                    item.screenshotCount = shotCount;
                     item.screenshotRow = row;
                 }
+                if (row.hasVideo && !item.video) item.video = row;
+                if (shotNote && !row.hasVideo && !item.reportNote) item.reportNote = row;
             }
             if (row.proofType === 'bug' && !item.bug) item.bug = row;
             if (row.proofType === 'idea' && !item.idea) item.idea = row;
@@ -2524,15 +2640,43 @@
         return order.map(function (testerId) {
             var item = byTester[testerId];
             var reasons = [];
-            if (item.screenshotCount >= 3 && item.screenshotRow) {
+            if (item.screenshotCount >= FULL_SCREENSHOT_COUNT && item.screenshotRow) {
                 reasons.push({
                     kind: 'screenshots',
                     label: contributionScreenshotsLabel(item.screenshotCount),
                     proofId: item.screenshotRow.proofId,
+                    note: item.screenshotRow.note || '',
                     progressId: item.screenshotRow.progressId,
                     imageCount: item.screenshotCount,
                     feedbackId: 0,
                     boostBust: Number(item.screenshotRow.boostBust || 0),
+                    rejectionReason: '',
+                });
+            }
+            if (item.video) {
+                reasons.push({
+                    kind: 'video',
+                    label: text('pcContributionVideo', 'Video report'),
+                    proofId: item.video.proofId,
+                    note: item.video.note || '',
+                    progressId: item.video.progressId,
+                    imageCount: Number(item.video.imageCount || 0),
+                    hasVideo: true,
+                    feedbackId: 0,
+                    boostBust: Number(item.video.boostBust || 0),
+                    rejectionReason: '',
+                });
+            }
+            if (item.reportNote && (!item.video || Number(item.reportNote.proofId) !== Number(item.video.proofId))) {
+                reasons.push({
+                    kind: 'report_note',
+                    label: text('pcContributionNote', 'Screenshot report with a comment'),
+                    proofId: item.reportNote.proofId,
+                    note: item.reportNote.note || '',
+                    progressId: item.reportNote.progressId,
+                    imageCount: Number(item.reportNote.imageCount || 0),
+                    feedbackId: 0,
+                    boostBust: Number(item.reportNote.boostBust || 0),
                     rejectionReason: '',
                 });
             }
@@ -2987,7 +3131,7 @@
         var seriesCount = Number((item && item.screenshotSeriesCount) || 0);
         if (seriesCount <= 0) {
             seriesCount = reasons.filter(function (r) {
-                return r && (r.kind === 'screenshots' || Number(r.imageCount || 0) >= 3);
+                return r && r.kind === 'screenshots' && Number(r.imageCount || 0) >= FULL_SCREENSHOT_COUNT;
             }).length;
         }
         if (seriesCount <= 0 && item && Number(item.screenshotCount || 0) >= 3) {
@@ -3082,62 +3226,332 @@
         '</button>';
     }
 
+    function individualContributionReasons(item) {
+        return (item && item.reasons || []).filter(function (reason) {
+            return reason && reason.kind !== 'screenshots';
+        });
+    }
+
+    function isFullScreenshotMember(item) {
+        return Number(item && item.screenshotCount || 0) >= FULL_SCREENSHOT_COUNT && !!(item && item.screenshotRow);
+    }
+
+    function pluralPeopleLabel(count) {
+        var amount = Math.max(0, Number(count || 0));
+        var key = 'pcFullSetPeopleMany';
+        if (typeof lang === 'undefined' || lang !== 'ru') {
+            key = amount === 1 ? 'pcFullSetPeopleOne' : 'pcFullSetPeopleMany';
+        } else {
+            var lastTwo = amount % 100;
+            var lastOne = amount % 10;
+            if (lastTwo < 11 || lastTwo > 14) {
+                if (lastOne === 1) key = 'pcFullSetPeopleOne';
+                else if (lastOne >= 2 && lastOne <= 4) key = 'pcFullSetPeopleFew';
+            }
+        }
+        return text(key, '{count} participants', { count: amount });
+    }
+
+    function shortTesterName(tester) {
+        var fullName = String(tester && (tester.full_name || tester.name) || '').trim();
+        if (fullName) return fullName.split(/\s+/)[0];
+        var username = String(tester && tester.username || '').trim().replace(/^@+/, '');
+        return username || handleOf(tester);
+    }
+
+    function contributionPersonHtml(appId, item, context, sparkle, rowClass, reasons) {
+        var rewardState = rewardStateForTester(context, item.testerId);
+        var headerActionsHtml = '';
+        if (rewardState.canReward || rewardState.rewardedToday) {
+            headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                hasSparkle: !!(sparkle && sparkle.testerId === Number(item.testerId) && rewardState.canReward),
+                mode: sparkle && sparkle.mode,
+                tilt: sparkle && sparkle.tilt,
+                duration: '3.8s',
+                rewardedToday: rewardState.rewardedToday,
+            });
+        }
+        var visibleReasons = reasons || item.reasons || [];
+        var subrowsHtml = activityTimelineHtml(appId, visibleReasons, {
+            testerId: item.testerId,
+            context: context,
+            reasons: visibleReasons,
+            item: item,
+            todayRewardBadgesHtml: todayRewardBadgesHtml(appId, item, context),
+        });
+        var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
+        return personRowHtml({
+            appId: appId,
+            tester: item.tester,
+            tone: rewardState.rewardedToday ? 'green' : 'sky',
+            rowClass: rowClass || 'pc-person--contribution',
+            metaHtml: contributionControlDayHtml(item.tester) + contributionTesterStatsChipHtml(appId, item.tester, item, context),
+            actionsHtml: headerActionsHtml,
+            avatarMarkerHtml: contributionAvatarMarkerHtml(visibleReasons),
+            extraHtml: subrowsHtml,
+            timeAgoText: timeAgo,
+            nameSuffixHtml: contributionDaySuffixHtml(item.tester),
+        });
+    }
+
+    function fullSetMemberHtml(appId, item, context, sparkle) {
+        var rewardState = rewardStateForTester(context, item.testerId);
+        var actionsHtml = '';
+        if (rewardState.canReward || rewardState.rewardedToday) {
+            actionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                hasSparkle: !!(sparkle && sparkle.testerId === Number(item.testerId) && rewardState.canReward),
+                mode: sparkle && sparkle.mode,
+                tilt: sparkle && sparkle.tilt,
+                duration: '3.8s',
+                rewardedToday: rewardState.rewardedToday,
+            });
+        }
+        var proofId = Number(item.screenshotRow && item.screenshotRow.proofId || 0);
+        var topicHtml = proofId > 0
+            ? '<button type="button" class="pc-proof-album-card__topic-btn pc-fullset__topic" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
+                ICONS.topic +
+                '<span class="pc-proof-album-card__topic-label">' +
+                    '<span class="pc-proof-album-card__topic-verb">' + esc(text('pcProofOpenVerb', 'Открыть')) + '</span> ' +
+                    '<span class="pc-proof-album-card__topic-target">' + esc(text('pcProofOpenTopicTail', 'в топике')) + '</span>' +
+                '</span>' +
+            '</button>'
+            : '';
+        return personRowHtml({
+            appId: appId,
+            tester: item.tester,
+            tone: rewardState.rewardedToday ? 'green' : 'sky',
+            rowClass: 'pc-person--contribution pc-person--fullset',
+            metaHtml: contributionControlDayHtml(item.tester) + topicHtml,
+            actionsHtml: actionsHtml,
+            timeAgoText: formatContributionTimeAgo(item.latestCreatedAt || ''),
+            nameSuffixHtml: contributionDaySuffixHtml(item.tester),
+        });
+    }
+
+    function contributionDaySuffixHtml(tester) {
+        var dayNum = testerDayNumber(tester);
+        if (dayNum <= 0 || isControlDay(dayNum)) return '';
+        return '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + dayNum) + '</span>';
+    }
+
+    function contributionControlDayHtml(tester) {
+        var dayNum = testerDayNumber(tester);
+        if (!isControlDay(dayNum)) return '';
+        return '<span class="pc-person__day pc-person__day--control is-control-accent">' +
+            '<svg class="pc-person__day-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
+            esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
+        '</span>';
+    }
+
+    function fullSetChipHtml(appId, item) {
+        var tester = item.tester || {};
+        var name = shortTesterName(tester);
+        var avatarUrl = teamAvatarUrl(tester);
+        var face = avatarUrl
+            ? '<img src="' + esc(avatarUrl) + '" alt="" loading="lazy">'
+            : '<span>' + esc(teamInitials(tester)) + '</span>';
+        return '<button type="button" class="pc-fullset__chip" onclick="event.stopPropagation(); pcFocusFullSetMember(' +
+            Number(appId) + ',' + Number(item.testerId) + ')">' +
+            '<span class="pc-fullset__chip-face">' + face + '</span>' +
+            '<span class="pc-fullset__chip-name">' + esc(name) + '</span>' +
+        '</button>';
+    }
+
+    function fullSetDieHtml() {
+        return '<svg class="pc-fullset__die" viewBox="0 0 32 32" aria-hidden="true">' +
+            '<ellipse cx="16" cy="28.4" rx="8.2" ry="1.7" fill="rgba(0,0,0,.32)"/>' +
+            '<path d="M6.2 12.4 16 7.4 25.8 12.4 16 17.4Z" fill="#eef5ff"/>' +
+            '<path d="M6.2 12.4 16 17.4 16 26.8 6.2 21.8Z" fill="#7eaeef"/>' +
+            '<path d="M16 17.4 25.8 12.4 25.8 21.8 16 26.8Z" fill="#3c6298"/>' +
+            '<path d="M8 11.5 16 7.6 18.2 8.7 10.1 12.6Z" fill="rgba(255,255,255,.72)"/>' +
+            '<circle cx="8.6" cy="16.6" r="1.05" fill="#163056"/>' +
+            '<circle cx="13.2" cy="18.8" r="1.05" fill="#163056"/>' +
+            '<circle cx="10.9" cy="20.2" r="1.05" fill="#163056"/>' +
+            '<circle cx="8.8" cy="21.6" r="1.05" fill="#163056"/>' +
+            '<circle cx="13.4" cy="23.2" r="1.05" fill="#163056"/>' +
+            '<circle cx="23.6" cy="15.8" r=".9" fill="#d7e7ff"/>' +
+            '<circle cx="20.9" cy="19.6" r=".9" fill="#d7e7ff"/>' +
+            '<circle cx="18.2" cy="23.4" r=".9" fill="#d7e7ff"/>' +
+        '</svg>';
+    }
+
+    function fullSetGroupHtml(appId, items, context, sparkle) {
+        if (!items.length) return '';
+        var open = expandedFullSets.has(Number(appId));
+        var sorted = items.slice().sort(function (left, right) {
+            var leftRewarded = rewardStateForTester(context, left.testerId).rewardedToday ? 1 : 0;
+            var rightRewarded = rewardStateForTester(context, right.testerId).rewardedToday ? 1 : 0;
+            if (leftRewarded !== rightRewarded) return leftRewarded - rightRewarded;
+            return String(shortTesterName(left.tester)).localeCompare(String(shortTesterName(right.tester)));
+        });
+        return '<li class="pc-fullset-wrap">' +
+            '<section class="pc-fullset' + (open ? ' is-open' : '') + '" id="pc-fullset-' + Number(appId) + '">' +
+                '<div class="pc-fullset__head">' +
+                    '<button type="button" class="pc-fullset__toggle" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')">' +
+                        '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--screenshot" aria-hidden="true">' +
+                            ICONS.image +
+                            '<b>' + FULL_SCREENSHOT_COUNT + '</b>' +
+                        '</span>' +
+                        '<span class="pc-fullset__copy">' +
+                            '<strong>' + esc(text('pcFullSetTitle', 'Максимальные серии')) + '</strong>' +
+                            '<small>' + esc(text('pcFullSetSubtitle', '{people} · все 5 скринов', {
+                                people: pluralPeopleLabel(sorted.length),
+                            })) + '</small>' +
+                        '</span>' +
+                    '</button>' +
+                '</div>' +
+                '<div class="pc-fullset__rail-row">' +
+                    '<div class="pc-fullset__rail"' + (open ? ' aria-hidden="true"' : '') + '>' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
+                    '<button type="button" class="pc-fullset__chev" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(text('pcFullSetToggle', 'Показать участников')) + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')"></button>' +
+                '</div>' +
+                '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
+                    '<span class="pc-fullset__random-label pc-fullset__random-label--lead" aria-hidden="true">' + esc(text('pcFullSetRandomLead', 'Выбрать')) + '</span>' +
+                    fullSetDieHtml() +
+                    '<span class="pc-fullset__random-label pc-fullset__random-label--tail" aria-hidden="true">' + esc(text('pcFullSetRandomTail', 'случайного')) + '</span>' +
+                '</button>' +
+                '<span class="pc-fullset__status" hidden></span>' +
+                '<div class="pc-fullset__body"' + (open ? '' : ' hidden') + '>' +
+                    '<ul class="pc-fullset__members">' +
+                        sorted.map(function (item) { return fullSetMemberHtml(appId, item, context, sparkle); }).join('') +
+                    '</ul>' +
+                '</div>' +
+            '</section>' +
+        '</li>';
+    }
+
     function contributionSheetHtml(appId, items, context) {
         if (!items.length) return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
 
         var sorted = items.slice().sort(function (left, right) {
             return contributionPriority(left, context) - contributionPriority(right, context);
         });
-
-        var eligibleTesters = sorted.filter(function (it) {
-            return rewardStateForTester(context, it.testerId).canReward;
+        var individual = sorted.filter(function (item) { return individualContributionReasons(item).length > 0; });
+        var fullSets = sorted.filter(function (item) {
+            return isFullScreenshotMember(item) && individualContributionReasons(item).length === 0;
         });
-        var initialSparkleTesterId = 0;
-        var initialSparkleMode = SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)];
-        var initialSparkleTilt = (Math.floor(Math.random() * 40) - 20) + 'deg';
-        if (eligibleTesters.length > 0) {
-            var startIdx = Math.floor(Math.random() * eligibleTesters.length);
-            initialSparkleTesterId = Number(eligibleTesters[startIdx].testerId);
+        if (!individual.length && !fullSets.length) {
+            return emptySheetHtml(text('pcContributionEmpty', 'No extra contribution today'));
         }
 
-        return '<ul class="pc-act-list">' + sorted.map(function (item) {
-            var rewardState = rewardStateForTester(context, item.testerId);
-            var headerActionsHtml = '';
-            if (rewardState.canReward || rewardState.rewardedToday) {
-                var isInitialTarget = rewardState.canReward && Number(item.testerId) === initialSparkleTesterId;
-                headerActionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
-                    hasSparkle: isInitialTarget,
-                    mode: initialSparkleMode,
-                    tilt: initialSparkleTilt,
-                    duration: '3.8s',
-                    rewardedToday: rewardState.rewardedToday,
-                });
-            }
-
-            var subrowsHtml = activityTimelineHtml(appId, item.reasons, {
-                testerId: item.testerId,
-                context: context,
-                reasons: item.reasons,
-                item: item,
-                todayRewardBadgesHtml: todayRewardBadgesHtml(appId, item, context),
+        var sparklePool = individual.filter(function (item) {
+            return rewardStateForTester(context, item.testerId).canReward;
+        });
+        if (!sparklePool.length) {
+            sparklePool = fullSets.filter(function (item) {
+                return rewardStateForTester(context, item.testerId).canReward;
             });
-            var timeAgo = formatContributionTimeAgo(item.latestCreatedAt || (item.tester && item.tester.last_check_date) || '');
+        }
+        var sparkle = {
+            testerId: sparklePool.length ? Number(sparklePool[Math.floor(Math.random() * sparklePool.length)].testerId) : 0,
+            mode: SPARKLE_MODES[Math.floor(Math.random() * SPARKLE_MODES.length)],
+            tilt: (Math.floor(Math.random() * 40) - 20) + 'deg',
+        };
 
-            return personRowHtml({
-                appId: appId,
-                tester: item.tester,
-                tone: rewardState.rewardedToday ? 'green' : 'sky',
-                rowClass: 'pc-person--contribution',
-                metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
-                actionsHtml: headerActionsHtml,
-                avatarMarkerHtml: contributionAvatarMarkerHtml(item.reasons),
-                extraHtml: subrowsHtml,
-                timeAgoText: timeAgo,
-                nameSuffixHtml: testerDayNumber(item.tester) > 0
-                    ? '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + testerDayNumber(item.tester)) + '</span>' : '',
-            });
-        }).join('') + '</ul>';
+        var rows = individual.map(function (item) {
+            return contributionPersonHtml(appId, item, context, sparkle, 'pc-person--contribution', individualContributionReasons(item));
+        }).join('');
+        return '<ul class="pc-act-list">' + fullSetGroupHtml(appId, fullSets, context, sparkle) + rows + '</ul>';
     }
+
+    window.pcToggleNoteFold = function (button) {
+        var card = button && button.closest ? button.closest('.pc-proof-album-card') : null;
+        if (!card) return;
+        var fold = card.querySelector('.pc-note-fold');
+        var label = button.querySelector('.pc-note-fold-label');
+        var open = !card.classList.contains('is-note-open');
+        card.classList.toggle('is-note-open', open);
+        if (fold) fold.hidden = !open;
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (label) label.textContent = open ? text('pcNoteFoldLess', 'Свернуть') : text('pcNoteFoldMore', 'Читать дальше');
+    };
+
+    function placeFullSet(root, open) {
+        if (!root) return;
+        root.classList.toggle('is-open', !!open);
+        var body = root.querySelector('.pc-fullset__body');
+        if (body) body.hidden = !open;
+        var chevron = root.querySelector('.pc-fullset__chev');
+        if (chevron) chevron.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var rail = root.querySelector('.pc-fullset__rail');
+        if (rail) rail.setAttribute('aria-hidden', open ? 'true' : 'false');
+    }
+
+    function animateFullSet(root, open) {
+        var button = root && root.querySelector('.pc-fullset__random');
+        var die = button && button.querySelector('.pc-fullset__die');
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (die) {
+            die.style.transition = 'none';
+            die.style.transform = 'none';
+        }
+        var first = !reduce && die ? die.getBoundingClientRect() : null;
+        placeFullSet(root, open);
+        if (!die || !first || first.width <= 0) return;
+        var last = die.getBoundingClientRect();
+        var dx = first.left - last.left;
+        var dy = first.top - last.top;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+        die.style.transform = 'translate(' + dx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px)';
+        void die.offsetWidth;
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                die.style.transition = 'transform .72s cubic-bezier(.22,.61,.36,1)';
+                die.style.transform = 'translate(0px,0px)';
+            });
+        });
+    }
+
+    window.pcToggleFullSet = function (appId) {
+        var safeAppId = Number(appId || 0);
+        var open = !expandedFullSets.has(safeAppId);
+        if (open) expandedFullSets.add(safeAppId);
+        else expandedFullSets.delete(safeAppId);
+        var root = document.getElementById('pc-fullset-' + safeAppId);
+        if (!root) return;
+        animateFullSet(root, open);
+    };
+
+    window.pcFocusFullSetMember = function (appId, testerId) {
+        var safeAppId = Number(appId || 0);
+        var safeTesterId = Number(testerId || 0);
+        expandedFullSets.add(safeAppId);
+        var root = document.getElementById('pc-fullset-' + safeAppId);
+        if (!root) return;
+        if (root.classList.contains('is-open')) placeFullSet(root, true);
+        else animateFullSet(root, true);
+        var row = root.querySelector('[data-tester-id="' + safeTesterId + '"]');
+        if (!row) return;
+        root.querySelectorAll('.is-random-pick').forEach(function (el) { el.classList.remove('is-random-pick'); });
+        row.classList.add('is-random-pick');
+        if (row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    };
+
+    window.pcPickRandomFullSet = function (appId) {
+        var safeAppId = Number(appId || 0);
+        var root = document.getElementById('pc-fullset-' + safeAppId);
+        if (!root) return;
+        var wasOpen = root.classList.contains('is-open');
+        expandedFullSets.add(safeAppId);
+        if (wasOpen) placeFullSet(root, true);
+        else animateFullSet(root, true);
+        var rows = Array.prototype.slice.call(root.querySelectorAll('.pc-fullset__members [data-tester-id]'));
+        var openRows = rows.filter(function (row) { return !row.querySelector('.is-tester-rewarded-today'); });
+        var status = root.querySelector('.pc-fullset__status');
+        if (!openRows.length) {
+            if (status) {
+                status.hidden = false;
+                status.textContent = text('pcFullSetRandomEmpty', 'Все в этом списке уже награждены');
+            }
+            return;
+        }
+        if (status) status.hidden = true;
+        var picked = openRows[Math.floor(Math.random() * openRows.length)];
+        rows.forEach(function (row) { row.classList.remove('is-random-pick'); });
+        picked.classList.add('is-random-pick');
+        if (picked.scrollIntoView) picked.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        var testerId = Number(picked.getAttribute('data-tester-id') || 0);
+        if (testerId > 0) window.pcRewardTester(safeAppId, testerId);
+    };
 
     var expandedAttentionReasons = new Set();
 
@@ -3650,75 +4064,108 @@
         return '';
     }
 
-    function controlNowHtml(appId, rows, context, regularReceivedRows) {
-        var regularRows = regularReceivedRows || [];
-        if (!rows.length && !regularRows.length) return emptySheetHtml(text('pcControlEmpty', 'No reports today'));
+    function reportChipIcon(key) {
+        if (key === 'value') return filterIcon('contribution');
+        if (key === 'screens') return filterIcon('control');
+        return '<svg class="pc-report-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg>';
+    }
+
+    function reportInfoButtonHtml() {
+        return '<button type="button" class="pc-activity__info pc-report-toggle__info" aria-label="' +
+            esc(text('pcHintInfoAria', 'Filter criteria')) +
+            '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'control\')"><svg viewBox="0 0 16 16" width="10" height="10"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/><path fill="currentColor" d="M7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM8.5 11.5h-1V7h1v4.5Z"/></svg></button>';
+    }
+
+    function reportConstructorHtml(appId, project) {
+        var counts = reportGroupCounts(activityCounts(project));
+        var enabled = enabledReportGroups(readPrefs(appId), counts);
+        var chips = [
+            { key: 'value', label: text('pcReportChipValue', 'Вклад') },
+            { key: 'screens', label: text('pcReportChipScreens', 'Скрины') },
+            { key: 'waiting', label: text('pcReportChipWaiting', 'Ждём') },
+        ].filter(function (chip) { return counts[chip.key] > 0; });
+        return '<div class="pc-report-toggles" role="group" aria-label="' + esc(text('pcFilterControl', 'Отчёты')) + '">' +
+            chips.map(function (chip) {
+                var on = !!enabled[chip.key];
+                return '<button type="button" class="pc-report-toggle' + (on ? ' is-on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '" onclick="event.stopPropagation(); pcToggleReportSection(' + Number(appId) + ',\'' + chip.key + '\')">' +
+                    reportChipIcon(chip.key) +
+                    '<span>' + esc(chip.label) + '</span>' +
+                    '<strong>' + counts[chip.key] + '</strong>' +
+                '</button>';
+            }).join('') +
+            reportInfoButtonHtml() +
+        '</div>';
+    }
+
+    function reportSectionHtml(appId, key, title, count, bodyHtml) {
+        return '<section class="pc-report-section" data-report-section="' + key + '">' +
+            '<button type="button" class="pc-report-section__head" aria-expanded="true" onclick="event.stopPropagation(); pcToggleReportSection(' + Number(appId) + ',\'' + key + '\')">' +
+                '<svg class="pc-report-section__chevron" viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
+                reportChipIcon(key) +
+                '<span>' + esc(title) + '</span>' +
+                '<strong>' + count + '</strong>' +
+            '</button>' +
+            '<div class="pc-report-section__body">' + bodyHtml + '</div>' +
+        '</section>';
+    }
+
+    function prepareWaitingAssessments(appId, rows) {
         var project = projectById(appId);
-        var pendingRows = rows.filter(function (row) { return !row.received; });
-        pendingRows.forEach(function (row) {
-            if (!row.activityAssessment) {
-                var assessment = calculateTesterControlActivityAssessment(row, project);
-                row.activityAssessment = assessment;
-                row.activity_assessment = assessment;
-                if (row.tester) {
-                    row.tester.activityAssessment = assessment;
-                    row.tester.activity_assessment = assessment;
-                }
+        (rows || []).forEach(function (row) {
+            if (!row || row.activityAssessment) return;
+            var assessment = calculateTesterControlActivityAssessment(row, project);
+            row.activityAssessment = assessment;
+            row.activity_assessment = assessment;
+            if (row.tester) {
+                row.tester.activityAssessment = assessment;
+                row.tester.activity_assessment = assessment;
             }
         });
-        // Regular-day proofs are received reports too, but never become
-        // expected control reports. Keep that distinction in the two sections.
-        var receivedRows = rows.filter(function (row) { return row.received; }).concat(regularRows);
-        receivedRows.sort(function (left, right) {
-            return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
-        });
-        var receivedCount = receivedRows.length;
+    }
 
-        var pendingSectionHtml = '';
-        if (pendingRows.length > 0) {
-            pendingSectionHtml = '<div class="pc-control-section pc-control-section--pending">' +
-                '<div class="pc-control-section-title">' +
-                    '<span>' + esc(text('pcControlSectionPending', 'Pending')) + '</span>' +
-                    '<span class="pc-control-section-badge pc-control-section-count' + (String(pendingRows.length).length <= 1 ? ' is-circle' : '') + '">' + pendingRows.length + '</span>' +
-                '</div>' +
+    function reportsNowHtml(appId, data, context) {
+        var sections = reportSections(data);
+        var counts = reportGroupCounts(data);
+        var enabled = enabledReportGroups(readPrefs(appId), counts);
+        prepareWaitingAssessments(appId, sections.waiting);
+        var html = '';
+        if (enabled.value && counts.value) {
+            html += reportSectionHtml(
+                appId,
+                'value',
+                text('pcReportSectionValue', 'Особый вклад'),
+                counts.value,
+                contributionSheetHtml(appId, sections.value, context)
+            );
+        }
+        if (enabled.screens && counts.screens) {
+            html += reportSectionHtml(
+                appId,
+                'screens',
+                text('pcReportSectionScreens', 'Обычные отчёты'),
+                counts.screens,
                 '<ul class="pc-act-list pc-activity-control">' +
-                    pendingRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
-                '</ul>' +
-            '</div>';
+                    sections.screens.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+                '</ul>'
+            );
         }
-
-        var receivedSectionHtml = '';
-        if (receivedRows.length > 0) {
-            var isReceivedExpanded = !collapsedReceived.has(Number(appId));
-            if (isReceivedExpanded) {
-                lastSeenReceivedCounts.set(Number(appId), receivedCount);
-            }
-            var lastSeen = lastSeenReceivedCounts.get(Number(appId));
-            var hasNewReceived = !isReceivedExpanded && receivedCount > 0 && (lastSeen == null ? true : receivedCount > lastSeen);
-
-            receivedSectionHtml = '<div class="pc-control-section pc-control-section--received' + (isReceivedExpanded ? ' is-expanded' : ' is-collapsed') + '">' +
-                '<button type="button" class="pc-control-section-title pc-control-section-toggle" onclick="event.stopPropagation(); pcToggleReceivedSection(' + Number(appId) + ')" aria-expanded="' + isReceivedExpanded + '">' +
-                    '<span class="pc-control-section-toggle__left">' +
-                        '<span>' + esc(text('pcControlSectionReceived', 'Received')) + '</span>' +
-                        '<span class="pc-control-section-badge pc-control-section-count' + (String(receivedCount).length <= 1 ? ' is-circle' : '') + (hasNewReceived ? ' is-highlight' : '') + '">' + receivedCount + '</span>' +
-                    '</span>' +
-                    '<span class="pc-control-section-chevron' + (isReceivedExpanded ? ' is-expanded' : '') + '" aria-hidden="true">' +
-                        '<svg viewBox="0 0 12 12" width="10" height="10"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
-                    '</span>' +
-                '</button>' +
-                '<ul class="pc-act-list pc-activity-control"' + (isReceivedExpanded ? '' : ' hidden style="display:none"') + '>' +
-                    receivedRows.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
-                '</ul>' +
-            '</div>';
+        if (enabled.waiting && counts.waiting) {
+            html += reportSectionHtml(
+                appId,
+                'waiting',
+                text('pcReportSectionWaiting', 'Ожидаем контрольный отчёт'),
+                counts.waiting,
+                '<ul class="pc-act-list pc-activity-control">' +
+                    sections.waiting.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
+                '</ul>'
+            );
         }
-
-        return pendingSectionHtml + receivedSectionHtml;
+        return html || emptySheetHtml(text('pcControlEmpty', 'No reports today'));
     }
 
     function nowHtmlForFilter(project, filter, data, context) {
-        if (filter === 'contribution') return contributionSheetHtml(project.id, data.contribution, context);
         if (filter === 'attention') return attentionSheetHtml(project.id, data.attention, context);
-        if (filter === 'control') return controlNowHtml(project.id, data.controlRows, context, data.regularReportRows);
+        if (filter === 'control' || filter === 'contribution') return reportsNowHtml(project.id, data, context);
         return testersNowHtml(project);
     }
 
@@ -3734,12 +4181,12 @@
         // `others`. Continue using it until the new response is complete: the
         // activity filters must not briefly disappear while a card is refreshed.
         var hydrated = !!(entry && !entry.error && entry.loadedAt > 0);
-        var controlRows = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
-        var regularReportRows = hydrated
-            ? filterControlRows(project, entry.others || []).filter(function (row) {
-                return row && row.received && !isControlDay(Number(row.day || 0));
-            })
-            : [];
+        var rosterControl = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
+        var rosterOthers = hydrated ? filterControlRows(project, entry.others || []) : [];
+        var controlRows = rosterControl.filter(controlRowStaysInReports);
+        var regularReportRows = rosterOthers.filter(function (row) {
+            return row && row.received && !isControlDay(Number(row.day || 0)) && regularScreenshotRow(row);
+        });
         return {
             entry: entry,
             hydrated: hydrated,
@@ -3751,6 +4198,9 @@
             controlRows: controlRows,
             regularReportRows: regularReportRows,
             controlDone: controlRows.filter(function (row) { return row.received; }).length,
+            shortScreenshotCount: shortScreenshotReportCount(rosterControl.concat(rosterOthers)),
+            plainScreenshotRows: rosterControl.concat(rosterOthers).filter(plainScreenshotRow),
+            controlDueCount: distinctTesterCount(rosterControl),
             contribution: collectContribution(
                 hydrated ? (entry.control || []) : [],
                 hydrated ? (entry.others || []) : [],
@@ -3789,20 +4239,36 @@
         ACTIVITY_FILTERS.forEach(function (modeKey) {
             modes[modeKey] = stored[modeKey] === 'history' ? 'history' : 'now';
         });
+        var filter = parsed.filter === 'contribution' ? 'control' : parsed.filter;
+        var reportSections = null;
+        if (parsed.filter === 'contribution') {
+            reportSections = { value: true, screens: false, waiting: false };
+        } else if (parsed.reportSections && typeof parsed.reportSections === 'object') {
+            reportSections = {};
+            REPORT_GROUPS.forEach(function (key) {
+                if (parsed.reportSections[key] == null) return;
+                reportSections[key] = parsed.reportSections[key] !== false;
+            });
+        }
         return {
-            filter: ACTIVITY_FILTERS.indexOf(parsed.filter) !== -1 ? parsed.filter : 'testers',
+            filter: ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers',
             modes: modes,
+            reportSections: reportSections,
             touched: true,
         };
     }
 
     function writePrefs(appId, prefs) {
         try {
-            localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify({
+            var payload = {
                 filter: prefs.filter,
                 modes: prefs.modes,
                 touched: true,
-            }));
+            };
+            if (prefs.reportSections && typeof prefs.reportSections === 'object') {
+                payload.reportSections = prefs.reportSections;
+            }
+            localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify(payload));
         } catch (_) {}
     }
 
@@ -3888,9 +4354,7 @@
     function visibleFilters(data) {
         var list = ['testers'];
         if (data.attention && data.attention.length) list.push('attention');
-        if (data.contribution && data.contribution.length) list.push('contribution');
-        if ((data.controlRows && data.controlRows.length)
-            || (data.regularReportRows && data.regularReportRows.length)) list.push('control');
+        if (filterCount('control', data) > 0) list.push('control');
         return list;
     }
 
@@ -3900,13 +4364,9 @@
         return 'testers';
     }
 
-    function scopeForFilter(filter, data) {
+    function scopeForFilter(filter, data, appId) {
         if (filter === 'testers') return { testerIds: null, progressIds: null };
-        var rows = filter === 'contribution'
-            ? (data.contribution || [])
-            : (filter === 'attention'
-                ? (data.attention || [])
-                : (data.controlRows || []).concat(data.regularReportRows || []));
+        var rows = filter === 'attention' ? (data.attention || []) : visibleReportRows(data, readPrefs(appId));
         var testerIds = [];
         var progressIds = [];
         rows.forEach(function (item) {
@@ -3927,7 +4387,7 @@
 
     function hintForFilter(filter) {
         if (filter === 'contribution') {
-            return text('pcHintContribution', 'Today they did more than a regular check-in: reports, bugs, recommendations, or 3+ screenshots.');
+            return text('pcHintContribution', 'Today they went beyond a check-in: feedback, a video, a written report, or a full set of 5 screenshots.');
         }
         if (filter === 'attention') {
             return text('pcHintAttention', 'Риски срыва и пропуски активности');
@@ -3940,7 +4400,7 @@
 
     function criteriaForFilter(filter) {
         if (filter === 'contribution') {
-            return text('pcHintCriteriaContribution', 'Value: testers who sent a bug, idea, review, or 3+ screenshots today.');
+            return text('pcHintCriteriaContribution', 'Value: feedback, a video, a report with text, or a full set of 5 screenshots. Shorter screenshot series stay in Reports.');
         }
         if (filter === 'attention') {
             return text('pcHintCriteriaAttention', 'Внимание: участники, требующие реакции. Пропуски чекинов (от 1 дня для должников и инвайтов, от 2 дней для взаимки), выходы из проекта, сорванные контрольные отчёты и нарушенные связи. При 3+ пропусках партнёра доступен выход из его теста без штрафа.');
@@ -3971,13 +4431,115 @@
         });
     }
 
+    function reportSections(data) {
+        var value = (data && data.contribution || []).slice();
+        var valueIds = {};
+        value.forEach(function (item) {
+            valueIds[Number(item && item.testerId || 0)] = true;
+        });
+        var screens = [];
+        var screenIds = {};
+        (data && data.plainScreenshotRows || []).forEach(function (row) {
+            var id = Number(row && row.testerId || 0);
+            if (id <= 0 || valueIds[id] || screenIds[id]) return;
+            screenIds[id] = true;
+            screens.push(row);
+        });
+        var waiting = [];
+        var waitingIds = {};
+        (data && data.controlRows || []).forEach(function (row) {
+            if (!row || row.received) return;
+            var id = Number(row.testerId || 0);
+            if (id <= 0 || valueIds[id] || screenIds[id] || waitingIds[id]) return;
+            waitingIds[id] = true;
+            waiting.push(row);
+        });
+        return { value: value, screens: screens, waiting: waiting };
+    }
+
+    function reportGroupCounts(data) {
+        var sections = reportSections(data);
+        return {
+            value: sections.value.length,
+            screens: sections.screens.length,
+            waiting: sections.waiting.length,
+        };
+    }
+
+    function enabledReportGroups(prefs, counts) {
+        var stored = prefs && prefs.reportSections;
+        var enabled = {};
+        REPORT_GROUPS.forEach(function (key) {
+            if (!counts || counts[key] <= 0) enabled[key] = false;
+            else if (!stored || stored[key] == null) enabled[key] = true;
+            else enabled[key] = stored[key] !== false;
+        });
+        var anyOn = REPORT_GROUPS.some(function (key) { return enabled[key]; });
+        if (!anyOn) {
+            REPORT_GROUPS.forEach(function (key) {
+                enabled[key] = !!(counts && counts[key] > 0);
+            });
+        }
+        return enabled;
+    }
+
+    function visibleReportRows(data, prefs) {
+        var sections = reportSections(data);
+        var enabled = enabledReportGroups(prefs, reportGroupCounts(data));
+        var rows = [];
+        REPORT_GROUPS.forEach(function (key) {
+            if (enabled[key]) rows = rows.concat(sections[key] || []);
+        });
+        return rows;
+    }
+
+    function reportedPeopleCount(data) {
+        var counts = reportGroupCounts(data);
+        return counts.value + counts.screens;
+    }
+
+    function controlShowsRatio(data) {
+        return Number(data && data.controlDueCount || 0) > 0;
+    }
+
     function filterCount(key, data) {
         if (key === 'contribution') return (data && data.contribution || []).length;
         if (key === 'attention') return (data && data.attention || []).length;
         if (key === 'control') {
-            return (data && data.controlRows || []).length + (data && data.regularReportRows || []).length;
+            var counts = reportGroupCounts(data);
+            return counts.value + counts.screens + counts.waiting;
         }
         return Math.max(0, Number(data && data.rosterCount || 0));
+    }
+
+    function filterBadgeText(key, data) {
+        if (key === 'control') {
+            var reported = reportedPeopleCount(data);
+            var due = Number(data && data.controlDueCount || 0);
+            return due > 0 ? (reported + '/' + due) : String(reported);
+        }
+        return String(filterCount(key, data));
+    }
+
+    function activityPercentColor(project) {
+        if (!project || typeof getProjectDailyProgressMeta !== 'function') return '';
+        var meta = null;
+        try { meta = getProjectDailyProgressMeta(project); } catch (_) { return ''; }
+        var color = String(meta && meta.teamActivityColor || '').trim();
+        if (/^#[0-9a-fA-F]{3,8}$/.test(color) || /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(color)) {
+            return color;
+        }
+        return '';
+    }
+
+    function filterBadgeHtml(key, data, project) {
+        if (key !== 'control') return esc(String(filterCount(key, data)));
+        var reported = reportedPeopleCount(data);
+        var due = Number(data && data.controlDueCount || 0);
+        if (due <= 0) return esc(String(reported));
+        var color = activityPercentColor(project);
+        var style = color ? ' style="--pc-activity-ratio-x:' + color + '"' : '';
+        return '<span class="pc-activity__ratio-x"' + style + '>' + reported + '</span>/' + due;
     }
 
     function filterIcon(key) {
@@ -4011,14 +4573,15 @@
             }).join(';');
         }
         if (key === 'control') {
-            var control = data.controlRows || data.control || [];
-            var regular = data.regularReportRows || data.others || [];
-            var received = control.filter(function (r) { return r.received; }).concat(regular.filter(function (r) {
-                return r && r.received && !isControlDay(Number(r.day || 0));
-            }));
-            return control.length + ':' + received.length + ':' + received.map(function (r) {
-                return (r.testerId || 0) + '-' + (r.proofId || 0);
-            }).join(',');
+            var sections = reportSections(data);
+            return REPORT_GROUPS.map(function (group) {
+                return (sections[group] || []).map(function (row) {
+                    var reasonSig = (row.reasons || []).map(function (reason) {
+                        return (reason.kind || reason.code || '') + (reason.proofId || 0) + (reason.feedbackId || 0);
+                    }).join('.');
+                    return (row.testerId || 0) + '-' + (row.proofId || 0) + '-' + reasonSig;
+                }).join(',');
+            }).join('|');
         }
         return '';
     }
@@ -4044,16 +4607,18 @@
 
     function syncFilterButtonState(btn, appId, key, active, data) {
         var count = filterCount(key, data || {});
+        var badge = filterBadgeText(key, data || {});
         var isActive = key === active;
         if (isActive) markTabSeen(appId, key, data);
         var hasUnread = tabIsUnread(appId, key, isActive, count, data);
         var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
         btn.classList.toggle('is-active', isActive);
         btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        btn.setAttribute('aria-label', filterLabel(key) + ' ' + count);
+        btn.setAttribute('aria-label', filterLabel(key) + ' ' + badge);
         var countEl = btn.querySelector('.pc-activity__count');
         if (countEl) {
-            countEl.textContent = String(count);
+            countEl.innerHTML = filterBadgeHtml(key, data, projectById(appId));
+            countEl.classList.toggle('is-ratio', key === 'control' && controlShowsRatio(data));
             countEl.classList.toggle('is-warn', !!isAttentionWarn);
             countEl.classList.toggle('has-unread', !!hasUnread);
         }
@@ -4074,20 +4639,22 @@
         });
     }
 
-    function filtersHtml(appId, visible, active, data) {
+    function filtersHtml(appId, visible, active, data, project) {
         visible = visible && visible.length ? visible : ['testers'];
+        project = project || projectById(appId);
         return '<div class="pc-activity__filters tabs-row" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
             visible.map(function (key) {
                 var count = filterCount(key, data || {});
+                var badge = filterBadgeText(key, data || {});
                 var isActive = key === active;
                 if (isActive) markTabSeen(appId, key, data);
                 var hasUnread = tabIsUnread(appId, key, isActive, count, data);
                 var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
-                var countHtml = '<span class="pc-activity__count' + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + count + '</span>';
+                var countHtml = '<span class="pc-activity__count' + (key === 'control' && controlShowsRatio(data) ? ' is-ratio' : '') + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + filterBadgeHtml(key, data, project) + '</span>';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
                     '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
-                    '" aria-label="' + esc(filterLabel(key) + ' ' + count) +
+                    '" aria-label="' + esc(filterLabel(key) + ' ' + badge) +
                     '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
                     filterIcon(key) +
                     '<span class="pc-activity__filter-label">' + esc(filterLabel(key)) + '</span>' +
@@ -4122,7 +4689,7 @@
 
     function filterbarHtml(appId, visible, active, data, project) {
         return '<div class="pc-activity__filterbar">' +
-            filtersHtml(appId, visible, active, data) +
+            filtersHtml(appId, visible, active, data, project) +
             karmaButtonHtml(project) +
         '</div>';
     }
@@ -4158,13 +4725,15 @@
             }).join('') + '</div>';
 
         var hints = {
-            contribution: workspaceText('Больше обычного чекина', 'Beyond a regular check-in'),
+            contribution: workspaceText('Фидбэк, видео, текст и максимальные серии', 'Feedback, video, notes, and maximum sets'),
             attention: text('pcHintAttention', 'Риски срыва и пропуски активности'),
             control: text('pcHintControl', 'Обязательные контрольные отчёты сегодня'),
             testers: workspaceText('Текущий состав команды', 'Current team'),
         };
         var hintText = historyOn ? workspaceText('Выбранная категория за всё время', 'Selected category over time') : hints[filter];
-        var hintHtml = hintText ? (
+        var hintHtml = filter === 'control'
+            ? reportConstructorHtml(appId, project)
+            : (hintText ? (
             '<div class="pc-activity__hint-wrap" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')" role="button" tabindex="0" title="' + esc(text('pcHintInfoAria', 'Критерии фильтра · Нажмите для подробностей')) + '">' +
                 '<div class="pc-activity__hint-scroll">' +
                     '<span class="pc-activity__hint-text">' + esc(hintText) + '</span>' +
@@ -4173,7 +4742,7 @@
                         '" onclick="event.stopPropagation(); pcShowFilterCriteria(\'' + filter + '\')"><svg viewBox="0 0 16 16" width="10" height="10"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3"/><path fill="currentColor" d="M7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM8.5 11.5h-1V7h1v4.5Z"/></svg></button>' +
                 '</div>' +
             '</div>'
-        ) : '<div class="pc-activity__hint-wrap"></div>';
+        ) : '<div class="pc-activity__hint-wrap"></div>');
 
         return '<div class="pc-activity__caption pc-activity__subbar">' +
             hintHtml +
@@ -4196,7 +4765,7 @@
     async function loadFilterHistory(appId, filter, data) {
         var pane = document.getElementById('pc-activity-history-' + Number(appId));
         if (!pane) return;
-        var scope = scopeForFilter(filter, data);
+        var scope = scopeForFilter(filter, data, appId);
         if (typeof window.renderTestingControlHistoryInto === 'function') {
             pane.innerHTML = '<div class="pc-activity-empty">' + esc(text('pcActivityHistoryLoading', 'Loading history…')) + '</div>';
             try {
@@ -4236,11 +4805,12 @@
         if (mode === 'history') {
             loadFilterHistory(appId, filter, data);
             stopKarmaSparkle(Number(appId));
-        } else if (filter === 'control') {
+        } else if (filter === 'control' || filter === 'contribution') {
             loadControlReminderStatus(Number(appId));
-            stopKarmaSparkle(Number(appId));
-        } else if (filter === 'contribution') {
-            initKarmaSparkleCycle(Number(appId));
+            var reportCounts = reportGroupCounts(data);
+            var reportEnabled = enabledReportGroups(prefs, reportCounts);
+            if (reportEnabled.value && reportCounts.value > 0) initKarmaSparkleCycle(Number(appId));
+            else stopKarmaSparkle(Number(appId));
         } else {
             stopKarmaSparkle(Number(appId));
         }
@@ -4266,7 +4836,7 @@
         if (!project) return;
         var data = activityCounts(project);
         var next = document.createElement('div');
-        next.innerHTML = controlNowHtml(project.id, data.controlRows, contextFor(project), data.regularReportRows);
+        next.innerHTML = reportsNowHtml(project.id, data, contextFor(project));
         var currentPanel = nowEl.querySelector('.pc-control-reminder-panel');
         var nextPanel = next.querySelector('.pc-control-reminder-panel');
         if (currentPanel && nextPanel) currentPanel.replaceWith(nextPanel);
@@ -4516,6 +5086,8 @@
         if (reasons.some(function (reason) { return reason.kind === 'bug'; })) return 'bug';
         if (reasons.some(function (reason) { return reason.kind === 'idea'; })) return 'idea';
         if (reasons.some(function (reason) { return reason.kind === 'play_review'; })) return 'review';
+        if (reasons.some(function (reason) { return reason.kind === 'video'; })) return 'video';
+        if (reasons.some(function (reason) { return reason.kind === 'report_note'; })) return 'note';
         return 'screenshots';
     }
 
@@ -4527,6 +5099,8 @@
             idea: '<path d="M9 18h6M10 21h4M8.5 13.8a5.5 5.5 0 1 1 7 0c-1 .8-1.5 1.8-1.5 3.2h-4c0-1.4-.5-2.4-1.5-3.2Z"/>',
             review: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
             screenshots: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/>',
+            video: '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-3v10l-6-3z"/>',
+            note: '<path d="M6 4h9l3 3v13H6z"/><path d="M15 4v3h3M8 12h8M8 16h5"/>',
             done: '<path d="m5 12.5 4.2 4L19 7"/>',
             waiting: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/>',
         };
@@ -4536,7 +5110,7 @@
     }
 
     function teamContributionScore(item) {
-        var weights = { bug: 40, idea: 30, play_review: 20, screenshots: 10 };
+        var weights = { bug: 40, idea: 30, play_review: 20, video: 18, report_note: 16, screenshots: 10 };
         return (item && item.reasons || []).reduce(function (score, reason) {
             return score + Number(weights[reason.kind] || 0) + Math.min(9, Number(reason.imageCount || 0));
         }, 0);
@@ -4647,9 +5221,9 @@
         var quickTabs = [
             { key: 'attention', warn: hasCriticalAttentionIssue(data.attention) },
             { key: 'control', warn: false },
-            { key: 'contribution', warn: false },
         ].map(function (tab) {
             tab.count = filterCount(tab.key, data);
+            tab.label = filterBadgeText(tab.key, data);
             return tab;
         }).filter(function (tab) { return tab.count > 0; });
         var avatarsHtml = team.length
@@ -4662,7 +5236,7 @@
             quickTabs.map(function (tab) {
                 return '<button type="button" class="pc-team-quick-filter is-' + tab.key + (tab.warn ? ' is-warn' : '') + '" ' +
                     'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ',\'' + tab.key + '\')">' +
-                    filterIcon(tab.key) + '<strong>' + tab.count + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
+                    filterIcon(tab.key) + '<strong>' + filterBadgeHtml(tab.key, data, project) + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
                 '</button>';
             }).join('') + '</div>' : '';
 
@@ -4689,9 +5263,9 @@
         var quickTabs = [
             { key: 'attention', warn: hasCriticalAttentionIssue(data.attention) },
             { key: 'control', warn: false },
-            { key: 'contribution', warn: false },
         ].map(function (tab) {
             tab.count = filterCount(tab.key, data);
+            tab.label = filterBadgeText(tab.key, data);
             return tab;
         }).filter(function (tab) { return tab.count > 0; });
 
@@ -4701,7 +5275,7 @@
         var chipsHtml = quickTabs.map(function (tab) {
             return '<button type="button" class="pc-team-quick-filter is-' + tab.key + (tab.warn ? ' is-warn' : '') + '" ' +
                 'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ',\'' + tab.key + '\')">' +
-                filterIcon(tab.key) + '<strong>' + tab.count + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
+                filterIcon(tab.key) + '<strong>' + filterBadgeHtml(tab.key, data, project) + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
             '</button>';
         }).join('');
 
@@ -4946,21 +5520,41 @@
     window.pcSetActivityFilter = function (appId, filter) {
         setParticipantsCollapsed(appId, false);
         var prefs = readPrefs(appId);
-        prefs.filter = ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers';
-        if (prefs.filter === 'contribution') {
-            prefs.modes.contribution = 'now';
+        if (filter === 'contribution') {
+            prefs.filter = 'control';
+            prefs.reportSections = { value: true, screens: false, waiting: false };
+        } else {
+            prefs.filter = ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers';
         }
         writePrefs(appId, prefs);
-        var entry = getCacheEntry(appId);
-        if (entry) {
-            markTabSeen(appId, prefs.filter, {
-                control: entry.control || [],
-                others: entry.others || [],
-                contribution: collectContribution(entry.control, entry.others, projectById(appId)),
-                attention: collectAttention(projectById(appId)),
-            });
-        }
+        var project = projectById(appId);
+        if (project) markTabSeen(appId, prefs.filter, activityCounts(project));
         refreshActivityWorkspace(appId);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
+    window.pcToggleReportSection = function (appId, key) {
+        var safeAppId = Number(appId || 0);
+        var project = projectById(safeAppId);
+        if (!project || REPORT_GROUPS.indexOf(key) === -1) return;
+        var data = activityCounts(project);
+        var counts = reportGroupCounts(data);
+        if (counts[key] <= 0) return;
+        var prefs = readPrefs(safeAppId);
+        var enabled = enabledReportGroups(prefs, counts);
+        var nonEmpty = REPORT_GROUPS.filter(function (item) { return counts[item] > 0; });
+        var enabledKeys = nonEmpty.filter(function (item) { return enabled[item]; });
+        if (enabled[key] && enabledKeys.length === 1) {
+            nonEmpty.forEach(function (item) { enabled[item] = true; });
+        } else {
+            enabled[key] = !enabled[key];
+        }
+        var stored = {};
+        nonEmpty.forEach(function (item) { stored[item] = !!enabled[item]; });
+        prefs.reportSections = stored;
+        prefs.filter = 'control';
+        writePrefs(safeAppId, prefs);
+        refreshActivityWorkspace(safeAppId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
@@ -5686,10 +6280,13 @@
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
         var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
+        var identity = testerIdentity(tester);
         if (typeof openCheckinProofPreview !== 'function') return;
         return openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
             appId: Number(appId || 0),
-            testerId: safeTesterId,
+            testerId: safeTesterId || identity.testerId,
+            fullName: identity.fullName,
+            username: identity.username,
             imageCount: Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || 1),
             title: fallbackTitle,
             subtitle: fallbackSubtitle,
@@ -5721,12 +6318,15 @@
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
         var fallbackImageCount = Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || fallbackCount || 1);
-        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
+        var identity = testerIdentity(tester);
+        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || identity.testerId || 0);
 
         if (typeof openCheckinProofOverview === 'function') {
             return openCheckinProofOverview(Number(proofId), {
                 appId: Number(appId || 0),
                 testerId: safeTesterId,
+                fullName: identity.fullName,
+                username: identity.username,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
@@ -5736,6 +6336,8 @@
             return openCheckinProofPreview(Number(proofId || 0), 0, {
                 appId: Number(appId || 0),
                 testerId: safeTesterId,
+                fullName: identity.fullName,
+                username: identity.username,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,

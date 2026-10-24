@@ -1207,6 +1207,10 @@ function _clearStartappQueryParam() {
     } catch (error) {}
 }
 
+// The early offer router and the async bootstrap share one automatic entry.
+// Do not apply this guard to explicit navigation (Back / Add project).
+var _initialGuaranteedTestOfferOpened = false;
+
 function _openGuaranteedTestOfferWhenReady(maxAttempts, intervalMs) {
     var attemptsLeft = Number(maxAttempts || 0);
     var waitMs = Number(intervalMs || 0);
@@ -1215,8 +1219,10 @@ function _openGuaranteedTestOfferWhenReady(maxAttempts, intervalMs) {
     if (waitMs <= 0) waitMs = 100;
 
     function tryOpen() {
+        if (_initialGuaranteedTestOfferOpened) return true;
         if (typeof window.showGuaranteedTestOfferModal === 'function') {
             window.showGuaranteedTestOfferModal();
+            _initialGuaranteedTestOfferOpened = true;
             return true;
         }
         return false;

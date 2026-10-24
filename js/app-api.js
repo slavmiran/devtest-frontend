@@ -2316,7 +2316,7 @@ async function publishProjectToMarket(projectId) {
     }
 }
 
-function _mapProjectsFromApi(data, proofPingReadRevision) {
+function _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision) {
     var mappedProjects = (data.projects || []).map(function(project) {
         var testers = Array.isArray(project.testers) ? project.testers : [];
         var hasAccessError = testers.some(function(tester) {
@@ -2439,6 +2439,9 @@ function _mapProjectsFromApi(data, proofPingReadRevision) {
     if (window.ProofPing && typeof window.ProofPing.reconcileProjects === 'function') {
         window.ProofPing.reconcileProjects(mappedProjects, proofPingReadRevision);
     }
+    if (typeof reconcileSettledProjectFeedbackCounters === 'function') {
+        reconcileSettledProjectFeedbackCounters(mappedProjects, feedbackReadRevision);
+    }
     return mappedProjects;
 }
 
@@ -2510,6 +2513,7 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
     try {
         var proofPingReadRevision = window.ProofPing && typeof window.ProofPing.captureProjectRevision === 'function'
             ? window.ProofPing.captureProjectRevision() : undefined;
+        var feedbackReadRevision = typeof _feedbackCommitRevision === 'number' ? _feedbackCommitRevision : undefined;
         var initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
         var response = await fetchWithRetry(API_BASE + '/projects/' + userId + '?' + initQ, { timeoutMs: 12000 }, 1);
         if (!response.ok) {
@@ -2521,7 +2525,7 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
             throw new Error('Invalid project sync confirmation payload');
         }
 
-        var freshProjects = _mapProjectsFromApi(data, proofPingReadRevision);
+        var freshProjects = _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision);
         var freshStats = _mapStatsFromApi(data);
         var confirmedProject = freshProjects.find(function(project) {
             return Number(project.id) === normalizedAppId;
@@ -2558,6 +2562,7 @@ function _markPostSyncRefreshCooldown() {
 
 async function _loadProjectsImpl(options) {
     var parametersRequestedAt = Date.now();
+    var feedbackReadRevision = typeof _feedbackCommitRevision === 'number' ? _feedbackCommitRevision : undefined;
     var proofPingReadRevision = window.ProofPing && typeof window.ProofPing.captureProjectRevision === 'function'
         ? window.ProofPing.captureProjectRevision() : undefined;
     var shouldMarkBackgroundSync = !!(options && options.backgroundSync);
@@ -2577,7 +2582,7 @@ async function _loadProjectsImpl(options) {
                 window.ProofPing.setCommunityMember(window.isCommunityMember);
             }
         }
-        var nextProjects = _mapProjectsFromApi(data, proofPingReadRevision);
+        var nextProjects = _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision);
         if (window.ProjectParameters) window.ProjectParameters.reconcile(nextProjects, parametersRequestedAt);
         var nextStats = _mapStatsFromApi(data);
 

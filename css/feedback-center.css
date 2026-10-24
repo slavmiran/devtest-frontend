@@ -2747,3 +2747,29 @@
     flex: 1 1 auto;
     min-width: 0;
 }
+/* Pending moderation is visible without holding the decision sheet open. */
+.fb-saving-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    color: var(--accent-primary, #81b5ff);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.fb-saving-spinner {
+    flex: 0 0 auto;
+    width: 13px;
+    height: 13px;
+    box-sizing: border-box;
+    border: 1.5px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: fbBtnSpin .9s linear infinite;
+}
+#project-feedback-body .fb-card--saving .fb-preview { display: none; }
+.fb-card--saving .fb-toolbar-decide { opacity: .55; }
+@media (prefers-reduced-motion: reduce) {
+    .fb-saving-spinner { animation: none; }
+}

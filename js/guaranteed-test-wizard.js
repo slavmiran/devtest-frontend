@@ -159,7 +159,7 @@
         planTitle: ['Production Access Sprint', 'Спринт до production-доступа'],
         planPriceNote: ['official price · crypto', 'официальная цена · крипто'],
         planFeature1: ['<strong>12 real testers</strong> connected within 12 hours', '<strong>12 реальных тестировщиков</strong> подключаются в течение 12 часов'],
-        planFeature2: ['<strong>14 days</strong> of continuous closed testing', '<strong>14 дней</strong> непрерывного закрытого тестирования'],
+        planFeature2: ['<strong>15 days</strong> of managed closed testing', '<strong>15 дней</strong> закрытого тестирования с сопровождением'],
         planFeature3: ['<strong>Support</strong> with the production application', '<strong>Помощь</strong> с заявкой на production'],
         guaranteeTitle: ['Access guarantee', 'Гарантия доступа'],
         guaranteeText: [
@@ -2537,11 +2537,18 @@
     }
 
     function getGuaranteedOrderNotes(extraParts) {
-        var notesParts = extraParts || [];
+        var notesParts = (extraParts || []).slice();
         if (wizardState.prefillProject && wizardState.prefillProject.id) {
-            notesParts.push('app_id=' + String(wizardState.prefillProject.id));
             var pkg = String(wizardState.prefillProject.package || wizardState.prefillProject.package_name || '').trim();
-            if (pkg) notesParts.push('package=' + pkg);
+            var actualPackage = typeof getGuaranteedTestingPackage === 'function'
+                ? getGuaranteedTestingPackage(wizardState.testingLink)
+                : normalizeTestingLink(wizardState.testingLink).split(/[?#]/)[0].replace(/\/+$/, '').split('/').pop();
+            // Switching a prefilled link to another app must not keep a stale
+            // project association in receipts, support links or duplicate checks.
+            if (pkg && actualPackage === pkg) {
+                notesParts.push('app_id=' + String(wizardState.prefillProject.id));
+                notesParts.push('package=' + pkg);
+            }
         }
         return notesParts.length ? notesParts.join('; ') : null;
     }
@@ -2656,8 +2663,10 @@
         return '';
     }
 
-    function finishGuaranteedOrderSubmit(publicCode, toastKey, toastVars) {
-        if (typeof window.invalidateGuaranteedOrdersCache === 'function') {
+    function finishGuaranteedOrderSubmit(publicCode, toastKey, toastVars, order) {
+        var savedOrder = Object.assign({ app_name: wizardState.appName, testing_link: wizardState.testingLink,
+            public_code: publicCode, status: 'pending', user_id: paymentActorId() }, order || {});
+        if (typeof window.openProjectsTab !== 'function' && typeof window.invalidateGuaranteedOrdersCache === 'function') {
             window.invalidateGuaranteedOrdersCache();
         }
         closePaymentFlow();
@@ -2668,6 +2677,14 @@
         clearPaymentScreenshot();
         if (typeof showToast === 'function') {
             showToast(L(toastKey || 'toastSubmitted', toastVars || { code: publicCode }));
+        }
+        // A failed UI transition must never turn a committed order into a
+        // payment error or trigger a second submission.
+        if (savedOrder.id && typeof window.openProjectsTab === 'function') {
+            try {
+                Promise.resolve(window.openProjectsTab({ focusOrderId: savedOrder.id, order: savedOrder, confirmation: true }))
+                    .catch(function(error) { console.warn('Order saved; dashboard transition failed:', error); });
+            } catch (error) { console.warn('Order saved; dashboard transition failed:', error); }
         }
     }
 
@@ -2732,7 +2749,7 @@
         }
         var order = payload.order || {};
         var code = getOrderPublicCode(order, orderId) || publicCode || '';
-        finishGuaranteedOrderSubmit(code, toastKey || 'toastSubmitted', { code: code });
+        finishGuaranteedOrderSubmit(code, toastKey || 'toastSubmitted', { code: code }, order);
         return code;
     }
 
@@ -2797,7 +2814,7 @@
             var order = payload.order || {};
             if (!Number(order.id)) throw new Error('order_create_failed');
             var publicCode = getOrderPublicCode(order, order.id);
-            finishGuaranteedOrderSubmit(publicCode, 'toastSubmitted', { code: publicCode });
+            finishGuaranteedOrderSubmit(publicCode, 'toastSubmitted', { code: publicCode }, order);
         } catch (error) {
             console.error('Guaranteed order submit failed:', error);
             reportPaymentError(error, 'toastFailed');
@@ -3108,10 +3125,18 @@
     function draftMatchesAwaitingOrder(draft, order) {
         if (!draft || !order) return false;
         var linkedId = Number(draft.fiat_order_id || 0);
-        if (linkedId && linkedId === Number(order.id || 0)) return true;
-        var draftApp = String(draft.app_name || '').trim().toLowerCase();
-        var orderApp = String(order.app_name || '').trim().toLowerCase();
-        return !!(draftApp && orderApp && draftApp === orderApp);
+        var draftPackage = '', orderPackage = '';
+        if (typeof getGuaranteedTestingPackage === 'function') {
+            draftPackage = getGuaranteedTestingPackage(draft.testing_link);
+            var notes = parseGuaranteedOrderNotesMap(order.notes);
+            orderPackage = getGuaranteedTestingPackage(order.testing_link) || getGuaranteedTestingPackage(notes.package);
+        }
+        // A manually changed Play link must not inherit a stale order ID.
+        if (draftPackage && orderPackage && draftPackage !== orderPackage) return false;
+        if (Number.isInteger(linkedId) && linkedId > 0) return linkedId === Number(order.id || 0);
+        // Names are not identities. With incomplete data, keep the draft
+        // separate rather than hiding or deleting another app's progress.
+        return !!(draftPackage && orderPackage && draftPackage === orderPackage);
     }
 
     async function cancelGuaranteedTestOrder(orderId) {
