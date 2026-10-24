@@ -365,6 +365,15 @@
         }
     };
 
+    function testerIdentity(source) {
+        source = source || {};
+        return {
+            fullName: String(source.full_name || source.name || '').trim(),
+            username: String(source.username || '').trim().replace(/^@+/, ''),
+            testerId: Number(source.tester_id || source.id || 0),
+        };
+    }
+
     function handleOf(source) {
         var username = String(source && source.username || '').trim().replace(/^@+/, '');
         if (username) return '@' + username;
@@ -1156,6 +1165,7 @@
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
             hasVideo: isScreenshot && proofHasVideo(proof),
+            videoCount: isScreenshot ? Number(proof && proof.video_count || (proofHasVideo(proof) ? 1 : 0)) : 0,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
@@ -1208,6 +1218,7 @@
             contributionCreatedAt: String(proofFb && proofFb.created_at || proof && proof.created_at || ''),
             imageCount: totalImages,
             hasVideo: isScreenshot && proofHasVideo(proof),
+            videoCount: isScreenshot ? Number(proof && proof.video_count || (proofHasVideo(proof) ? 1 : 0)) : 0,
             feedbackId: Number(proof && proof.source_feedback_id || 0),
             feedbackStatus: String(proofFb && (proofFb.status || proofFb.feedback_status) || (proof && proof.feedback_status) || '').toLowerCase(),
             hasMedia: hasProofMedia,
@@ -1528,7 +1539,7 @@
         } else if (type === 'play_review') {
             title = text('pcProofReview', 'Отзыв');
         } else if (type === 'video') {
-            title = text('pcContributionVideo', 'Видеоотчёт');
+            title = text('pcContributionVideo', 'Видео-отчёт');
         } else if (type === 'report_note') {
             title = text('pcContributionNote', 'Скриншот с текстом');
         } else {
@@ -2505,6 +2516,44 @@
         return Number(row.imageCount || 0) >= FULL_SCREENSHOT_COUNT;
     }
 
+    function stillImageCount(row) {
+        var images = Number(row && row.imageCount || 0);
+        if (!row || !row.hasVideo) return images;
+        var videos = Number(row.videoCount || 0);
+        return Math.max(0, images - (videos > 0 ? videos : 1));
+    }
+
+    function isPhotoReportRow(row) {
+        return !!(row && row.received && String(row.proofType || '') === 'screenshot' && stillImageCount(row) > 0);
+    }
+
+    function controlRowStaysInReports(row) {
+        if (!row) return false;
+        if (!row.received) return true;
+        if (row.hasVideo) return false;
+        return !(String(row.proofType || '') === 'screenshot' && Number(row.imageCount || 0) >= FULL_SCREENSHOT_COUNT);
+    }
+
+    function regularScreenshotRow(row) {
+        if (!row || !row.received || row.hasVideo) return false;
+        if (String(row.proofType || '') !== 'screenshot') return false;
+        var count = Number(row.imageCount || 0);
+        return count >= 1 && count < FULL_SCREENSHOT_COUNT;
+    }
+
+    function distinctTesterCount(rows, predicate) {
+        var seen = {};
+        var count = 0;
+        (rows || []).forEach(function (row) {
+            if (predicate && !predicate(row)) return;
+            var testerId = Number(row && row.testerId || 0);
+            if (testerId <= 0 || seen[testerId]) return;
+            seen[testerId] = true;
+            count += 1;
+        });
+        return count;
+    }
+
     function isTodaysContribution(row) {
         var raw = String(row.contributionCreatedAt || row.createdAt || '').trim();
         if (!raw) return true; // Legacy rows already selected by today's API.
@@ -3299,9 +3348,9 @@
             '<circle cx="10.9" cy="20.2" r="1.05" fill="#163056"/>' +
             '<circle cx="8.8" cy="21.6" r="1.05" fill="#163056"/>' +
             '<circle cx="13.4" cy="23.2" r="1.05" fill="#163056"/>' +
-            '<circle cx="19.3" cy="16.6" r=".85" fill="#d7e7ff"/>' +
-            '<circle cx="22.4" cy="18.2" r=".85" fill="#d7e7ff"/>' +
-            '<circle cx="20.8" cy="20.2" r=".85" fill="#d7e7ff"/>' +
+            '<circle cx="23.6" cy="15.8" r=".9" fill="#d7e7ff"/>' +
+            '<circle cx="20.9" cy="19.6" r=".9" fill="#d7e7ff"/>' +
+            '<circle cx="18.2" cy="23.4" r=".9" fill="#d7e7ff"/>' +
         '</svg>';
     }
 
@@ -3329,15 +3378,15 @@
                             })) + '</small>' +
                         '</span>' +
                     '</button>' +
-                    '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
-                        '<span class="pc-fullset__random-label" aria-hidden="true">' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '</span>' +
-                        fullSetDieHtml() +
-                    '</button>' +
                 '</div>' +
                 '<div class="pc-fullset__rail-row">' +
-                    '<div class="pc-fullset__rail">' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
+                    '<div class="pc-fullset__rail"' + (open ? ' aria-hidden="true"' : '') + '>' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
                     '<button type="button" class="pc-fullset__chev" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(text('pcFullSetToggle', 'Показать участников')) + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')"></button>' +
                 '</div>' +
+                '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
+                    '<span class="pc-fullset__random-label" aria-hidden="true">' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '</span>' +
+                    fullSetDieHtml() +
+                '</button>' +
                 '<span class="pc-fullset__status" hidden></span>' +
                 '<div class="pc-fullset__body"' + (open ? '' : ' hidden') + '>' +
                     '<ul class="pc-fullset__members">' +
@@ -3394,18 +3443,44 @@
         if (label) label.textContent = open ? text('pcNoteFoldLess', 'Свернуть') : text('pcNoteFoldMore', 'Читать дальше');
     };
 
-    window.pcToggleFullSet = function (appId) {
-        var safeAppId = Number(appId || 0);
-        if (expandedFullSets.has(safeAppId)) expandedFullSets.delete(safeAppId);
-        else expandedFullSets.add(safeAppId);
-        var root = document.getElementById('pc-fullset-' + safeAppId);
+    function placeFullSet(root, open) {
         if (!root) return;
-        var open = expandedFullSets.has(safeAppId);
-        root.classList.toggle('is-open', open);
+        root.classList.toggle('is-open', !!open);
         var body = root.querySelector('.pc-fullset__body');
         if (body) body.hidden = !open;
         var chevron = root.querySelector('.pc-fullset__chev');
         if (chevron) chevron.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var rail = root.querySelector('.pc-fullset__rail');
+        if (rail) rail.setAttribute('aria-hidden', open ? 'true' : 'false');
+    }
+
+    function animateFullSet(root, open) {
+        var button = root && root.querySelector('.pc-fullset__random');
+        var die = button && button.querySelector('.pc-fullset__die');
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var first = !reduce && die ? die.getBoundingClientRect() : null;
+        placeFullSet(root, open);
+        if (!button || !die || !first || first.width <= 0) return;
+        var last = die.getBoundingClientRect();
+        var dx = first.left - last.left;
+        var dy = first.top - last.top;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+        button.style.transition = 'none';
+        button.style.transform = 'translate(' + dx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px)';
+        requestAnimationFrame(function () {
+            button.style.transition = 'transform .34s cubic-bezier(.22,.8,.24,1)';
+            button.style.transform = 'translate(0px,0px)';
+        });
+    }
+
+    window.pcToggleFullSet = function (appId) {
+        var safeAppId = Number(appId || 0);
+        var open = !expandedFullSets.has(safeAppId);
+        if (open) expandedFullSets.add(safeAppId);
+        else expandedFullSets.delete(safeAppId);
+        var root = document.getElementById('pc-fullset-' + safeAppId);
+        if (!root) return;
+        animateFullSet(root, open);
     };
 
     window.pcFocusFullSetMember = function (appId, testerId) {
@@ -3414,11 +3489,8 @@
         expandedFullSets.add(safeAppId);
         var root = document.getElementById('pc-fullset-' + safeAppId);
         if (!root) return;
-        root.classList.add('is-open');
-        var body = root.querySelector('.pc-fullset__body');
-        if (body) body.hidden = false;
-        var chevron = root.querySelector('.pc-fullset__chev');
-        if (chevron) chevron.setAttribute('aria-expanded', 'true');
+        if (root.classList.contains('is-open')) placeFullSet(root, true);
+        else animateFullSet(root, true);
         var row = root.querySelector('[data-tester-id="' + safeTesterId + '"]');
         if (!row) return;
         root.querySelectorAll('.is-random-pick').forEach(function (el) { el.classList.remove('is-random-pick'); });
@@ -3430,12 +3502,10 @@
         var safeAppId = Number(appId || 0);
         var root = document.getElementById('pc-fullset-' + safeAppId);
         if (!root) return;
+        var wasOpen = root.classList.contains('is-open');
         expandedFullSets.add(safeAppId);
-        root.classList.add('is-open');
-        var body = root.querySelector('.pc-fullset__body');
-        if (body) body.hidden = false;
-        var chevron = root.querySelector('.pc-fullset__chev');
-        if (chevron) chevron.setAttribute('aria-expanded', 'true');
+        if (wasOpen) placeFullSet(root, true);
+        else animateFullSet(root, true);
         var rows = Array.prototype.slice.call(root.querySelectorAll('.pc-fullset__members [data-tester-id]'));
         var openRows = rows.filter(function (row) { return !row.querySelector('.is-tester-rewarded-today'); });
         var status = root.querySelector('.pc-fullset__status');
@@ -4050,12 +4120,13 @@
         // `others`. Continue using it until the new response is complete: the
         // activity filters must not briefly disappear while a card is refreshed.
         var hydrated = !!(entry && !entry.error && entry.loadedAt > 0);
-        var controlRows = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
-        var regularReportRows = hydrated
-            ? filterControlRows(project, entry.others || []).filter(function (row) {
-                return row && row.received && !isControlDay(Number(row.day || 0));
-            })
-            : [];
+        var rosterControl = hydrated ? filterControlRows(project, entry.control) : fallbackControlRows(project);
+        var rosterOthers = hydrated ? filterControlRows(project, entry.others || []) : [];
+        var controlRows = rosterControl.filter(controlRowStaysInReports);
+        var regularReportRows = rosterOthers.filter(function (row) {
+            return row && row.received && !isControlDay(Number(row.day || 0)) && regularScreenshotRow(row);
+        });
+        var photoSource = hydrated ? rosterControl.concat(rosterOthers) : rosterControl;
         return {
             entry: entry,
             hydrated: hydrated,
@@ -4067,6 +4138,8 @@
             controlRows: controlRows,
             regularReportRows: regularReportRows,
             controlDone: controlRows.filter(function (row) { return row.received; }).length,
+            photoReportCount: distinctTesterCount(photoSource, isPhotoReportRow),
+            controlDueCount: distinctTesterCount(rosterControl),
             contribution: collectContribution(
                 hydrated ? (entry.control || []) : [],
                 hydrated ? (entry.others || []) : [],
@@ -4296,6 +4369,33 @@
         return Math.max(0, Number(data && data.rosterCount || 0));
     }
 
+    function filterBadgeText(key, data) {
+        if (key === 'contribution') {
+            return Number(data && data.photoReportCount || 0) + '/' + Number(data && data.controlDueCount || 0);
+        }
+        return String(filterCount(key, data));
+    }
+
+    function activityPercentColor(project) {
+        if (!project || typeof getProjectDailyProgressMeta !== 'function') return '';
+        var meta = null;
+        try { meta = getProjectDailyProgressMeta(project); } catch (_) { return ''; }
+        var color = String(meta && meta.teamActivityColor || '').trim();
+        if (/^#[0-9a-fA-F]{3,8}$/.test(color) || /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(color)) {
+            return color;
+        }
+        return '';
+    }
+
+    function filterBadgeHtml(key, data, project) {
+        if (key !== 'contribution') return esc(String(filterCount(key, data)));
+        var done = Number(data && data.photoReportCount || 0);
+        var due = Number(data && data.controlDueCount || 0);
+        var color = activityPercentColor(project);
+        var style = color ? ' style="--pc-activity-ratio-x:' + color + '"' : '';
+        return '<span class="pc-activity__ratio-x"' + style + '>' + done + '</span>/' + due;
+    }
+
     function filterIcon(key) {
         var paths = {
             testers: '<circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="8" r="2.5"/><path d="M2.8 19c.4-3.4 2.2-5.2 5.2-5.2s4.8 1.8 5.2 5.2M13 14.2c1-.9 2.2-1.3 3.6-1.3 2.6 0 4.1 1.7 4.5 4.6"/>',
@@ -4360,16 +4460,18 @@
 
     function syncFilterButtonState(btn, appId, key, active, data) {
         var count = filterCount(key, data || {});
+        var badge = filterBadgeText(key, data || {});
         var isActive = key === active;
         if (isActive) markTabSeen(appId, key, data);
         var hasUnread = tabIsUnread(appId, key, isActive, count, data);
         var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
         btn.classList.toggle('is-active', isActive);
         btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        btn.setAttribute('aria-label', filterLabel(key) + ' ' + count);
+        btn.setAttribute('aria-label', filterLabel(key) + ' ' + badge);
         var countEl = btn.querySelector('.pc-activity__count');
         if (countEl) {
-            countEl.textContent = String(count);
+            countEl.innerHTML = filterBadgeHtml(key, data, projectById(appId));
+            countEl.classList.toggle('is-ratio', key === 'contribution');
             countEl.classList.toggle('is-warn', !!isAttentionWarn);
             countEl.classList.toggle('has-unread', !!hasUnread);
         }
@@ -4390,20 +4492,22 @@
         });
     }
 
-    function filtersHtml(appId, visible, active, data) {
+    function filtersHtml(appId, visible, active, data, project) {
         visible = visible && visible.length ? visible : ['testers'];
+        project = project || projectById(appId);
         return '<div class="pc-activity__filters tabs-row" role="tablist" aria-label="' + esc(workspaceText('Участники тестирования', 'Test participants')) + '">' +
             visible.map(function (key) {
                 var count = filterCount(key, data || {});
+                var badge = filterBadgeText(key, data || {});
                 var isActive = key === active;
                 if (isActive) markTabSeen(appId, key, data);
                 var hasUnread = tabIsUnread(appId, key, isActive, count, data);
                 var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
-                var countHtml = '<span class="pc-activity__count' + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + count + '</span>';
+                var countHtml = '<span class="pc-activity__count' + (key === 'contribution' ? ' is-ratio' : '') + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + filterBadgeHtml(key, data, project) + '</span>';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
                     '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
-                    '" aria-label="' + esc(filterLabel(key) + ' ' + count) +
+                    '" aria-label="' + esc(filterLabel(key) + ' ' + badge) +
                     '" onclick="event.stopPropagation(); pcSetActivityFilter(' + Number(appId) + ', \'' + key + '\')">' +
                     filterIcon(key) +
                     '<span class="pc-activity__filter-label">' + esc(filterLabel(key)) + '</span>' +
@@ -4438,7 +4542,7 @@
 
     function filterbarHtml(appId, visible, active, data, project) {
         return '<div class="pc-activity__filterbar">' +
-            filtersHtml(appId, visible, active, data) +
+            filtersHtml(appId, visible, active, data, project) +
             karmaButtonHtml(project) +
         '</div>';
     }
@@ -4970,6 +5074,7 @@
             { key: 'contribution', warn: false },
         ].map(function (tab) {
             tab.count = filterCount(tab.key, data);
+            tab.label = filterBadgeText(tab.key, data);
             return tab;
         }).filter(function (tab) { return tab.count > 0; });
         var avatarsHtml = team.length
@@ -4982,7 +5087,7 @@
             quickTabs.map(function (tab) {
                 return '<button type="button" class="pc-team-quick-filter is-' + tab.key + (tab.warn ? ' is-warn' : '') + '" ' +
                     'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ',\'' + tab.key + '\')">' +
-                    filterIcon(tab.key) + '<strong>' + tab.count + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
+                    filterIcon(tab.key) + '<strong>' + filterBadgeHtml(tab.key, data, project) + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
                 '</button>';
             }).join('') + '</div>' : '';
 
@@ -5012,6 +5117,7 @@
             { key: 'contribution', warn: false },
         ].map(function (tab) {
             tab.count = filterCount(tab.key, data);
+            tab.label = filterBadgeText(tab.key, data);
             return tab;
         }).filter(function (tab) { return tab.count > 0; });
 
@@ -5021,7 +5127,7 @@
         var chipsHtml = quickTabs.map(function (tab) {
             return '<button type="button" class="pc-team-quick-filter is-' + tab.key + (tab.warn ? ' is-warn' : '') + '" ' +
                 'onclick="event.stopPropagation(); pcSelectSpecialTabAndExpand(' + appId + ',\'' + tab.key + '\')">' +
-                filterIcon(tab.key) + '<strong>' + tab.count + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
+                filterIcon(tab.key) + '<strong>' + filterBadgeHtml(tab.key, data, project) + '</strong><span>' + esc(filterLabel(tab.key)) + '</span>' +
             '</button>';
         }).join('');
 
@@ -6006,10 +6112,13 @@
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
         var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
+        var identity = testerIdentity(tester);
         if (typeof openCheckinProofPreview !== 'function') return;
         return openCheckinProofPreview(Number(proofId || 0), Number(mediaIndex || 0), {
             appId: Number(appId || 0),
-            testerId: safeTesterId,
+            testerId: safeTesterId || identity.testerId,
+            fullName: identity.fullName,
+            username: identity.username,
             imageCount: Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || 1),
             title: fallbackTitle,
             subtitle: fallbackSubtitle,
@@ -6041,12 +6150,15 @@
         var fallbackTitle = (tester && handleOf(tester)) || (extraOptions && extraOptions.title) || '';
         var fallbackSubtitle = day ? (workspaceText('День ', 'Day ') + day) : ((extraOptions && extraOptions.subtitle) || '');
         var fallbackImageCount = Number((extraOptions && extraOptions.imageCount) || (row && row.imageCount) || fallbackCount || 1);
-        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || 0);
+        var identity = testerIdentity(tester);
+        var safeTesterId = Number((tester && (tester.tester_id || tester.id)) || (extraOptions && extraOptions.testerId) || identity.testerId || 0);
 
         if (typeof openCheckinProofOverview === 'function') {
             return openCheckinProofOverview(Number(proofId), {
                 appId: Number(appId || 0),
                 testerId: safeTesterId,
+                fullName: identity.fullName,
+                username: identity.username,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
@@ -6056,6 +6168,8 @@
             return openCheckinProofPreview(Number(proofId || 0), 0, {
                 appId: Number(appId || 0),
                 testerId: safeTesterId,
+                fullName: identity.fullName,
+                username: identity.username,
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,

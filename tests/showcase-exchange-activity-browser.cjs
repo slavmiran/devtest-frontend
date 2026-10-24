@@ -63,7 +63,7 @@ const root = path.resolve(__dirname, '..');
                 renderProjects(true);
             }, language);
             const activity = page.locator('#project-card-30 .pc-metric-card--google');
-            assert.match(await activity.innerText(), language === 'en' ? /Total today\s*36%/ : /Всего сегодня\s*36%/);
+            assert.match(await activity.innerText(), language === 'en' ? /Total\s*36%/ : /Всего\s*36%/);
             assert.equal(await activity.locator('.pc-ring__done').innerText(), '16');
             const activityColors = await activity.evaluate(el => ({
                 current: getComputedStyle(el.querySelector('.pc-ring__done')).color,
