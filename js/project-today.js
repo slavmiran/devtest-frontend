@@ -2516,17 +2516,6 @@
         return Number(row.imageCount || 0) >= FULL_SCREENSHOT_COUNT;
     }
 
-    function stillImageCount(row) {
-        var images = Number(row && row.imageCount || 0);
-        if (!row || !row.hasVideo) return images;
-        var videos = Number(row.videoCount || 0);
-        return Math.max(0, images - (videos > 0 ? videos : 1));
-    }
-
-    function isPhotoReportRow(row) {
-        return !!(row && row.received && String(row.proofType || '') === 'screenshot' && stillImageCount(row) > 0);
-    }
-
     function controlRowStaysInReports(row) {
         if (!row) return false;
         if (!row.received) return true;
@@ -2549,6 +2538,20 @@
             var testerId = Number(row && row.testerId || 0);
             if (testerId <= 0 || seen[testerId]) return;
             seen[testerId] = true;
+            count += 1;
+        });
+        return count;
+    }
+
+    function shortScreenshotReportCount(rows) {
+        var seen = {};
+        var count = 0;
+        (rows || []).forEach(function (row) {
+            if (!regularScreenshotRow(row)) return;
+            var proofId = Number(row.proofId || 0);
+            var key = proofId > 0 ? ('p' + proofId) : ('t' + Number(row.testerId || 0));
+            if (seen[key]) return;
+            seen[key] = true;
             count += 1;
         });
         return count;
@@ -4126,7 +4129,6 @@
         var regularReportRows = rosterOthers.filter(function (row) {
             return row && row.received && !isControlDay(Number(row.day || 0)) && regularScreenshotRow(row);
         });
-        var photoSource = hydrated ? rosterControl.concat(rosterOthers) : rosterControl;
         return {
             entry: entry,
             hydrated: hydrated,
@@ -4138,7 +4140,7 @@
             controlRows: controlRows,
             regularReportRows: regularReportRows,
             controlDone: controlRows.filter(function (row) { return row.received; }).length,
-            photoReportCount: distinctTesterCount(photoSource, isPhotoReportRow),
+            shortScreenshotCount: shortScreenshotReportCount(rosterControl.concat(rosterOthers)),
             controlDueCount: distinctTesterCount(rosterControl),
             contribution: collectContribution(
                 hydrated ? (entry.control || []) : [],
@@ -4370,8 +4372,8 @@
     }
 
     function filterBadgeText(key, data) {
-        if (key === 'contribution') {
-            return Number(data && data.photoReportCount || 0) + '/' + Number(data && data.controlDueCount || 0);
+        if (key === 'control') {
+            return Number(data && data.shortScreenshotCount || 0) + '/' + Number(data && data.controlDueCount || 0);
         }
         return String(filterCount(key, data));
     }
@@ -4388,12 +4390,12 @@
     }
 
     function filterBadgeHtml(key, data, project) {
-        if (key !== 'contribution') return esc(String(filterCount(key, data)));
-        var done = Number(data && data.photoReportCount || 0);
+        if (key !== 'control') return esc(String(filterCount(key, data)));
+        var reported = Number(data && data.shortScreenshotCount || 0);
         var due = Number(data && data.controlDueCount || 0);
         var color = activityPercentColor(project);
         var style = color ? ' style="--pc-activity-ratio-x:' + color + '"' : '';
-        return '<span class="pc-activity__ratio-x"' + style + '>' + done + '</span>/' + due;
+        return '<span class="pc-activity__ratio-x"' + style + '>' + reported + '</span>/' + due;
     }
 
     function filterIcon(key) {
@@ -4471,7 +4473,7 @@
         var countEl = btn.querySelector('.pc-activity__count');
         if (countEl) {
             countEl.innerHTML = filterBadgeHtml(key, data, projectById(appId));
-            countEl.classList.toggle('is-ratio', key === 'contribution');
+            countEl.classList.toggle('is-ratio', key === 'control');
             countEl.classList.toggle('is-warn', !!isAttentionWarn);
             countEl.classList.toggle('has-unread', !!hasUnread);
         }
@@ -4503,7 +4505,7 @@
                 if (isActive) markTabSeen(appId, key, data);
                 var hasUnread = tabIsUnread(appId, key, isActive, count, data);
                 var isAttentionWarn = (key === 'attention') && hasCriticalAttentionIssue(data && data.attention);
-                var countHtml = '<span class="pc-activity__count' + (key === 'contribution' ? ' is-ratio' : '') + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + filterBadgeHtml(key, data, project) + '</span>';
+                var countHtml = '<span class="pc-activity__count' + (key === 'control' ? ' is-ratio' : '') + (isAttentionWarn ? ' is-warn' : '') + (hasUnread ? ' has-unread' : '') + '">' + filterBadgeHtml(key, data, project) + '</span>';
                 return '<button type="button" class="tab-item pc-activity__filter' + (isActive ? ' is-active' : '') +
                     '" data-activity-filter="' + key +
                     '" role="tab" aria-controls="pc-activity-list-' + Number(appId) + '" aria-selected="' + (isActive ? 'true' : 'false') +
