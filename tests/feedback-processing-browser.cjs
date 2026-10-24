@@ -17,7 +17,8 @@ const root = path.resolve(__dirname, '..');
                 contribution_lifetime_score: 7, project_karma_available: true, thanks_available: true,
                 special_available: true, thanks_max: 4, thanks_used: 0, special_max: 2, special_used: 0 });
             const rows = { 30: [ticket(101, 30), ticket(102, 30, 'idea'), ticket(103, 30),
-                ticket(104, 30, 'google_play_review'), ticket(105, 30)], 40: [ticket(201, 40)], 50: [], 60: [] };
+                ticket(104, 30, 'google_play_review'), ticket(105, 30)], 40: [ticket(201, 40)], 50: [], 60: [],
+                70: [ticket(301, 70), ticket(302, 70), ticket(303, 70), ticket(304, 70)], 80: [ticket(401, 80)] };
             page.on('pageerror', error => errors.push(error.message));
             await page.addInitScript(language => {
                 window.__API_BASE__ = 'http://fixture.local/api';
@@ -66,7 +67,7 @@ const root = path.resolve(__dirname, '..');
                 lang = language; updateTranslations(language);
                 document.body.classList.remove('no-username-blocked');
                 document.getElementById('no-username-overlay').classList.remove('active');
-                myProjects = [30, 40, 50, 60].map(id => ({ id, name: 'Project ' + id, testers: [],
+                myProjects = [30, 40, 50, 60, 70, 80].map(id => ({ id, name: 'Project ' + id, testers: [],
                     feedback_new_count: id === 30 ? 5 : 1, feedback_total_count: id === 30 ? 5 : 1 }));
                 archivedProjects = []; visibilityStats = { balance_bust: 1000 };
                 window.toasts = []; showToast = value => toasts.push(value);
@@ -74,13 +75,14 @@ const root = path.resolve(__dirname, '..');
             }, language);
             const waitPost = async id => {
                 await page.waitForFunction(id => isFeedbackProcessing(_activeProjectFeedbackAppId, id), id);
-                while (!waitingPosts.has(id)) await new Promise(resolve => setTimeout(resolve, 10));
+                for (let attempt = 0; attempt < 500 && !waitingPosts.has(id); attempt++) await new Promise(resolve => setTimeout(resolve, 10));
+                assert(waitingPosts.has(id), 'Expected request for ticket ' + id);
             };
-            const waitRewardDone = () => page.waitForFunction(() => !_feedbackRewardSubmitting);
-            const reward = async (id, reply = 'Thanks for the report', bust = 5) => {
+            const waitRewardDone = (id, app = 30) => page.waitForFunction(({ id, app }) => !isFeedbackProcessing(app, id), { id, app });
+            const reward = async (id, reply = 'Thanks for the report', bust = 5, karma = 1) => {
                 await page.evaluate(id => openFeedbackRewardModal(_activeProjectFeedbackAppId, id), id);
                 await page.locator('#feedback-reward-reply').fill(reply);
-                await page.evaluate(bust => { setFeedbackRewardBust(bust); setFeedbackRewardKarma(1); }, bust);
+                await page.evaluate(({ bust, karma }) => { setFeedbackRewardBust(bust); setFeedbackRewardKarma(karma); }, { bust, karma });
                 await page.locator('#feedback-reward-submit-btn').click();
                 await page.waitForFunction(() => !document.getElementById('feedback-reward-modal').classList.contains('active'), null, { timeout: 1000 });
                 await waitPost(id);
@@ -107,9 +109,10 @@ const root = path.resolve(__dirname, '..');
             assert.equal(posts.length, 1, 'Pending ticket cannot be submitted twice');
             await page.evaluate(() => openFeedbackRewardModal(30, 102));
             await page.locator('#feedback-reward-reply').fill('Next draft must survive the previous response');
-            assert(await page.locator('#feedback-reward-submit-btn').isDisabled(), 'Do not overlap financial reward submissions');
+            assert(await page.locator('#feedback-reward-submit-btn').isEnabled(), 'Another ticket must remain submittable while the previous one is pending');
+            assert.equal(await page.locator('#feedback-reward-submit-btn.btn-loading').count(), 0, 'Another ticket must not inherit the old spinner');
             waitingPosts.get(101)('success');
-            await waitRewardDone();
+            await waitRewardDone(101);
             assert.equal(await page.locator('#feedback-reward-modal.active').count(), 1);
             assert.equal(await page.locator('#feedback-reward-reply').inputValue(), 'Next draft must survive the previous response');
             assert(await page.locator('#feedback-reward-submit-btn').isEnabled());
@@ -123,7 +126,7 @@ const root = path.resolve(__dirname, '..');
 
             await reward(103, 'Keep this failed reply', 10);
             waitingPosts.get(103)('error');
-            await waitRewardDone();
+            await waitRewardDone(103);
             assert.equal(await page.locator('.fb-card[data-feedback-id="103"][aria-busy="true"]').count(), 0);
             assert.equal(await page.evaluate(() => _activeProjectFeedbackItems.find(row => row.id === 103).status), 'pending');
             await page.evaluate(() => openFeedbackRewardModal(30, 103));
@@ -134,7 +137,7 @@ const root = path.resolve(__dirname, '..');
             await page.evaluate(async () => { closeProjectFeedbackModal(); await openProjectFeedback(40, false); openFeedbackRewardModal(40, 201); });
             await page.locator('#feedback-reward-reply').fill('Other project draft');
             waitingPosts.get(103)('success');
-            await waitRewardDone();
+            await waitRewardDone(103);
             assert.equal(await page.locator('#feedback-reward-reply').inputValue(), 'Other project draft');
             assert.equal(await page.evaluate(() => _feedbackRewardTargetId), 201);
             assert.equal(await page.evaluate(() => getProjectFeedbackSession(30).items.find(row => row.id === 103).status), 'accepted');
@@ -176,9 +179,75 @@ const root = path.resolve(__dirname, '..');
             await reward(105, 'Saved despite lost response', 0);
             const beforeLost = posts.length;
             waitingPosts.get(105)('lost');
-            await waitRewardDone();
+            await waitRewardDone(105);
             assert.equal(posts.length, beforeLost, 'Lost reply must trigger a read, not another reward POST');
             assert.equal(await page.evaluate(() => _activeProjectFeedbackItems.find(row => row.id === 105).status), 'accepted');
+
+            // Multiple decisions can leave the shared modal immediately. Financial
+            // mutations retain their old order in the background, not in the UI.
+            await page.evaluate(async () => { closeProjectFeedbackModal(); await openProjectFeedback(70, false); });
+            await reward(301, 'First financial decision', 20);
+            await page.evaluate(() => openFeedbackRewardModal(70, 302));
+            assert(await page.locator('#feedback-reward-submit-btn').isDisabled(), 'An empty form stays disabled, without inheriting a spinner');
+            assert.equal(await page.locator('#feedback-reward-submit-btn.btn-loading').count(), 0);
+            await page.locator('#feedback-reward-reply').fill('Second immutable financial decision');
+            await page.evaluate(() => { setFeedbackRewardBust(15); setFeedbackRewardKarma(0); });
+            assert(await page.locator('#feedback-reward-submit-btn').isEnabled());
+            await page.locator('#feedback-reward-submit-btn').click();
+            assert.equal(await page.locator('#feedback-reward-modal.active').count(), 0);
+            assert(await page.evaluate(() => isFeedbackProcessing(70, 302)));
+            assert.equal(posts.filter(post => post.id === 302).length, 0, 'Second financial mutation waits in the background');
+            await page.evaluate(() => { openFeedbackRewardModal(70, 302); submitFeedbackReward(); });
+            assert.equal(await page.locator('#feedback-reward-modal.active').count(), 0, 'The same queued ticket cannot be opened twice');
+
+            await reward(303, 'Reply-only decision does not wait for money', 0, 0);
+            assert(waitingPosts.has(301) && waitingPosts.has(303), 'Reply-only POST runs while another reward POST is pending');
+            assert.equal(await page.locator('.fb-card[aria-busy="true"]').count(), 3);
+            assert.equal(await page.locator('.fb-card[data-feedback-id="304"][aria-busy="true"]').count(), 0);
+            await page.evaluate(() => openFeedbackRewardModal(70, 304));
+            await page.locator('#feedback-reward-reply').fill('Fourth draft survives all previous responses');
+            await page.evaluate(() => { setFeedbackRewardBust(7); setFeedbackRewardKarma(0); });
+            waitingPosts.get(303)('success');
+            await waitRewardDone(303, 70);
+            waitingPosts.get(301)('error');
+            await waitRewardDone(301, 70);
+            await waitPost(302);
+            const secondRequest = posts.find(post => post.id === 302);
+            assert.equal(secondRequest.body.reply_text, 'Second immutable financial decision');
+            assert.equal(secondRequest.body.bust_amount, 15);
+            assert.equal(secondRequest.body.karma_amount, 0);
+            waitingPosts.get(302)('success');
+            await waitRewardDone(302, 70);
+            assert.equal(await page.locator('#feedback-reward-reply').inputValue(), 'Fourth draft survives all previous responses');
+            assert.equal(await page.evaluate(() => _feedbackRewardBust), 7);
+            assert(await page.locator('#feedback-reward-submit-btn').isEnabled());
+            assert.equal(await page.locator('#feedback-reward-submit-btn.btn-loading').count(), 0);
+
+            await page.evaluate(() => { closeFeedbackRewardModal(); openFeedbackRewardModal(70, 301); });
+            assert.equal(await page.locator('#feedback-reward-reply').inputValue(), 'First financial decision');
+            assert.equal(await page.evaluate(() => _feedbackRewardBust), 20);
+            await page.evaluate(() => { submitFeedbackReward(); submitFeedbackReward(); });
+            await waitPost(301);
+            assert.equal(posts.filter(post => post.id === 301).length, 2, 'Only one retry can be sent for the failed ticket');
+            waitingPosts.get(301)('lost');
+            await waitRewardDone(301, 70);
+            assert.equal(posts.filter(post => post.id === 301).length, 2, 'A lost reward response is never replayed');
+
+            await page.evaluate(async () => { closeProjectFeedbackModal(); await openProjectFeedback(80, false); });
+            await reward(401, 'Other project financial decision', 5);
+            await page.evaluate(async () => { closeProjectFeedbackModal(); await openProjectFeedback(70, false); });
+            await reward(304, 'Another project can close a reply-only ticket too', 0, 0);
+            assert(waitingPosts.has(401) && waitingPosts.has(304));
+            await page.evaluate(async () => { closeProjectFeedbackModal(); await openProjectFeedback(40, false); openFeedbackRewardModal(40, 201); });
+            await page.locator('#feedback-reward-reply').fill('Third project draft');
+            waitingPosts.get(401)('success');
+            await waitRewardDone(401, 80);
+            assert(await page.evaluate(() => isFeedbackProcessing(70, 304)), 'One result cannot clear another ticket lock');
+            waitingPosts.get(304)('success');
+            await waitRewardDone(304, 70);
+            assert.equal(await page.locator('#feedback-reward-reply').inputValue(), 'Third project draft');
+            assert(await page.locator('#feedback-reward-submit-btn').isEnabled());
+            await page.evaluate(() => closeFeedbackRewardModal());
 
             await page.evaluate(async () => { closeProjectFeedbackModal(); await openProjectFeedback(50, false); closeProjectFeedbackModal(); await openProjectFeedback(50, false); });
             assert.equal(gets.filter(get => get.app === 50).length, 1, 'Empty queues are cached too');
@@ -197,6 +266,6 @@ const root = path.resolve(__dirname, '..');
             assert.deepEqual(errors, []);
             await page.close();
         }
-        console.log('Feedback RU/EN 360/390: lazy history, shared reads/cache, immediate decision close, pending state, immutable requests, drafts, cross-project responses, stale reads and lost-reply reconciliation passed');
+        console.log('Feedback RU/EN 360/390: independent ticket buttons, immediate queued decisions, ordered financial mutations, concurrent reply-only POSTs, duplicate protection, drafts, cross-project/out-of-order responses, stale reads and lost-reply reconciliation passed');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

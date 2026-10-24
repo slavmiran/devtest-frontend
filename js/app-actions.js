@@ -4577,7 +4577,6 @@ function openFeedbackRewardModal(appId, feedbackId) {
         if (reply) reply.value = draft.reply_text;
     }
     _updateFeedbackRewardSubmitState();
-    _setFeedbackRewardSubmitLoading(_feedbackRewardSubmitting);
     _syncFeedbackRewardSubmitEnabled();
 }
 
@@ -4593,9 +4592,11 @@ function closeFeedbackRewardModal() {
 function _syncFeedbackRewardSubmitEnabled() {
     var btn = document.getElementById('feedback-reward-submit-btn');
     if (!btn) return;
+    var submitting = !!_feedbackRewardTargetId && isFeedbackProcessing(_activeProjectFeedbackAppId, _feedbackRewardTargetId);
+    _setFeedbackRewardSubmitLoading(submitting);
     var reply = document.getElementById('feedback-reward-reply');
     var hasReply = !!(reply && reply.value && reply.value.trim());
-    var enabled = !_feedbackRewardSubmitting && (hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0);
+    var enabled = !submitting && (hasReply || _feedbackRewardBust > 0 || _feedbackRewardKarma > 0);
     if (btn.disabled !== !enabled) btn.disabled = !enabled;
 }
 
@@ -4604,7 +4605,9 @@ function _updateFeedbackRewardSubmitState() {
     updateFeedbackRewardSummary();
 }
 
-var _feedbackRewardSubmitting = false;
+// Preserve the existing ordering of wallet/karma mutations without locking
+// the shared modal. Reply-only decisions can be sent independently.
+var _feedbackRewardFinancialQueue = Promise.resolve();
 
 function _setFeedbackRewardSubmitLoading(isLoading) {
     var btn = document.getElementById('feedback-reward-submit-btn');
@@ -4626,7 +4629,6 @@ function _setFeedbackRewardSubmitLoading(isLoading) {
 }
 
 async function submitFeedbackReward() {
-    if (_feedbackRewardSubmitting) return;
     if (!_feedbackRewardTargetId || !_activeProjectFeedbackAppId) return;
 
     const bustInput = document.getElementById('feedback-reward-bust-input');
@@ -4655,10 +4657,16 @@ async function submitFeedbackReward() {
     if (!beginFeedbackProcessing(appId, processedFeedbackId, draft)) return;
     // Capture everything before closing: the owner can immediately read another ticket.
     var requestBody = withInitData({ owner_id: userId, bust_amount: bustAmount, karma_amount: rewardedKarma, reply_text: replyText });
-    _feedbackRewardSubmitting = true;
-    closeFeedbackRewardModal();
+    var previousFinancialReward = null;
+    var releaseFinancialReward = null;
+    if (bustAmount > 0 || rewardedKarma > 0) {
+        previousFinancialReward = _feedbackRewardFinancialQueue;
+        _feedbackRewardFinancialQueue = new Promise(function(resolve) { releaseFinancialReward = resolve; });
+    }
 
     try {
+        closeFeedbackRewardModal();
+        if (previousFinancialReward) await previousFinancialReward;
         const response = await fetch(`${API_BASE}/feedback/${processedFeedbackId}/reward`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4695,8 +4703,8 @@ async function submitFeedbackReward() {
         console.error('Feedback reward error:', error);
         await recoverFeedbackProcessing(appId, processedFeedbackId, error);
     } finally {
-        _feedbackRewardSubmitting = false;
-        _setFeedbackRewardSubmitLoading(false);
+        if (releaseFinancialReward) releaseFinancialReward();
+        // A late result belongs to its captured ticket, not the currently open form.
         _syncFeedbackRewardSubmitEnabled();
     }
 }
