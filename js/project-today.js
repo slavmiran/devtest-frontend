@@ -3405,8 +3405,9 @@
                     '<button type="button" class="pc-fullset__chev" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(text('pcFullSetToggle', 'Показать участников')) + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')"></button>' +
                 '</div>' +
                 '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
-                    '<span class="pc-fullset__random-label" aria-hidden="true">' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '</span>' +
+                    '<span class="pc-fullset__random-label pc-fullset__random-label--lead" aria-hidden="true">' + esc(text('pcFullSetRandomLead', 'Выбрать')) + '</span>' +
                     fullSetDieHtml() +
+                    '<span class="pc-fullset__random-label pc-fullset__random-label--tail" aria-hidden="true">' + esc(text('pcFullSetRandomTail', 'случайного')) + '</span>' +
                 '</button>' +
                 '<span class="pc-fullset__status" hidden></span>' +
                 '<div class="pc-fullset__body"' + (open ? '' : ' hidden') + '>' +
@@ -3479,18 +3480,24 @@
         var button = root && root.querySelector('.pc-fullset__random');
         var die = button && button.querySelector('.pc-fullset__die');
         var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (die) {
+            die.style.transition = 'none';
+            die.style.transform = 'none';
+        }
         var first = !reduce && die ? die.getBoundingClientRect() : null;
         placeFullSet(root, open);
-        if (!button || !die || !first || first.width <= 0) return;
+        if (!die || !first || first.width <= 0) return;
         var last = die.getBoundingClientRect();
         var dx = first.left - last.left;
         var dy = first.top - last.top;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
-        button.style.transition = 'none';
-        button.style.transform = 'translate(' + dx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px)';
+        die.style.transform = 'translate(' + dx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px)';
+        void die.offsetWidth;
         requestAnimationFrame(function () {
-            button.style.transition = 'transform .34s cubic-bezier(.22,.8,.24,1)';
-            button.style.transform = 'translate(0px,0px)';
+            requestAnimationFrame(function () {
+                die.style.transition = 'transform .72s cubic-bezier(.22,.61,.36,1)';
+                die.style.transform = 'translate(0px,0px)';
+            });
         });
     }
 
@@ -4102,19 +4109,6 @@
         '</section>';
     }
 
-    function controlReminderPanelHtml(appId, count) {
-        if (count <= 0) return '';
-        var state = controlReminderStates.get(Number(appId));
-        var sending = controlReminderSending.has(Number(appId));
-        return '<div class="pc-control-reminder-panel">' +
-            '<button type="button" class="pc-control-remind-all-btn' + (sending ? ' is-sending' : '') + '" onclick="event.stopPropagation(); pcRemindAllPendingControl(' + Number(appId) + ')">' +
-                '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>' +
-                '<span>' + esc(text('pcControlRemindAll', 'Напомнить всем')) + ' (' + count + ')</span>' +
-            '</button>' +
-            '<div class="pc-control-reminder-feedback">' + controlReminderFeedbackHtml(state) + '</div>' +
-        '</div>';
-    }
-
     function prepareWaitingAssessments(appId, rows) {
         var project = projectById(appId);
         (rows || []).forEach(function (row) {
@@ -4163,8 +4157,7 @@
                 counts.waiting,
                 '<ul class="pc-act-list pc-activity-control">' +
                     sections.waiting.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
-                '</ul>' +
-                controlReminderPanelHtml(appId, counts.waiting)
+                '</ul>'
             );
         }
         return html || emptySheetHtml(text('pcControlEmpty', 'No reports today'));

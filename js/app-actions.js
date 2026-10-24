@@ -4182,6 +4182,12 @@ function isFeedbackProcessing(appId, feedbackId) {
 function syncFeedbackProcessingCards() {
     document.querySelectorAll('#project-feedback-body .fb-card').forEach(function(card) {
         var pending = isFeedbackProcessing(_activeProjectFeedbackAppId, card.dataset.feedbackId);
+        // Collapse once when the decision is queued, not on every status sync:
+        // users may reopen a pending ticket to read its details.
+        if (pending && !card.classList.contains('fb-card--saving')) {
+            card.classList.remove('fb-card--expanded');
+            card.classList.add('fb-card--collapsed');
+        }
         card.classList.toggle('fb-card--saving', pending);
         if (pending) card.setAttribute('aria-busy', 'true');
         else card.removeAttribute('aria-busy');
@@ -4199,9 +4205,14 @@ function syncFeedbackProcessingCards() {
             note = document.createElement('div');
             note.className = 'fb-saving-note';
             note.setAttribute('role', 'status');
-            note.textContent = window.t('feedbackSaving', {}, lang);
+            note.setAttribute('aria-atomic', 'true');
+            note.innerHTML = '<span class="fb-saving-spinner" aria-hidden="true"></span><span class="fb-saving-label"></span>';
             card.querySelector('.fb-inbox-main').appendChild(note);
         } else if (!pending && note) note.remove();
+        if (pending && note) {
+            note.querySelector('.fb-saving-label').textContent = window.t('feedbackProcessingLabel', {}, lang);
+            note.title = window.t('feedbackSaving', {}, lang);
+        }
     });
 }
 
