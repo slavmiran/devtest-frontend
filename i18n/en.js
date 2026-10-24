@@ -3846,7 +3846,7 @@
             pcScreenshotSet: "Screenshot set",
             pcContributionVideo: "Video report",
             pcContributionVideoHint: "A clip attached to today's report",
-            pcContributionNote: "Screenshot with text",
+            pcContributionNote: "Screen-report + comment",
             pcContributionNoteHint: "A note was added to the screenshots",
             pcNoteFoldMore: "Read more",
             pcNoteFoldLess: "Show less",

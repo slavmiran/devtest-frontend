@@ -1542,7 +1542,7 @@
         } else if (type === 'video') {
             title = text('pcContributionVideo', 'Видео-отчёт');
         } else if (type === 'report_note') {
-            title = text('pcContributionNote', 'Скриншот с текстом');
+            title = text('pcContributionNote', 'Скрин-отчёт с комментарием');
         } else {
             title = imageCount > 1
                 ? text('pcScreenshotSet', 'Серия скриншотов')
@@ -2670,7 +2670,7 @@
             if (item.reportNote && (!item.video || Number(item.reportNote.proofId) !== Number(item.video.proofId))) {
                 reasons.push({
                     kind: 'report_note',
-                    label: text('pcContributionNote', 'Written report'),
+                    label: text('pcContributionNote', 'Screenshot report with a comment'),
                     proofId: item.reportNote.proofId,
                     note: item.reportNote.note || '',
                     progressId: item.reportNote.progressId,

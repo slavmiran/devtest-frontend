@@ -3852,7 +3852,7 @@
             pcScreenshotSet: "Серия скриншотов",
             pcContributionVideo: "Видео-отчёт",
             pcContributionVideoHint: "Ролик к сегодняшнему отчёту",
-            pcContributionNote: "Скриншот с текстом",
+            pcContributionNote: "Скрин-отчёт с комментарием",
             pcContributionNoteHint: "К скринам добавлен комментарий",
             pcNoteFoldMore: "Читать дальше",
             pcNoteFoldLess: "Свернуть",
