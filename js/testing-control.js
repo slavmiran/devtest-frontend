@@ -1578,7 +1578,12 @@
 
     async function openCheckinProofOverview(proofId, options) {
         var id = Number(proofId);
-        if (!galleryEnabled() || id <= 0) return;
+        if (!galleryEnabled() || id <= 0) {
+            if (options && options.returnToAppreciation && typeof window.resumeKarmaSelectAfterProof === 'function') {
+                window.resumeKarmaSelectAfterProof();
+            }
+            return;
+        }
         var modal = document.getElementById('checkin-proof-preview-modal');
         var body = document.getElementById('checkin-proof-preview-body');
         if (!modal || !body) return;
@@ -1594,14 +1599,28 @@
                 testerId: Number(options.testerId || (prevFallback && prevFallback.proofId === id ? prevFallback.testerId : 0)),
                 fullName: String(options.fullName || (prevFallback && prevFallback.proofId === id ? prevFallback.fullName : '') || ''),
                 username: String(options.username || (prevFallback && prevFallback.proofId === id ? prevFallback.username : '') || ''),
+                returnToAppreciation: !!(options && options.returnToAppreciation),
               }
             : (prevFallback && prevFallback.proofId === id ? prevFallback : null);
         if (fallback) state.previewFallback = fallback;
+        state.returnToAppreciation = !!(options && options.returnToAppreciation);
+        // Opening from Tester Appreciation hides that popup first. Reveal this
+        // viewer in the same turn, before the album request, so the project
+        // card never shows through while tickets load.
+        if (state.returnToAppreciation) {
+            state.previewProofId = id;
+            state.previewMode = 'overview';
+            body.classList.remove('is-proof-album', 'is-proof-overview');
+            paintPreviewHeading(id);
+            body.innerHTML = '<div class="checkin-proof-preview-loading" aria-hidden="true"><span></span><span></span><span></span></div>';
+            paintAppreciationReturn();
+            syncProofPreviewViewport();
+            modal.classList.add('active');
+            if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        }
         // Card data can be stale while an album is still being reconciled.
         // Decide between the one-image viewer and the album only after the
-        // proof endpoint returns its authoritative media count. Keep the
-        // modal closed while resolving it so the user never sees a redundant
-        // loading screen followed by a second opening animation.
+        // proof endpoint returns its authoritative media count.
         try {
             var details = await warmAlbumTickets(id, 'thumbnail');
             if (requestId !== state.previewOpenRequest) return;
@@ -1617,6 +1636,7 @@
             paintPreviewHeading(id);
             renderProofOverview(body, id, count);
             syncProofPreviewViewport();
+            paintAppreciationReturn();
             modal.classList.add('active');
             if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
             body.querySelectorAll('.checkin-proof-overview-tile').forEach(function(tile) {
@@ -1633,6 +1653,14 @@
             }).catch(function() {});
         } catch (_) {
             if (requestId !== state.previewOpenRequest) return;
+            if (state.returnToAppreciation) {
+                state.returnToAppreciation = false;
+                body.innerHTML = '';
+                modal.classList.remove('active');
+                var returnButton = document.getElementById('checkin-proof-return-reward');
+                if (returnButton) returnButton.hidden = true;
+                if (typeof window.resumeKarmaSelectAfterProof === 'function') window.resumeKarmaSelectAfterProof();
+            }
             if (typeof showToast === 'function') showToast(text('testingControlMediaUnavailable', 'Images are temporarily unavailable.'));
         }
     }
@@ -1640,7 +1668,12 @@
     async function openCheckinProofPreview(proofId, mediaIndex, options) {
         state.previewOpenRequest += 1;
         var safeProofId = Number(proofId || 0);
-        if (!galleryEnabled() || safeProofId <= 0) return;
+        if (!galleryEnabled() || safeProofId <= 0) {
+            if (options && options.returnToAppreciation && typeof window.resumeKarmaSelectAfterProof === 'function') {
+                window.resumeKarmaSelectAfterProof();
+            }
+            return;
+        }
         var prevFallback = state.previewFallback;
         if (options) {
             state.previewFallback = {
@@ -1652,9 +1685,14 @@
                 testerId: Number(options.testerId || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.testerId : 0)),
                 fullName: String(options.fullName || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.fullName : '') || ''),
                 username: String(options.username || (prevFallback && prevFallback.proofId === safeProofId ? prevFallback.username : '') || ''),
+                returnToAppreciation: !!(options && options.returnToAppreciation),
             };
+            state.returnToAppreciation = !!options.returnToAppreciation;
         } else if (prevFallback && Number(prevFallback.proofId) !== safeProofId) {
             state.previewFallback = null;
+            state.returnToAppreciation = false;
+        } else if (!options) {
+            state.returnToAppreciation = false;
         }
         var imageCount = proofImageCount(safeProofId);
         var safeIndex = Math.max(0, Math.min(imageCount - 1, Number(mediaIndex || 0)));
@@ -1684,6 +1722,7 @@
         paintPreviewHeading(safeProofId);
         renderReportMetadata(safeProofId);
         syncProofPreviewViewport();
+        paintAppreciationReturn();
         modal.classList.add('active');
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
@@ -1787,9 +1826,23 @@
         openProjectFeedback(Number(state.appId || 0), state.archived, { focusFeedbackId: safeFeedbackId });
     }
 
+    function paintAppreciationReturn() {
+        var host = document.getElementById('checkin-proof-return-reward');
+        if (!host) return;
+        if (!state.returnToAppreciation) {
+            host.hidden = true;
+            return;
+        }
+        host.hidden = false;
+        host.innerHTML = '<span aria-hidden="true">←</span><span>' +
+            escape(text('pcFullSetReturnReward', 'Вернуться к награждению')) +
+            '</span><span aria-hidden="true">☯</span>';
+    }
+
     function closeCheckinProofPreview(event) {
         var modal = document.getElementById('checkin-proof-preview-modal');
         if (event && event.target !== modal) return;
+        var resumeReward = !!state.returnToAppreciation;
         var body = document.getElementById('checkin-proof-preview-body');
         if (body) {
             body.classList.remove('is-proof-album', 'is-proof-overview');
@@ -1798,11 +1851,17 @@
             body.innerHTML = '';
         }
         if (modal) modal.classList.remove('active');
+        var returnButton = document.getElementById('checkin-proof-return-reward');
+        if (returnButton) returnButton.hidden = true;
         state.previewOpenRequest += 1;
         state.previewProofId = 0;
         state.previewMediaIndex = 0;
         state.previewMode = '';
         state.previewFallback = null;
+        state.returnToAppreciation = false;
+        if (resumeReward && typeof window.resumeKarmaSelectAfterProof === 'function') {
+            window.resumeKarmaSelectAfterProof();
+        }
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
 

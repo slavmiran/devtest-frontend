@@ -974,14 +974,16 @@
         // that have not supplied a Telegram full name yet.
         var primaryName = fullName || rawUsername || handleOf(tester);
         if (rawUsername) {
+            var identityTail = (opts.nameSuffixHtml || '') + timeAgoHtml;
             nameHtml = '<span class="pc-person__identity">' +
-                '<button type="button" class="pc-person__fullname pc-person__fullname-main pc-person__fullname--reveal" ' +
-                    'onclick="window.pcRevealTesterNickname(this, event)" aria-expanded="false">' + esc(primaryName) + '</button>' +
-                '<button type="button" class="pc-person__handle pc-person__handle--link pc-person__handle--reveal" ' +
-                    'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
-                    'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
-                (opts.nameSuffixHtml || '') +
-                timeAgoHtml +
+                '<span class="pc-person__identity-names">' +
+                    '<button type="button" class="pc-person__fullname pc-person__fullname-main pc-person__fullname--reveal" ' +
+                        'onclick="window.pcRevealTesterNickname(this, event)" aria-expanded="false">' + esc(primaryName) + '</button>' +
+                    '<button type="button" class="pc-person__handle pc-person__handle--link pc-person__handle--reveal" ' +
+                        'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
+                        'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
+                '</span>' +
+                (identityTail ? '<span class="pc-person__identity-tail">' + identityTail + '</span>' : '') +
             '</span>';
             timeAgoHtml = '';
         } else {
@@ -3051,16 +3053,22 @@
                 '</span>' +
             '</span>';
         }
-        var label = rewardedToday
-            ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
-            : text('pcRewardBtn', 'Reward');
+        var label = opts.muted
+            ? text('karmaPoolExhausted', 'Лимит наград исчерпан')
+            : (rewardedToday
+                ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
+                : text('pcRewardBtn', 'Reward'));
         var completeMarkHtml = rewardedToday
             ? '<span class="pc-reward-accent-btn__complete" aria-hidden="true">✓</span>'
             : '';
-        return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' + (rewardedToday ? ' is-tester-rewarded-today' : '') + '" ' +
+        var click = opts.onClick || ('pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')');
+        return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' +
+            (rewardedToday ? ' is-tester-rewarded-today' : '') +
+            (opts.muted ? ' is-karma-muted' : '') +
+            (opts.extraClass ? ' ' + opts.extraClass : '') + '" ' +
             'title="' + esc(label) + '" ' +
             'aria-label="' + esc(label) + '" ' +
-            'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')" >' +
+            'onclick="event.stopPropagation(); ' + click + '">' +
             '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
             completeMarkHtml +
             orbitHtml +
@@ -3285,7 +3293,7 @@
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: rowClass || 'pc-person--contribution',
-            metaHtml: contributionControlDayHtml(item.tester) + contributionTesterStatsChipHtml(appId, item.tester, item, context),
+            metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
             actionsHtml: headerActionsHtml,
             avatarMarkerHtml: contributionAvatarMarkerHtml(visibleReasons),
             extraHtml: subrowsHtml,
@@ -3294,10 +3302,45 @@
         });
     }
 
+    function karmaPoolOpen(context) {
+        return Number(context && context.thanksLeft || 0) > 0 || Number(context && context.specialLeft || 0) > 0;
+    }
+
+    function fullSetOnlyItems(appId) {
+        var project = projectById(appId);
+        if (!project) return [];
+        var data = activityCounts(project);
+        var source = reportSections(data).value || [];
+        return source.filter(function (item) {
+            return isFullScreenshotMember(item) && individualContributionReasons(item).length === 0;
+        });
+    }
+
+    function fullSetMemberActionsHtml(appId, item) {
+        var proofId = Number(item.screenshotRow && item.screenshotRow.proofId || 0);
+        if (proofId <= 0) return '';
+        var count = FULL_SCREENSHOT_COUNT;
+        var testerId = Number(item.testerId || 0);
+        return '<div class="pc-fullset__actions">' +
+            '<button type="button" class="pc-fullset__view" onclick="event.stopPropagation(); pcOpenProofOverview(' + Number(appId) + ',' + proofId + ',' + count + ',{testerId:' + testerId + ',imageCount:' + count + '})">' +
+                '<span class="pc-fullset__view-icon" aria-hidden="true">' + ICONS.image + '</span>' +
+                '<span>' + esc(text('pcFullSetScreenshots', 'Скриншоты · 5')) + '</span>' +
+                '<span aria-hidden="true">›</span>' +
+            '</button>' +
+            '<button type="button" class="pc-proof-album-card__topic-btn pc-fullset__topic" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
+                ICONS.topic +
+                '<span class="pc-proof-album-card__topic-label">' +
+                    '<span class="pc-proof-album-card__topic-verb">' + esc(text('pcProofOpenVerb', 'Открыть')) + '</span> ' +
+                    '<span class="pc-proof-album-card__topic-target">' + esc(text('pcProofOpenTopicTail', 'в топике')) + '</span>' +
+                '</span>' +
+            '</button>' +
+        '</div>';
+    }
+
     function fullSetMemberHtml(appId, item, context, sparkle) {
         var rewardState = rewardStateForTester(context, item.testerId);
         var actionsHtml = '';
-        if (rewardState.canReward || rewardState.rewardedToday) {
+        if (rewardState.rewardedToday || rewardState.canReward) {
             actionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
                 hasSparkle: !!(sparkle && sparkle.testerId === Number(item.testerId) && rewardState.canReward),
                 mode: sparkle && sparkle.mode,
@@ -3305,24 +3348,20 @@
                 duration: '3.8s',
                 rewardedToday: rewardState.rewardedToday,
             });
+        } else {
+            actionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                muted: true,
+                onClick: 'pcFullSetKarmaUnavailable()',
+            });
         }
-        var proofId = Number(item.screenshotRow && item.screenshotRow.proofId || 0);
-        var topicHtml = proofId > 0
-            ? '<button type="button" class="pc-proof-album-card__topic-btn pc-fullset__topic" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
-                ICONS.topic +
-                '<span class="pc-proof-album-card__topic-label">' +
-                    '<span class="pc-proof-album-card__topic-verb">' + esc(text('pcProofOpenVerb', 'Открыть')) + '</span> ' +
-                    '<span class="pc-proof-album-card__topic-target">' + esc(text('pcProofOpenTopicTail', 'в топике')) + '</span>' +
-                '</span>' +
-            '</button>'
-            : '';
         return personRowHtml({
             appId: appId,
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: 'pc-person--contribution pc-person--fullset',
-            metaHtml: contributionControlDayHtml(item.tester) + topicHtml,
+            metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
             actionsHtml: actionsHtml,
+            extraHtml: fullSetMemberActionsHtml(appId, item),
             timeAgoText: formatContributionTimeAgo(item.latestCreatedAt || ''),
             nameSuffixHtml: contributionDaySuffixHtml(item.tester),
         });
@@ -3330,17 +3369,14 @@
 
     function contributionDaySuffixHtml(tester) {
         var dayNum = testerDayNumber(tester);
-        if (dayNum <= 0 || isControlDay(dayNum)) return '';
+        if (dayNum <= 0) return '';
+        if (isControlDay(dayNum)) {
+            return '<span class="pc-person__day pc-person__day--control is-control-accent">' +
+                '<svg class="pc-person__day-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
+                esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
+            '</span>';
+        }
         return '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + dayNum) + '</span>';
-    }
-
-    function contributionControlDayHtml(tester) {
-        var dayNum = testerDayNumber(tester);
-        if (!isControlDay(dayNum)) return '';
-        return '<span class="pc-person__day pc-person__day--control is-control-accent">' +
-            '<svg class="pc-person__day-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
-            esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
-        '</span>';
     }
 
     function fullSetChipHtml(appId, item) {
@@ -3384,8 +3420,9 @@
             if (leftRewarded !== rightRewarded) return leftRewarded - rightRewarded;
             return String(shortTesterName(left.tester)).localeCompare(String(shortTesterName(right.tester)));
         });
+        var poolOpen = karmaPoolOpen(context);
         return '<li class="pc-fullset-wrap">' +
-            '<section class="pc-fullset' + (open ? ' is-open' : '') + '" id="pc-fullset-' + Number(appId) + '">' +
+            '<section class="pc-fullset' + (open ? ' is-open' : '') + (poolOpen ? '' : ' is-karma-empty') + '" id="pc-fullset-' + Number(appId) + '">' +
                 '<div class="pc-fullset__head">' +
                     '<button type="button" class="pc-fullset__toggle" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')">' +
                         '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--screenshot" aria-hidden="true">' +
@@ -3393,10 +3430,9 @@
                             '<b>' + FULL_SCREENSHOT_COUNT + '</b>' +
                         '</span>' +
                         '<span class="pc-fullset__copy">' +
-                            '<strong>' + esc(text('pcFullSetTitle', 'Максимальные серии')) + '</strong>' +
-                            '<small>' + esc(text('pcFullSetSubtitle', '{people} · все 5 скринов', {
-                                people: pluralPeopleLabel(sorted.length),
-                            })) + '</small>' +
+                            '<strong>' + esc(text('pcFullSetTitle', 'Максимальные серии')) +
+                                ' <span class="pc-fullset__shot-note">' + esc(text('pcFullSetShotNote', '(5 скриншотов)')) + '</span></strong>' +
+                            '<small>' + esc(pluralPeopleLabel(sorted.length)) + '</small>' +
                         '</span>' +
                     '</button>' +
                 '</div>' +
@@ -3404,11 +3440,19 @@
                     '<div class="pc-fullset__rail"' + (open ? ' aria-hidden="true"' : '') + '>' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
                     '<button type="button" class="pc-fullset__chev" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(text('pcFullSetToggle', 'Показать участников')) + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')"></button>' +
                 '</div>' +
-                '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
-                    '<span class="pc-fullset__random-label pc-fullset__random-label--lead" aria-hidden="true">' + esc(text('pcFullSetRandomLead', 'Выбрать')) + '</span>' +
-                    fullSetDieHtml() +
-                    '<span class="pc-fullset__random-label pc-fullset__random-label--tail" aria-hidden="true">' + esc(text('pcFullSetRandomTail', 'случайного')) + '</span>' +
-                '</button>' +
+                '<div class="pc-fullset__tandem">' +
+                    rewardAccentButtonHtml(appId, 0, {
+                        hasSparkle: poolOpen,
+                        extraClass: 'pc-fullset__karma',
+                        muted: !poolOpen,
+                        onClick: 'pcPickRandomFullSet(' + Number(appId) + ')',
+                    }) +
+                    '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Случайный выбор на карму')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
+                        '<span class="pc-fullset__random-label pc-fullset__random-label--lead" aria-hidden="true">' + esc(text('pcFullSetRandomLead', 'Случайный выбор')) + '</span>' +
+                        fullSetDieHtml() +
+                        '<span class="pc-fullset__random-label pc-fullset__random-label--tail" aria-hidden="true">' + esc(text('pcFullSetRandomTail', 'на карму')) + '</span>' +
+                    '</button>' +
+                '</div>' +
                 '<span class="pc-fullset__status" hidden></span>' +
                 '<div class="pc-fullset__body"' + (open ? '' : ' hidden') + '>' +
                     '<ul class="pc-fullset__members">' +
@@ -3530,6 +3574,12 @@
         var safeAppId = Number(appId || 0);
         var root = document.getElementById('pc-fullset-' + safeAppId);
         if (!root) return;
+        var project = projectById(safeAppId);
+        var pool = project ? contextFor(project) : null;
+        if (!karmaPoolOpen(pool)) {
+            window.pcFullSetKarmaUnavailable();
+            return;
+        }
         var wasOpen = root.classList.contains('is-open');
         expandedFullSets.add(safeAppId);
         if (wasOpen) placeFullSet(root, true);
@@ -3550,7 +3600,103 @@
         picked.classList.add('is-random-pick');
         if (picked.scrollIntoView) picked.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         var testerId = Number(picked.getAttribute('data-tester-id') || 0);
-        if (testerId > 0) window.pcRewardTester(safeAppId, testerId);
+        if (testerId > 0) window.pcRewardTester(safeAppId, testerId, 'dice');
+    };
+
+    window.pcFullSetKarmaUnavailable = function () {
+        if (typeof showToast === 'function') showToast(text('karmaPoolExhausted', 'Лимит наград исчерпан'), 2800);
+    };
+
+    var appreciationReview = null;
+    var appreciationFromDice = false;
+
+    window.pcKarmaTesterMetaHtml = function (tester, testerId) {
+        if (!tester) return esc('ID: ' + Number(testerId || 0));
+        var fullName = String(tester.full_name || tester.name || '').trim();
+        var username = String(tester.username || '').replace(/^@+/, '').trim();
+        var html = '';
+        if (fullName) html += '<span class="karma-select-tester-name">' + esc(fullName) + '</span>';
+        if (username) html += '<span class="karma-select-tester-nick">@' + esc(username) + '</span>';
+        return html || esc('ID: ' + Number(testerId || tester.tester_id || tester.id || 0));
+    };
+
+    window.pcRenderAppreciationReview = function (appId, testerId) {
+        var host = document.getElementById('karma-select-review');
+        if (!host) return;
+        if (!appreciationFromDice) {
+            host.hidden = true;
+            host.innerHTML = '';
+            appreciationReview = null;
+            return;
+        }
+        var items = fullSetOnlyItems(appId);
+        var current = null;
+        items.forEach(function (item) {
+            if (Number(item.testerId) === Number(testerId)) current = item;
+        });
+        if (!current || Number(current.screenshotRow && current.screenshotRow.proofId || 0) <= 0) {
+            host.hidden = true;
+            host.innerHTML = '';
+            appreciationReview = null;
+            return;
+        }
+        var project = projectById(appId);
+        var eligible = items.filter(function (item) {
+            return rewardStateForTester(contextFor(project), item.testerId).canReward;
+        });
+        appreciationReview = {
+            appId: Number(appId),
+            testerId: Number(testerId),
+            proofId: Number(current.screenshotRow.proofId),
+            imageCount: FULL_SCREENSHOT_COUNT,
+        };
+        var reroll = eligible.length > 1
+            ? '<button type="button" class="karma-select-review__reroll" onclick="pcRerollAppreciation()">' +
+                '<span aria-hidden="true">🎲</span><span>' + esc(text('pcFullSetReroll', 'Перебросить')) + '</span></button>'
+            : '';
+        host.hidden = false;
+        host.innerHTML = '<div class="karma-select-review__row">' +
+            '<button type="button" class="karma-select-review__view" onclick="pcViewAppreciationReport()">' +
+                '<span class="karma-select-review__icon" aria-hidden="true">' + ICONS.image + '</span>' +
+                '<span>' + esc(text('pcFullSetViewReport', 'Посмотреть отчёт (5 скриншотов)')) + '</span>' +
+            '</button>' + reroll + '</div>';
+    };
+
+    window.pcViewAppreciationReport = function () {
+        var review = appreciationReview;
+        if (!review || !review.proofId) return;
+        if (typeof window.pauseKarmaSelectForProof === 'function') window.pauseKarmaSelectForProof();
+        window.pcOpenProofOverview(review.appId, review.proofId, review.imageCount, {
+            testerId: review.testerId,
+            imageCount: review.imageCount,
+            returnToAppreciation: true,
+        });
+    };
+
+    window.pcRerollAppreciation = function () {
+        var review = appreciationReview;
+        if (!review) return;
+        var project = projectById(review.appId);
+        var pool = contextFor(project);
+        if (!karmaPoolOpen(pool)) {
+            window.pcFullSetKarmaUnavailable();
+            return;
+        }
+        var others = fullSetOnlyItems(review.appId).filter(function (item) {
+            return rewardStateForTester(pool, item.testerId).canReward && Number(item.testerId) !== Number(review.testerId);
+        });
+        if (!others.length) return;
+        var next = others[Math.floor(Math.random() * others.length)];
+        var root = document.getElementById('pc-fullset-' + review.appId);
+        if (root) {
+            root.querySelectorAll('.is-random-pick').forEach(function (el) { el.classList.remove('is-random-pick'); });
+            var row = root.querySelector('[data-tester-id="' + Number(next.testerId) + '"]');
+            if (row) {
+                row.classList.add('is-random-pick');
+                if (row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+        if (typeof openKarmaSelectPopup === 'function') openKarmaSelectPopup(review.appId, Number(next.testerId));
     };
 
     var expandedAttentionReasons = new Set();
@@ -4080,8 +4226,8 @@
         var counts = reportGroupCounts(activityCounts(project));
         var enabled = enabledReportGroups(readPrefs(appId), counts);
         var chips = [
-            { key: 'value', label: text('pcReportChipValue', 'Вклад') },
-            { key: 'screens', label: text('pcReportChipScreens', 'Скрины') },
+            { key: 'value', label: text('pcReportChipValue', 'Ценные') },
+            { key: 'screens', label: text('pcReportChipScreens', 'Базовые') },
             { key: 'waiting', label: text('pcReportChipWaiting', 'Ждём') },
         ].filter(function (chip) { return counts[chip.key] > 0; });
         return '<div class="pc-report-toggles" role="group" aria-label="' + esc(text('pcFilterControl', 'Отчёты')) + '">' +
@@ -4098,14 +4244,15 @@
     }
 
     function reportSectionHtml(appId, key, title, count, bodyHtml) {
-        return '<section class="pc-report-section" data-report-section="' + key + '">' +
-            '<button type="button" class="pc-report-section__head" aria-expanded="true" onclick="event.stopPropagation(); pcToggleReportSection(' + Number(appId) + ',\'' + key + '\')">' +
+        var folded = !!(readPrefs(appId).reportFolded && readPrefs(appId).reportFolded[key]);
+        return '<section class="pc-report-section' + (folded ? ' is-folded' : '') + '" data-report-section="' + key + '">' +
+            '<button type="button" class="pc-report-section__head" aria-expanded="' + (folded ? 'false' : 'true') + '" onclick="event.stopPropagation(); pcFoldReportSection(' + Number(appId) + ',\'' + key + '\')">' +
                 '<svg class="pc-report-section__chevron" viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
                 reportChipIcon(key) +
                 '<span>' + esc(title) + '</span>' +
                 '<strong>' + count + '</strong>' +
             '</button>' +
-            '<div class="pc-report-section__body">' + bodyHtml + '</div>' +
+            '<div class="pc-report-section__body"' + (folded ? ' hidden' : '') + '>' + bodyHtml + '</div>' +
         '</section>';
     }
 
@@ -4133,7 +4280,7 @@
             html += reportSectionHtml(
                 appId,
                 'value',
-                text('pcReportSectionValue', 'Особый вклад'),
+                text('pcReportSectionValue', 'Ценные'),
                 counts.value,
                 contributionSheetHtml(appId, sections.value, context)
             );
@@ -4142,7 +4289,7 @@
             html += reportSectionHtml(
                 appId,
                 'screens',
-                text('pcReportSectionScreens', 'Обычные отчёты'),
+                text('pcReportSectionScreens', 'Базовые'),
                 counts.screens,
                 '<ul class="pc-act-list pc-activity-control">' +
                     sections.screens.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
@@ -4250,10 +4397,17 @@
                 reportSections[key] = parsed.reportSections[key] !== false;
             });
         }
+        var reportFolded = {};
+        if (parsed.reportFolded && typeof parsed.reportFolded === 'object') {
+            REPORT_GROUPS.forEach(function (key) {
+                reportFolded[key] = parsed.reportFolded[key] === true;
+            });
+        }
         return {
             filter: ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers',
             modes: modes,
             reportSections: reportSections,
+            reportFolded: reportFolded,
             touched: true,
         };
     }
@@ -4267,6 +4421,9 @@
             };
             if (prefs.reportSections && typeof prefs.reportSections === 'object') {
                 payload.reportSections = prefs.reportSections;
+            }
+            if (prefs.reportFolded && typeof prefs.reportFolded === 'object') {
+                payload.reportFolded = prefs.reportFolded;
             }
             localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify(payload));
         } catch (_) {}
@@ -4537,8 +4694,11 @@
         var reported = reportedPeopleCount(data);
         var due = Number(data && data.controlDueCount || 0);
         if (due <= 0) return esc(String(reported));
-        var color = activityPercentColor(project);
-        var style = color ? ' style="--pc-activity-ratio-x:' + color + '"' : '';
+        var style = '';
+        if (reported > due) {
+            var color = activityPercentColor(project);
+            if (color) style = ' style="--pc-activity-ratio-x:' + color + '"';
+        }
         return '<span class="pc-activity__ratio-x"' + style + '>' + reported + '</span>/' + due;
     }
 
@@ -5558,6 +5718,22 @@
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
     };
 
+    window.pcFoldReportSection = function (appId, key) {
+        var safeAppId = Number(appId || 0);
+        if (!projectById(safeAppId) || REPORT_GROUPS.indexOf(key) === -1) return;
+        var prefs = readPrefs(safeAppId);
+        var folded = {};
+        REPORT_GROUPS.forEach(function (item) {
+            folded[item] = !!(prefs.reportFolded && prefs.reportFolded[item]);
+        });
+        folded[key] = !folded[key];
+        prefs.reportFolded = folded;
+        prefs.filter = 'control';
+        writePrefs(safeAppId, prefs);
+        refreshActivityWorkspace(safeAppId);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
     window.pcToggleActivityHistory = function (appId) {
         var project = projectById(appId);
         var prefs = readPrefs(appId);
@@ -5669,7 +5845,8 @@
         return getTesterBoostBust(context, safeTesterId, item);
     };
 
-    window.pcRewardTester = function (appId, testerId) {
+    window.pcRewardTester = function (appId, testerId, source) {
+        appreciationFromDice = source === 'dice';
         if (typeof openKarmaSelectPopup === 'function') openKarmaSelectPopup(Number(appId || 0), Number(testerId || 0));
         else if (typeof openKarmaDistribution === 'function') openKarmaDistribution(Number(appId || 0));
     };
@@ -6330,6 +6507,7 @@
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
+                returnToAppreciation: !!(extraOptions && extraOptions.returnToAppreciation),
             });
         }
         if (typeof openCheckinProofPreview === 'function') {
@@ -6341,6 +6519,7 @@
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
+                returnToAppreciation: !!(extraOptions && extraOptions.returnToAppreciation),
             });
         }
     };
