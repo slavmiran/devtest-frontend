@@ -3053,16 +3053,22 @@
                 '</span>' +
             '</span>';
         }
-        var label = rewardedToday
-            ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
-            : text('pcRewardBtn', 'Reward');
+        var label = opts.muted
+            ? text('karmaPoolExhausted', 'Лимит наград исчерпан')
+            : (rewardedToday
+                ? text('pcRewardTesterRewardedToday', 'A reward has already been issued to this tester today')
+                : text('pcRewardBtn', 'Reward'));
         var completeMarkHtml = rewardedToday
             ? '<span class="pc-reward-accent-btn__complete" aria-hidden="true">✓</span>'
             : '';
-        return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' + (rewardedToday ? ' is-tester-rewarded-today' : '') + '" ' +
+        var click = opts.onClick || ('pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')');
+        return '<button type="button" class="pc-reward-accent-btn pc-iconact pc-iconact--reward' +
+            (rewardedToday ? ' is-tester-rewarded-today' : '') +
+            (opts.muted ? ' is-karma-muted' : '') +
+            (opts.extraClass ? ' ' + opts.extraClass : '') + '" ' +
             'title="' + esc(label) + '" ' +
             'aria-label="' + esc(label) + '" ' +
-            'onclick="event.stopPropagation(); pcRewardTester(' + Number(appId) + ',' + Number(testerId) + ')" >' +
+            'onclick="event.stopPropagation(); ' + click + '">' +
             '<span class="pc-reward-accent-btn__core">' + karmaIcon + '</span>' +
             completeMarkHtml +
             orbitHtml +
@@ -3296,10 +3302,45 @@
         });
     }
 
+    function karmaPoolOpen(context) {
+        return Number(context && context.thanksLeft || 0) > 0 || Number(context && context.specialLeft || 0) > 0;
+    }
+
+    function fullSetOnlyItems(appId) {
+        var project = projectById(appId);
+        if (!project) return [];
+        var data = activityCounts(project);
+        var source = reportSections(data).value || [];
+        return source.filter(function (item) {
+            return isFullScreenshotMember(item) && individualContributionReasons(item).length === 0;
+        });
+    }
+
+    function fullSetMemberActionsHtml(appId, item) {
+        var proofId = Number(item.screenshotRow && item.screenshotRow.proofId || 0);
+        if (proofId <= 0) return '';
+        var count = FULL_SCREENSHOT_COUNT;
+        var testerId = Number(item.testerId || 0);
+        return '<div class="pc-fullset__actions">' +
+            '<button type="button" class="pc-fullset__view" onclick="event.stopPropagation(); pcOpenProofOverview(' + Number(appId) + ',' + proofId + ',' + count + ',{testerId:' + testerId + ',imageCount:' + count + '})">' +
+                '<span class="pc-fullset__view-icon" aria-hidden="true">' + ICONS.image + '</span>' +
+                '<span>' + esc(text('pcFullSetScreenshots', 'Скриншоты · 5')) + '</span>' +
+                '<span aria-hidden="true">›</span>' +
+            '</button>' +
+            '<button type="button" class="pc-proof-album-card__topic-btn pc-fullset__topic" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
+                ICONS.topic +
+                '<span class="pc-proof-album-card__topic-label">' +
+                    '<span class="pc-proof-album-card__topic-verb">' + esc(text('pcProofOpenVerb', 'Открыть')) + '</span> ' +
+                    '<span class="pc-proof-album-card__topic-target">' + esc(text('pcProofOpenTopicTail', 'в топике')) + '</span>' +
+                '</span>' +
+            '</button>' +
+        '</div>';
+    }
+
     function fullSetMemberHtml(appId, item, context, sparkle) {
         var rewardState = rewardStateForTester(context, item.testerId);
         var actionsHtml = '';
-        if (rewardState.canReward || rewardState.rewardedToday) {
+        if (rewardState.rewardedToday || rewardState.canReward) {
             actionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
                 hasSparkle: !!(sparkle && sparkle.testerId === Number(item.testerId) && rewardState.canReward),
                 mode: sparkle && sparkle.mode,
@@ -3307,24 +3348,20 @@
                 duration: '3.8s',
                 rewardedToday: rewardState.rewardedToday,
             });
+        } else {
+            actionsHtml = rewardAccentButtonHtml(appId, item.testerId, {
+                muted: true,
+                onClick: 'pcFullSetKarmaUnavailable()',
+            });
         }
-        var proofId = Number(item.screenshotRow && item.screenshotRow.proofId || 0);
-        var topicHtml = proofId > 0
-            ? '<button type="button" class="pc-proof-album-card__topic-btn pc-fullset__topic" onclick="event.stopPropagation(); openCheckinProofOriginal(' + proofId + ',0,event)">' +
-                ICONS.topic +
-                '<span class="pc-proof-album-card__topic-label">' +
-                    '<span class="pc-proof-album-card__topic-verb">' + esc(text('pcProofOpenVerb', 'Открыть')) + '</span> ' +
-                    '<span class="pc-proof-album-card__topic-target">' + esc(text('pcProofOpenTopicTail', 'в топике')) + '</span>' +
-                '</span>' +
-            '</button>'
-            : '';
         return personRowHtml({
             appId: appId,
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: 'pc-person--contribution pc-person--fullset',
-            metaHtml: topicHtml,
+            metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
             actionsHtml: actionsHtml,
+            extraHtml: fullSetMemberActionsHtml(appId, item),
             timeAgoText: formatContributionTimeAgo(item.latestCreatedAt || ''),
             nameSuffixHtml: contributionDaySuffixHtml(item.tester),
         });
@@ -3383,8 +3420,9 @@
             if (leftRewarded !== rightRewarded) return leftRewarded - rightRewarded;
             return String(shortTesterName(left.tester)).localeCompare(String(shortTesterName(right.tester)));
         });
+        var poolOpen = karmaPoolOpen(context);
         return '<li class="pc-fullset-wrap">' +
-            '<section class="pc-fullset' + (open ? ' is-open' : '') + '" id="pc-fullset-' + Number(appId) + '">' +
+            '<section class="pc-fullset' + (open ? ' is-open' : '') + (poolOpen ? '' : ' is-karma-empty') + '" id="pc-fullset-' + Number(appId) + '">' +
                 '<div class="pc-fullset__head">' +
                     '<button type="button" class="pc-fullset__toggle" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')">' +
                         '<span class="pc-proof-album-launch__icon pc-proof-album-launch__icon--screenshot" aria-hidden="true">' +
@@ -3402,11 +3440,19 @@
                     '<div class="pc-fullset__rail"' + (open ? ' aria-hidden="true"' : '') + '>' + sorted.map(function (item) { return fullSetChipHtml(appId, item); }).join('') + '</div>' +
                     '<button type="button" class="pc-fullset__chev" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(text('pcFullSetToggle', 'Показать участников')) + '" onclick="event.stopPropagation(); pcToggleFullSet(' + Number(appId) + ')"></button>' +
                 '</div>' +
-                '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Выбрать случайного')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
-                    '<span class="pc-fullset__random-label pc-fullset__random-label--lead" aria-hidden="true">' + esc(text('pcFullSetRandomLead', 'Выбрать')) + '</span>' +
-                    fullSetDieHtml() +
-                    '<span class="pc-fullset__random-label pc-fullset__random-label--tail" aria-hidden="true">' + esc(text('pcFullSetRandomTail', 'случайного')) + '</span>' +
-                '</button>' +
+                '<div class="pc-fullset__tandem">' +
+                    rewardAccentButtonHtml(appId, 0, {
+                        hasSparkle: poolOpen,
+                        extraClass: 'pc-fullset__karma',
+                        muted: !poolOpen,
+                        onClick: 'pcPickRandomFullSet(' + Number(appId) + ')',
+                    }) +
+                    '<button type="button" class="pc-fullset__random" aria-label="' + esc(text('pcFullSetRandom', 'Случайный выбор на карму')) + '" onclick="event.stopPropagation(); pcPickRandomFullSet(' + Number(appId) + ')">' +
+                        '<span class="pc-fullset__random-label pc-fullset__random-label--lead" aria-hidden="true">' + esc(text('pcFullSetRandomLead', 'Случайный выбор')) + '</span>' +
+                        fullSetDieHtml() +
+                        '<span class="pc-fullset__random-label pc-fullset__random-label--tail" aria-hidden="true">' + esc(text('pcFullSetRandomTail', 'на карму')) + '</span>' +
+                    '</button>' +
+                '</div>' +
                 '<span class="pc-fullset__status" hidden></span>' +
                 '<div class="pc-fullset__body"' + (open ? '' : ' hidden') + '>' +
                     '<ul class="pc-fullset__members">' +
@@ -3528,6 +3574,12 @@
         var safeAppId = Number(appId || 0);
         var root = document.getElementById('pc-fullset-' + safeAppId);
         if (!root) return;
+        var project = projectById(safeAppId);
+        var pool = project ? contextFor(project) : null;
+        if (!karmaPoolOpen(pool)) {
+            window.pcFullSetKarmaUnavailable();
+            return;
+        }
         var wasOpen = root.classList.contains('is-open');
         expandedFullSets.add(safeAppId);
         if (wasOpen) placeFullSet(root, true);
@@ -3549,6 +3601,86 @@
         if (picked.scrollIntoView) picked.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         var testerId = Number(picked.getAttribute('data-tester-id') || 0);
         if (testerId > 0) window.pcRewardTester(safeAppId, testerId);
+    };
+
+    window.pcFullSetKarmaUnavailable = function () {
+        if (typeof showToast === 'function') showToast(text('karmaPoolExhausted', 'Лимит наград исчерпан'), 2800);
+    };
+
+    var appreciationReview = null;
+
+    window.pcRenderAppreciationReview = function (appId, testerId) {
+        var host = document.getElementById('karma-select-review');
+        if (!host) return;
+        var items = fullSetOnlyItems(appId);
+        var current = null;
+        items.forEach(function (item) {
+            if (Number(item.testerId) === Number(testerId)) current = item;
+        });
+        if (!current || Number(current.screenshotRow && current.screenshotRow.proofId || 0) <= 0) {
+            host.hidden = true;
+            host.innerHTML = '';
+            appreciationReview = null;
+            return;
+        }
+        var project = projectById(appId);
+        var eligible = items.filter(function (item) {
+            return rewardStateForTester(contextFor(project), item.testerId).canReward;
+        });
+        appreciationReview = {
+            appId: Number(appId),
+            testerId: Number(testerId),
+            proofId: Number(current.screenshotRow.proofId),
+            imageCount: FULL_SCREENSHOT_COUNT,
+        };
+        var reroll = eligible.length > 1
+            ? '<button type="button" class="karma-select-review__reroll" onclick="pcRerollAppreciation()">' +
+                '<span aria-hidden="true">🎲</span><span>' + esc(text('pcFullSetReroll', 'Перебросить')) + '</span></button>'
+            : '';
+        host.hidden = false;
+        host.innerHTML = '<div class="karma-select-review__row">' +
+            '<button type="button" class="karma-select-review__view" onclick="pcViewAppreciationReport()">' +
+                '<span class="karma-select-review__icon" aria-hidden="true">' + ICONS.image + '</span>' +
+                '<span>' + esc(text('pcFullSetViewReport', 'Посмотреть отчёт (5 скриншотов)')) + '</span>' +
+                '<span aria-hidden="true">›</span>' +
+            '</button>' + reroll + '</div>';
+    };
+
+    window.pcViewAppreciationReport = function () {
+        var review = appreciationReview;
+        if (!review || !review.proofId) return;
+        if (typeof window.pauseKarmaSelectForProof === 'function') window.pauseKarmaSelectForProof();
+        window.pcOpenProofOverview(review.appId, review.proofId, review.imageCount, {
+            testerId: review.testerId,
+            imageCount: review.imageCount,
+            returnToAppreciation: true,
+        });
+    };
+
+    window.pcRerollAppreciation = function () {
+        var review = appreciationReview;
+        if (!review) return;
+        var project = projectById(review.appId);
+        var pool = contextFor(project);
+        if (!karmaPoolOpen(pool)) {
+            window.pcFullSetKarmaUnavailable();
+            return;
+        }
+        var others = fullSetOnlyItems(review.appId).filter(function (item) {
+            return rewardStateForTester(pool, item.testerId).canReward && Number(item.testerId) !== Number(review.testerId);
+        });
+        if (!others.length) return;
+        var next = others[Math.floor(Math.random() * others.length)];
+        var root = document.getElementById('pc-fullset-' + review.appId);
+        if (root) {
+            root.querySelectorAll('.is-random-pick').forEach(function (el) { el.classList.remove('is-random-pick'); });
+            var row = root.querySelector('[data-tester-id="' + Number(next.testerId) + '"]');
+            if (row) {
+                row.classList.add('is-random-pick');
+                if (row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+        if (typeof openKarmaSelectPopup === 'function') openKarmaSelectPopup(review.appId, Number(next.testerId));
     };
 
     var expandedAttentionReasons = new Set();
@@ -6358,6 +6490,7 @@
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
+                returnToAppreciation: !!(extraOptions && extraOptions.returnToAppreciation),
             });
         }
         if (typeof openCheckinProofPreview === 'function') {
@@ -6369,6 +6502,7 @@
                 imageCount: fallbackImageCount,
                 title: fallbackTitle,
                 subtitle: fallbackSubtitle,
+                returnToAppreciation: !!(extraOptions && extraOptions.returnToAppreciation),
             });
         }
     };

@@ -36,8 +36,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261025-reports-sections-v1"></script>
-    <script src="./i18n/en.js?v=20261025-reports-sections-v1"></script>
+    <script src="./i18n/ru.js?v=20261025-fullset-karma-v1"></script>
+    <script src="./i18n/en.js?v=20261025-fullset-karma-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
@@ -45,7 +45,7 @@
     <script src="./ui/ui-projects.js?v=20261023-private-lifecycle-v1"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
     <script src="./js/project-parameters.js?v=20261014-single-email-v1"></script>
-    <script src="./ui/ui-market.js?v=20261023-report-media-v4"></script>
+    <script src="./ui/ui-market.js?v=20261025-fullset-karma-v1"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261012-geo-radar-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -62,10 +62,10 @@
     <script src="./js/checkin-proof-upload.js?v=20261024-report-media-recovery-v1"></script>
     <script src="./js/unified-report.js?v=20261024-report-media-recovery-v1"></script>
     <link rel="stylesheet" href="./css/unified-report.css?v=20261024-report-media-recovery-v1">
-    <script src="./js/testing-control.js?v=20261024-team-tabs-v1"></script>
+    <script src="./js/testing-control.js?v=20261025-fullset-karma-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20261019-activity-context-v1"></script>
-    <script src="./js/project-today.js?v=20261025-reports-sections-v1"></script>
+    <script src="./js/project-today.js?v=20261025-fullset-karma-v1"></script>
     <script src="./js/smart-ping.js?v=20261014-activity-digest-v1"></script>
     <script src="./js/proof-ping.js?v=20261011-preference-consistency-v1"></script>
     <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
@@ -87,13 +87,13 @@
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260914-page-no-grabber-v1">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261014-feedback-shot-v1">
-    <link rel="stylesheet" href="./css/testing-control.css?v=20261024-team-tabs-v1">
+    <link rel="stylesheet" href="./css/testing-control.css?v=20261025-fullset-karma-v1">
     <link rel="stylesheet" href="./css/wizard.css?v=20261023-restart-buttons-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20261015-termination-result-v2">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20261024-feedback-processing-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260915-ppc-tight-buffer-v1">
-    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260918-karma-limit-v2">
+    <link rel="stylesheet" href="./css/tests-timeline.css?v=20261025-fullset-karma-v1">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260916-done-proof-topic-v1">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260921-incoming-access-polish-v3">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
@@ -117,7 +117,7 @@
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
     <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v2">
     <link rel="stylesheet" href="./css/showcase-geo.css?v=20261012-geo-radar-v2">
-<link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261025-reports-sections-v1">
+<link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261025-fullset-karma-v1">
     <link rel="stylesheet" href="./css/project-activity-history.css?v=20261022-v1">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
@@ -2776,6 +2776,7 @@
                     <div id="checkin-proof-preview-title" class="testing-control-title"></div>
                     <div id="checkin-proof-preview-subtitle" class="testing-control-subtitle"></div>
                 </div>
+                <button type="button" id="checkin-proof-return-reward" class="checkin-proof-return-reward" hidden onclick="closeCheckinProofPreview()"></button>
             </div>
             <div id="checkin-proof-preview-note" class="checkin-proof-preview-note" hidden></div>
             <div id="checkin-proof-preview-body" class="checkin-proof-preview-body"></div>
@@ -3082,6 +3083,8 @@
                 </div>
                 <button type="button" class="karma-select-close" onclick="closeKarmaSelectPopup()" aria-label="Close">✕</button>
             </div>
+
+            <div id="karma-select-review" class="karma-select-review" hidden></div>
 
             <div class="karma-select-options">
                 <!-- Option 1: Спасибо -->

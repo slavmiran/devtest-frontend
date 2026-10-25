@@ -11028,6 +11028,9 @@ function openKarmaSelectPopup(appId, testerId) {
     }
 
     document.getElementById('karma-select-popup').classList.add('active');
+    if (typeof window.pcRenderAppreciationReview === 'function') {
+        window.pcRenderAppreciationReview(appId, testerId);
+    }
 }
 
 function closeKarmaSelectPopup(event) {
@@ -11036,6 +11039,20 @@ function closeKarmaSelectPopup(event) {
     _karmaAppId = null;
     _karmaTesterId = null;
 }
+
+function pauseKarmaSelectForProof() {
+    var popup = document.getElementById('karma-select-popup');
+    if (popup) popup.classList.remove('active');
+}
+
+function resumeKarmaSelectAfterProof() {
+    if (_karmaAppId == null || _karmaTesterId == null) return;
+    var popup = document.getElementById('karma-select-popup');
+    if (popup) popup.classList.add('active');
+}
+
+window.pauseKarmaSelectForProof = pauseKarmaSelectForProof;
+window.resumeKarmaSelectAfterProof = resumeKarmaSelectAfterProof;
 
 function confirmKarmaSelect(type) {
     if (_karmaAppId === null || _karmaTesterId === null) return;

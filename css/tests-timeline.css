@@ -816,6 +816,16 @@ button.is-shaking {
     text-overflow: ellipsis;
 }
 
+.karma-select-review { margin: -4px 0 14px; }
+.karma-select-review[hidden] { display: none !important; }
+.karma-select-review__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.karma-select-review__view,
+.karma-select-review__reroll { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 10px; border-radius: 12px; border: 1px solid rgba(147, 197, 253, .35); background: rgba(37, 99, 235, .14); color: #e8f1ff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.karma-select-review__view { flex: 1 1 180px; }
+.karma-select-review__reroll { flex: 0 0 auto; background: rgba(255, 255, 255, .04); }
+.karma-select-review__icon { display: inline-flex; width: 14px; height: 14px; }
+.karma-select-review__icon svg { width: 14px; height: 14px; }
+
 .karma-select-close {
     width: 32px;
     height: 32px;

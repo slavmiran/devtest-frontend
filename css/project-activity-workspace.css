@@ -3349,22 +3349,39 @@
 .pc-fullset__copy strong,
 .pc-fullset__copy small { display:block; }
 .pc-fullset__copy strong { color:#cad8eb; font-size:12px; font-weight:650; }
-.pc-fullset__shot-note { color:var(--text-tertiary,#8493a7); font-weight:500; }
+.pc-fullset__shot-note { color:var(--text-tertiary,#8493a7); font-weight:500; white-space:nowrap; }
 .pc-fullset__copy small { margin-top:3px; color:var(--text-tertiary,#8493a7); font-size:10px; }
-.pc-fullset__random { grid-column:2; grid-row:1; z-index:2; display:inline-flex; align-items:center; justify-content:flex-end; justify-self:end; align-self:center; min-width:40px; min-height:40px; margin:0 8px 0 0; padding:0; border:0; background:transparent; color:#8cb4f5; cursor:pointer; }
+.pc-fullset__tandem { grid-column:2; grid-row:1; z-index:3; display:inline-flex; align-items:center; gap:1px; margin:0 8px 0 0; padding:2px; border-radius:999px; border:1px solid rgba(140,180,245,.32); background:rgba(12,22,38,.78); box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
+.pc-fullset.is-open .pc-fullset__tandem { display:contents; }
+.pc-fullset__karma.pc-reward-accent-btn { width:32px; height:32px; flex:0 0 32px; }
+.pc-fullset.is-open .pc-fullset__karma { grid-column:2; grid-row:1; justify-self:end; align-self:center; margin:0 8px 0 0; z-index:3; }
+.pc-fullset__random { z-index:2; display:inline-flex; align-items:center; justify-content:center; min-width:36px; min-height:36px; margin:0; padding:0; border:0; background:transparent; color:#8cb4f5; cursor:pointer; }
 .pc-fullset__die { width:36px; height:36px; flex:0 0 36px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
-.pc-fullset__random-label { display:inline-block; max-width:0; margin:0; overflow:hidden; opacity:0; white-space:nowrap; color:#8cb4f5; font-size:11px; font-weight:750; letter-spacing:.06em; text-transform:uppercase; }
-.pc-fullset.is-open .pc-fullset__head { grid-column:1 / -1; }
-.pc-fullset.is-open .pc-fullset__random { grid-column:1 / -1; grid-row:2; justify-content:center; justify-self:center; margin:2px 40px 6px; }
-.pc-fullset.is-open .pc-fullset__random-label { max-width:11em; opacity:1; transition:opacity .4s ease .06s; }
+.pc-fullset__random-label { display:inline-block; max-width:0; margin:0; overflow:hidden; opacity:0; white-space:nowrap; color:#8cb4f5; font-size:11px; font-weight:750; letter-spacing:.04em; text-transform:uppercase; }
+.pc-fullset.is-open .pc-fullset__head { grid-column:1; grid-row:1; }
+.pc-fullset.is-open .pc-fullset__random { grid-column:1 / -1; grid-row:2; justify-content:center; justify-self:center; width:max-content; max-width:calc(100% - 44px); margin:2px 30px 6px 0; }
+.pc-fullset.is-open .pc-fullset__random-label { max-width:none; overflow:visible; opacity:1; font-size:10px; letter-spacing:.02em; transition:opacity .4s ease .06s; }
+.pc-fullset.is-open .pc-fullset__rail-row { pointer-events:none; justify-content:flex-end; }
 .pc-fullset.is-open .pc-fullset__random-label--lead { margin-right:8px; }
 .pc-fullset.is-open .pc-fullset__random-label--tail { margin-left:8px; }
+.pc-fullset.is-karma-empty .pc-fullset__tandem,
+.pc-fullset.is-karma-empty.is-open .pc-fullset__karma,
+.pc-fullset.is-karma-empty.is-open .pc-fullset__random { opacity:.48; }
+.pc-reward-accent-btn.is-karma-muted { opacity:.46; filter:grayscale(.55); box-shadow:none; }
+.pc-person--fullset .pc-person__chev { display:none; }
+.pc-fullset__actions { display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 4px; }
+.pc-fullset__view,
+.pc-fullset__actions .pc-fullset__topic.pc-proof-album-card__topic-btn { flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:min-content; max-width:100%; min-height:32px; width:auto; margin:0; padding:6px 8px; border:1px solid rgba(132,164,207,.22); border-radius:10px; background:rgba(10,16,26,.38); color:#d5e4f8; font-size:11px; font-weight:650; line-height:1.2; cursor:pointer; }
+.pc-fullset__view-icon { display:inline-flex; width:14px; height:14px; color:#8cb4f5; }
+.pc-fullset__view-icon svg,
+.pc-fullset__actions .pc-fullset__topic svg { width:14px; height:14px; flex:0 0 14px; }
+.pc-fullset__actions .pc-proof-album-card__topic-label { white-space:nowrap; }
 .pc-fullset__rail-row { grid-column:1 / -1; grid-row:2; display:flex; align-items:center; gap:0; min-width:0; padding:0 6px 8px 12px; }
 .pc-fullset.is-open .pc-fullset__rail-row { pointer-events:none; justify-content:flex-end; }
 .pc-fullset__rail { display:flex; flex:1 1 auto; min-width:0; gap:6px; overflow-x:auto; padding:0 18px 0 0; scrollbar-width:none; -webkit-mask-image:linear-gradient(90deg, #000 0, #000 calc(100% - 16px), transparent); mask-image:linear-gradient(90deg, #000 0, #000 calc(100% - 16px), transparent); transition:opacity .16s ease, flex-basis .28s ease, max-width .28s ease; }
 .pc-fullset__rail::-webkit-scrollbar { display:none; }
 .pc-fullset.is-open .pc-fullset__rail { flex:0 0 0px; max-width:0; opacity:0; margin:0; padding:0; overflow:hidden; visibility:hidden; pointer-events:none; -webkit-mask-image:none; mask-image:none; }
-.pc-fullset__chev { position:relative; z-index:1; width:28px; height:28px; flex:0 0 28px; margin-left:-16px; border:0; background:transparent; cursor:pointer; pointer-events:auto; }
+.pc-fullset__chev { position:relative; z-index:4; width:28px; height:28px; flex:0 0 28px; margin-left:-16px; border:0; background:transparent; cursor:pointer; pointer-events:auto; }
 .pc-fullset.is-open .pc-fullset__chev { margin-left:0; }
 .pc-fullset__chev::before { content:""; position:absolute; top:8px; right:11px; width:7px; height:7px; border-right:1.6px solid #8493a7; border-bottom:1.6px solid #8493a7; transform:rotate(45deg); transition:transform .18s ease; }
 .pc-fullset.is-open .pc-fullset__chev::before { top:11px; transform:rotate(225deg); }
@@ -3374,8 +3391,7 @@
 .pc-fullset__chip-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pc-fullset__status { grid-column:1 / -1; display:block; padding:0 12px 8px; color:var(--text-tertiary,#8493a7); font-size:10px; }
 .pc-fullset__status[hidden] { display:none; }
-.pc-fullset__topic.pc-proof-album-card__topic-btn { width:auto; padding:2px 0 0; gap:6px; background:transparent; }
-.pc-fullset__topic.pc-proof-album-card__topic-btn:active { background:transparent; }
+.pc-fullset__topic.pc-proof-album-card__topic-btn:active { background:rgba(111,163,231,.08); }
 .pc-fullset__body { grid-column:1 / -1; border-top:1px solid rgba(132,164,207,.12); padding:2px 4px 4px; }
 .pc-fullset__members { list-style:none; margin:0; padding:0; }
 .pc-fullset__members .pc-person { padding:8px 6px; }
