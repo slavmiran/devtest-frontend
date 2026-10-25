@@ -27,6 +27,16 @@
             send: 'Подтвердить тестирование', sendBug: 'Отправить баг и подтвердить день', sendIdea: 'Отправить идею и подтвердить день',
             catchupSend: 'Отправить досдачу', plain: 'Просто подтвердить день — без отчёта',
             review: 'Отзыв в Google Play', reviewLater: 'Отзыв Google Play доступен с дня 7',
+            reviewOr: 'или', reviewCheckin: 'Отправьте скриншот отзыва — день будет зачтён',
+            reviewCatchup: 'Скриншот отзыва зачтёт день, но не закроет досдачу',
+            reviewDone: 'День уже зачтён · отзыв можно отправить отдельно',
+            reviewPending: 'На проверке у владельца · посмотреть отзыв',
+            reviewApproved: 'Отзыв подтверждён · посмотреть результат',
+            reviewPendingCompact: 'Отзыв в Google Play на проверке',
+            reviewApprovedCompact: 'Отзыв в Google Play зачтён',
+            reviewRetryCheckin: 'Отклонён · новый скриншот зачтёт день',
+            reviewRetryCatchup: 'Отклонён · зачтёт день, но не досдачу',
+            reviewRetryDone: 'Отклонён · можно отправить новый скриншот',
             day: 'День {day} · {name}', close: 'Закрыть', edit: 'Разметить изображение',
             done: 'Готово', undo: 'Отменить шаг', redo: 'Вернуть шаг', cancel: 'Отмена', pen: 'Маркер', arrow: 'Стрелка', cover: 'Скрыть',
             thickness: 'Толщина', colorRed: 'Красный', colorGreen: 'Зелёный', colorBlue: 'Синий', colorWhite: 'Белый', colorBlack: 'Чёрный',
@@ -70,6 +80,16 @@
             send: 'Confirm testing', sendBug: 'Send bug and confirm day', sendIdea: 'Send idea and confirm day',
             catchupSend: 'Submit make-up report', plain: 'Just confirm today — no report',
             review: 'Google Play review', reviewLater: 'Google Play reviews unlock on day 7',
+            reviewOr: 'or', reviewCheckin: 'Submit a review screenshot to complete today’s check-in',
+            reviewCatchup: 'Completes today’s check-in, not a make-up request',
+            reviewDone: 'Today is complete · you can still submit a review',
+            reviewPending: 'Awaiting owner review · view your submission',
+            reviewApproved: 'Review confirmed · view the result',
+            reviewPendingCompact: 'Google Play review awaiting approval',
+            reviewApprovedCompact: 'Google Play review confirmed',
+            reviewRetryCheckin: 'Rejected · resubmit a screenshot to complete today',
+            reviewRetryCatchup: 'Rejected · completes today, not a make-up request',
+            reviewRetryDone: 'Rejected · you can upload a new screenshot',
             day: 'Day {day} · {name}', close: 'Close', edit: 'Annotate image',
             done: 'Done', undo: 'Undo', redo: 'Redo', cancel: 'Cancel', pen: 'Marker', arrow: 'Arrow', cover: 'Redact',
             thickness: 'Thickness', colorRed: 'Red', colorGreen: 'Green', colorBlue: 'Blue', colorWhite: 'White', colorBlack: 'Black',
@@ -175,9 +195,7 @@
             }
         }
         var review = el('unified-report-review');
-        review.hidden = !test.request_reviews || c.day < 7 || c.buffer || !!options && options.catchupRequested;
-        review.disabled = c.day < 7;
-        review.textContent = t(c.day < 7 ? 'reviewLater' : 'review');
+        s.hideReviewOption = !!options && !!options.catchupRequested;
         review.onclick = function () {
             // Keep this draft in memory while the independent review sheet is open.
             window._unifiedReportReviewDraft = { appId: s.appId, generation: s.selectionGeneration, actor: String(userId) };
@@ -195,11 +213,12 @@
         window.setUnifiedReportKind(s.reportKind);
         el('unified-report-note').onfocus = function () {
             if (typeof collapseCheckinDeveloperAccordion === 'function') collapseCheckinDeveloperAccordion('report-developer');
-            requestAnimationFrame(keepReportInputVisible);
+            syncReportViewport();
         };
         el('unified-report-note').onblur = function () {
             this.style.removeProperty('max-height');
             this.style.removeProperty('min-height');
+            el('report-modal').classList.remove('is-review-compact');
         };
         syncReportViewport();
         if (window.visualViewport && !window._reportViewportBound) {
@@ -257,6 +276,7 @@
             : s.reportKind === 'screenshot' ? rawLength + '/500' : length < 24 ? String(24 - length) : '';
         counter.classList.toggle('is-required', s.reportKind !== 'screenshot' && length < 24 || rawLength > limit);
         var test = typeof myTests !== 'undefined' && myTests.find(function (row) { return Number(row.id) === Number(s.appId); });
+        renderReviewOption(test, c);
         var seriesEligible = !c.buffer && !(test && typeof isTestedToday === 'function' && isTestedToday(test));
         var videos = validFiles.filter(function (file) { return file.type.indexOf('video/') === 0; }).length;
         renderReportInfo(images, videos, seriesEligible);
@@ -282,11 +302,36 @@
         var sheet = document.querySelector('#report-modal .report-modal-sheet');
         var modal = el('report-modal'), vv = window.visualViewport;
         if (sheet && vv && modal.classList.contains('active') && modal.classList.contains('is-proof-upload')) {
+            modal.classList.toggle('is-review-compact', document.activeElement === el('unified-report-note') && vv.height < 500);
             sheet.style.setProperty('--report-height', Math.floor(vv.height * .92) + 'px');
             // Do not infer keyboard size from innerHeight: Android and iOS resize different viewports.
             modal.style.top = vv.offsetTop + 'px'; modal.style.height = vv.height + 'px'; modal.style.bottom = 'auto';
         }
         requestAnimationFrame(keepReportInputVisible);
+    }
+
+    function renderReviewOption(test, context) {
+        var s = state(), review = el('unified-report-review'), option = el('unified-report-review-option');
+        var hidden = !test || !test.request_reviews || Number(context.day || 0) < 7 || context.buffer || s.hideReviewOption;
+        review.hidden = option.hidden = !!hidden;
+        if (hidden) return;
+        // Review submission uses its existing auto-check-in, independent of
+        // the report's selected files, text validation and 15-second timer.
+        review.disabled = false;
+        var status = String((typeof window.getPlayReviewStatus === 'function' ? window.getPlayReviewStatus(test) : test.play_review_status) || 'none').trim().toLowerCase();
+        var statusOnly = status === 'approved' || status === 'pending';
+        option.classList.toggle('is-status-only', statusOnly);
+        option.classList.toggle('is-approved', status === 'approved');
+        var done = typeof isTestedToday === 'function' && isTestedToday(test);
+        var hint = status === 'approved' ? 'reviewApproved' : status === 'pending' ? 'reviewPending'
+            : status === 'rejected' ? (done ? 'reviewRetryDone' : context.requests && context.requests.length ? 'reviewRetryCatchup' : 'reviewRetryCheckin')
+            : done ? 'reviewDone' : context.requests && context.requests.length ? 'reviewCatchup' : 'reviewCheckin';
+        var key = hint + ':' + (typeof lang === 'undefined' ? 'en' : lang);
+        if (option.dataset.renderKey === key) return;
+        option.dataset.renderKey = key;
+        el('unified-report-review-or').textContent = t('reviewOr');
+        el('unified-report-review-title').textContent = t(statusOnly ? (status === 'approved' ? 'reviewApprovedCompact' : 'reviewPendingCompact') : 'review');
+        el('unified-report-review-hint').textContent = t(hint);
     }
 
     function keepReportInputVisible() {

@@ -2061,7 +2061,6 @@ function _onStoreLinkClickedForIssueFlow(id) {
 }
 
 async function decideOffer(offerId, action, event) {
-    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
     var proposedOffer = (Array.isArray(incomingOffers) ? incomingOffers : []).find(function(offer) {
         return Number(offer.offer_id) === Number(offerId);
     });

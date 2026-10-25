@@ -37,8 +37,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261024-phase2-main-sync-v2"></script>
-    <script src="./i18n/en.js?v=20261024-phase2-main-sync-v2"></script>
+    <script src="./i18n/ru.js?v=20261025-phase2-main-sync-v1"></script>
+    <script src="./i18n/en.js?v=20261025-phase2-main-sync-v1"></script>
     <script src="./i18n/live-campaigns.js?v=20261014-campaign-params-v3"></script>
     <script src="./i18n/live-campaign-wizard.js?v=20261019-history-v1"></script>
     <script src="./i18n/live-campaign-pace.js?v=20261016-pace-v1"></script>
@@ -81,7 +81,7 @@
     <script src="./js/live-campaign-growth-card.js?v=20261020-geo-v1"></script>
     <script src="./js/live-campaigns.js?v=20261021-live-market-v1"></script>
     <script src="./js/project-parameters.js?v=20261014-phase2-main-sync-v1"></script>
-    <script src="./ui/ui-market.js?v=20261024-phase2-main-sync-v2"></script>
+    <script src="./ui/ui-market.js?v=20261025-phase2-main-sync-v1"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261020-geo-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -94,14 +94,14 @@
     <script src="./js/checkin-recovery.js?v=20261022-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20261024-phase2-main-sync-v2"></script>
+    <script src="./js/app-actions.js?v=20261025-phase2-main-sync-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20261024-report-media-recovery-v1"></script>
-    <script src="./js/unified-report.js?v=20261024-report-media-recovery-v1"></script>
-    <link rel="stylesheet" href="./css/unified-report.css?v=20261024-report-media-recovery-v1">
-    <script src="./js/testing-control.js?v=20261024-team-tabs-v1"></script>
+    <script src="./js/unified-report.js?v=20261025-review-action-v2"></script>
+    <link rel="stylesheet" href="./css/unified-report.css?v=20261025-review-action-v2">
+    <script src="./js/testing-control.js?v=20261025-appreciation-open-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20261019-activity-context-v1"></script>
-    <script src="./js/project-today.js?v=20261024-phase2-main-sync-v2"></script>
+    <script src="./js/project-today.js?v=20261025-phase2-main-sync-v1"></script>
     <script src="./js/smart-ping.js?v=20261014-activity-digest-v1"></script>
     <script src="./js/proof-ping.js?v=20261011-preference-consistency-v1"></script>
     <script src="./js/user-blacklist.js?v=20261002-blacklist-v1"></script>
@@ -126,13 +126,13 @@
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260914-page-no-grabber-v1">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261014-feedback-shot-v1">
-    <link rel="stylesheet" href="./css/testing-control.css?v=20261024-team-tabs-v1">
+    <link rel="stylesheet" href="./css/testing-control.css?v=20261025-fullset-karma-v1">
     <link rel="stylesheet" href="./css/wizard.css?v=20261023-restart-buttons-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20261015-termination-result-v2">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20261024-feedback-processing-v1">
     <link rel="stylesheet" href="./css/ppc.css?v=20260915-ppc-tight-buffer-v1">
-    <link rel="stylesheet" href="./css/tests-timeline.css?v=20260918-karma-limit-v2">
+    <link rel="stylesheet" href="./css/tests-timeline.css?v=20261025-appreciation-dice-v1">
     <link rel="stylesheet" href="./css/tests-tester-rows.css?v=20260916-done-proof-topic-v1">
     <link rel="stylesheet" href="./css/tests-offers.css?v=20260921-incoming-access-polish-v3">
     <link rel="stylesheet" href="./css/no-username-overlay.css?v=20260706-phase3">
@@ -158,7 +158,7 @@
     <link rel="stylesheet" href="./css/proof-ping.css?v=20260916-ping-gaps-v1">
     <link rel="stylesheet" href="./css/blacklist-modal.css?v=20261002-blacklist-v2">
     <link rel="stylesheet" href="./css/showcase-geo.css?v=20261012-geo-radar-v2">
-<link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261024-dossier-rewards-v1">
+<link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261025-fullset-karma-v1">
     <link rel="stylesheet" href="./css/project-activity-history.css?v=20261022-v1">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20260921-smart-ping-fix-v2">
@@ -1848,13 +1848,20 @@
                     <textarea id="unified-report-note" rows="2" maxlength="500" aria-describedby="unified-report-info" oninput="syncUnifiedReport()"></textarea>
                     <span id="unified-report-count" aria-live="polite"></span>
                 </div>
-                <button type="button" id="unified-report-review" class="unified-report-review" hidden></button>
                 <button type="button" id="unified-report-plain" class="btn unified-report-plain" hidden></button>
                 </div>
                 <div class="checkin-proof-upload-actions">
                     <button type="button" class="btn btn-primary" id="checkin-proof-submit" onclick="submitCheckinProofScreenshot()" disabled>
                         <span id="t-checkinProofSubmit" data-i18n="checkinProofSubmit">Подтвердить тестирование</span>
                     </button>
+                    <div id="unified-report-review-option" class="unified-report-review-option" hidden>
+                        <div class="unified-report-review-divider" aria-hidden="true"><span id="unified-report-review-or"></span></div>
+                        <button type="button" id="unified-report-review" class="unified-report-review" aria-labelledby="unified-report-review-title" aria-describedby="unified-report-review-hint" hidden>
+                            <span class="unified-report-review-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.8 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.4l6.3-.9L12 2.8Z"/></svg></span>
+                            <span class="unified-report-review-copy"><span id="unified-report-review-title" class="unified-report-review-title"></span><span id="unified-report-review-hint" class="unified-report-review-hint"></span></span>
+                            <svg class="unified-report-review-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+                        </button>
+                    </div>
                 <div class="checkin-dev-accordion" id="report-developer">
                     <button type="button" class="checkin-dev-accordion__summary" id="report-developer-toggle" aria-expanded="false" aria-controls="report-developer-panel" onclick="toggleCheckinDeveloperAccordion(event, 'report-developer')">
                         <span class="checkin-dev-accordion__summary-text" id="report-developer-summary"></span>
@@ -2845,6 +2852,7 @@
                     <div id="checkin-proof-preview-title" class="testing-control-title"></div>
                     <div id="checkin-proof-preview-subtitle" class="testing-control-subtitle"></div>
                 </div>
+                <button type="button" id="checkin-proof-return-reward" class="checkin-proof-return-reward" hidden onclick="closeCheckinProofPreview()"></button>
             </div>
             <div id="checkin-proof-preview-note" class="checkin-proof-preview-note" hidden></div>
             <div id="checkin-proof-preview-body" class="checkin-proof-preview-body"></div>
@@ -3151,6 +3159,8 @@
                 </div>
                 <button type="button" class="karma-select-close" onclick="closeKarmaSelectPopup()" aria-label="Close">✕</button>
             </div>
+
+            <div id="karma-select-review" class="karma-select-review" hidden></div>
 
             <div class="karma-select-options">
                 <!-- Option 1: Спасибо -->

@@ -76,7 +76,32 @@
 #report-modal.is-proof-upload .checkin-proof-upload-actions .btn { min-height: 48px; margin: 0; white-space: normal; font-size: 14px; line-height: 1.35; }
 #report-modal.is-proof-upload .unified-report-plain { width: 100%; margin: 9px 0 0; background: rgba(128,145,165,.09) !important; color: var(--hint-color,#aab5c4) !important; min-height: 36px; padding: 8px; border-radius: 10px; font-size: 11px; font-weight: 400; box-shadow: none; border: 0; }
 #report-modal.is-proof-upload .unified-report-plain.is-waiting { background: transparent !important; opacity: .7; }
-.unified-report-review { display: block; width: 100%; margin: 5px 0 0; padding: 8px; min-height: 36px; color: var(--hint-color,#aab5c4); background: transparent; border: 0; font: inherit; font-size: 12px; cursor: pointer; }
+.unified-report-review-option { flex-shrink: 0; }
+.unified-report-review-divider { display: flex; align-items: center; gap: 10px; margin: 6px 0 8px; color: var(--hint-color,#9ca5b4); font-size: 10px; line-height: 1; }
+.unified-report-review-divider::before, .unified-report-review-divider::after { content: ''; flex: 1; height: 1px; background: rgba(128,145,165,.14); }
+.unified-report-review { display: flex; align-items: center; gap: 10px; box-sizing: border-box; width: 100%; min-height: 66px; margin: 0; padding: 10px 12px; border: 1px solid rgba(232,186,94,.26); border-radius: 13px; background: linear-gradient(115deg,rgba(232,186,94,.12),rgba(232,186,94,.035)); color: var(--text-color,#eef2f7); font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color 140ms ease, border-color 140ms ease; }
+.unified-report-review:active { border-color: rgba(232,186,94,.6); background-color: rgba(232,186,94,.08); }
+.unified-report-review:focus-visible { outline: 2px solid #e8ba5e; outline-offset: 3px; }
+.unified-report-review-icon { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 10px; background: rgba(232,186,94,.13); color: #e8ba5e; }
+.unified-report-review-icon svg { display: block; width: 22px; height: 22px; }
+.unified-report-review-copy { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.unified-report-review-title { font-size: 13px; line-height: 1.3; font-weight: 600; }
+.unified-report-review-hint { color: var(--hint-color,#b3b6be); font-size: 11px; line-height: 1.4; }
+.unified-report-review-arrow { flex: 0 0 16px; width: 16px; height: 16px; color: #e8ba5e; opacity: .8; }
+/* Keep the alternative action reachable without taking the textarea's keyboard space. */
+#report-modal.is-review-compact .unified-report-review { min-height: 40px; padding: 7px 10px; }
+#report-modal.is-review-compact .unified-report-review-hint { display: none; }
+#report-modal.is-review-compact .unified-report-review-icon { flex-basis: 26px; width: 26px; height: 26px; border-radius: 8px; }
+#report-modal.is-review-compact .unified-report-review-icon svg { width: 18px; height: 18px; }
+#report-modal.is-review-compact .unified-report-review-divider { margin: 3px 0 5px; }
+/* Submitted reviews are status, not another call to action. Keep tap-to-view. */
+#report-modal .unified-report-review-option.is-status-only .unified-report-review { min-height: 34px; padding: 7px 4px; border: 0; border-radius: 6px; background: transparent; text-align: center; }
+.unified-report-review-option.is-status-only .unified-report-review-divider,
+.unified-report-review-option.is-status-only .unified-report-review-icon,
+.unified-report-review-option.is-status-only .unified-report-review-arrow,
+.unified-report-review-option.is-status-only .unified-report-review-hint { display: none; }
+.unified-report-review-option.is-status-only .unified-report-review-title { color: var(--hint-color,#aab5c4); font-size: 12px; font-weight: 400; }
+.unified-report-review-option.is-status-only.is-approved .unified-report-review-title { color: #86bba0; }
 #report-modal.is-proof-upload #report-developer { margin-top: 10px; padding-top: 4px; border-top: 1px solid rgba(128,145,165,.1); }
 #report-modal.is-proof-upload #report-developer .checkin-dev-accordion__summary { min-height: 38px; padding: 8px 0; color: var(--hint-color,#9ca5b4); }
 #report-modal.is-proof-upload #report-developer .checkin-dev-accordion__row { padding: 6px 0; }
