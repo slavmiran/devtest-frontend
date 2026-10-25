@@ -10942,6 +10942,8 @@ function closeContractEconomyModal(event) {
 
 function openKarmaSelectPopup(appId, testerId) {
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    const popup = document.getElementById('karma-select-popup');
+    const testerChanged = !!(popup && popup.classList.contains('active') && Number(_karmaTesterId) !== Number(testerId));
     _karmaAppId = appId;
     _karmaTesterId = testerId;
     const project = (typeof myProjects !== 'undefined' ? myProjects : []).find(function(item) {
@@ -10963,13 +10965,21 @@ function openKarmaSelectPopup(appId, testerId) {
 
     const testerMetaEl = document.getElementById('karma-select-tester-meta');
     if (testerMetaEl) {
-        if (tester) {
-            const name = tester.username
-                ? '@' + tester.username.replace('@', '')
-                : tester.full_name || (window.t('idLabel', { id: tester.tester_id }, lang) || ('ID: ' + tester.tester_id));
-            testerMetaEl.textContent = name;
+        if (typeof window.pcKarmaTesterMetaHtml === 'function') {
+            testerMetaEl.innerHTML = window.pcKarmaTesterMetaHtml(tester, testerId);
+        } else if (tester) {
+            const fullName = String(tester.full_name || tester.name || '').trim();
+            const username = String(tester.username || '').replace(/^@+/, '').trim();
+            const nameHtml = (fullName ? '<span class="karma-select-tester-name">' + window.escapeHTML(fullName) + '</span>' : '') +
+                (username ? '<span class="karma-select-tester-nick">@' + window.escapeHTML(username) + '</span>' : '');
+            testerMetaEl.innerHTML = nameHtml || window.escapeHTML('ID: ' + testerId);
         } else {
             testerMetaEl.textContent = 'ID: ' + testerId;
+        }
+        if (testerChanged) {
+            testerMetaEl.classList.remove('is-name-swap');
+            void testerMetaEl.offsetWidth;
+            testerMetaEl.classList.add('is-name-swap');
         }
     }
 

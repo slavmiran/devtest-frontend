@@ -1604,11 +1604,23 @@
             : (prevFallback && prevFallback.proofId === id ? prevFallback : null);
         if (fallback) state.previewFallback = fallback;
         state.returnToAppreciation = !!(options && options.returnToAppreciation);
+        // Opening from Tester Appreciation hides that popup first. Reveal this
+        // viewer in the same turn, before the album request, so the project
+        // card never shows through while tickets load.
+        if (state.returnToAppreciation) {
+            state.previewProofId = id;
+            state.previewMode = 'overview';
+            body.classList.remove('is-proof-album', 'is-proof-overview');
+            paintPreviewHeading(id);
+            body.innerHTML = '<div class="checkin-proof-preview-loading" aria-hidden="true"><span></span><span></span><span></span></div>';
+            paintAppreciationReturn();
+            syncProofPreviewViewport();
+            modal.classList.add('active');
+            if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        }
         // Card data can be stale while an album is still being reconciled.
         // Decide between the one-image viewer and the album only after the
-        // proof endpoint returns its authoritative media count. Keep the
-        // modal closed while resolving it so the user never sees a redundant
-        // loading screen followed by a second opening animation.
+        // proof endpoint returns its authoritative media count.
         try {
             var details = await warmAlbumTickets(id, 'thumbnail');
             if (requestId !== state.previewOpenRequest) return;
@@ -1641,9 +1653,13 @@
             }).catch(function() {});
         } catch (_) {
             if (requestId !== state.previewOpenRequest) return;
-            if (state.returnToAppreciation && typeof window.resumeKarmaSelectAfterProof === 'function') {
+            if (state.returnToAppreciation) {
                 state.returnToAppreciation = false;
-                window.resumeKarmaSelectAfterProof();
+                body.innerHTML = '';
+                modal.classList.remove('active');
+                var returnButton = document.getElementById('checkin-proof-return-reward');
+                if (returnButton) returnButton.hidden = true;
+                if (typeof window.resumeKarmaSelectAfterProof === 'function') window.resumeKarmaSelectAfterProof();
             }
             if (typeof showToast === 'function') showToast(text('testingControlMediaUnavailable', 'Images are temporarily unavailable.'));
         }

@@ -807,22 +807,42 @@ button.is-shaking {
 }
 
 .karma-select-tester-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
+    margin-top: 2px;
+    min-width: 0;
     font-size: 13px;
     font-weight: 600;
+    line-height: 1.3;
+}
+.karma-select-tester-name {
+    color: var(--text-color, #fff);
+    font-weight: 650;
+}
+.karma-select-tester-nick {
     color: var(--text-secondary, #aeaeb2);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-weight: 550;
+}
+.karma-select-tester-meta.is-name-swap {
+    animation: karma-select-name-swap .34s cubic-bezier(.22, .61, .36, 1);
+}
+@keyframes karma-select-name-swap {
+    0% { opacity: 0; transform: translateY(7px); }
+    100% { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .karma-select-tester-meta.is-name-swap { animation: none; }
 }
 
 .karma-select-review { margin: -4px 0 14px; }
 .karma-select-review[hidden] { display: none !important; }
 .karma-select-review__row { display: flex; flex-wrap: wrap; gap: 8px; }
 .karma-select-review__view,
-.karma-select-review__reroll { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 10px; border-radius: 12px; border: 1px solid rgba(147, 197, 253, .35); background: rgba(37, 99, 235, .14); color: #e8f1ff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-.karma-select-review__view { flex: 1 1 180px; }
-.karma-select-review__reroll { flex: 0 0 auto; background: rgba(255, 255, 255, .04); }
+.karma-select-review__reroll { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 10px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, .22); background: transparent; color: #b7c4d6; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.karma-select-review__view { flex: 1 1 160px; color: #9aabbf; }
+.karma-select-review__reroll { flex: 0 0 auto; background: rgba(255, 255, 255, .04); color: #d5deea; font-weight: 650; }
 .karma-select-review__icon { display: inline-flex; width: 14px; height: 14px; }
 .karma-select-review__icon svg { width: 14px; height: 14px; }
 

@@ -3600,7 +3600,7 @@
         picked.classList.add('is-random-pick');
         if (picked.scrollIntoView) picked.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         var testerId = Number(picked.getAttribute('data-tester-id') || 0);
-        if (testerId > 0) window.pcRewardTester(safeAppId, testerId);
+        if (testerId > 0) window.pcRewardTester(safeAppId, testerId, 'dice');
     };
 
     window.pcFullSetKarmaUnavailable = function () {
@@ -3608,10 +3608,27 @@
     };
 
     var appreciationReview = null;
+    var appreciationFromDice = false;
+
+    window.pcKarmaTesterMetaHtml = function (tester, testerId) {
+        if (!tester) return esc('ID: ' + Number(testerId || 0));
+        var fullName = String(tester.full_name || tester.name || '').trim();
+        var username = String(tester.username || '').replace(/^@+/, '').trim();
+        var html = '';
+        if (fullName) html += '<span class="karma-select-tester-name">' + esc(fullName) + '</span>';
+        if (username) html += '<span class="karma-select-tester-nick">@' + esc(username) + '</span>';
+        return html || esc('ID: ' + Number(testerId || tester.tester_id || tester.id || 0));
+    };
 
     window.pcRenderAppreciationReview = function (appId, testerId) {
         var host = document.getElementById('karma-select-review');
         if (!host) return;
+        if (!appreciationFromDice) {
+            host.hidden = true;
+            host.innerHTML = '';
+            appreciationReview = null;
+            return;
+        }
         var items = fullSetOnlyItems(appId);
         var current = null;
         items.forEach(function (item) {
@@ -3642,7 +3659,6 @@
             '<button type="button" class="karma-select-review__view" onclick="pcViewAppreciationReport()">' +
                 '<span class="karma-select-review__icon" aria-hidden="true">' + ICONS.image + '</span>' +
                 '<span>' + esc(text('pcFullSetViewReport', 'Посмотреть отчёт (5 скриншотов)')) + '</span>' +
-                '<span aria-hidden="true">›</span>' +
             '</button>' + reroll + '</div>';
     };
 
@@ -5829,7 +5845,8 @@
         return getTesterBoostBust(context, safeTesterId, item);
     };
 
-    window.pcRewardTester = function (appId, testerId) {
+    window.pcRewardTester = function (appId, testerId, source) {
+        appreciationFromDice = source === 'dice';
         if (typeof openKarmaSelectPopup === 'function') openKarmaSelectPopup(Number(appId || 0), Number(testerId || 0));
         else if (typeof openKarmaDistribution === 'function') openKarmaDistribution(Number(appId || 0));
     };
