@@ -974,14 +974,16 @@
         // that have not supplied a Telegram full name yet.
         var primaryName = fullName || rawUsername || handleOf(tester);
         if (rawUsername) {
+            var identityTail = (opts.nameSuffixHtml || '') + timeAgoHtml;
             nameHtml = '<span class="pc-person__identity">' +
-                '<button type="button" class="pc-person__fullname pc-person__fullname-main pc-person__fullname--reveal" ' +
-                    'onclick="window.pcRevealTesterNickname(this, event)" aria-expanded="false">' + esc(primaryName) + '</button>' +
-                '<button type="button" class="pc-person__handle pc-person__handle--link pc-person__handle--reveal" ' +
-                    'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
-                    'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
-                (opts.nameSuffixHtml || '') +
-                timeAgoHtml +
+                '<span class="pc-person__identity-names">' +
+                    '<button type="button" class="pc-person__fullname pc-person__fullname-main pc-person__fullname--reveal" ' +
+                        'onclick="window.pcRevealTesterNickname(this, event)" aria-expanded="false">' + esc(primaryName) + '</button>' +
+                    '<button type="button" class="pc-person__handle pc-person__handle--link pc-person__handle--reveal" ' +
+                        'onclick="event.stopPropagation(); window.pcOpenTesterTelegram(\'' + esc(rawUsername) + '\')" ' +
+                        'title="Написать в Telegram" tabindex="-1">@' + esc(rawUsername) + '</button>' +
+                '</span>' +
+                (identityTail ? '<span class="pc-person__identity-tail">' + identityTail + '</span>' : '') +
             '</span>';
             timeAgoHtml = '';
         } else {
@@ -3285,7 +3287,7 @@
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: rowClass || 'pc-person--contribution',
-            metaHtml: contributionControlDayHtml(item.tester) + contributionTesterStatsChipHtml(appId, item.tester, item, context),
+            metaHtml: contributionTesterStatsChipHtml(appId, item.tester, item, context),
             actionsHtml: headerActionsHtml,
             avatarMarkerHtml: contributionAvatarMarkerHtml(visibleReasons),
             extraHtml: subrowsHtml,
@@ -3321,7 +3323,7 @@
             tester: item.tester,
             tone: rewardState.rewardedToday ? 'green' : 'sky',
             rowClass: 'pc-person--contribution pc-person--fullset',
-            metaHtml: contributionControlDayHtml(item.tester) + topicHtml,
+            metaHtml: topicHtml,
             actionsHtml: actionsHtml,
             timeAgoText: formatContributionTimeAgo(item.latestCreatedAt || ''),
             nameSuffixHtml: contributionDaySuffixHtml(item.tester),
@@ -3330,17 +3332,14 @@
 
     function contributionDaySuffixHtml(tester) {
         var dayNum = testerDayNumber(tester);
-        if (dayNum <= 0 || isControlDay(dayNum)) return '';
+        if (dayNum <= 0) return '';
+        if (isControlDay(dayNum)) {
+            return '<span class="pc-person__day pc-person__day--control is-control-accent">' +
+                '<svg class="pc-person__day-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
+                esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
+            '</span>';
+        }
         return '<span class="pc-person__time-ago pc-person__testing-day">' + esc(workspaceText('День ', 'Day ') + dayNum) + '</span>';
-    }
-
-    function contributionControlDayHtml(tester) {
-        var dayNum = testerDayNumber(tester);
-        if (!isControlDay(dayNum)) return '';
-        return '<span class="pc-person__day pc-person__day--control is-control-accent">' +
-            '<svg class="pc-person__day-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
-            esc(text('testingControlCurrentDay', 'Day {day}', { day: dayNum })) +
-        '</span>';
     }
 
     function fullSetChipHtml(appId, item) {
@@ -3393,10 +3392,9 @@
                             '<b>' + FULL_SCREENSHOT_COUNT + '</b>' +
                         '</span>' +
                         '<span class="pc-fullset__copy">' +
-                            '<strong>' + esc(text('pcFullSetTitle', 'Максимальные серии')) + '</strong>' +
-                            '<small>' + esc(text('pcFullSetSubtitle', '{people} · все 5 скринов', {
-                                people: pluralPeopleLabel(sorted.length),
-                            })) + '</small>' +
+                            '<strong>' + esc(text('pcFullSetTitle', 'Максимальные серии')) +
+                                ' <span class="pc-fullset__shot-note">' + esc(text('pcFullSetShotNote', '(5 скриншотов)')) + '</span></strong>' +
+                            '<small>' + esc(pluralPeopleLabel(sorted.length)) + '</small>' +
                         '</span>' +
                     '</button>' +
                 '</div>' +
@@ -4080,8 +4078,8 @@
         var counts = reportGroupCounts(activityCounts(project));
         var enabled = enabledReportGroups(readPrefs(appId), counts);
         var chips = [
-            { key: 'value', label: text('pcReportChipValue', 'Вклад') },
-            { key: 'screens', label: text('pcReportChipScreens', 'Скрины') },
+            { key: 'value', label: text('pcReportChipValue', 'Ценные') },
+            { key: 'screens', label: text('pcReportChipScreens', 'Базовые') },
             { key: 'waiting', label: text('pcReportChipWaiting', 'Ждём') },
         ].filter(function (chip) { return counts[chip.key] > 0; });
         return '<div class="pc-report-toggles" role="group" aria-label="' + esc(text('pcFilterControl', 'Отчёты')) + '">' +
@@ -4098,14 +4096,15 @@
     }
 
     function reportSectionHtml(appId, key, title, count, bodyHtml) {
-        return '<section class="pc-report-section" data-report-section="' + key + '">' +
-            '<button type="button" class="pc-report-section__head" aria-expanded="true" onclick="event.stopPropagation(); pcToggleReportSection(' + Number(appId) + ',\'' + key + '\')">' +
+        var folded = !!(readPrefs(appId).reportFolded && readPrefs(appId).reportFolded[key]);
+        return '<section class="pc-report-section' + (folded ? ' is-folded' : '') + '" data-report-section="' + key + '">' +
+            '<button type="button" class="pc-report-section__head" aria-expanded="' + (folded ? 'false' : 'true') + '" onclick="event.stopPropagation(); pcFoldReportSection(' + Number(appId) + ',\'' + key + '\')">' +
                 '<svg class="pc-report-section__chevron" viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>' +
                 reportChipIcon(key) +
                 '<span>' + esc(title) + '</span>' +
                 '<strong>' + count + '</strong>' +
             '</button>' +
-            '<div class="pc-report-section__body">' + bodyHtml + '</div>' +
+            '<div class="pc-report-section__body"' + (folded ? ' hidden' : '') + '>' + bodyHtml + '</div>' +
         '</section>';
     }
 
@@ -4133,7 +4132,7 @@
             html += reportSectionHtml(
                 appId,
                 'value',
-                text('pcReportSectionValue', 'Особый вклад'),
+                text('pcReportSectionValue', 'Ценные'),
                 counts.value,
                 contributionSheetHtml(appId, sections.value, context)
             );
@@ -4142,7 +4141,7 @@
             html += reportSectionHtml(
                 appId,
                 'screens',
-                text('pcReportSectionScreens', 'Обычные отчёты'),
+                text('pcReportSectionScreens', 'Базовые'),
                 counts.screens,
                 '<ul class="pc-act-list pc-activity-control">' +
                     sections.screens.map(function (row) { return controlRowHtml(appId, row, context); }).join('') +
@@ -4250,10 +4249,17 @@
                 reportSections[key] = parsed.reportSections[key] !== false;
             });
         }
+        var reportFolded = {};
+        if (parsed.reportFolded && typeof parsed.reportFolded === 'object') {
+            REPORT_GROUPS.forEach(function (key) {
+                reportFolded[key] = parsed.reportFolded[key] === true;
+            });
+        }
         return {
             filter: ACTIVITY_FILTERS.indexOf(filter) !== -1 ? filter : 'testers',
             modes: modes,
             reportSections: reportSections,
+            reportFolded: reportFolded,
             touched: true,
         };
     }
@@ -4267,6 +4273,9 @@
             };
             if (prefs.reportSections && typeof prefs.reportSections === 'object') {
                 payload.reportSections = prefs.reportSections;
+            }
+            if (prefs.reportFolded && typeof prefs.reportFolded === 'object') {
+                payload.reportFolded = prefs.reportFolded;
             }
             localStorage.setItem(PREFS_PREFIX + Number(appId || 0), JSON.stringify(payload));
         } catch (_) {}
@@ -4537,8 +4546,11 @@
         var reported = reportedPeopleCount(data);
         var due = Number(data && data.controlDueCount || 0);
         if (due <= 0) return esc(String(reported));
-        var color = activityPercentColor(project);
-        var style = color ? ' style="--pc-activity-ratio-x:' + color + '"' : '';
+        var style = '';
+        if (reported > due) {
+            var color = activityPercentColor(project);
+            if (color) style = ' style="--pc-activity-ratio-x:' + color + '"';
+        }
         return '<span class="pc-activity__ratio-x"' + style + '>' + reported + '</span>/' + due;
     }
 
@@ -5552,6 +5564,22 @@
         var stored = {};
         nonEmpty.forEach(function (item) { stored[item] = !!enabled[item]; });
         prefs.reportSections = stored;
+        prefs.filter = 'control';
+        writePrefs(safeAppId, prefs);
+        refreshActivityWorkspace(safeAppId);
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
+    };
+
+    window.pcFoldReportSection = function (appId, key) {
+        var safeAppId = Number(appId || 0);
+        if (!projectById(safeAppId) || REPORT_GROUPS.indexOf(key) === -1) return;
+        var prefs = readPrefs(safeAppId);
+        var folded = {};
+        REPORT_GROUPS.forEach(function (item) {
+            folded[item] = !!(prefs.reportFolded && prefs.reportFolded[item]);
+        });
+        folded[key] = !folded[key];
+        prefs.reportFolded = folded;
         prefs.filter = 'control';
         writePrefs(safeAppId, prefs);
         refreshActivityWorkspace(safeAppId);
