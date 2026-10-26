@@ -979,3 +979,134 @@
     font-size: 15px;
     font-weight: 800;
 }
+
+.mi-slots-row,
+.mi-quota-grid,
+.mi-quota-total,
+.mi-pool-line,
+.mi-pool-info,
+.mi-zero-quota,
+.mi-paid-note,
+.mi-recipient-label {
+    margin-top: 10px;
+}
+
+.mi-slots-title,
+.mi-quota-total,
+.mi-pool-line {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.mi-slots-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 13px;
+}
+
+.mi-slot-step,
+.mi-slot-chip,
+.mi-showcase-btn {
+    border: 1px solid rgba(142, 142, 147, 0.28);
+    background: transparent;
+    color: var(--text-color);
+    border-radius: 10px;
+}
+
+.mi-slot-step {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.mi-slot-value {
+    min-width: 24px;
+    text-align: center;
+}
+
+.mi-slot-chip,
+.mi-showcase-btn {
+    margin-top: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mi-showcase-btn {
+    width: 100%;
+}
+
+.mi-quota-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+
+.mi-quota-chip {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(142, 142, 147, 0.12);
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.mi-quota-chip b {
+    font-size: 14px;
+}
+
+.mi-pool-line {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: var(--text-color);
+    padding: 0;
+}
+
+.mi-info-mark {
+    flex: 0 0 auto;
+}
+
+.mi-pool-info,
+.mi-zero-quota,
+.mi-paid-note,
+.mi-quota-loading {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--hint-color, #8e8e93);
+}
+
+.mi-pool-info p {
+    margin: 6px 0 0;
+}
+
+.mi-recipient-range {
+    width: 100%;
+    margin-top: 6px;
+}
+
+.mi-progress-status {
+    white-space: pre-line;
+}
+
+@media (min-width: 390px) {
+    .mi-quota-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .mi-quota-chip {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

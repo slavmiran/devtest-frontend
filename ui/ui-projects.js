@@ -4043,8 +4043,23 @@ async function handleMassInviteAction(projectId) {
     _launchMassInviteWithEmailGate(project, projectId);
 }
 
-function _launchMassInviteWithEmailGate(project, projectId) {
-    var run = function() { window.startMassInvite(projectId); };
+function startMassInviteFromModal(projectId) {
+    var project = myProjects.find(function(item) {
+        return Number(item.id) === Number(projectId);
+    });
+    if (!project) return;
+    var count = currentMassInviteRecipientCount();
+    if (count <= 0) {
+        showToast(window.t('massInviteNoPool', {}, lang));
+        return;
+    }
+    _launchMassInviteWithEmailGate(project, projectId, count);
+}
+window.startMassInviteFromModal = startMassInviteFromModal;
+
+function _launchMassInviteWithEmailGate(project, projectId, recipientCount) {
+    var count = Math.max(0, Number(recipientCount || currentMassInviteRecipientCount() || 0));
+    var run = function() { window.startMassInvite(projectId, count); };
 
     // EmailTesterModal: the project itself uses manual Email testing → confirm console setup before blasting.
     if (project && String(project.test_mode || 'google_group') === 'email_list' && typeof window.openEmailTesterModal === 'function') {
@@ -4052,7 +4067,7 @@ function _launchMassInviteWithEmailGate(project, projectId) {
             actionLabel: window.t('emailTesterMassInviteBtn', {}, lang),
             loadEmails: function() {
                 return (typeof fetchMassInvitePreviewEmails === 'function')
-                    ? fetchMassInvitePreviewEmails(projectId)
+                    ? fetchMassInvitePreviewEmails(projectId, count)
                     : Promise.resolve({ ok: false, emails: [] });
             },
             onConfirm: run,
@@ -9293,6 +9308,114 @@ async function refreshMassInviteSessionQuietly(projectId) {
     }
 }
 
+var _massInviteQuote = null;
+var _massInviteQuoteLoading = false;
+var _massInviteQuoteToken = 0;
+
+function massInviteExtraCost(paidCount) {
+    var cost = 0;
+    var count = Math.max(0, Number(paidCount) || 0);
+    for (var index = 1; index <= count; index += 1) {
+        cost += index <= 15 ? 4 : (index <= 35 ? 8 : 12);
+    }
+    return cost;
+}
+
+function syncMassInviteRecipientUi() {
+    var range = document.getElementById('mi-recipient-range');
+    var quote = _massInviteQuote;
+    if (!range || !quote) return;
+    var count = Number(range.value || 0);
+    var free = Number(quote.free_quota || 0);
+    var paid = Math.max(0, count - free);
+    var cost = massInviteExtraCost(paid);
+    var countEl = document.getElementById('mi-recipient-count');
+    if (countEl) countEl.textContent = String(count);
+    var paidEl = document.getElementById('mi-paid-note');
+    if (paidEl) {
+        paidEl.hidden = paid <= 0;
+        paidEl.textContent = paid > 0
+            ? window.t('massInvitePaidNote', { paid: paid, cost: cost }, lang)
+            : '';
+    }
+    var btn = document.getElementById('mass-invite-btn');
+    if (btn && !btn.disabled && !btn.classList.contains('is-disabled')) {
+        btn.textContent = paid > 0
+            ? window.t('massInviteLaunchPaidBtn', { cost: cost }, lang)
+            : window.t('massInviteLaunchBtn', {}, lang);
+    }
+}
+
+function toggleMassInvitePoolInfo() {
+    var panel = document.getElementById('mi-pool-info');
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+}
+
+function openShowcaseFromMassInvite() {
+    closeMassInviteModal();
+    if (typeof switchTab === 'function') switchTab('market');
+}
+
+function currentMassInviteRecipientCount() {
+    var range = document.getElementById('mi-recipient-range');
+    if (range) return Math.max(0, Number(range.value || 0));
+    return Math.max(0, Number(_massInviteQuote && _massInviteQuote.recommended_count || 0));
+}
+
+async function loadMassInviteQuote(projectId) {
+    if (!projectId || typeof API_BASE === 'undefined') return null;
+    var token = ++_massInviteQuoteToken;
+    _massInviteQuoteLoading = true;
+    try {
+        var response = await fetch(API_BASE + '/projects/' + Number(projectId) + '/mass_invite/plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(withInitData({})),
+        });
+        var data = await response.json();
+        if (token !== _massInviteQuoteToken) return null;
+        if (!response.ok || data.status !== 'success') {
+            return null;
+        }
+        data.app_id = Number(projectId);
+        _massInviteQuote = data;
+        if (Number(_massInviteProjectId) === Number(projectId)) renderMassInviteModalContent();
+        return data;
+    } catch (error) {
+        console.warn('Mass invite quote failed', error);
+        return null;
+    } finally {
+        if (token === _massInviteQuoteToken) _massInviteQuoteLoading = false;
+    }
+}
+
+async function setMassInviteLimit(projectId, nextLimit) {
+    var project = (myProjects || []).find(function(item) { return Number(item.id) === Number(projectId); });
+    if (!project) return;
+    var quote = _massInviteQuote && Number(_massInviteQuote.app_id) === Number(projectId) ? _massInviteQuote : null;
+    var active = Math.max(0, Number((quote && quote.active_mutual_testers) || getProjectMassInviteMeta(project).activeMutualTesters || 0));
+    var limit = Math.max(Math.max(1, active), Math.min(100, Number(nextLimit) || 0));
+    try {
+        var response = await fetch(API_BASE + '/projects/' + Number(projectId), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(withInitData({ limit_mutual: limit })),
+        });
+        var data = await response.json();
+        if (!response.ok || data.status !== 'success') {
+            if (typeof showToast === 'function') showToast(getApiErrorMessage(data, 'loadError'));
+            return;
+        }
+        project.limit_mutual = limit;
+        _massInviteQuote = null;
+        renderMassInviteModalContent();
+    } catch (error) {
+        console.warn('Mass invite slot update failed', error);
+        if (typeof showToast === 'function') showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    }
+}
+
 function renderMassInviteModalContent() {
     const modalBody = document.getElementById('mass-invite-modal-body');
     if (!modalBody || !_massInviteProjectId) return;
@@ -9306,7 +9429,7 @@ function renderMassInviteModalContent() {
 
     let launchBtnLabel = window.t('massInviteLaunchBtn', {}, lang);
     let launchBtnClass = 'btn btn-primary mass-invite-btn';
-    let launchBtnAttrs = `onclick="handleMassInviteAction(${project.id})"`;
+    let launchBtnAttrs = `onclick="startMassInviteFromModal(${project.id})"`;
 
     if (isIsolated) {
         launchBtnLabel = window.t('inviteIsolationDisabledBtn', {}, lang);
@@ -9349,9 +9472,83 @@ function renderMassInviteModalContent() {
         `;
     }
 
-    const limitHintHtml = !isIsolated && massInviteMeta.isAvailable
-        ? `<div class="mass-invite-hint" style="text-align:center; margin-top: 8px; font-size: 12px; color: var(--hint-color);">${window.escapeHTML(window.t('massInviteLimitHint', { count: massInviteMeta.maxRecipients }, lang))}</div>`
-        : '';
+    const quote = _massInviteQuote && Number(_massInviteQuote.app_id) === Number(project.id) ? _massInviteQuote : null;
+    const senderQuota = (quote && quote.sender_quota) || {};
+    const activeSlots = quote
+        ? Math.max(0, Number(quote.active_mutual_testers || 0))
+        : massInviteMeta.activeMutualTesters;
+    const limitSlots = Math.max(0, Number((quote && quote.limit_mutual) || project.limit_mutual || 0));
+    const poolSize = Math.max(0, Number(quote && quote.pool_size || 0));
+    const freeQuota = Math.max(0, Number(quote && quote.free_quota || 0));
+    const recommended = Math.max(0, Number(quote && quote.recommended_count || 0));
+    const sliderMax = poolSize;
+    const sliderValue = sliderMax <= 0 ? 0 : (recommended > 0 ? recommended : 1);
+    const poolMode = String((quote && quote.pool_mode) || senderQuota.pool_mode || '');
+    const karmaIcon = typeof window.karmaIconHtml === 'function'
+        ? window.karmaIconHtml('karma-yin-icon--inline')
+        : '☯️';
+    const signed = function(value) {
+        var number = Number(value || 0);
+        return (number > 0 ? '+' : '') + String(number);
+    };
+
+    let quotaBlockHtml = '';
+    if (!isIsolated && massInviteMeta.isAvailable) {
+        if (!quote) {
+            quotaBlockHtml = `<div class="mi-quota-loading">${window.escapeHTML(window.t('massInviteQuoteLoading', {}, lang))}</div>`;
+            if (!_massInviteQuoteLoading) {
+                loadMassInviteQuote(project.id);
+            }
+        } else {
+            const recommendChip = limitSlots < 20 && activeSlots <= 20
+                ? `<button type="button" class="mi-slot-chip" onclick="setMassInviteLimit(${project.id}, 20)">${window.escapeHTML(window.t('massInviteSlotsRecommend', {}, lang))}</button>`
+                : '';
+            const poolLabel = poolMode === 'priority'
+                ? window.t('massInvitePoolPriority', {}, lang)
+                : window.t('massInvitePoolBasic', {}, lang);
+            const zeroNote = freeQuota === 0
+                ? `<div class="mi-zero-quota">${window.escapeHTML(window.t('massInviteZeroQuota', {}, lang))}</div>`
+                : '';
+            const sliderHtml = sliderMax > 0
+                ? `<label class="mi-recipient-label" for="mi-recipient-range">${window.escapeHTML(window.t('massInviteRecipientsLabel', {}, lang))} <b id="mi-recipient-count">${sliderValue}</b></label>
+                    <input id="mi-recipient-range" class="mi-recipient-range" type="range" min="1" max="${sliderMax}" value="${sliderValue}" oninput="syncMassInviteRecipientUi()">
+                    <div id="mi-paid-note" class="mi-paid-note" hidden></div>`
+                : `<div class="mi-zero-quota">${window.escapeHTML(window.t('massInviteNoPool', {}, lang))}</div>`;
+            quotaBlockHtml = `
+                <div class="mi-slots-row">
+                    <div class="mi-slots-title">${window.escapeHTML(window.t('massInviteSlotsLabel', {}, lang))}</div>
+                    <div class="mi-slots-controls">
+                        <span>${window.escapeHTML(window.t('massInviteSlotsOccupied', { active: activeSlots }, lang))}</span>
+                        <button type="button" class="mi-slot-step" onclick="setMassInviteLimit(${project.id}, ${Math.max(1, limitSlots - 1)})" aria-label="-">−</button>
+                        <b class="mi-slot-value">${limitSlots}</b>
+                        <button type="button" class="mi-slot-step" onclick="setMassInviteLimit(${project.id}, ${limitSlots + 1})" aria-label="+">+</button>
+                    </div>
+                    ${recommendChip}
+                </div>
+                <div class="mi-quota-grid">
+                    <div class="mi-quota-chip"><span>🛡 ${window.escapeHTML(window.t('massInviteQuotaReliability', {}, lang))}</span><b>${signed(senderQuota.base)}</b></div>
+                    <div class="mi-quota-chip"><span>${karmaIcon} ${window.escapeHTML(window.t('massInviteQuotaKarma', {}, lang))}</span><b>${signed(senderQuota.karma_mod)}</b></div>
+                    <div class="mi-quota-chip"><span>⚡️ ${window.escapeHTML(window.t('massInviteQuotaContribution', {}, lang))}</span><b>${signed(senderQuota.contribution_mod)}</b></div>
+                </div>
+                <div class="mi-quota-total">${window.escapeHTML(window.t('massInviteQuotaTotal', { count: freeQuota }, lang))}</div>
+                <button type="button" class="mi-pool-line" onclick="toggleMassInvitePoolInfo()">🎯 ${window.escapeHTML(poolLabel)} <span class="mi-info-mark" aria-label="info">ⓘ</span></button>
+                <div id="mi-pool-info" class="mi-pool-info" hidden>
+                    <b>${window.escapeHTML(window.t('massInvitePoolInfoTitle', {}, lang))}</b>
+                    <p>${window.escapeHTML(window.t('massInvitePoolInfoBody', {}, lang))}</p>
+                </div>
+                ${zeroNote}
+                ${sliderHtml}
+            `;
+        }
+    }
+
+    const limitHintHtml = '';
+
+    if (quote && poolSize <= 0 && !massInviteMeta.isCooldownActive && !isIsolated) {
+        launchBtnLabel = window.t('massInviteUnavailableBtn', {}, lang);
+        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
+        launchBtnAttrs = 'disabled';
+    }
 
     const infoDesc = !isIsolated && !massInviteMeta.isAvailable
         ? window.t('massInviteUnavailableNote', {}, lang)
@@ -9363,12 +9560,14 @@ function renderMassInviteModalContent() {
             <div class="mass-invite-desc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 16px; line-height: 1.4;">${window.escapeHTML(infoDesc)}</div>
 
             <button id="mass-invite-btn" class="${launchBtnClass}" style="width: 100%;" ${launchBtnAttrs}>${window.escapeHTML(launchBtnLabel)}</button>
-            ${limitHintHtml}
+            ${quotaBlockHtml}
 
             ${sessionBlockHtml}
             ${cooldownBlockHtml}
+            <button type="button" class="btn btn-secondary mi-showcase-btn" onclick="openShowcaseFromMassInvite()">${window.escapeHTML(window.t('massInviteOpenShowcase', {}, lang))}</button>
         </div>
     `;
+    syncMassInviteRecipientUi();
 }
 
 async function triggerResetCooldown(projectId) {
@@ -9400,6 +9599,11 @@ window.triggerResetCooldown = triggerResetCooldown;
 window.renderMassInviteModalContent = renderMassInviteModalContent;
 window.updateMassInviteModalTimers = updateMassInviteModalTimers;
 window.toggleTestingDayInstructions = toggleTestingDayInstructions;
+window.syncMassInviteRecipientUi = syncMassInviteRecipientUi;
+window.toggleMassInvitePoolInfo = toggleMassInvitePoolInfo;
+window.openShowcaseFromMassInvite = openShowcaseFromMassInvite;
+window.setMassInviteLimit = setMassInviteLimit;
+window.currentMassInviteRecipientCount = currentMassInviteRecipientCount;
 
 async function dismissLeftTesterRow(appId, testerId) {
     var safeAppId = Number(appId || 0);

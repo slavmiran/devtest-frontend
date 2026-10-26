@@ -1381,6 +1381,12 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(appFocusMatch[1] || 0);
             break;
         }
+        var massInviteMatch = normalized.match(/^massinvite[_:](\d+)$/);
+        if (massInviteMatch) {
+            routeKind = 'mass_invite';
+            feedbackProjectId = Number(massInviteMatch[1] || 0);
+            break;
+        }
         var syncMatch = normalized.match(/^sync[_:](\d+)$/);
         if (syncMatch) {
             routeKind = 'sync';
@@ -1548,6 +1554,13 @@ function _parseInitialRouteTarget() {
         return {
             tab: 'projects',
             openEdit: true,
+            appId: feedbackProjectId > 0 ? feedbackProjectId : null,
+        };
+    }
+    if (routeKind === 'mass_invite') {
+        return {
+            tab: 'projects',
+            openMassInvite: true,
             appId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
@@ -1734,6 +1747,20 @@ async function _handleInitialRoute() {
             openEditModal(route.appId, { focusSetup: true });
         } catch (error) {
             console.error('Initial edit route error:', error);
+        }
+        return;
+    }
+
+    if (route.openMassInvite && route.appId) {
+        try {
+            switchTab('projects');
+            await loadProjects(true, true);
+            if (typeof openMassInviteModal === 'function') {
+                openMassInviteModal(route.appId);
+            }
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial mass invite route error:', error);
         }
         return;
     }
