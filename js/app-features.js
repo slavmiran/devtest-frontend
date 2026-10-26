@@ -2052,12 +2052,14 @@ async function deleteSettingsEmail() {
     }
 }
 
-async function fetchMassInvitePreviewEmails(projectId) {
+async function fetchMassInvitePreviewEmails(projectId, recipientCount) {
     try {
+        var payload = { init_data: tg.initData || '' };
+        if (Number(recipientCount) > 0) payload.recipient_count = Number(recipientCount);
         var response = await fetch(`${API_BASE}/projects/${Number(projectId)}/mass_invite/preview`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ init_data: tg.initData || '' })
+            body: JSON.stringify(payload)
         });
         var result = null;
         try { result = await response.json(); } catch (e) { result = null; }
@@ -3051,6 +3053,9 @@ function _finishMassInviteFromSnapshot(projectId, snapshot) {
     var project = (typeof myProjects !== 'undefined' && myProjects)
         ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
         : null;
+    if (typeof window.invalidateMassInvitePlanCache === 'function') {
+        window.invalidateMassInvitePlanCache(projectId);
+    }
     if (project && successCount > 0) {
         project.last_mass_invite_at = snap.last_mass_invite_at || project.last_mass_invite_at || new Date().toISOString();
         project.last_mass_invite_sent_count = successCount;
@@ -3068,11 +3073,14 @@ function _finishMassInviteFromSnapshot(projectId, snapshot) {
     }
 
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    var failedShown = Number(snap.failed_count || 0) + Number(snap.skipped_count || 0);
     var finalStatusText = window.t
-        ? window.t('massInviteLaunchSuccess', { count: successCount }, lang)
+        ? window.t('massInviteResultLine', { sent: successCount, failed: failedCount }, lang)
         : ('Sent: ' + successCount);
-    if (failedCount > 0 && window.t) {
-        finalStatusText += ' · ' + window.t('massInviteResultFailedMeta', { count: failedCount }, lang);
+    if (Number(snap.refund_bust || 0) > 0 && window.t) {
+        finalStatusText += '\n' + window.t('massInviteRefundLine', { amount: Number(snap.refund_bust || 0) }, lang);
+    } else if (failedShown > 0 && failedCount !== failedShown && window.t) {
+        finalStatusText = window.t('massInviteResultLine', { sent: successCount, failed: failedShown }, lang);
     }
     MassInviteProgressOverlay.showFinalState(finalStatusText, lang, {
         sentCount: successCount,
@@ -3083,7 +3091,7 @@ function _finishMassInviteFromSnapshot(projectId, snapshot) {
     });
 }
 
-async function startMassInvite(projectId) {
+async function startMassInvite(projectId, recipientCount) {
     if (!projectId) return null;
     if (typeof assertOwnerCanTakeForeignTests === 'function' && !assertOwnerCanTakeForeignTests()) {
         return null;
@@ -3136,7 +3144,10 @@ async function startMassInvite(projectId) {
         var startResponse = await fetch(`${API_BASE}/projects/${projectId}/mass_invite/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({ owner_id: Number(userId) }))
+            body: JSON.stringify(withInitData({
+                owner_id: Number(userId),
+                recipient_count: Math.max(0, Number(recipientCount || 0)) || undefined,
+            }))
         });
         var startData = await startResponse.json();
         if (!startResponse.ok || startData.status !== 'success') {
