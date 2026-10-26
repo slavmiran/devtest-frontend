@@ -466,32 +466,43 @@
         var currentLang = opts.lang || _lang();
         var sourceAppId = Number(opts.sourceAppId || (session && session.app_id) || 0);
         var fallbackCount = Number(opts.fallbackSentCount || 0);
+        var openAttr = opts.open ? ' open' : '';
 
         if (!session || !(session.candidates || []).length) {
             if (fallbackCount > 0) {
+                var fallbackSummary = window.t
+                    ? window.t('massInviteSessionCompactFallback', { total: fallbackCount }, currentLang)
+                    : ('📨 ' + fallbackCount);
                 return (
-                    '<div class="mi-session-block">' +
-                        '<div class="mi-session-head">' +
-                            '<div class="mi-session-title">' + buildSessionTitle(session, currentLang) + '</div>' +
-                            '<div class="mi-session-sent">' + _esc(String(fallbackCount)) + '</div>' +
+                    '<details class="mi-accordion mi-session-accordion" id="mi-session-details"' + openAttr + '>' +
+                        '<summary class="mi-accordion-summary">' +
+                            '<span class="mi-accordion-title">' + _esc(fallbackSummary) + '</span>' +
+                            '<span class="mi-accordion-chevron" aria-hidden="true">▾</span>' +
+                        '</summary>' +
+                        '<div class="mi-accordion-body">' +
+                            '<div class="mi-session-stats">' + _esc(window.t ? window.t('massInviteLastSentSummary', { count: fallbackCount }, currentLang) : '') + '</div>' +
                         '</div>' +
-                        '<div class="mi-session-stats">' + _esc(window.t ? window.t('massInviteLastSentSummary', { count: fallbackCount }, currentLang) : '') + '</div>' +
-                    '</div>'
+                    '</details>'
                 );
             }
-            return (
-                '<div class="mi-session-block is-empty">' +
-                    '<div class="mi-session-empty">' + _esc(window.t ? window.t('massInviteSessionEmpty', {}, currentLang) : '') + '</div>' +
-                '</div>'
-            );
+            return '';
         }
 
         var stats = (typeof MassInviteSession !== 'undefined' && MassInviteSession.computeStats)
             ? MassInviteSession.computeStats(session.candidates)
             : (session.stats || {});
         var sentCount = Number(session.sent_count || stats.sent || (session.candidates || []).length || 0);
+        var acceptedCount = Number(stats.accepted || 0);
+        var declinedCount = Number(stats.rejected || 0);
         var timerText = formatResponseTimerText(session, currentLang);
         var timerDone = !timerText || (window.t && timerText === window.t('massInviteSessionWindowClosed', {}, currentLang));
+        var compactTitle = window.t
+            ? window.t('massInviteSessionCompactLine', {
+                total: sentCount,
+                accepted: acceptedCount,
+                declined: declinedCount,
+            }, currentLang)
+            : ('📨 ' + sentCount + ' · ' + acceptedCount + ' · ' + declinedCount);
         var stripHtml = renderCandidateStrip(session.candidates, {
             sourceAppId: sourceAppId,
             interactive: true,
@@ -501,17 +512,23 @@
         });
 
         return (
-            '<div class="mi-session-block" id="mi-session-block" data-app-id="' + _esc(sourceAppId) + '">' +
-                '<div class="mi-session-head">' +
-                    '<div class="mi-session-title">' + buildSessionTitle(session, currentLang) + '</div>' +
-                    '<div class="mi-session-sent" id="mi-session-sent-count">' + _esc(String(sentCount)) + '</div>' +
+            '<details class="mi-accordion mi-session-accordion" id="mi-session-details" data-app-id="' + _esc(sourceAppId) + '"' + openAttr + '>' +
+                '<summary class="mi-accordion-summary">' +
+                    '<span class="mi-accordion-title">' + _esc(compactTitle) + '</span>' +
+                    '<span class="mi-accordion-chevron" aria-hidden="true">▾</span>' +
+                '</summary>' +
+                '<div class="mi-accordion-body mi-session-block" id="mi-session-block" data-app-id="' + _esc(sourceAppId) + '">' +
+                    '<div class="mi-session-head">' +
+                        '<div class="mi-session-title">' + buildSessionTitle(session, currentLang) + '</div>' +
+                        '<div class="mi-session-sent" id="mi-session-sent-count">' + _esc(String(sentCount)) + '</div>' +
+                    '</div>' +
+                    '<div class="mi-session-stats" id="mi-session-stats">' + _esc(buildStatsLine(stats, currentLang)) + '</div>' +
+                    '<div class="mi-session-timer' + (timerDone ? ' is-done' : '') + '" id="mi-session-response-timer">' +
+                        _esc(timerText) +
+                    '</div>' +
+                    stripHtml +
                 '</div>' +
-                '<div class="mi-session-stats" id="mi-session-stats">' + _esc(buildStatsLine(stats, currentLang)) + '</div>' +
-                '<div class="mi-session-timer' + (timerDone ? ' is-done' : '') + '" id="mi-session-response-timer">' +
-                    _esc(timerText) +
-                '</div>' +
-                stripHtml +
-            '</div>'
+            '</details>'
         );
     }
 
