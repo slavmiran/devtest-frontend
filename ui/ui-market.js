@@ -5542,11 +5542,46 @@ function filterFeedbackStatus(statusFilter) {
 window.filterFeedback = filterFeedback;
 window.filterFeedbackStatus = filterFeedbackStatus;
 
-function feedbackOnImageError(imgEl) {
-    imgEl.onerror = null;
-    imgEl.style.display = 'none';
+function feedbackOnImageLoad(imgEl) {
+    imgEl.style.display = '';
     const parent = imgEl.parentNode;
-    if (parent) {
+    if (!parent) return;
+    parent.classList.remove('is-media-loading', 'fb-media-thumb--mock');
+    const mock = parent.querySelector('.fb-media-mock');
+    if (mock) mock.remove();
+    const fallback = parent.querySelector('.fb-slider-fallback');
+    if (fallback) fallback.style.display = 'none';
+}
+
+function feedbackOnImageError(imgEl) {
+    const parent = imgEl.parentNode;
+    if (!parent) return;
+    const retries = Number(imgEl.dataset.feedbackRetries || 0);
+    const failedSource = imgEl.getAttribute('src');
+    const source = imgEl.dataset.feedbackSource || failedSource;
+    if (source && retries < 2) {
+        imgEl.dataset.feedbackSource = source;
+        imgEl.dataset.feedbackRetries = String(retries + 1);
+        parent.classList.add('is-media-loading');
+        setTimeout(function() {
+            if (!imgEl.isConnected || imgEl.getAttribute('src') !== failedSource
+                || (imgEl.complete && imgEl.naturalWidth > 0)) return;
+            let retrySource = feedbackResolveMediaUrl(source);
+            if (retrySource.indexOf('/telegram-media/') !== -1) {
+                const url = new URL(retrySource, window.location.href);
+                url.searchParams.set('_feedback_retry', String(retries + 1));
+                retrySource = url.href;
+            }
+            imgEl.src = retrySource;
+        }, 500 * (retries + 1));
+        return;
+    }
+    parent.classList.remove('is-media-loading');
+    imgEl.style.display = 'none';
+    const fallback = parent.querySelector('.fb-slider-fallback');
+    if (fallback) {
+        fallback.style.display = 'flex';
+    } else {
         parent.classList.add('fb-media-thumb--mock');
         let mock = parent.querySelector('.fb-media-mock');
         if (!mock) {
@@ -5683,8 +5718,8 @@ function renderProjectFeedbackCards(project, items) {
                     const isOverflow = ti === MAX_THUMB - 1 && total > MAX_THUMB;
                     const extra = total - MAX_THUMB + 1;
                     const overlay = isOverflow ? `<div class="fb-media-overlay">+${extra}</div>` : '';
-                    thumbsHtml += `<div class="fb-media-thumb" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
-                        <img src="${resolvedSrc}" loading="lazy" onerror="feedbackOnImageError(this)">${overlay}
+                    thumbsHtml += `<div class="fb-media-thumb is-media-loading" onclick="openFeedbackImageSlider(${item.id}, ${ti})">
+                        <img src="${resolvedSrc}" loading="lazy" onload="feedbackOnImageLoad(this)" onerror="feedbackOnImageError(this)">${overlay}
                     </div>`;
                 }
                 if (thumbsHtml) {
@@ -5909,9 +5944,9 @@ function renderFeedbackImageSlider() {
             counterHtml +
             '<button class="fb-slider-close" aria-label="Close" onclick="event.stopPropagation(); closeFeedbackImageSlider();">&times;</button>' +
         '</div>' +
-        '<div class="fb-slider-stage">' +
+        '<div class="fb-slider-stage is-media-loading">' +
             arrowsHtml +
-            "<img class='fb-slider-image' src='" + window.escapeHTML(currentUrl) + "' alt='Screenshot' onclick='event.stopPropagation();' onerror=\"this.onerror=null;this.style.display='none';var fb=this.parentNode.querySelector('.fb-slider-fallback');if(fb)fb.style.display='flex';\">" +
+            "<img class='fb-slider-image' src='" + window.escapeHTML(currentUrl) + "' alt='Screenshot' onclick='event.stopPropagation();' onload='feedbackOnImageLoad(this)' onerror='feedbackOnImageError(this)'>" +
             '<div class="fb-slider-fallback" style="display:none;"><span class="fb-slider-fallback-icon">🖼️</span><span>' + unavailable + '</span></div>' +
         '</div>' +
         '<div class="fb-slider-bottom">' +

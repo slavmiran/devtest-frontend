@@ -500,6 +500,33 @@
 }
 
 /* Claim Grant Button */
+.extension-open-btn {
+    flex: 0 0 42px;
+    padding: 0;
+    min-width: 42px;
+}
+
+.extension-open-btn__icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+    background-color: currentColor;
+    -webkit-mask: url('../images/Icons/play.svg') no-repeat center / contain;
+    mask: url('../images/Icons/play.svg') no-repeat center / contain;
+}
+
+.extension-checkin-row .split-btn-group,
+.extension-checkin-row .split-btn-main {
+    min-width: 0;
+}
+
+#tab-tests .extension-checkin-row .split-btn-group .split-btn-main {
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: clamp(11px, 3.2vw, 14px);
+    white-space: nowrap;
+}
+
 .btn-claim-grant {
     display: flex;
     align-items: center;

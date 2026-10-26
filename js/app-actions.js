@@ -5709,13 +5709,22 @@ async function claimGrant(progressId, appId) {
                 return Number(item.id) !== Number(appId);
             });
         }
-        if (btn) btn.style.display = 'none';
         persistTestsCacheSnapshot();
         const grantCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
-        if (grantCard && grantCard.parentNode) {
+        if (!isActive && grantCard && grantCard.parentNode) {
             await animateTestCardOut(grantCard);
         }
         if (window.renderTests) window.renderTests(true);
+        if (isActive) {
+            const actions = document.getElementById('actions-' + appId);
+            if (actions && typeof actions.animate === 'function'
+                && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+                actions.animate([
+                    { opacity: 0.4, transform: 'translateY(4px)' },
+                    { opacity: 1, transform: 'translateY(0)' },
+                ], { duration: 260, easing: 'ease-out' });
+            }
+        }
         loadProjects(true);
     } catch (error) {
         console.error('Claim grant error:', error);

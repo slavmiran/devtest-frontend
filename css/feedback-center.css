@@ -529,6 +529,30 @@
 }
 .fb-slider-fallback-icon { font-size: 40px; opacity: 0.6; }
 
+.fb-media-thumb.is-media-loading::before,
+.fb-slider-stage.is-media-loading::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(142, 142, 147, 0.25);
+    border-top-color: var(--button-color, #5288c1);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: feedbackMediaSpin 0.8s linear infinite;
+}
+
+@keyframes feedbackMediaSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fb-media-thumb.is-media-loading::before,
+    .fb-slider-stage.is-media-loading::before { animation: none; }
+}
+
 .fb-slider-bottom {
     flex-shrink: 0;
     padding: 8px 16px max(14px, env(safe-area-inset-bottom));
