@@ -9756,15 +9756,20 @@ function renderMassInviteModalContent(renderOpts) {
         sliderBlockHtml = `<div class="mi-zero-quota">${window.escapeHTML(window.t('massInviteUnavailableNote', {}, lang))}</div>`;
     }
 
+    const quotaTitleKey = !quote
+        ? 'massInviteAccQuotaTitlePending'
+        : (relTier.key === 'newbie' ? 'massInviteAccQuotaTitleAvailable' : 'massInviteAccQuotaTitleEarned');
     const quotaAccordionHtml = `
         <details class="mi-accordion" id="mi-acc-quota">
-            <summary class="mi-accordion-summary">
-                <span class="mi-accordion-title">🛡 ${window.escapeHTML(window.t('massInviteAccQuotaTitle', { count: quote ? freeQuota : '…' }, lang))}</span>
+            <summary class="mi-accordion-summary mi-accordion-summary--stacked">
+                <span class="mi-accordion-head-row">
+                    <span class="mi-accordion-title">🛡 ${window.escapeHTML(window.t(quotaTitleKey, { count: quote ? freeQuota : '…' }, lang))}</span>
+                    <span class="mi-accordion-chevron" aria-hidden="true">▾</span>
+                </span>
                 <span class="mi-accordion-chips">
                     <span class="mi-mini-chip">${window.escapeHTML(window.t('massInviteAccQuotaChipRel', { val: baseVal }, lang))}</span>
                     <span class="mi-mini-chip">${window.escapeHTML(window.t('massInviteAccQuotaChipKarma', { val: signed(karmaModVal) }, lang))}</span>
                     <span class="mi-mini-chip">${window.escapeHTML(window.t('massInviteAccQuotaChipContrib', { val: signed(contribModVal) }, lang))}</span>
-                    <span class="mi-accordion-chevron" aria-hidden="true">▾</span>
                 </span>
             </summary>
             <div class="mi-accordion-body">

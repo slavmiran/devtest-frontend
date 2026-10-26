@@ -1151,6 +1151,20 @@
     display: none;
 }
 
+.mi-accordion-summary--stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.mi-accordion-head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
 .mi-accordion-title {
     font-size: 12.5px;
     font-weight: 700;
@@ -1166,6 +1180,11 @@
     justify-content: flex-end;
     gap: 4px;
     flex-shrink: 0;
+}
+
+.mi-accordion-summary--stacked .mi-accordion-chips {
+    justify-content: flex-start;
+    flex-shrink: 1;
 }
 
 .mi-mini-chip {
@@ -1381,7 +1400,7 @@
 }
 
 @media (max-width: 380px) {
-    .mi-accordion-chips .mi-mini-chip {
+    .mi-accordion-summary:not(.mi-accordion-summary--stacked) .mi-accordion-chips .mi-mini-chip {
         display: none;
     }
 }
