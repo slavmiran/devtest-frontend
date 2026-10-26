@@ -3053,6 +3053,9 @@ function _finishMassInviteFromSnapshot(projectId, snapshot) {
     var project = (typeof myProjects !== 'undefined' && myProjects)
         ? myProjects.find(function (item) { return Number(item.id) === Number(projectId); })
         : null;
+    if (typeof window.invalidateMassInvitePlanCache === 'function') {
+        window.invalidateMassInvitePlanCache(projectId);
+    }
     if (project && successCount > 0) {
         project.last_mass_invite_at = snap.last_mass_invite_at || project.last_mass_invite_at || new Date().toISOString();
         project.last_mass_invite_sent_count = successCount;

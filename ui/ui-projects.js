@@ -9031,6 +9031,10 @@ function openAttractTestersSheet(projectId) {
         }).catch(function () {});
     }
 
+    if (typeof prefetchMassInvitePlan === 'function') {
+        prefetchMassInvitePlan(projectId);
+    }
+
     loadVisibleGuaranteedOrders(false).then(function (orders) {
         if (!overlay.classList.contains('is-active')) return;
         if (overlay.getAttribute('data-project-id') !== String(projectId)) return;
@@ -9311,6 +9315,40 @@ async function refreshMassInviteSessionQuietly(projectId) {
 var _massInviteQuote = null;
 var _massInviteQuoteLoading = false;
 var _massInviteQuoteToken = 0;
+var massInvitePlanCache = {};
+var _massInviteInflightByProject = {};
+var _massInviteDraftLimits = {};
+var _massInviteSelectedCounts = {};
+var _massInviteLimitSaving = false;
+var MASS_INVITE_CACHE_TTL_MS = 90 * 1000;
+
+function getCachedMassInvitePlan(projectId) {
+    var entry = massInvitePlanCache[Number(projectId)];
+    if (!entry || !entry.data) return null;
+    return entry;
+}
+
+function isMassInvitePlanFresh(projectId) {
+    var entry = getCachedMassInvitePlan(projectId);
+    if (!entry) return false;
+    return (Date.now() - Number(entry.fetchedAt || 0)) < MASS_INVITE_CACHE_TTL_MS;
+}
+
+function _recomputePlanWithLocalLimit(plan, limitMutual) {
+    if (!plan) return plan;
+    var active = Math.max(0, Number(plan.active_mutual_testers || 0));
+    var limit = Math.max(1, Number(limitMutual || plan.limit_mutual || 12));
+    var needed = Math.max(0, limit - active);
+    var pool = Math.max(0, Number(plan.pool_size || 0));
+    var free = Math.max(0, Number(plan.free_quota || 0));
+    var recommended = (pool > 0 && needed > 0 && free > 0)
+        ? Math.min(free, needed * 2, pool)
+        : 0;
+    plan.limit_mutual = limit;
+    plan.needed_slots = needed;
+    plan.recommended_count = recommended;
+    return plan;
+}
 
 function massInviteExtraCost(paidCount) {
     var cost = 0;
@@ -9321,35 +9359,78 @@ function massInviteExtraCost(paidCount) {
     return cost;
 }
 
+function _captureMassInviteAccordionState() {
+    var state = {};
+    ['mi-acc-quota', 'mi-acc-pool', 'mi-acc-slots', 'mi-session-details'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) state[id] = !!el.open;
+    });
+    return state;
+}
+
+function _restoreMassInviteAccordionState(state) {
+    if (!state) return;
+    Object.keys(state).forEach(function(id) {
+        if (!state[id]) return;
+        var el = document.getElementById(id);
+        if (el) el.open = true;
+    });
+}
+
 function syncMassInviteRecipientUi() {
+    var projectId = Number(_massInviteProjectId || 0);
+    var entry = getCachedMassInvitePlan(projectId);
+    var quote = (entry && entry.data) || (_massInviteQuote && Number(_massInviteQuote.app_id) === projectId ? _massInviteQuote : null);
     var range = document.getElementById('mi-recipient-range');
-    var quote = _massInviteQuote;
-    if (!range || !quote) return;
-    var count = Number(range.value || 0);
-    var free = Number(quote.free_quota || 0);
+    if (!quote) return;
+
+    var pool = Math.max(0, Number(quote.pool_size || 0));
+    var free = Math.max(0, Number(quote.free_quota || 0));
+    var count = range ? Math.max(0, Number(range.value || 0)) : Math.max(0, Number(_massInviteSelectedCounts[projectId] != null ? _massInviteSelectedCounts[projectId] : (quote.recommended_count || 0)));
+    if (pool <= 0) count = 0;
+    _massInviteSelectedCounts[projectId] = count;
+
     var paid = Math.max(0, count - free);
     var cost = massInviteExtraCost(paid);
-    var countEl = document.getElementById('mi-recipient-count');
-    if (countEl) countEl.textContent = String(count);
+
+    var counterEl = document.getElementById('mi-recipient-counter');
+    if (counterEl) {
+        counterEl.textContent = window.t('massInviteRecipientsCounter', { selected: count, eligible: pool }, lang);
+    }
+    var heroSendVal = document.getElementById('mi-hero-send-val');
+    if (heroSendVal) heroSendVal.textContent = String(count);
+    var heroSendSub = document.getElementById('mi-hero-send-sub');
+    if (heroSendSub) {
+        heroSendSub.textContent = cost > 0
+            ? window.t('massInviteHeroSendSubPaid', { cost: cost }, lang)
+            : window.t('massInviteHeroSendSubFree', {}, lang);
+    }
     var paidEl = document.getElementById('mi-paid-note');
     if (paidEl) {
         paidEl.hidden = paid <= 0;
         paidEl.textContent = paid > 0
-            ? window.t('massInvitePaidNote', { paid: paid, cost: cost }, lang)
+            ? window.t('massInvitePaidBanner', { paid: paid, cost: cost }, lang)
             : '';
     }
     var btn = document.getElementById('mass-invite-btn');
-    if (btn && !btn.disabled && !btn.classList.contains('is-disabled')) {
-        btn.textContent = paid > 0
-            ? window.t('massInviteLaunchPaidBtn', { cost: cost }, lang)
-            : window.t('massInviteLaunchBtn', {}, lang);
+    if (btn && !btn.getAttribute('data-hard-disabled')) {
+        if (count <= 0 || pool <= 0) {
+            btn.disabled = true;
+            btn.classList.add('is-disabled');
+            btn.textContent = window.t('massInviteUnavailableBtn', {}, lang);
+        } else {
+            btn.disabled = false;
+            btn.classList.remove('is-disabled');
+            btn.textContent = cost > 0
+                ? window.t('massInviteLaunchPaidCountBtn', { count: count, cost: cost }, lang)
+                : window.t('massInviteLaunchCountBtn', { count: count }, lang);
+        }
     }
 }
 
 function toggleMassInvitePoolInfo() {
-    var panel = document.getElementById('mi-pool-info');
-    if (!panel) return;
-    panel.hidden = !panel.hidden;
+    var acc = document.getElementById('mi-acc-pool');
+    if (acc) acc.open = !acc.open;
 }
 
 function openShowcaseFromMassInvite() {
@@ -9360,44 +9441,121 @@ function openShowcaseFromMassInvite() {
 function currentMassInviteRecipientCount() {
     var range = document.getElementById('mi-recipient-range');
     if (range) return Math.max(0, Number(range.value || 0));
-    return Math.max(0, Number(_massInviteQuote && _massInviteQuote.recommended_count || 0));
+    var projectId = Number(_massInviteProjectId || 0);
+    if (projectId && _massInviteSelectedCounts[projectId] != null) {
+        return Math.max(0, Number(_massInviteSelectedCounts[projectId] || 0));
+    }
+    var entry = getCachedMassInvitePlan(projectId);
+    var quote = (entry && entry.data) || _massInviteQuote;
+    return Math.max(0, Number(quote && quote.recommended_count || 0));
 }
 
-async function loadMassInviteQuote(projectId) {
-    if (!projectId || typeof API_BASE === 'undefined') return null;
+async function fetchAndCacheMassInvitePlan(projectId, options) {
+    var id = Number(projectId || 0);
+    if (!id || typeof API_BASE === 'undefined') return null;
+    var opts = options || {};
+    if (!opts.force && _massInviteInflightByProject[id]) {
+        return _massInviteInflightByProject[id];
+    }
     var token = ++_massInviteQuoteToken;
     _massInviteQuoteLoading = true;
-    try {
-        var response = await fetch(API_BASE + '/projects/' + Number(projectId) + '/mass_invite/plan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(withInitData({})),
-        });
-        var data = await response.json();
-        if (token !== _massInviteQuoteToken) return null;
-        if (!response.ok || data.status !== 'success') {
+    var promise = (async function() {
+        try {
+            var response = await fetch(API_BASE + '/projects/' + id + '/mass_invite/plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(withInitData({})),
+            });
+            var data = await response.json();
+            if (!response.ok || !data || data.status !== 'success') {
+                return null;
+            }
+            data.app_id = id;
+            massInvitePlanCache[id] = {
+                data: data,
+                fetchedAt: Date.now(),
+            };
+            _massInviteQuote = data;
+            if (_massInviteDraftLimits[id] == null && data.limit_mutual != null) {
+                _massInviteDraftLimits[id] = Math.max(1, Number(data.limit_mutual || 12));
+            }
+            if (Number(_massInviteProjectId) === id) {
+                var openState = _captureMassInviteAccordionState();
+                renderMassInviteModalContent({ preserveAccordions: openState });
+            }
+            return data;
+        } catch (error) {
+            console.warn('Mass invite quote failed', error);
             return null;
+        } finally {
+            if (token === _massInviteQuoteToken) _massInviteQuoteLoading = false;
+            delete _massInviteInflightByProject[id];
         }
-        data.app_id = Number(projectId);
-        _massInviteQuote = data;
-        if (Number(_massInviteProjectId) === Number(projectId)) renderMassInviteModalContent();
-        return data;
-    } catch (error) {
-        console.warn('Mass invite quote failed', error);
-        return null;
-    } finally {
-        if (token === _massInviteQuoteToken) _massInviteQuoteLoading = false;
-    }
+    })();
+    _massInviteInflightByProject[id] = promise;
+    return promise;
 }
 
-async function setMassInviteLimit(projectId, nextLimit) {
-    var project = (myProjects || []).find(function(item) { return Number(item.id) === Number(projectId); });
+function prefetchMassInvitePlan(projectId) {
+    var id = Number(projectId || 0);
+    if (!id) return null;
+    if (isMassInvitePlanFresh(id)) return Promise.resolve(massInvitePlanCache[id].data);
+    return fetchAndCacheMassInvitePlan(id, { silent: true });
+}
+
+async function loadMassInviteQuote(projectId, options) {
+    return fetchAndCacheMassInvitePlan(projectId, options);
+}
+
+function adjustMassInviteLimitDraft(projectId, delta, exactValue) {
+    var id = Number(projectId || 0);
+    var project = (myProjects || []).find(function(item) { return Number(item.id) === id; });
     if (!project) return;
-    var quote = _massInviteQuote && Number(_massInviteQuote.app_id) === Number(projectId) ? _massInviteQuote : null;
-    var active = Math.max(0, Number((quote && quote.active_mutual_testers) || getProjectMassInviteMeta(project).activeMutualTesters || 0));
-    var limit = Math.max(Math.max(1, active), Math.min(100, Number(nextLimit) || 0));
+    var entry = getCachedMassInvitePlan(id);
+    var quote = (entry && entry.data) || (_massInviteQuote && Number(_massInviteQuote.app_id) === id ? _massInviteQuote : null);
+    var savedLimit = Math.max(1, Number((quote && quote.limit_mutual) || project.limit_mutual || 12));
+    var active = Math.max(0, Number((quote && quote.active_mutual_testers) != null ? quote.active_mutual_testers : getProjectMassInviteMeta(project).activeMutualTesters || 0));
+    var currentDraft = _massInviteDraftLimits[id] != null ? Number(_massInviteDraftLimits[id]) : savedLimit;
+    var next = exactValue != null ? Number(exactValue) : (currentDraft + Number(delta || 0));
+    var clamped = Math.max(Math.max(1, active), Math.min(100, next || 1));
+    _massInviteDraftLimits[id] = clamped;
+
+    var valEl = document.getElementById('mi-slot-draft-value');
+    if (valEl) valEl.textContent = String(clamped);
+    var minusBtn = document.getElementById('mi-slot-step-minus');
+    if (minusBtn) minusBtn.disabled = clamped <= Math.max(1, active);
+    var plusBtn = document.getElementById('mi-slot-step-plus');
+    if (plusBtn) plusBtn.disabled = clamped >= 100;
+    var recChip = document.getElementById('mi-slot-recommend-chip');
+    if (recChip) recChip.hidden = !(clamped < 20 && active <= 20);
+    var applyBtn = document.getElementById('mi-slot-apply-btn');
+    if (applyBtn) {
+        applyBtn.hidden = clamped === savedLimit;
+        applyBtn.disabled = _massInviteLimitSaving || clamped === savedLimit;
+    }
+    var accSlots = document.getElementById('mi-acc-slots');
+    if (accSlots && !accSlots.open) accSlots.open = true;
+}
+
+async function applyMassInviteLimitDraft(projectId) {
+    var id = Number(projectId || 0);
+    var project = (myProjects || []).find(function(item) { return Number(item.id) === id; });
+    if (!project || _massInviteLimitSaving) return;
+    var entry = getCachedMassInvitePlan(id);
+    var quote = (entry && entry.data) || (_massInviteQuote && Number(_massInviteQuote.app_id) === id ? _massInviteQuote : null);
+    var savedLimit = Math.max(1, Number((quote && quote.limit_mutual) || project.limit_mutual || 12));
+    var active = Math.max(0, Number((quote && quote.active_mutual_testers) != null ? quote.active_mutual_testers : getProjectMassInviteMeta(project).activeMutualTesters || 0));
+    var limit = Math.max(Math.max(1, active), Math.min(100, Number(_massInviteDraftLimits[id] != null ? _massInviteDraftLimits[id] : savedLimit)));
+    if (limit === savedLimit) return;
+
+    _massInviteLimitSaving = true;
+    var applyBtn = document.getElementById('mi-slot-apply-btn');
+    if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.textContent = window.t('massInviteSlotsSavingBtn', {}, lang);
+    }
     try {
-        var response = await fetch(API_BASE + '/projects/' + Number(projectId), {
+        var response = await fetch(API_BASE + '/projects/' + id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(withInitData({ limit_mutual: limit })),
@@ -9408,40 +9566,313 @@ async function setMassInviteLimit(projectId, nextLimit) {
             return;
         }
         project.limit_mutual = limit;
-        _massInviteQuote = null;
-        renderMassInviteModalContent();
+        _massInviteDraftLimits[id] = limit;
+        if (quote) {
+            _recomputePlanWithLocalLimit(quote, limit);
+            delete _massInviteSelectedCounts[id];
+        }
+        var openState = _captureMassInviteAccordionState();
+        openState['mi-acc-slots'] = true;
+        renderMassInviteModalContent({ preserveAccordions: openState });
+        if (typeof renderProjects === 'function') renderProjects(true);
+        if (typeof showToast === 'function') {
+            showToast(window.t('massInviteSlotsUpdatedToast', { limit: limit }, lang));
+        }
+        fetchAndCacheMassInvitePlan(id, { force: true, silent: true });
     } catch (error) {
         console.warn('Mass invite slot update failed', error);
         if (typeof showToast === 'function') showToast(getApiErrorMessage(error && error.message, 'networkError'));
+    } finally {
+        _massInviteLimitSaving = false;
+        var currentBtn = document.getElementById('mi-slot-apply-btn');
+        if (currentBtn) {
+            currentBtn.disabled = false;
+            currentBtn.textContent = window.t('massInviteSlotsUpdateBtn', {}, lang);
+        }
     }
 }
 
-function renderMassInviteModalContent() {
+async function setMassInviteLimit(projectId, nextLimit) {
+    adjustMassInviteLimitDraft(projectId, 0, nextLimit);
+    await applyMassInviteLimitDraft(projectId);
+}
+
+function _resolveMassInviteReliabilityTier(senderQuota) {
+    var sq = senderQuota || {};
+    var isNewbie = sq.is_newbie !== false && sq.reliability_index == null;
+    if (isNewbie) return { key: 'newbie', statusLabel: window.t('massInviteRelStatusNewbie', {}, lang), displayVal: window.t('massInviteRelStatusNewbie', {}, lang) };
+    var idx = Math.round(Number(sq.reliability_index || 0));
+    if (idx <= 0) return { key: 'zero', statusLabel: window.t('massInviteRelStatusZero', {}, lang), displayVal: '0% (' + window.t('massInviteRelStatusZero', {}, lang) + ')' };
+    if (idx < 40) return { key: 'bad', statusLabel: window.t('massInviteRelStatusBad', {}, lang), displayVal: idx + '% (' + window.t('massInviteRelStatusBad', {}, lang) + ')' };
+    if (idx < 65) return { key: 'basic', statusLabel: window.t('massInviteRelStatusBasic', {}, lang), displayVal: idx + '% (' + window.t('massInviteRelStatusBasic', {}, lang) + ')' };
+    if (idx < 85) return { key: 'active', statusLabel: window.t('massInviteRelStatusActive', {}, lang), displayVal: idx + '% (' + window.t('massInviteRelStatusActive', {}, lang) + ')' };
+    return { key: 'expert', statusLabel: window.t('massInviteRelStatusExpert', {}, lang), displayVal: idx + '% (' + window.t('massInviteRelStatusExpert', {}, lang) + ')' };
+}
+
+function renderMassInviteModalContent(renderOpts) {
     const modalBody = document.getElementById('mass-invite-modal-body');
     if (!modalBody || !_massInviteProjectId) return;
 
     const project = myProjects.find((p) => p.id === _massInviteProjectId);
     if (!project) return;
+    const opts = renderOpts || {};
+    const preservedAccordions = opts.preserveAccordions || _captureMassInviteAccordionState();
 
     const isIsolated = getProjectVisibilityMeta(project).mode === 'isolated';
     const massInviteMeta = getProjectMassInviteMeta(project);
     const session = _getMassInviteSessionForProject(project.id, project);
 
-    let launchBtnLabel = window.t('massInviteLaunchBtn', {}, lang);
+    const cachedEntry = getCachedMassInvitePlan(project.id);
+    const quote = (cachedEntry && cachedEntry.data)
+        || (_massInviteQuote && Number(_massInviteQuote.app_id) === Number(project.id) ? _massInviteQuote : null);
+
+    if (!isIsolated && (!quote || !isMassInvitePlanFresh(project.id)) && !_massInviteInflightByProject[Number(project.id)]) {
+        fetchAndCacheMassInvitePlan(project.id, { silent: !!quote });
+    }
+
+    const senderQuota = (quote && quote.sender_quota) || {};
+    const activeSlots = quote && quote.active_mutual_testers != null
+        ? Math.max(0, Number(quote.active_mutual_testers || 0))
+        : massInviteMeta.activeMutualTesters;
+    const savedLimitSlots = Math.max(1, Number((quote && quote.limit_mutual) || project.limit_mutual || 12));
+    if (_massInviteDraftLimits[project.id] == null) {
+        _massInviteDraftLimits[project.id] = savedLimitSlots;
+    }
+    const draftLimitSlots = Math.max(Math.max(1, activeSlots), Number(_massInviteDraftLimits[project.id] || savedLimitSlots));
+    const neededSlots = Math.max(0, savedLimitSlots - activeSlots);
+    const isSlotAvailable = massInviteMeta.isEligibleMode && neededSlots > 0;
+
+    const poolSize = quote ? Math.max(0, Number(quote.pool_size || 0)) : 0;
+    const freeQuota = quote ? Math.max(0, Number(quote.free_quota || 0)) : 24;
+    const recommended = quote
+        ? Math.max(0, Number(quote.recommended_count || 0))
+        : Math.min(freeQuota, Math.max(0, neededSlots * 2));
+    const sliderMax = poolSize;
+    let selectedCount = 0;
+    if (quote && sliderMax > 0 && neededSlots > 0) {
+        if (_massInviteSelectedCounts[project.id] != null) {
+            selectedCount = Math.max(1, Math.min(sliderMax, Number(_massInviteSelectedCounts[project.id]) || 1));
+        } else {
+            selectedCount = recommended > 0 ? recommended : 1;
+        }
+        _massInviteSelectedCounts[project.id] = selectedCount;
+    }
+    const paidExtra = Math.max(0, selectedCount - freeQuota);
+    const paidCost = massInviteExtraCost(paidExtra);
+
+    const poolMode = String((quote && quote.pool_mode) || senderQuota.pool_mode || 'priority');
+    const karmaIcon = typeof window.karmaIconHtml === 'function'
+        ? window.karmaIconHtml('karma-yin-icon--inline')
+        : '☯️';
+    const signed = function(value) {
+        var number = Number(value || 0);
+        return (number > 0 ? '+' : '') + String(number);
+    };
+
+    const baseVal = quote ? Number(senderQuota.base != null ? senderQuota.base : 24) : 24;
+    const karmaModVal = quote ? Number(senderQuota.karma_mod || 0) : 0;
+    const contribModVal = quote ? Number(senderQuota.contribution_mod || 0) : 0;
+    const userKarmaVal = quote && senderQuota.karma != null ? Number(senderQuota.karma) : Number((window.App && window.App.userKarma) || 0);
+    const userContribVal = quote && senderQuota.contribution_score != null ? Number(senderQuota.contribution_score) : 0;
+    const relTier = _resolveMassInviteReliabilityTier(quote ? senderQuota : { is_newbie: true, reliability_index: null });
+
+    const tierRows = [
+        { key: 'newbie', label: window.t('massInviteTierNewbie', {}, lang), places: 24 },
+        { key: 'zero', label: window.t('massInviteTierZero', {}, lang), places: 7 },
+        { key: 'bad', label: window.t('massInviteTierBad', {}, lang), places: 12 },
+        { key: 'basic', label: window.t('massInviteTierBasic', {}, lang), places: 18 },
+        { key: 'active', label: window.t('massInviteTierActive', {}, lang), places: 24 },
+        { key: 'expert', label: window.t('massInviteTierExpert', {}, lang), places: 32 },
+    ].map(function(tier) {
+        var isCurrent = tier.key === relTier.key;
+        return `
+            <div class="mi-tier-row${isCurrent ? ' is-current' : ''}">
+                <span class="mi-tier-name"><span class="mi-tier-dot">${isCurrent ? '●' : '○'}</span>${window.escapeHTML(tier.label)}</span>
+                <b class="mi-tier-places">${window.escapeHTML(window.t('massInviteTierPlaces', { count: tier.places }, lang))}</b>
+            </div>
+        `;
+    }).join('');
+
+    const heroEligibleDisplay = quote ? String(poolSize) : '…';
+    const heroQuotaDisplay = quote ? String(freeQuota) : '…';
+    const heroSendDisplay = quote ? String(selectedCount) : '…';
+    const heroSendSub = !quote
+        ? window.t('massInviteQuoteLoading', {}, lang)
+        : (paidCost > 0
+            ? window.t('massInviteHeroSendSubPaid', { cost: paidCost }, lang)
+            : window.t('massInviteHeroSendSubFree', {}, lang));
+
+    const heroHtml = `
+        <div class="mi-hero-grid">
+            <div class="mi-hero-card">
+                <div class="mi-hero-label">${window.escapeHTML(window.t('massInviteHeroEligibleLabel', {}, lang))}</div>
+                <div class="mi-hero-value" id="mi-hero-eligible-val">${window.escapeHTML(heroEligibleDisplay)}</div>
+                <div class="mi-hero-sub">${window.escapeHTML(window.t('massInviteHeroEligibleSub', {}, lang))}</div>
+            </div>
+            <div class="mi-hero-card">
+                <div class="mi-hero-label">${window.escapeHTML(window.t('massInviteHeroQuotaLabel', {}, lang))}</div>
+                <div class="mi-hero-value" id="mi-hero-quota-val">${window.escapeHTML(heroQuotaDisplay)}</div>
+                <div class="mi-hero-sub">${window.escapeHTML(window.t('massInviteHeroQuotaSub', {}, lang))}</div>
+            </div>
+            <div class="mi-hero-card is-accent">
+                <div class="mi-hero-label">${window.escapeHTML(window.t('massInviteHeroSendLabel', {}, lang))}</div>
+                <div class="mi-hero-value" id="mi-hero-send-val">${window.escapeHTML(heroSendDisplay)}</div>
+                <div class="mi-hero-sub" id="mi-hero-send-sub">${window.escapeHTML(heroSendSub)}</div>
+            </div>
+        </div>
+    `;
+
+    let sliderBlockHtml = '';
+    if (!isIsolated && isSlotAvailable) {
+        const rangeDisabled = !quote || sliderMax <= 1;
+        const rangeMin = sliderMax > 0 ? 1 : 0;
+        const rangeMax = sliderMax > 0 ? sliderMax : 1;
+        const rangeVal = sliderMax > 0 ? selectedCount : 0;
+        const counterText = quote
+            ? window.t('massInviteRecipientsCounter', { selected: selectedCount, eligible: poolSize }, lang)
+            : '…';
+        let subHintHtml = '';
+        if (quote && poolSize === 0) {
+            subHintHtml = `<div class="mi-slider-hint">${window.escapeHTML(window.t('massInviteNoPool', {}, lang))}</div>`;
+        } else if (quote && poolSize === 1) {
+            subHintHtml = `<div class="mi-slider-hint">${window.escapeHTML(window.t('massInviteSingleCandidateHint', {}, lang))}</div>`;
+        }
+        const zeroQuotaBanner = quote && freeQuota === 0
+            ? `<div class="mi-zero-quota">${window.escapeHTML(window.t('massInviteZeroQuota', {}, lang))}</div>`
+            : '';
+        sliderBlockHtml = `
+            <div class="mi-slider-card">
+                <div class="mi-slider-head">
+                    <label class="mi-recipient-label" for="mi-recipient-range">${window.escapeHTML(window.t('massInviteRecipientsTitle', {}, lang))}</label>
+                    <b class="mi-recipient-counter" id="mi-recipient-counter">${window.escapeHTML(counterText)}</b>
+                </div>
+                <input id="mi-recipient-range" class="mi-recipient-range" type="range" min="${rangeMin}" max="${rangeMax}" value="${rangeVal}" ${rangeDisabled ? 'disabled' : ''} oninput="syncMassInviteRecipientUi()">
+                ${subHintHtml}
+                <div id="mi-paid-note" class="mi-paid-note" ${paidExtra > 0 ? '' : 'hidden'}>${paidExtra > 0 ? window.escapeHTML(window.t('massInvitePaidBanner', { paid: paidExtra, cost: paidCost }, lang)) : ''}</div>
+                ${zeroQuotaBanner}
+            </div>
+        `;
+    } else if (!isIsolated && !isSlotAvailable) {
+        sliderBlockHtml = `<div class="mi-zero-quota">${window.escapeHTML(window.t('massInviteUnavailableNote', {}, lang))}</div>`;
+    }
+
+    const quotaAccordionHtml = `
+        <details class="mi-accordion" id="mi-acc-quota">
+            <summary class="mi-accordion-summary">
+                <span class="mi-accordion-title">🛡 ${window.escapeHTML(window.t('massInviteAccQuotaTitle', { count: quote ? freeQuota : '…' }, lang))}</span>
+                <span class="mi-accordion-chips">
+                    <span class="mi-mini-chip">${window.escapeHTML(window.t('massInviteAccQuotaChipRel', { val: baseVal }, lang))}</span>
+                    <span class="mi-mini-chip">${window.escapeHTML(window.t('massInviteAccQuotaChipKarma', { val: signed(karmaModVal) }, lang))}</span>
+                    <span class="mi-mini-chip">${window.escapeHTML(window.t('massInviteAccQuotaChipContrib', { val: signed(contribModVal) }, lang))}</span>
+                    <span class="mi-accordion-chevron" aria-hidden="true">▾</span>
+                </span>
+            </summary>
+            <div class="mi-accordion-body">
+                <div class="mi-quota-detail-list">
+                    <div class="mi-quota-detail-row">
+                        <div class="mi-quota-detail-main">🛡 ${window.escapeHTML(window.t('massInviteQuotaRowRel', { val: relTier.displayVal }, lang))}</div>
+                        <b class="mi-quota-detail-val">${window.escapeHTML(window.t('massInviteQuotaRowRelTarget', { base: baseVal }, lang))}</b>
+                    </div>
+                    <div class="mi-quota-detail-row">
+                        <div>
+                            <div class="mi-quota-detail-main">${karmaIcon} ${window.escapeHTML(window.t('massInviteQuotaRowKarma', { val: (userKarmaVal > 0 ? '+' : '') + userKarmaVal }, lang))}</div>
+                            <div class="mi-quota-detail-hint">${window.escapeHTML(window.t('massInviteQuotaRowKarmaHint', {}, lang))}</div>
+                        </div>
+                        <b class="mi-quota-detail-val">${window.escapeHTML(window.t('massInviteQuotaRowKarmaTarget', { mod: signed(karmaModVal) }, lang))}</b>
+                    </div>
+                    <div class="mi-quota-detail-row">
+                        <div>
+                            <div class="mi-quota-detail-main">⚡️ ${window.escapeHTML(window.t('massInviteQuotaRowContrib', { val: userContribVal }, lang))}</div>
+                            <div class="mi-quota-detail-hint">${window.escapeHTML(window.t('massInviteQuotaRowContribHint', {}, lang))}</div>
+                        </div>
+                        <b class="mi-quota-detail-val">${window.escapeHTML(window.t('massInviteQuotaRowContribTarget', { mod: signed(contribModVal) }, lang))}</b>
+                    </div>
+                </div>
+                <div class="mi-tier-table">
+                    <div class="mi-tier-table-title">${window.escapeHTML(window.t('massInviteTierTableTitle', {}, lang))}</div>
+                    ${tierRows}
+                </div>
+            </div>
+        </details>
+    `;
+
+    const isPriorityPool = poolMode === 'priority';
+    const poolSummaryLabel = isPriorityPool
+        ? window.t('massInviteAccPoolPriority', {}, lang)
+        : window.t('massInviteAccPoolBasic', {}, lang);
+    const currentPoolBulletTitle = isPriorityPool
+        ? window.t('massInvitePoolBulletCurrentPriorityTitle', {}, lang)
+        : window.t('massInvitePoolBulletCurrentBasicTitle', {}, lang);
+    const currentPoolBulletBody = isPriorityPool
+        ? window.t('massInvitePoolBulletCurrentPriorityBody', {}, lang)
+        : window.t('massInvitePoolBulletCurrentBasicBody', {}, lang);
+
+    const poolAccordionHtml = `
+        <details class="mi-accordion" id="mi-acc-pool">
+            <summary class="mi-accordion-summary">
+                <span class="mi-accordion-title">🎯 ${window.escapeHTML(poolSummaryLabel)}</span>
+                <span class="mi-accordion-chips">
+                    <span class="mi-info-mark" aria-hidden="true">ⓘ</span>
+                    <span class="mi-accordion-chevron" aria-hidden="true">▾</span>
+                </span>
+            </summary>
+            <div class="mi-accordion-body">
+                <ul class="mi-pool-bullets">
+                    <li><b>${window.escapeHTML(window.t('massInvitePoolBulletLiveTitle', {}, lang))}</b> ${window.escapeHTML(window.t('massInvitePoolBulletLiveBody', {}, lang))}</li>
+                    <li><b>${window.escapeHTML(currentPoolBulletTitle)}</b> ${window.escapeHTML(currentPoolBulletBody)}</li>
+                    <li><b>${window.escapeHTML(window.t('massInvitePoolBulletUpgradeTitle', {}, lang))}</b> ${window.escapeHTML(window.t('massInvitePoolBulletUpgradeBody', {}, lang))}</li>
+                </ul>
+            </div>
+        </details>
+    `;
+
+    const isDirtyLimit = draftLimitSlots !== savedLimitSlots;
+    const slotsAccordionHtml = `
+        <details class="mi-accordion" id="mi-acc-slots">
+            <summary class="mi-accordion-summary">
+                <span class="mi-accordion-title">👥 ${window.escapeHTML(window.t('massInviteAccSlotsSummary', { active: activeSlots, limit: savedLimitSlots }, lang))}</span>
+                <span class="mi-accordion-chips">
+                    <span class="mi-slot-edit-pill">${window.escapeHTML(window.t('massInviteAccSlotsChangeBtn', {}, lang))} ▾</span>
+                </span>
+            </summary>
+            <div class="mi-accordion-body">
+                <div class="mi-slots-controls">
+                    <button type="button" id="mi-slot-step-minus" class="mi-slot-step" onclick="adjustMassInviteLimitDraft(${project.id}, -1)" ${draftLimitSlots <= Math.max(1, activeSlots) ? 'disabled' : ''} aria-label="-">−</button>
+                    <b class="mi-slot-value" id="mi-slot-draft-value">${draftLimitSlots}</b>
+                    <button type="button" id="mi-slot-step-plus" class="mi-slot-step" onclick="adjustMassInviteLimitDraft(${project.id}, 1)" ${draftLimitSlots >= 100 ? 'disabled' : ''} aria-label="+">+</button>
+                    <button type="button" id="mi-slot-recommend-chip" class="mi-slot-chip" onclick="adjustMassInviteLimitDraft(${project.id}, 0, 20)" ${(draftLimitSlots < 20 && activeSlots <= 20) ? '' : 'hidden'}>✨ ${window.escapeHTML(window.t('massInviteSlotsRecommend', {}, lang))}</button>
+                    <button type="button" id="mi-slot-apply-btn" class="mi-slot-apply-btn" onclick="applyMassInviteLimitDraft(${project.id})" ${isDirtyLimit ? '' : 'hidden'}>${window.escapeHTML(window.t('massInviteSlotsUpdateBtn', {}, lang))}</button>
+                </div>
+                <div class="mi-slots-hint">${window.escapeHTML(window.t('massInviteSlotsHint', {}, lang))}</div>
+            </div>
+        </details>
+    `;
+
+    let launchBtnLabel = window.t('massInviteLaunchCountBtn', { count: selectedCount }, lang);
     let launchBtnClass = 'btn btn-primary mass-invite-btn';
     let launchBtnAttrs = `onclick="startMassInviteFromModal(${project.id})"`;
 
     if (isIsolated) {
         launchBtnLabel = window.t('inviteIsolationDisabledBtn', {}, lang);
         launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
-        launchBtnAttrs = 'disabled';
-    } else if (!massInviteMeta.isAvailable) {
+        launchBtnAttrs = 'disabled data-hard-disabled="1"';
+    } else if (!isSlotAvailable) {
+        launchBtnLabel = window.t('massInviteUnavailableBtn', {}, lang);
+        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
+        launchBtnAttrs = 'disabled data-hard-disabled="1"';
+    } else if (massInviteMeta.isCooldownActive) {
+        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
+        launchBtnAttrs = 'disabled data-hard-disabled="1"';
+    } else if (!quote) {
+        launchBtnLabel = window.t('massInviteCalculatingBtn', {}, lang);
+        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
+        launchBtnAttrs = 'disabled data-hard-disabled="1"';
+    } else if (poolSize <= 0 || selectedCount <= 0) {
         launchBtnLabel = window.t('massInviteUnavailableBtn', {}, lang);
         launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
         launchBtnAttrs = 'disabled';
-    } else if (massInviteMeta.isCooldownActive) {
-        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
-        launchBtnAttrs = 'disabled';
+    } else if (paidCost > 0) {
+        launchBtnLabel = window.t('massInviteLaunchPaidCountBtn', { count: selectedCount, cost: paidCost }, lang);
     }
 
     let sessionBlockHtml = '';
@@ -9450,6 +9881,7 @@ function renderMassInviteModalContent() {
             sourceAppId: project.id,
             lang: lang,
             fallbackSentCount: massInviteMeta.lastSentCount,
+            open: !!preservedAccordions['mi-session-details'],
         });
     }
 
@@ -9472,101 +9904,29 @@ function renderMassInviteModalContent() {
         `;
     }
 
-    const quote = _massInviteQuote && Number(_massInviteQuote.app_id) === Number(project.id) ? _massInviteQuote : null;
-    const senderQuota = (quote && quote.sender_quota) || {};
-    const activeSlots = quote
-        ? Math.max(0, Number(quote.active_mutual_testers || 0))
-        : massInviteMeta.activeMutualTesters;
-    const limitSlots = Math.max(0, Number((quote && quote.limit_mutual) || project.limit_mutual || 0));
-    const poolSize = Math.max(0, Number(quote && quote.pool_size || 0));
-    const freeQuota = Math.max(0, Number(quote && quote.free_quota || 0));
-    const recommended = Math.max(0, Number(quote && quote.recommended_count || 0));
-    const sliderMax = poolSize;
-    const sliderValue = sliderMax <= 0 ? 0 : (recommended > 0 ? recommended : 1);
-    const poolMode = String((quote && quote.pool_mode) || senderQuota.pool_mode || '');
-    const karmaIcon = typeof window.karmaIconHtml === 'function'
-        ? window.karmaIconHtml('karma-yin-icon--inline')
-        : '☯️';
-    const signed = function(value) {
-        var number = Number(value || 0);
-        return (number > 0 ? '+' : '') + String(number);
-    };
-
-    let quotaBlockHtml = '';
-    if (!isIsolated && massInviteMeta.isAvailable) {
-        if (!quote) {
-            quotaBlockHtml = `<div class="mi-quota-loading">${window.escapeHTML(window.t('massInviteQuoteLoading', {}, lang))}</div>`;
-            if (!_massInviteQuoteLoading) {
-                loadMassInviteQuote(project.id);
-            }
-        } else {
-            const recommendChip = limitSlots < 20 && activeSlots <= 20
-                ? `<button type="button" class="mi-slot-chip" onclick="setMassInviteLimit(${project.id}, 20)">${window.escapeHTML(window.t('massInviteSlotsRecommend', {}, lang))}</button>`
-                : '';
-            const poolLabel = poolMode === 'priority'
-                ? window.t('massInvitePoolPriority', {}, lang)
-                : window.t('massInvitePoolBasic', {}, lang);
-            const zeroNote = freeQuota === 0
-                ? `<div class="mi-zero-quota">${window.escapeHTML(window.t('massInviteZeroQuota', {}, lang))}</div>`
-                : '';
-            const sliderHtml = sliderMax > 0
-                ? `<label class="mi-recipient-label" for="mi-recipient-range">${window.escapeHTML(window.t('massInviteRecipientsLabel', {}, lang))} <b id="mi-recipient-count">${sliderValue}</b></label>
-                    <input id="mi-recipient-range" class="mi-recipient-range" type="range" min="1" max="${sliderMax}" value="${sliderValue}" oninput="syncMassInviteRecipientUi()">
-                    <div id="mi-paid-note" class="mi-paid-note" hidden></div>`
-                : `<div class="mi-zero-quota">${window.escapeHTML(window.t('massInviteNoPool', {}, lang))}</div>`;
-            quotaBlockHtml = `
-                <div class="mi-slots-row">
-                    <div class="mi-slots-title">${window.escapeHTML(window.t('massInviteSlotsLabel', {}, lang))}</div>
-                    <div class="mi-slots-controls">
-                        <span>${window.escapeHTML(window.t('massInviteSlotsOccupied', { active: activeSlots }, lang))}</span>
-                        <button type="button" class="mi-slot-step" onclick="setMassInviteLimit(${project.id}, ${Math.max(1, limitSlots - 1)})" aria-label="-">−</button>
-                        <b class="mi-slot-value">${limitSlots}</b>
-                        <button type="button" class="mi-slot-step" onclick="setMassInviteLimit(${project.id}, ${limitSlots + 1})" aria-label="+">+</button>
-                    </div>
-                    ${recommendChip}
-                </div>
-                <div class="mi-quota-grid">
-                    <div class="mi-quota-chip"><span>🛡 ${window.escapeHTML(window.t('massInviteQuotaReliability', {}, lang))}</span><b>${signed(senderQuota.base)}</b></div>
-                    <div class="mi-quota-chip"><span>${karmaIcon} ${window.escapeHTML(window.t('massInviteQuotaKarma', {}, lang))}</span><b>${signed(senderQuota.karma_mod)}</b></div>
-                    <div class="mi-quota-chip"><span>⚡️ ${window.escapeHTML(window.t('massInviteQuotaContribution', {}, lang))}</span><b>${signed(senderQuota.contribution_mod)}</b></div>
-                </div>
-                <div class="mi-quota-total">${window.escapeHTML(window.t('massInviteQuotaTotal', { count: freeQuota }, lang))}</div>
-                <button type="button" class="mi-pool-line" onclick="toggleMassInvitePoolInfo()">🎯 ${window.escapeHTML(poolLabel)} <span class="mi-info-mark" aria-label="info">ⓘ</span></button>
-                <div id="mi-pool-info" class="mi-pool-info" hidden>
-                    <b>${window.escapeHTML(window.t('massInvitePoolInfoTitle', {}, lang))}</b>
-                    <p>${window.escapeHTML(window.t('massInvitePoolInfoBody', {}, lang))}</p>
-                </div>
-                ${zeroNote}
-                ${sliderHtml}
-            `;
-        }
-    }
-
-    const limitHintHtml = '';
-
-    if (quote && poolSize <= 0 && !massInviteMeta.isCooldownActive && !isIsolated) {
-        launchBtnLabel = window.t('massInviteUnavailableBtn', {}, lang);
-        launchBtnClass = 'btn btn-secondary mass-invite-btn is-disabled';
-        launchBtnAttrs = 'disabled';
-    }
-
-    const infoDesc = !isIsolated && !massInviteMeta.isAvailable
+    const subtitleText = !isIsolated && !isSlotAvailable
         ? window.t('massInviteUnavailableNote', {}, lang)
-        : window.t('massInviteBlockDesc', {}, lang);
+        : window.t('massInviteModalSubtitle', {}, lang);
 
     modalBody.innerHTML = `
-        <div class="mass-invite-card" style="background: var(--secondary-bg-color); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
-            <div class="mass-invite-title" style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${window.escapeHTML(window.t('massInviteBlockTitle', {}, lang))}</div>
-            <div class="mass-invite-desc" style="font-size: 13px; color: var(--hint-color); margin-bottom: 16px; line-height: 1.4;">${window.escapeHTML(infoDesc)}</div>
-
-            <button id="mass-invite-btn" class="${launchBtnClass}" style="width: 100%;" ${launchBtnAttrs}>${window.escapeHTML(launchBtnLabel)}</button>
-            ${quotaBlockHtml}
-
-            ${sessionBlockHtml}
+        <div class="mass-invite-card">
+            <div class="mi-modal-subtitle">${window.escapeHTML(subtitleText)}</div>
+            ${heroHtml}
+            ${sliderBlockHtml}
+            <div class="mi-accordions-stack">
+                ${quotaAccordionHtml}
+                ${poolAccordionHtml}
+                ${slotsAccordionHtml}
+            </div>
             ${cooldownBlockHtml}
-            <button type="button" class="btn btn-secondary mi-showcase-btn" onclick="openShowcaseFromMassInvite()">${window.escapeHTML(window.t('massInviteOpenShowcase', {}, lang))}</button>
+            <div class="mi-actions-group">
+                <button id="mass-invite-btn" class="${launchBtnClass}" style="width: 100%;" ${launchBtnAttrs}>${window.escapeHTML(launchBtnLabel)}</button>
+                <button type="button" class="btn btn-secondary mi-showcase-btn" onclick="openShowcaseFromMassInvite()">${window.escapeHTML(window.t('massInviteOpenShowcaseBtn', {}, lang))}</button>
+            </div>
+            ${sessionBlockHtml}
         </div>
     `;
+    _restoreMassInviteAccordionState(preservedAccordions);
     syncMassInviteRecipientUi();
 }
 
@@ -9603,6 +9963,16 @@ window.syncMassInviteRecipientUi = syncMassInviteRecipientUi;
 window.toggleMassInvitePoolInfo = toggleMassInvitePoolInfo;
 window.openShowcaseFromMassInvite = openShowcaseFromMassInvite;
 window.setMassInviteLimit = setMassInviteLimit;
+window.adjustMassInviteLimitDraft = adjustMassInviteLimitDraft;
+window.applyMassInviteLimitDraft = applyMassInviteLimitDraft;
+window.prefetchMassInvitePlan = prefetchMassInvitePlan;
+window.invalidateMassInvitePlanCache = function(projectId) {
+    if (projectId != null) {
+        delete massInvitePlanCache[Number(projectId)];
+    } else {
+        massInvitePlanCache = {};
+    }
+};
 window.currentMassInviteRecipientCount = currentMassInviteRecipientCount;
 
 async function dismissLeftTesterRow(appId, testerId) {
