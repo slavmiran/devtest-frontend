@@ -9702,6 +9702,9 @@ function renderMassInviteModalContent(renderOpts) {
             ? window.t('massInviteHeroSendSubPaid', { cost: paidCost }, lang)
             : window.t('massInviteHeroSendSubFree', {}, lang));
 
+    const heroQuotaLabelKey = !quote
+        ? 'massInviteHeroQuotaLabelPending'
+        : (relTier.key === 'newbie' ? 'massInviteHeroQuotaLabelAvailable' : 'massInviteHeroQuotaLabelEarned');
     const heroHtml = `
         <div class="mi-hero-grid">
             <div class="mi-hero-card">
@@ -9710,7 +9713,7 @@ function renderMassInviteModalContent(renderOpts) {
                 <div class="mi-hero-sub">${window.escapeHTML(window.t('massInviteHeroEligibleSub', {}, lang))}</div>
             </div>
             <div class="mi-hero-card">
-                <div class="mi-hero-label">${window.escapeHTML(window.t('massInviteHeroQuotaLabel', {}, lang))}</div>
+                <div class="mi-hero-label">${window.escapeHTML(window.t(heroQuotaLabelKey, {}, lang))}</div>
                 <div class="mi-hero-value" id="mi-hero-quota-val">${window.escapeHTML(heroQuotaDisplay)}</div>
                 <div class="mi-hero-sub">${window.escapeHTML(window.t('massInviteHeroQuotaSub', {}, lang))}</div>
             </div>
