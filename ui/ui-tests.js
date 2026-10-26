@@ -3208,42 +3208,14 @@ function renderTests(force) {
         }
         // State A: grant available now (Day >= 15)
         else if (test.isReadyToClaim) {
-            const testingDay = userTestingDay || 999;
-            const isScreenshotDay = isMandatoryScreenshotDay(testingDay);
-            const isArchivedClaimCard = isArchivedOrCompleted
-                || String(test.progress_status || 'active').toLowerCase() !== 'active';
-            
-            let secondaryActions = '';
-            if (isPendingForTester) {
-                secondaryActions = pendingReleaseButtonHtml;
-            } else if (!isArchivedClaimCard) {
-                secondaryActions = `
-                    <button class="btn btn-secondary" style="flex: 1; background-color: var(--secondary-bg-color); color: var(--text-color); border: 1px solid rgba(142, 142, 147, 0.2);" onclick="startTimer(${test.id}, '${safePackage}', ${isScreenshotDay ? 'true' : 'false'}, '${isScreenshotDay ? safeOwnerUsername : ''}')">
-                        ${t.openBtn}
-                    </button>
-                `;
-                
-                if (isScreenshotDay) {
-                    secondaryActions += `
-                        <button id="btn-confirm-${test.id}" class="btn checkin-confirm-btn" style="flex: 1; ${isIssueBlocked ? 'background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;' : ''}" ${isIssueBlocked ? 'disabled' : ''} onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')">
-                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : window.t('completeControlDayBtn', {}, lang)}
-                        </button>
-                    `;
-                } else {
-                    secondaryActions += `
-                        <button id="btn-confirm-${test.id}" class="btn" style="flex: 2; background-color: rgba(142, 142, 147, 0.2); color: var(--hint-color); cursor: not-allowed;" disabled>
-                            ${isIssueBlocked ? getIssueAwaitingFixLabel(test) : t.confirmStart}
-                        </button>
-                    `;
-                }
-            }
+            const secondaryActions = isPendingForTester ? pendingReleaseButtonHtml : '';
             
             const grantSkipsCount = String(test.daily_timeline || '')
                 ? Math.max(0, (String(test.daily_timeline || '').substring(0, 14).match(/[03]/g) || []).length)
                 : Math.max(0, Number(test.skips_count || 0));
             const grantMissedClass = grantSkipsCount > 3 ? ' btn-missed-grant' : '';
             actionsHtml = `
-                <button id="btn-claim-${test.id}" class="btn btn-claim-grant${grantMissedClass}" style="width: 100%; margin-bottom: 12px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleClaimGrantClick(${test.progress_id}, ${test.id})">
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant${grantMissedClass}" style="width: 100%; margin-bottom: ${secondaryActions ? 12 : 0}px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleClaimGrantClick(${test.progress_id}, ${test.id})">
                     🎁 ${window.t('claimGrantBtn')}
                 </button>
                 ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
@@ -3327,7 +3299,10 @@ function renderTests(force) {
                 // Do NOT show the karma-only hint when pool is empty — it promises a "Protection Bonus" that doesn't exist
 
                 const extensionConfirmHtml = `
-                    <div class="action-row${extensionBoostOffer ? ' extension-boost-confirm-row' : ''}">
+                    <div class="action-row extension-checkin-row${extensionBoostOffer ? ' extension-boost-confirm-row' : ''}">
+                        <button type="button" class="btn btn-secondary checkin-open-btn extension-open-btn" onclick="openProtectionBoostApp(${test.id}, '${safePackage}')" aria-label="${window.escapeHTML(window.t('openBtn', {}, lang))}">
+                            <span class="extension-open-btn__icon" aria-hidden="true"></span>
+                        </button>
                         <div class="split-btn-group${isFeedbackCheckinPending ? ' is-feedback-pending' : ''}" style="width: 100%; flex: 1;">
                             <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
                                 ${isFeedbackCheckinPending ? feedbackPendingBtnInner : window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed')}
@@ -3338,12 +3313,7 @@ function renderTests(force) {
                         </div>
                     </div>`;
                 actionsHtml = `
-                    ${extensionBoostOffer ? `<div class="checkin-actions checkin-actions--stacked extension-boost-actions">
-                        <button type="button" class="btn btn-secondary checkin-open-btn" style="width: 100%;" onclick="openProtectionBoostApp(${test.id}, '${safePackage}')">
-                            ${t.openBtn}
-                        </button>
-                        ${extensionConfirmHtml}
-                    </div>` : extensionConfirmHtml}
+                    ${extensionConfirmHtml}
                     ${isFeedbackCheckinPending ? feedbackPendingHintHtml : ''}
                     ${hintHtml}
                 `;
