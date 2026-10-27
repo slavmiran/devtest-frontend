@@ -263,7 +263,7 @@
             ? resolvePipelineProjectPhase(project)
             : String(project.phase || '');
         var isModerationCard = String(resolvedPhase || '').toLowerCase() === 'moderation';
-        var resultsTitle = isModerationCard
+        var resultsTitle = project.phase === 'live' ? window.t('lpcResultsTitle', {}, lang) : isModerationCard
             ? (lang === 'ru' ? 'Результаты' : 'Results')
             : (lang === 'ru' ? 'Результаты тестирования' : 'Testing results');
         var resultsSubtitle = project.phase === 'live'

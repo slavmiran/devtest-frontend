@@ -1,12 +1,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/live-history');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/live-history-20261027');fs.mkdirSync(out,{recursive:true});
 const base=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/live-analytics.json'),'utf8'));
 const dictionary={window:{I18NRU:{},I18NEN:{}}};vm.runInNewContext(fs.readFileSync(path.join(root,'i18n/live-history.js'),'utf8'),dictionary);
 assert.deepEqual(Object.keys(dictionary.window.I18NRU).sort(),Object.keys(dictionary.window.I18NEN).sort());
 for(const [key,value] of Object.entries(dictionary.window.I18NRU))assert.deepEqual((value.match(/\{\w+\}/g)||[]).sort(),(dictionary.window.I18NEN[key].match(/\{\w+\}/g)||[]).sort(),key);
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
- for(const lang of ['ru','en'])for(const width of [360,390]){
+ for(const lang of ['ru','en'])for(const width of [360,390,430]){
   const page=await browser.newPage({viewport:{width,height:760}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   let imported=null,posts=0,gets=0,commits=0,mode='ok';
   let options=[{from_run_number:2,run_numbers:[2,3,4],runs_count:3,installs:20,reviews:4,avg_retention_days:22,observed_only_count:2,date_only_count:3,unrated_reviews:4,excluded_sessions:1,preview_token:'a'.repeat(32)},
@@ -28,7 +28,7 @@ for(const [key,value] of Object.entries(dictionary.window.I18NRU))assert.deepEqu
    return route.fulfill({contentType:'text/html',body:'<main><div class="live-metrics-slot" data-app-id="42"></div></main>'});
   });
   await page.goto('http://fixture.local/');
-  for(const file of ['css/tokens.css','css/base.css','styles.css','css/live-project-metrics.css','css/live-metrics-modal.css','css/live-history-import.css'])await page.addStyleTag({path:path.join(root,file)});
+  for(const file of ['css/tokens.css','css/base.css','styles.css','css/wizard.css','css/live-project-metrics.css','css/live-metrics-modal.css','css/live-history-import.css'])await page.addStyleTag({path:path.join(root,file)});
   for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-history.js','i18n/core.js','ui/ui-helpers.js','js/live-history-import.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
   await page.evaluate(({lang,metrics})=>{window.lang=lang;window.API_BASE='/api';window.userId=100;window.getTelegramInitDataRaw=()=> 'signed';window.showToast=()=>{};window.myProjects=[{id:42,name:'History app',live_metrics:metrics}];window.archivedProjects=[];window.accidental=0;const slot=document.querySelector('.live-metrics-slot');slot.onclick=()=>accidental++;slot.innerHTML=LiveProjectMetrics.render(myProjects[0]);},{lang,metrics:metrics()});
   assert.equal(await page.locator('[data-lh-banner]').count(),1);
@@ -40,6 +40,14 @@ for(const [key,value] of Object.entries(dictionary.window.I18NRU))assert.deepEqu
   await page.locator('.lh-banner-actions [data-lh-open]').click();await page.locator('#lh-run').waitFor();
   await page.locator('[data-lh-action=close]').first().click();
   assert.equal(await page.locator('[data-lh-banner]').count(),1,'Cancelling the sheet leaves the offer available');
+  if(lang==='ru'&&width===360){
+   const original=options;options=original.concat(Array.from({length:20},(_,i)=>({...original[0],from_run_number:i+4,run_numbers:[i+4],runs_count:1,installs:1,reviews:0,avg_retention_days:2})));
+   await page.evaluate(()=>LiveHistoryImport.open(42));await page.locator('#lh-run').waitFor();await page.locator('#lh-run').click();
+   assert.equal(await page.locator('.lh-run-options').evaluate(el=>el.scrollHeight>el.clientHeight&&el.clientHeight<=innerHeight*.35+1),true,'Many runs scroll inside the picker');
+   await page.locator('[data-lh-run-number="23"]').click();assert.equal(await page.locator('.lh-totals dd').first().innerText(),'1');
+   assert.equal(await page.locator('.lh-notice').isVisible(),false);await page.locator('.lh-info-button.is-warning').click();assert.equal(await page.locator('.lh-notice').isVisible(),true);
+   await page.locator('[data-lh-action=close]').first().click();options=original;
+  }
   await page.locator('.lh-banner-actions [data-lh-dismiss]').click();assert.equal(await page.evaluate(()=>accidental),0);
   await page.evaluate(()=>document.querySelector('.live-metrics-slot').innerHTML=LiveProjectMetrics.render(myProjects[0]));
   assert.equal(await page.locator('[data-lh-banner]').count(),0,'Dismissal survives rerender');
@@ -52,16 +60,35 @@ for(const [key,value] of Object.entries(dictionary.window.I18NRU))assert.deepEqu
   assert.match(await page.locator('[data-signal=SOURCE_IMBALANCE]').innerText(),/100/);
   await page.locator('#la-demo').click();assert.equal(await page.locator('[data-lh-open]').count(),0,'Demo cannot import');
   await page.locator('#la-actual').click();await page.locator('[data-lh-open]').click();await page.locator('#lh-run').waitFor();
-  assert.equal(await page.locator('#lh-run option').first().isDisabled(),true);
-  await page.locator('#lh-run').selectOption('3');assert.match(await page.locator('.lh-summary').innerText(),/28/);
+  const chooseRun=async run=>{await page.locator('#lh-run').click();await page.locator('[data-lh-run-number="'+run+'"]').click();};
+  assert.equal(await page.locator('#live-history-modal select').count(),0,'No native popup can escape the sheet');
+  await page.locator('#lh-run').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('.lh-run-picker').evaluate(el=>el.open),true);
+  assert.equal(await page.locator('.lh-run-excluded').isDisabled(),true);
+  await page.locator('.lh-run-picker').evaluate(el=>Promise.all(el.getAnimations({subtree:true}).map(animation=>animation.finished.catch(()=>{}))));
+  assert.equal(await page.locator('.lh-run-options').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.closest('.lh-body').getBoundingClientRect();return a.left>=b.left&&a.right<=b.right&&el.scrollWidth<=el.clientWidth;}),true,'Expanded list stays within the sheet');
+  const inset=await page.locator('.lh-run-trigger .lh-chevron').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.closest('summary').getBoundingClientRect();return {right:b.right-a.right,padding:getComputedStyle(el.closest('summary')).padding};});
+  assert(inset.right>=12,'Chevron has a real right inset: '+JSON.stringify(inset));
+  await page.screenshot({path:path.join(out,`run-picker-${lang}-${width}.png`)});
+  await page.keyboard.press('Escape');assert.equal(await page.locator('.lh-run-picker').evaluate(el=>el.open),false);assert.equal(await page.locator('#live-history-modal').count(),1,'Escape closes the run list before the sheet');
+  await chooseRun(3);assert.match(await page.locator('.lh-summary').innerText(),/28/);
+  assert.equal(await page.locator('.lh-run-picker').evaluate(el=>el.open),false);assert.equal(await page.locator('#lh-run').evaluate(el=>el===document.activeElement),true);
   assert.equal(await page.locator('.lh-totals>div').count(),3,'Only installs, reviews and retention are metrics');
   assert.equal(await page.locator('.lh-sources .lh-runs span').count(),2);
   assert.equal(await page.locator('.lh-sources').evaluate(el=>!!el.nextElementSibling?.matches('.lh-summary')),true,'Runs are the source above the derived totals');
   assert.equal(await page.locator('.lh-accuracy').evaluate(el=>el.open),false);
-  assert.equal(await page.locator('.lh-estimate').isVisible(),true,'Lower-bound retention is disclosed without expanding');
-  assert.doesNotMatch(await page.locator('.lh-notice').innerText(),/может|\bmay\b/i);
+  assert.equal(await page.locator('.lh-estimate').count(),0,'No unexplained technical lower-bound label');
+  assert.equal(await page.locator('.lh-dialog .lh-notice').isVisible(),false,'Source warning starts folded');
+  await page.locator('.lh-dialog .lh-info-button.is-warning').click();assert.equal(await page.locator('.lh-dialog .lh-notice').isVisible(),true);
+  assert.equal(await page.locator('.lh-notice>strong').innerText(),lang==='ru'?'Прямая ссылка · 100%':'Direct link · 100%');
+  assert.match(await page.locator('.lh-notice p').innerText(),lang==='ru'?/После переноса[\s\S]*80%/:/After import[\s\S]*80%/);
+  await page.locator('.lh-dialog .lh-info-button.is-warning').click();assert.equal(await page.locator('.lh-dialog .lh-notice').isVisible(),false);
+  await page.locator('.lh-dialog .lh-info-button:not(.is-warning)').click();assert.equal(await page.locator('.lh-accuracy').evaluate(el=>el.open),true);
+  assert.match(await page.locator('.lh-accuracy').innerText(),lang==='ru'?/могло оставаться установленным дольше/:/may have stayed installed longer/);
+  assert.doesNotMatch(await page.locator('.lh-accuracy').innerText(),/нижняя оценка|когорт|lower bound|cohort/i);
+  await page.locator('.lh-accuracy>summary').click();
+  await page.locator('.lh-dialog').evaluate(el=>Promise.all(el.getAnimations({subtree:true}).map(animation=>animation.finished.catch(()=>{}))));
   await page.screenshot({path:path.join(out,`choose-${lang}-${width}.png`)});
-  await page.locator('.lh-accuracy>summary').click();assert.equal(await page.locator('.lh-accuracy li').count(),4);
+  await page.locator('.lh-accuracy>summary').click();assert.equal(await page.locator('.lh-accuracy li').count(),5);
   await page.setViewportSize({width,height:480});
   await page.locator('.lh-body').evaluate(el=>el.scrollTop=el.scrollHeight);
   const compact=await page.locator('.lh-dialog').evaluate(el=>{const header=el.querySelector('header').getBoundingClientRect(),body=el.querySelector('.lh-body'),footer=el.querySelector('footer').getBoundingClientRect();return {top:header.top,bottom:footer.bottom,scrolls:body.scrollHeight>body.clientHeight};});
@@ -70,9 +97,9 @@ for(const [key,value] of Object.entries(dictionary.window.I18NRU))assert.deepEqu
   await page.keyboard.press('Escape');assert.equal(await page.locator('#live-history-modal').count(),0);assert.equal(await page.locator('#live-analytics-modal').count(),1);
   await page.locator('[data-lh-open]').click();await page.locator('#lh-run').waitFor();
   await page.evaluate(()=>handleAppBack());assert.equal(await page.locator('#live-history-modal').count(),0);assert.equal(await page.locator('#live-analytics-modal').count(),1);
-  await page.locator('[data-lh-open]').click();await page.locator('#lh-run').waitFor();await page.locator('#lh-run').selectOption('3');
+  await page.locator('[data-lh-open]').click();await page.locator('#lh-run').waitFor();await chooseRun(3);
   await page.locator('[data-lh-action=preview]').click();await page.locator('[data-lh-action=submit]').waitFor();assert.equal(posts,0,'Preview is not an import');assert(gets>=4);
-  await page.locator('[data-lh-action=back]').click();assert.equal(await page.locator('#lh-run').inputValue(),'3');
+  await page.locator('[data-lh-action=back]').click();assert.equal(await page.locator('#lh-run-value').innerText(),'Run #3');
   await page.locator('[data-lh-action=preview]').click();await page.locator('[data-lh-action=submit]').waitFor();
   mode='changed';await page.locator('[data-lh-action=submit]').click();await page.locator('#lh-run').waitFor();assert.equal(await page.locator('[data-lh-action=submit]').count(),0);assert.equal(commits,0);
   await page.locator('[data-lh-action=preview]').click();await page.locator('[data-lh-action=submit]').waitFor();
@@ -87,5 +114,5 @@ for(const [key,value] of Object.entries(dictionary.window.I18NRU))assert.deepEqu
   assert.equal(await page.locator('.lh-passport').count(),1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);await page.close();
  }
- console.log('History RU/EN 360/390: localized two-action banner, both persistent dismissals, bottom sheet + short viewport, source/totals hierarchy, accuracy disclosure, actual-only audit, Run1, fresh confirmation, stale history, lost response retry, pace and Back passed');
+ console.log('History RU/EN 360/390/430: in-sheet run picker, chevron inset, keyboard/focus, folded source warning and plain retention copy, banner/dismissal, short viewport, actual-only audit, Run1, fresh confirmation, stale history, lost response retry, pace and Back passed');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

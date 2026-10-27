@@ -1098,6 +1098,12 @@ button.pc-stage-badge {
     overflow: hidden !important;
 }
 
+/* Live keeps campaign controls above this body; participants and results share
+   the Closed Test compact bars instead of retaining a hidden grid's minimum. */
+#tab-projects .card[data-project-phase="live"].card-collapsed > .pc-dashboard-body {
+    display: none;
+}
+
 /* Tester roster has its own expand/collapse */
 #tab-projects .card.card-collapsed .card-expanded-zone {
     grid-template-rows: 1fr;

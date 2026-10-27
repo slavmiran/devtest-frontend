@@ -9,7 +9,7 @@ fs.mkdirSync(artifacts, {recursive:true});
 (async () => {
     const browser = await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL || 'chrome'});
     try {
-        for (const language of ['ru','en']) for (const width of [360,390]) {
+        for (const language of ['ru','en']) for (const width of [360,390,430]) {
             const page = await browser.newPage({viewport:{width,height:1000}});
             const errors = [];
             page.on('pageerror',error => errors.push(error.message));
@@ -21,7 +21,8 @@ fs.mkdirSync(artifacts, {recursive:true});
                 return route.fulfill({contentType:'text/html',body:'<section id="tab-projects"><div id="projects-list"></div></section><div id="archived-projects-list"></div>'});
             });
             await page.goto('http://fixture.local/');
-            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/play-store-passport.css','css/live-project-metrics.css','css/live-campaigns.css','css/project-parameters.css','css/project-results.css']) await page.addStyleTag({path:path.join(root,file)});
+            const styles=[...fs.readFileSync(path.join(root,'index.html'),'utf8').matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="\.\/([^"?]+)/g)].map(match=>match[1]);
+            for (const file of styles) if(fs.existsSync(path.join(root,file))) await page.addStyleTag({path:path.join(root,file)});
             for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/play-store-passport.js','js/live-project-metrics.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(language => {
                 window.lang = language;
@@ -41,7 +42,7 @@ fs.mkdirSync(artifacts, {recursive:true});
                 window.fetchWithRetry=async()=>({ok:true,json:async()=>({status:'success',items:[]})});
                 window.myProjects=[{id:30,name:'Published App',phase:'live',status:'completed',is_visible:true,
                     created_at:'2026-09-10T12:00:00Z',last_sync_date:'2026-09-24',google_sync_day:14,
-                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',testers:[{tester_id:77,username:'live_tester',join_type:'mutual',is_live_tester:true,connection_type:'live',progress_id:777,current_day:2,status:'active'}, {tester_id:78,username:'phase_one_only',join_type:'mutual',progress_id:778,current_day:14,status:'active'}],results_summary:{},live_balance_bust:137.5,protection_bust_pool:999,
+                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',bugs_new_count:1,bugs_total_count:1,testers:[{tester_id:77,username:'live_tester',join_type:'mutual',is_live_tester:true,connection_type:'live',progress_id:777,current_day:4,testing_days:4,last_check_date:'2026-10-07',status:'active'}, {tester_id:78,username:'phase_one_only',join_type:'mutual',progress_id:778,current_day:14,status:'active'}],results_summary:{},live_balance_bust:137.5,protection_bust_pool:999,
                     live_metrics:{source:'devtesthub_live',as_of:new Date().toISOString(),boundary_available:true, reviews:{total:68,rating:4.3,per_day:.5,trend_available:true,trend_percent:-1.2},installs:{total:332,per_day:3.5,trend_available:true,trend_percent:3},active_users:112,avg_retention_days:23,days_since_update:79,keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]}}];
                 window.archivedProjects=[{app_id:30,name:'Published App',phase:'live',status:'completed'}];
                 localStorage.setItem('hideDeleteReminder','true');
@@ -81,7 +82,7 @@ fs.mkdirSync(artifacts, {recursive:true});
             const results=page.locator('#project-card-30 .pc-results-block-slot>.pc-results-card--live');
             assert.equal(await results.isVisible(),true,'Results are shown without expanding another section');
             assert.equal(await results.evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.marginLeft)>=12&&parseFloat(s.marginRight)>=12&&parseFloat(s.paddingLeft)>=12&&parseFloat(s.marginBottom)>=14;}),true,'Results keep their outer and inner spacing');
-            assert.equal(await results.locator('.pc-results-title').innerText(),language==='ru'?'Результаты тестирования':'Testing results');
+            assert.equal(await results.locator('.pc-results-title').innerText(),language==='ru'?'Пользовательский опыт и покрытие':'User experience and coverage');
             assert.equal(await results.locator('.pc-results-subtitle').evaluate(el=>getComputedStyle(el).whiteSpace),'normal','The history scope is readable without truncation');
             await page.locator('#project-card-30 .lc-section').screenshot({path:path.join(artifacts,'live-campaign-section-'+language+'-'+width+'.png')});
             await results.screenshot({path:path.join(artifacts,'live-results-'+language+'-'+width+'.png')});
@@ -89,6 +90,17 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
             assert.equal(await page.evaluate(()=>collectPipelineProjectsByPhase().live.length),1);
             assert.deepEqual(errors,[]);
+            await page.evaluate(()=>toggleProjectCard(30));
+            assert.equal(await page.locator('#project-card-30>.pc-dashboard-body').evaluate(el=>el.getBoundingClientRect().height),0,'Fully folded Live card cannot retain users/results height');
+            assert.equal(await results.isVisible(),false);
+            assert.equal(await page.locator('#project-card-30 .pc-results-collapsed').isVisible(),true,'Reuse Closed Test compact new-result badges');
+            assert.equal(await page.locator('#project-card-30 .pc-team-collapsed-bar').isVisible(),true,'Reuse Closed Test compact activity tabs');
+            await page.locator('#project-card-30').screenshot({path:path.join(artifacts,'live-folded-'+language+'-'+width+'.png')});
+            await page.evaluate(()=>renderProjects(true));
+            assert.equal(await page.locator('#project-card-30').evaluate(el=>el.classList.contains('card-collapsed')),true,'Fold survives render');
+            await page.evaluate(()=>toggleProjectCard(30));
+            assert.equal(await results.isVisible(),true);
+            assert.equal(await page.evaluate(()=>localStorage.getItem('pc_participants_collapsed_30')),'0','Card folding preserves participant preferences');
             // Existing testing cards retain their original team label and section.
             await page.evaluate(()=>{myProjects[0].phase='testing';myProjects[0].status='active';renderProjects(true);});
             assert.equal(await page.locator('#pipeline-section-testing #project-card-30').count(),1);

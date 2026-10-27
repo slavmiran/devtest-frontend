@@ -1,7 +1,7 @@
 (function(){
  'use strict';
  Object.assign(window.I18NRU,{
-  lpcResultsTitle:'Результаты активности',lpcResultsScope:'Вся история проекта, включая закрытое тестирование',
+  lpcResultsTitle:'Пользовательский опыт и покрытие',lpcResultsScope:'Вся история проекта, включая закрытое тестирование',
   lpcNoIcon:'Без иконки',lpcDisplayRequired:'Укажите название или выберите иконку.',
   lpcPoolTitle:'Общий пул кампаний',lpcPaceTitle:'Контроль темпа проекта',lpcProjectScope:'Темп и пауза действуют на весь проект. Квота кампании ограничивает только её собственный набор.',
   lpcPaceSummary:'🛡 До {n} уст./цикл · Пауза {h}ч · Разгон {r} дн.',lpcCycleProgress:'Набрано в цикле: {used} из {total}',
@@ -17,7 +17,7 @@
   lpcCycleLimit:'Кампания достигла максимума текущего цикла.',lpcCycleWaiting:'Цикл {used}/{n} · ожидание',lpcDuplicate:'У тестера уже есть участие в этом Live-периоде проекта.'
  });
  Object.assign(window.I18NEN,{
-  lpcResultsTitle:'Activity results',lpcResultsScope:'Full project history, including closed testing',
+  lpcResultsTitle:'User experience and coverage',lpcResultsScope:'Full project history, including closed testing',
   lpcNoIcon:'No icon',lpcDisplayRequired:'Enter a name or choose an icon.',
   lpcPoolTitle:'Shared campaign pool',lpcPaceTitle:'Project pace control',lpcProjectScope:'Pace and isolation apply to the entire project. A campaign cap limits only that campaign’s intake.',
   lpcPaceSummary:'🛡 Up to {n}/cycle · Pause {h}h · Ramp {r}d',lpcCycleProgress:'Admitted this cycle: {used} of {total}',

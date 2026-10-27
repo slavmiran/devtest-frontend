@@ -1,7 +1,7 @@
 /* A compact campaign wallet uses the existing project editor and option-sheet styles. */
 (function () {
     'use strict';
-    var context = null, trigger = null, busy = false;
+    var context = null, trigger = null, triggerSelector = null, busy = false;
     function tr(key, vars) { return window.t(key, vars || {}, typeof lang === 'undefined' ? 'en' : lang); }
     function esc(value) { return window.escapeHTML(String(value == null ? '' : value)); }
     function syncBack() { if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton(); }
@@ -26,12 +26,15 @@
     }
     function close() {
         modal().classList.remove('active'); context = null;
-        if (trigger && trigger.isConnected) trigger.focus({ preventScroll: true });
-        trigger = null; syncBack();
+        var focus = trigger && trigger.isConnected ? trigger : triggerSelector && document.querySelector(triggerSelector);
+        if (focus && !focus.disabled) focus.focus({ preventScroll: true });
+        trigger = null; triggerSelector = null; syncBack();
     }
     function show(adapter, control, html) {
         if (busy || !adapter.get()) return;
         context = adapter; trigger = control;
+        var section = control && control.closest('[data-live-campaigns]');
+        triggerSelector = section && control.dataset.lcAction === 'project-pool' ? '[data-live-campaigns="'+Number(section.dataset.liveCampaigns)+'"] [data-lc-action="project-pool"]' : null;
         var node = modal(); node.querySelector('[data-lc-wallet-body]').innerHTML = html;
         node.classList.add('active'); syncBack();
         var focus = node.querySelector('input,button'); if (focus) focus.focus({ preventScroll: true });
@@ -47,6 +50,7 @@
             var ok = await adapter.change(data);
             if (adapter !== context) return;
             if (!adapter.get()) { close(); return; }
+            updateBalances(adapter);
             if (ok && dismiss) close();
             if (!ok) {
                 var error = modal().querySelector('[data-lc-wallet-error]');
@@ -55,11 +59,22 @@
             }
         } finally { pending(false); }
     }
+    function formatAmount(value) {
+        return typeof value === 'number' && Number.isFinite(value)
+            ? value.toLocaleString(typeof lang !== 'undefined' && lang === 'ru' ? 'ru-RU' : 'en-US') + ' $BUST' : '—';
+    }
+    function updateBalances(adapter) {
+        var c = adapter.get(); if (!c) return;
+        [['main','wallet_balance'],['pool','pool_available'],['reserved','reserved_bust']].forEach(function(pair){
+            var node=modal().querySelector('[data-lc-wallet-'+pair[0]+']');if(node)node.textContent=formatAmount(c[pair[1]]);
+        });
+    }
     function open(adapter, control) {
         var c = adapter.get(); if (!c) return;
         show(adapter, control,
-            '<header class="project-instructions-sheet__head"><div><h3 id="live-campaign-wallet-title">' + esc(tr('lcPoolEdit')) + '</h3><p>' +
-            esc(tr('lcWalletSummary', { pool: c.pool_available, reserved: c.reserved_bust || 0 })) + '</p></div></header>' +
+            '<header class="project-instructions-sheet__head"><div><h3 id="live-campaign-wallet-title">' + esc(tr('lcPoolEdit')) + '</h3></div></header>' +
+            '<dl class="lc-wallet-balances"><div class="lc-wallet-balances__main"><dt>'+esc(tr('lcMainWalletBalance'))+'</dt><dd data-lc-wallet-main>'+esc(formatAmount(c.wallet_balance))+'</dd></div>'+
+            '<div><dt>'+esc(tr('lcPool'))+'</dt><dd data-lc-wallet-pool>'+esc(formatAmount(c.pool_available))+'</dd></div><div><dt>'+esc(tr('lcReservedLabel'))+'</dt><dd data-lc-wallet-reserved>'+esc(formatAmount(c.reserved_bust))+'</dd></div></dl>' +
             '<label class="project-email-settings-field"><span>' + esc(tr('lcAmount')) + '</span><input data-lc-wallet-amount type="number" min="1" max="1000000" step="1" inputmode="numeric"></label>' +
             '<label class="project-email-settings-switch"><span><strong>' + esc(tr('lcWallet')) + '</strong><small>' + esc(tr('lcWalletHint')) + '</small></span>' +
             '<input data-lc-wallet-toggle type="checkbox"' + (c.allow_wallet_spending ? ' checked' : '') + '><i aria-hidden="true"></i></label>' +
