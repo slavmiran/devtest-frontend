@@ -1464,9 +1464,11 @@ function renderProjects(force) {
                         </div>
                     </button>
                 </div>
+                ${window.ReviewCredits ? ReviewCredits.widget() : ''}
             </div>
         `;
         container.insertAdjacentHTML('beforeend', dashHtml);
+        if (window.ReviewCredits) ReviewCredits.refresh().catch(function(){});
 
         // Soft-prefetch current sprint once per session so the widget is stable (no text jump).
         if (!window.__contribSeasonPrefetch && typeof window.fetchContributionCurrent === 'function') {

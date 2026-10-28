@@ -281,7 +281,8 @@
             projects().forEach(update);
         }
     }
-    function toggleReviews(id, event) {
+    function toggleReviews(id, event, legacy) {
+        if(window.ReviewCredits&&!legacy){stop(event);return ReviewCredits.refresh().then(function(w){return w.enabled===false?toggleReviews(id,null,true):ReviewCredits.openSettings(Number((projectById(id)||{}).id||(projectById(id)||{}).app_id||id));}).catch(function(){if(window.showToast)showToast(ReviewCredits.t('rvUnavailable'));});}
         return openReviews(id,event);
     }
     function showChoice(id,event,field,title,hint,choices,select) {

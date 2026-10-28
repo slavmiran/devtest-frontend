@@ -1867,6 +1867,7 @@ function getPlayReviewStatus(testOrAppId) {
         ? testOrAppId
         : getMyTestById(testOrAppId);
     if (!test) return 'none';
+    if (test.review_request && window.ReviewFlow) return {draft_pending:'draft_pending',ready:'ready',submitted:'pending',appeal:'appeal',accepted:'approved',rejected:'rejected'}[test.review_request.state] || 'none';
     var status = String(test.play_review_status || '').trim().toLowerCase();
     if (status === 'pending' || status === 'approved') return status;
     if (status === 'rejected' || status === 'declined' || (test.rewards_summary && test.rewards_summary.review_rejected)) return 'rejected';
@@ -5241,7 +5242,7 @@ function showCheckinRewardToasts(result) {
         }, lang)
         : '';
     var showPrimaryCheckinToast = function(message) {
-        showToast(String(message || '') + catchupSuffix + screenshotBoostSuffix);
+        showToast(String(message || '') + catchupSuffix + screenshotBoostSuffix + (window.ReviewCredits ? ReviewCredits.earned(result) : ''));
     };
     if (result.already_checked_today) {
         showPrimaryCheckinToast(window.t('checkinAlreadyDone', {}, lang));
@@ -5693,6 +5694,7 @@ async function claimGrant(progressId, appId) {
         }
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         const amount = Number(result.amount || 0);
+        if (window.ReviewCredits && result.review_credits_earned > 0) { showToast(ReviewCredits.earned(result)); ReviewCredits.refresh().catch(function(){}); }
         const test = myTests.find(t => t.id === appId);
         if (test) {
             test.grant_claimed = true;

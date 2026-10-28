@@ -38,7 +38,7 @@
   else if(f==='name'&&typeof v==='string'&&v.length<=80)n.name=v;
   else if(f==='webQuery'&&typeof v==='string'&&v.length<=200)n.web.query=v;
   else if(f==='instructions'&&typeof v==='string'&&v.length<=5000)n.activity.instructions=v;
-  else if(f==='retention'&&[7,14,21,28,35].includes(v))n.retention={days:v,checkpoints:checkpointOptions(v)};
+  else if(f==='retention'&&[7,14,21,28,35].includes(v)){n.retention={days:v,checkpoints:checkpointOptions(v)};if(n.reviews.config){n.reviews.config.day=Math.min(n.reviews.config.day,v);n.reviews.delayDays=n.reviews.config.day;}}
   else if(f==='checkpoint'){
    if(v===1||!checkpointOptions(n.retention.days).includes(v))return d;
    var ds=n.retention.checkpoints;if(ds.includes(v)){if(ds.length===2)return d;ds.splice(ds.indexOf(v),1);}else ds.push(v);ds.sort(function(a,b){return a-b;});

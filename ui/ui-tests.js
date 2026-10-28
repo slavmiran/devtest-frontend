@@ -1443,13 +1443,13 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             : String(test.play_review_status || 'none').toLowerCase();
         const canShowReviewChip = !!(
             test.request_reviews
-            && Number(userTestingDay || 0) >= 7
+            && (window.ReviewFlow || Number(userTestingDay || 0) >= 7)
             && String(test.progress_status || 'active').toLowerCase() === 'active'
         );
         if (canShowReviewChip) {
             let reviewLabel = window.t('playReviewChip', {}, lang);
             let reviewClass = 'meta-chip accent-yellow';
-            if (reviewStatus === 'pending') {
+            if (window.ReviewFlow && ['draft_pending','ready','appeal'].includes(reviewStatus)) { reviewLabel = window.t('rvState_'+reviewStatus,{},lang); reviewClass='meta-chip accent-blue'; } else if (reviewStatus === 'pending') {
                 reviewLabel = '⭐️ ' + window.t('playReviewDetailsPendingChip', {}, lang);
                 reviewClass = 'meta-chip accent-blue';
             } else if (reviewStatus === 'approved') {
@@ -3186,7 +3186,7 @@ function renderTests(force) {
             const grantMissedClass = grantSkipsCount > 3 ? ' btn-missed-grant' : '';
             actionsHtml = `
                 <button id="btn-claim-${test.id}" class="btn btn-claim-grant${grantMissedClass}" style="width: 100%; margin-bottom: ${secondaryActions ? 12 : 0}px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleClaimGrantClick(${test.progress_id}, ${test.id})">
-                    🎁 ${window.t('claimGrantBtn')}
+                    🎁 ${window.t('claimGrantBtn')} ${window.ReviewCredits ? ReviewCredits.grant(test) : ''}
                 </button>
                 ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
             `;

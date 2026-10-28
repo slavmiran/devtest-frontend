@@ -705,6 +705,7 @@ function renderReliabilityAlphaModal() {
           </div>
 
           ${grantsSectionHtml}
+          ${window.ReviewCredits ? '<details class="rv-policy"><summary>⭐ '+window.escapeHTML(window.t('rvTitle',{},lang))+'</summary><p>'+window.escapeHTML(window.t('rvReliabilityBonus',{},lang))+'</p></details>' : ''}
 
           <section class="ri-surface">
             <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</h4>
@@ -3153,6 +3154,7 @@ function renderCheckinReviewOptions() {
 }
 
 function renderPlayReviewModal() {
+    if (window.ReviewFlow && ReviewFlow.active()) return ReviewFlow.render();
     var body = document.getElementById('play-review-modal-body');
     if (!body) return;
     var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(_playReviewModalAppId) : null;
@@ -3871,6 +3873,7 @@ async function toggleProjectDetailsReviewCheckbox(input, appId) {
 }
 
 function openPlayReviewModal(appId, event, options) {
+    if (window.ReviewFlow && !(options && options.legacy)) return ReviewFlow.open(appId, event);
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -3922,6 +3925,7 @@ function openPlayReviewModalFromCheckinOptions(event) {
 
 function closePlayReviewModal(event) {
     if (event && event.target && event.target.id !== 'play-review-modal' && !event.target.classList.contains('play-review-cancel-link')) return;
+    if (window.ReviewFlow && ReviewFlow.active()) ReviewFlow.close();
     var modal = document.getElementById('play-review-modal');
     if (modal) modal.classList.remove('active');
     _playReviewModalSource = 'badge';
@@ -5622,6 +5626,7 @@ function feedbackMeasureClampedText() {
 }
 
 function renderProjectFeedbackCards(project, items) {
+    if(window.ReviewFlow&&Array.isArray(items)){var managed=items.some(function(x){return x.review_request_id;});items=items.filter(function(x){return !x.review_request_id;});if(managed&&!items.length)return '';}
     if (!items || !items.length) {
         return `<div class="feedback-empty">${window.escapeHTML(window.t('projectFeedbackEmpty', {}, lang))}</div>`;
     }
@@ -6391,6 +6396,7 @@ function showProjectFeedbackModal(project, items, options) {
     body.innerHTML = getProjectFeedbackHeader(project, items, {
         partialLoad: !!options.partialLoad
     }) + renderProjectFeedbackCards(project, items);
+    if (window.ReviewFlow) ReviewFlow.owner(Number(project.id || project.app_id), body, false);
     document.getElementById('project-feedback-modal').classList.add('active');
     cacheProjectFeedbackCards();
     applyProjectFeedbackFilters();
