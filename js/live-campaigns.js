@@ -152,6 +152,7 @@
             var data=await parse(await fetch(endpoint(s.id)+'?init_data='+encodeURIComponent(s.actor),{cache:'no-store',signal:controller.signal}));
             if(seq!==s.seq||s.actor!==actor())return;
             s.control=data.project_control||null;s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;project(s).live_project_control=s.control;LiveProjectControl.updateStatus(project(s),s.pace,s.rows);s.error=false;s.loaded=true;s.readAt=Date.now();
+            window.dispatchEvent(new CustomEvent('live-campaigns:data',{detail:{appId:s.id,control:s.control}}));
             clearTimeout(s.paceTimer);if(s.pace&&(s.pace.pause_until||s.pace.policies&&s.pace.policies.length))queueRead(s,Math.max(1000,Math.min(60000,Date.parse(s.pace.pause_until||'')-Date.now()||60000)));
         } catch(error) {
             if(error.name==='AbortError'||seq!==s.seq)return;

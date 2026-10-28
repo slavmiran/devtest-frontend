@@ -15,7 +15,7 @@
  function counts(d){var c={link:0,web:0,keywords:0};c[d.source]=total(d);return c;}
  function applyStrategy(d,template){
   if(!['aso','retention','deep','custom'].includes(template))return d;
-  var n=create({id:d.appId,name:d.appTitle});n.baseline=clone(d.baseline);n.corridor=d.corridor;n.autoDailyCost=d.autoDailyCost;n.template=template;
+  var n=create({id:d.appId,name:d.appTitle});n.baseline=clone(d.baseline);n.corridor=d.corridor;n.thermalPhase=d.thermalPhase;n.autoDailyCost=d.autoDailyCost;n.template=template;
   var rate=d.baseline.available?d.baseline.perDay:0;
   if(template==='aso'){
    n.source='keywords';n.reviews.enabled=true;n.volume.rampDays=7;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.3)));

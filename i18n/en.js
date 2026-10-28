@@ -4459,5 +4459,35 @@
     Object.assign(window.I18NEN, {"lmScenarioEvidence":"Scenario evidence","lmGeoPickerHint":"Filter tasks by country. Eligibility still uses your profile country."});
     Object.assign(window.I18NEN, {"lmLegacy":"Closed tests, guests & Contracts","lxPeerRiskLow":"Waiting for your partner’s return step · {n}h","lxPeerRiskAmber":"Your partner has not started the return test · {n}h","lxPeerRiskCritical":"Your partner’s return step is delayed · {n}h","lxPeerFrozen":"Your partner’s responsibility clock is frozen"});
     Object.assign(window.I18NEN, {"lxManualPause":"Admission is paused by the owner","lxCampaignPause":"Campaign paused. Waiting for it to resume."});
+    Object.assign(window.I18NEN, {
+        lmPhase_stabilizing: 'Stabilizing after a spike · {days} days left',
+        lmPhase_growing: 'Steady growth · +{trend}% vs last week',
+        lmPhase_stable: 'Maintaining a stable baseline',
+        lmPhase_cooling: 'Cooling · more installs needed',
+        lmPhaseRecovery: 'Pace recovering · today’s minimum reached',
+        lmPhase_overheated: 'Pace spike · slow down new installs',
+        lmPhase_collecting: 'Collecting pace observations',
+        lmPhase_adjusting: 'Pace is changing · stay within the corridor',
+        lmPhaseHint_stabilizing: 'Maintain the daily minimum to avoid a sharp drop after the peak.',
+        lmPhaseHint_growing: 'Your app is growing within the corridor — up to {max} installs today.',
+        lmPhaseHint_stable: 'Pace is close to the baseline. Keep a regular flow of installs.',
+        lmPhaseHint_cooling: 'Pace was below the minimum in the latest daily calculation. Today’s installs can help it recover.',
+        lmPhaseHint_overheated: 'Slow down new installs. Auto pace can spread the next requests across future windows.',
+        lmPhaseHint_collecting: 'Regular confirmed installs will help establish a direction.',
+        lmPhaseHint_adjusting: 'Avoid sudden jumps and check today’s target range.',
+        lmPhaseProgress: 'Today (UTC): {n} of {floor} minimum installs',
+        lmPhaseToday: 'Today (UTC): +{n} installs',
+        lmPhaseProgressLabel: 'Progress towards the daily install minimum',
+        lmPhaseMet: '✓ Minimum reached',
+        lmPhaseNeed: '{n} more needed',
+        lmPhaseRange: 'Today’s corridor: {floor}–{max} installs · baseline ~{base}/day',
+        lmPhaseCountdown: 'Stabilization window · {days} days left ⓘ',
+        lmPhasePeakExit: 'The peak leaves the short 3-day window in {days} days. The minimum may then decrease.',
+        lmPhasePeakExited: 'The peak has left the short 3-day window. It still contributes to the weekly baseline.',
+        lmPhaseWmaExit: 'The weekly window fully refreshes in {days} days. This assumes a steady pace: a new spike restarts the countdown. The end of the window does not guarantee a settled baseline.',
+        lmPhaseClock: 'Temperature uses completed UTC days; today’s progress updates separately. A DevTestHub model estimate.',
+        lmPhaseAbout: 'How the phase is calculated',
+        lmPhaseUnavailable: 'Movement status is temporarily unavailable. Pace controls still work.'
+    });
     window.I18N_EN = window.I18NEN;
 })();

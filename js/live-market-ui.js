@@ -29,6 +29,23 @@
         if (!p || !(p.installs > 0 || p.yesterday_deficit > 0)) return '';
         return '<div class="lm-impulse' + (p.L_floor > 0 && p.floor_met ? ' is-met' : '') + '" role="status"><strong>' + e(t('lmToday', {n:n(p.installs,0)})) + '</strong><span>' + e(t(p.L_floor > 0 ? 'lmTodayFloor' : 'lmTodayPending', {n:n(p.installs,0),floor:n(p.L_floor,0)})) + '</span>' + (p.L_floor > 0 && p.floor_met ? '<small>' + e(t('lmTodayMet')) + '</small>' : '') + '</div>';
     }
+    function phase(p) {
+        if (!p) return '';
+        var code=p.code, icons={stabilizing:'🛡',growing:'📈',stable:'⚓',cooling:'❄️',overheated:'🌡',collecting:'◌',adjusting:'↗'};
+        if (!icons[code]) return '<div class="lm-movement is-unavailable"><small>'+e(t('lmPhaseUnavailable'))+'</small></div>';
+        var floor=Number(p.L_floor), upper=Number(p.U_opt), today=Number(p.today_installs_utc), days=Number(p.stabilization_days_remaining)||0;
+        if (![floor,upper,today,Number(p.B_t)].every(Number.isFinite)) return '';
+        var vars={n:n(today,0),floor:n(floor,0),max:n(upper,0),base:n(p.B_t),days:n(days,0),trend:n(p.trend_percent)}, met=floor>0&&today>=floor;
+        var title=code==='cooling'&&met?'lmPhaseRecovery':'lmPhase_'+code;
+        return '<section class="lm-movement is-'+code+'" data-thermal-phase="'+code+'"><strong class="lm-movement-title">'+icons[code]+' '+e(t(title,vars))+'</strong><p>'+e(t('lmPhaseHint_'+code,vars))+'</p><div class="lm-movement-today'+(met?' is-met':'')+'"><b>'+e(t(floor>0?'lmPhaseProgress':'lmPhaseToday',vars))+'</b>'+(floor>0?'<span>'+e(t(met?'lmPhaseMet':'lmPhaseNeed',{n:n(Math.max(0,floor-today),0)}))+'</span><div class="lm-movement-track" role="progressbar" aria-label="'+e(t('lmPhaseProgressLabel'))+'" aria-valuemin="0" aria-valuemax="'+floor+'" aria-valuenow="'+Math.min(today,floor)+'" aria-valuetext="'+e(t('lmPhaseProgress',vars))+'"><i style="width:'+Math.min(100,today/floor*100)+'%"></i></div>':'')+'</div><small>'+e(t('lmPhaseRange',vars))+'</small>'+(days>0?'<details class="lm-movement-countdown"><summary>'+e(t('lmPhaseCountdown',{days:n(days,0)}))+'</summary><p>'+e(t(p.peak_window_days_remaining>0?'lmPhasePeakExit':'lmPhasePeakExited',{days:n(p.peak_window_days_remaining,0)}))+'</p><p>'+e(t('lmPhaseWmaExit',{days:n(days,0)}))+'</p><small class="lm-movement-clock">'+e(t('lmPhaseClock'))+'</small></details>':'<details class="lm-movement-countdown"><summary>'+e(t('lmPhaseAbout'))+'</summary><small class="lm-movement-clock">'+e(t('lmPhaseClock'))+'</small></details>')+'</section>';
+    }
+    // This shared disclosure also lives outside the legacy project accordion.
+    // Own its toggle so document-wide legacy handlers cannot intercept it.
+    document.addEventListener('click', function(ev) {
+        var summary=ev.target.closest('.lm-movement-countdown > summary');
+        if (!summary) return;
+        ev.preventDefault();ev.stopPropagation();summary.parentElement.open=!summary.parentElement.open;
+    }, true);
     function tierBadge(score) {
         var tier=score && score.tier;
         return tier>=1 && tier<=5 ? '<span class="lm-tier-badge is-tier'+tier+'">'+e(t('lmTier',{n:tier}))+'</span>' : '';
@@ -58,7 +75,7 @@
         var x = function (i) { return 20 + i * 44; };
         function line(key) { return days.map(function (d, i) { return x(i) + ',' + y(d[key]); }).join(' '); }
         var area = line('U_opt') + ' ' + days.map(function (d, i) { return x(i) + ',' + y(d.L_floor); }).reverse().join(' ');
-        return '<section class="lm-thermal"><header class="lm-inline"><h2>' + e(t('lmThermal')) + '</h2><small>' + e(t('lmUTC')) + '</small></header>' + impulse(market) + '<svg class="lm-week-chart" viewBox="0 0 304 142" role="img" aria-label="' + e(t('lmThermal') + ' · ' + t('lmUTC')) + '"><polygon points="' + area + '" class="lm-corridor"/><polyline points="' + line('B_t') + '" class="lm-baseline"/><polyline points="' + line('U_opt') + '" class="lm-upper"/><polyline points="' + line('U_crit') + '" class="lm-critical"/><polyline points="' + line('C_t') + '" class="lm-actual"/>' + days.map(function (d, i) { return '<circle cx="' + x(i) + '" cy="' + y(d.C_t) + '" r="3"/><text x="' + x(i) + '" y="133" text-anchor="middle">' + e(String(d.day || '').slice(5)) + '</text>'; }).join('') + '</svg><div class="lm-chart-legend"><span class="lm-key-actual">' + e(t('lmActual')) + '</span><span class="lm-key-base">' + e(t('lmBaseline')) + '</span><span class="lm-key-upper">' + e(t('lmCorridor')) + '</span></div>' + thermalStatus(market.thermal) + '<details><summary>' + e(t('lmDetails')) + '</summary><p>' + e(t('lmThermalHint')) + '</p><div class="lm-week-data">' + days.map(function (d) { return '<div><time>' + e(d.day) + '</time><span>C ' + e(n(d.C_t)) + ' · B ' + e(n(d.B_t)) + ' · L ' + e(n(d.L_floor)) + ' · Uopt ' + e(n(d.U_opt)) + ' · Ucrit ' + e(n(d.U_crit)) + ' · P₃d ' + e(n(d.P_3d)) + '</span></div>'; }).join('') + '</div></details><p class="lm-caption">' + e(t('lmSimulation')) + '</p></section>';
+        return '<section class="lm-thermal"><header class="lm-inline"><h2>' + e(t('lmThermal')) + '</h2><small>' + e(t('lmUTC')) + '</small></header>' + (market.thermal_phase ? phase(market.thermal_phase) : impulse(market)) + '<svg class="lm-week-chart" viewBox="0 0 304 142" role="img" aria-label="' + e(t('lmThermal') + ' · ' + t('lmUTC')) + '"><polygon points="' + area + '" class="lm-corridor"/><polyline points="' + line('B_t') + '" class="lm-baseline"/><polyline points="' + line('U_opt') + '" class="lm-upper"/><polyline points="' + line('U_crit') + '" class="lm-critical"/><polyline points="' + line('C_t') + '" class="lm-actual"/>' + days.map(function (d, i) { return '<circle cx="' + x(i) + '" cy="' + y(d.C_t) + '" r="3"/><text x="' + x(i) + '" y="133" text-anchor="middle">' + e(String(d.day || '').slice(5)) + '</text>'; }).join('') + '</svg><div class="lm-chart-legend"><span class="lm-key-actual">' + e(t('lmActual')) + '</span><span class="lm-key-base">' + e(t('lmBaseline')) + '</span><span class="lm-key-upper">' + e(t('lmCorridor')) + '</span></div>' + thermalStatus(market.thermal) + '<details><summary>' + e(t('lmDetails')) + '</summary><p>' + e(t('lmThermalHint')) + '</p><div class="lm-week-data">' + days.map(function (d) { return '<div><time>' + e(d.day) + '</time><span>C ' + e(n(d.C_t)) + ' · B ' + e(n(d.B_t)) + ' · L ' + e(n(d.L_floor)) + ' · Uopt ' + e(n(d.U_opt)) + ' · Ucrit ' + e(n(d.U_crit)) + ' · P₃d ' + e(n(d.P_3d)) + '</span></div>'; }).join('') + '</div></details><p class="lm-caption">' + e(t('lmSimulation')) + '</p></section>';
     }
     function lever(scoring, appId) {
         var code = scoring.growth_lever && scoring.growth_lever.code;
@@ -91,5 +108,5 @@
             var value = await response.json(); if (!response.ok) { var error = new Error(value.code || value.error || 'unavailable'); error.status = response.status; throw error; } return value;
         });
     }
-    window.LiveMarketUI = {t:t,e:e,n:n,clamp:clamp,tone:tone,report:report,engagement:engagement,factors:factors,thermal:thermal,thermalStatus:thermalStatus,impulse:impulse,competition:competition,tierBadge:tierBadge,lever:lever,sheet:sheet,closeTop:closeTop,api:api,auth:auth};
+    window.LiveMarketUI = {t:t,e:e,n:n,clamp:clamp,tone:tone,report:report,engagement:engagement,factors:factors,thermal:thermal,thermalStatus:thermalStatus,impulse:impulse,phase:phase,competition:competition,tierBadge:tierBadge,lever:lever,sheet:sheet,closeTop:closeTop,api:api,auth:auth};
 })();

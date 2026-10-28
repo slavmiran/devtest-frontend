@@ -6,7 +6,7 @@
  var fields=['manualPlan','mode','paced','dailyInstalls','pauseHours','rampDays','allowContractsDuringPause'];
  function policy(value){var p=value||{},mode=['auto','manual','free'].includes(p.mode)?p.mode:p.paced?'manual':'free';return {manualPlan:p.manualPlan?JSON.parse(JSON.stringify(p.manualPlan)):null,mode:mode,paced:mode!=='free',dailyInstalls:Number(p.dailyInstalls)||4,pauseHours:Number(p.pauseHours)||24,rampDays:Number(p.rampDays)||0,allowContractsDuringPause:p.allowContractsDuringPause!==false};}
  function setup(d,control,rows,editing){
-  var c=control||{},p=policy(c.policy);fields.forEach(function(k){d.volume[k]=p[k];});d.volume.paceVersion=2;d.corridor=c.corridor||null;d.autoDailyCost=Number(c.auto_daily_cost_bust)||0;d.manualRuntime=c.manual_runtime||null;d.manualPlanSaved=JSON.stringify(p.manualPlan);
+  var c=control||{},p=policy(c.policy);fields.forEach(function(k){d.volume[k]=p[k];});d.volume.paceVersion=2;d.corridor=c.corridor||null;d.thermalPhase=c.thermal_phase||null;d.autoDailyCost=Number(c.auto_daily_cost_bust)||0;d.manualRuntime=c.manual_runtime||null;d.manualPlanSaved=JSON.stringify(p.manualPlan);
   return {revision:c.revision,policy:p,allocations:(c.allocations||[]).map(function(a){return Object.assign({},a);}),ownId:editing?editing.id:null,ownLimit:editing&&editing.cycle_limit||null,rows:rows||[]};
  }
  function payload(d,c){return {revision:c.revision,policy:policy(d.volume),allocations:c.allocations.filter(function(a){return a.campaign_id!==c.ownId&&(a.status==='active'||a.kind==='closed_bridge'||a.contracts_enabled);}).map(function(a){return {campaign_id:a.campaign_id,limit:a.limit==null?null:Number(a.limit)};}),own_limit:c.ownLimit==null?null:Number(c.ownLimit)};}
@@ -21,6 +21,11 @@
  }
  function refresh(root,d,c,includeOwn){LiveCampaignPaceView.refreshWarning(root,d);var save=root.querySelector('[data-lpc-save]');if(save)save.disabled=!LiveManualPlan.valid(d.volume.manualPlan)||!!root.querySelector('[aria-invalid="true"]');if(!c)return;var note=allocationSummary(d,rows(d,c,includeOwn)),node=root.querySelector('[data-lpc-allocation-summary]');if(node){node.textContent=note.text;node.classList.toggle('is-warn',note.warn);}}
  function change(c,key,value){if(key==='own')c.ownLimit=value;else{var a=c.allocations.find(function(a){return String(a.campaign_id)===String(key);});if(a)a.limit=value;}}
+ function refreshPhase(root,d,control){
+  if(!control)return;d.thermalPhase=control.thermal_phase||null;
+  var node=root.querySelector('[data-lpc-thermal-phase]');if(node&&window.LiveMarketUI){var expanded=node.querySelector('details[open]');node.innerHTML=LiveCampaignPaceView.thermal(d);if(expanded&&node.querySelector('details'))node.querySelector('details').open=true;}
+ }
+ window.addEventListener('live-campaigns:data',function(event){var s=session;if(!s||Number(event.detail.appId)!==Number(s.adapter.appId)||!s.adapter.get())return;refreshPhase(s.layer,s.draft,event.detail.control);});
  function status(p,pace,rows){
   if(!rows)return {key:'lpcStatusLoading',tone:'neutral'};
   var active=rows.some(function(c){return c.status==='active'||c.contracts&&c.contracts.enabled;});
@@ -56,5 +61,5 @@
   layer.onkeydown=function(event){if(event.key==='Escape'){event.preventDefault();close();}if(event.key==='Tab'){var nodes=Array.from(layer.querySelectorAll('button:not(:disabled),input:not(:disabled)')).filter(function(n){return n.getClientRects().length;});if(event.shiftKey&&document.activeElement===nodes[0]){event.preventDefault();nodes[nodes.length-1].focus();}else if(!event.shiftKey&&document.activeElement===nodes[nodes.length-1]){event.preventDefault();nodes[0].focus();}}};
   render();layer.querySelector('[data-lpc-close]').focus();if(window.syncTelegramBackButton)window.syncTelegramBackButton();
  }
- window.LiveProjectControl={policy:policy,setup:setup,payload:payload,distribution:distribution,refresh:refresh,change:change,status:status,statusHTML:statusHTML,updateStatus:updateStatus,open:open,close:close};
+ window.LiveProjectControl={policy:policy,setup:setup,payload:payload,distribution:distribution,refresh:refresh,refreshPhase:refreshPhase,change:change,status:status,statusHTML:statusHTML,updateStatus:updateStatus,open:open,close:close};
 })();
