@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/live-analytics');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/live-card-compact-20261027/analytics');
 fs.mkdirSync(out,{recursive:true});
 const base=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/live-analytics.json'),'utf8'));
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -25,7 +25,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
    await page.goto('http://fixture.local/');
    for(const file of ['css/tokens.css','css/base.css','styles.css','css/live-metrics-modal.css'])await page.addStyleTag({path:path.join(root,file)});
    for(const file of ['ui/ui-helpers.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
-   await page.evaluate(lang=>{window.lang=lang;window.API_BASE='/api';window.getTelegramInitDataRaw=()=> 'signed-fixture';window.myProjects=[{id:42,name:'Orbit Notes <img src=x>'},{id:43,name:'Second app'}];window.archivedProjects=[];document.getElementById('opener').onclick=e=>LiveProjectMetrics.details(42,e);},lang);
+   await page.evaluate(lang=>{window.lang=lang;window.API_BASE='/api';window.showToast=message=>window.lastToast=message;window.getTelegramInitDataRaw=()=> 'signed-fixture';window.myProjects=[{id:42,name:'Orbit Notes <img src=x>'},{id:43,name:'Second app'}];window.archivedProjects=[];document.getElementById('opener').onclick=e=>LiveProjectMetrics.details(42,e);},lang);
    await page.click('#opener');await page.waitForFunction(()=>document.querySelector('.la-score-ring strong')?.textContent==='95');
    const assertWidth=async()=>{
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -95,6 +95,16 @@ const clone=x=>JSON.parse(JSON.stringify(x));
    data.health_score=77;data.health_status='watch';data.calibration_status='early';data.install_velocity.total=5;
    await page.locator('#la-refresh').click();await page.waitForFunction(()=>document.querySelector('.la-score-ring strong')?.textContent==='77');
    assert.match(await page.locator('.la-calibration').innerText(),lang==='ru'?/Ранняя калибровка/:/Early calibration/);
+   // Imported lifetime count remains visible even without a measurable WMA.
+   data=clone(base);data.health_score=null;data.health_status='insufficient_data';data.calibration_status='insufficient_data';data.coverage_percent=0;
+   Object.assign(data.install_velocity,{total:1,per_day:0,trend_wma_percent:0,trend_available:false,dominant_source_warning:true,sources_breakdown:{key_percent:0,link_percent:100,browser_percent:0}});
+   Object.assign(data.retention,{avg_days:2,d30_target_percent:6.7,observed_only_count:1,early_uninstalls_count:0,toxic_dropoffs_d1_d3:0});
+   await page.locator('#la-refresh').click();await page.waitForFunction(()=>document.querySelector('[data-branch="installs"] header>span').textContent.endsWith('· 1'));
+   const source=page.locator('[data-branch="installs"] .la-tree-chip.is-source-warning');
+   assert.match(await source.innerText(),/100%/);assert.equal(await source.count(),1);
+   assert.equal(await page.locator('[data-branch="installs"] .la-positive').evaluate(el=>getComputedStyle(el).outlineStyle),'none','Traffic warning must not draw a misleading frame around the velocity track');
+   await source.click();assert.match(await page.evaluate(()=>lastToast),lang==='ru'?/балансе источников, а не о скорости/:/source mix, not install speed/);
+   await assertWidth();await page.screenshot({path:path.join(out,`imported-one-${lang}-${width}.png`)});
    // No activity, no attributed sources, no score or green security claims.
    data=clone(base);data.health_score=null;data.health_status='insufficient_data';data.coverage_percent=0;data.data_status='no_activity';
    data.install_velocity={total:0,per_day:0,trend_wma_percent:0,trend_available:false,sources_breakdown:{key_percent:null,link_percent:null,browser_percent:null,unknown_percent:null},source_sample_ready:false};

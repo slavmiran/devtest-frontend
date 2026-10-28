@@ -191,6 +191,8 @@
             section(text('monetization'), '<p>' + esc(typeof ads === 'boolean' ? text(ads ? 'ads' : 'noAds') : text('unknown')) + '</p>' + row(text('iap'), iap) + row(text('price'), price)) +
             section(text('safety'), safetyBody, 'play-passport-section--safety') +
             '<p class="play-passport-footnote">' + esc(text('saved')) + ': ' + esc(date(current.data.play_store_synced_at)) + '</p>';
+        var updated=data.updated||data.lastUpdatedOn,stamp=typeof updated==='number'?updated*(updated<1e11?1000:1):Date.parse(updated);
+        if(current.synced&&Number.isFinite(stamp)&&Date.now()-stamp>30*86400000&&window.LiveGuidance)node.insertAdjacentHTML('afterbegin','<p class="play-passport-error lg-release-notice" role="status">'+esc(LiveGuidance.text('lgReleaseStillOld'))+'</p>');
         var expand = document.getElementById('play-passport-expand');
         if (expand) expand.onclick = function () {
             var collapsed = document.getElementById('play-passport-description').classList.toggle('is-collapsed');
@@ -245,6 +247,7 @@
                 return;
             } else {
                 remember(id, data);
+                if(current&&current.id===id)current.synced=true;
                 window.dispatchEvent(new CustomEvent('play-store:synced', { detail: { appId: id } }));
             }
             versions.set(id, (versions.get(id) || 0) + 1);
@@ -295,11 +298,12 @@
         });
         renderContent(); updateControls(); document.getElementById('play-passport-back').focus();
         timer = setInterval(updateControls, 1000);
-        readCache(current);
+        return readCache(current);
     }
     window.renderPlayStoreDetailsButton = function (id) {
         return '<button type="button" class="live-project-details" onclick="openPlayStorePassport(' + Number(id) + ', event)">📄 ' + esc(text('details')) + ' ›</button>';
     };
     window.openPlayStorePassport = open;
+    window.loadPlayStorePassport = async function(id){var reading=open(id),state=current;await reading;if(state&&current===state&&!state.data.play_store_raw)await sync();};
     window.closePlayStorePassport = close;
 })();

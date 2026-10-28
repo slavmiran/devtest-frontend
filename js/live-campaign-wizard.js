@@ -65,7 +65,7 @@
         var attrs=['lcwFocus','lcwInput','keyword','lcwStrategy'],identity=attrs.map(function(k){return focused && focused.dataset[k];});
         var start=focused && focused.selectionStart,end=focused && focused.selectionEnd;
         s.context.descriptionOpen=!!body.querySelector('.lcw-description[open]');
-        body.innerHTML=LiveCampaignWizardView.body(s.draft,s.step,s.context);shell(s);
+        body.innerHTML=LiveCampaignWizardView.body(s.draft,s.step,s.context)+(s.step===1&&s.draft.source==='keywords'&&s.context.poolAvailable===0?'<aside class="lcp-note"><p>'+window.escapeHTML(text('lgEmptyPool'))+'</p><button type="button" class="meta-chip lg-action" data-live-action="pool" data-live-app="'+s.draft.appId+'">'+window.escapeHTML(text('lgPool'))+'</button></aside>':'');shell(s);
         body.classList.toggle('lcw-enter-a',s.step%2===1);body.classList.toggle('lcw-enter-b',s.step%2===0);
         if(changedStep){body.scrollTop=0;var target=s.layer.querySelector('.lcw-heading')||body.querySelector('button');if(target)target.focus({preventScroll:true});}
         else{
@@ -90,6 +90,7 @@
                 var analytics=data.analytics;s.context.metrics={installs:analytics.install_velocity,reviews:{per_day:analytics.reviews_health&&analytics.reviews_health.per_day},avg_retention_days:analytics.retention&&analytics.retention.avg_days};
                 var b=analytics.install_velocity.baseline,rate=b?b.per_day:analytics.install_velocity.per_day;s.draft.baseline={available:(!b||b.available)&&typeof rate==='number'&&Number.isFinite(rate)&&rate>=0,perDay:rate||0,days:b&&b.days||7};
             }else if(kind==='campaigns'){s.context.capacity=data.capacity||{active:0,limit:3};s.context.hud=data.hud||null;s.context.campaignsError=false;
+                if(data.project_control)s.context.poolAvailable=data.project_control.pool_available;
                 if(data.project_control&&!s.context.projectControl){var pristine=!dirty(s);s.context.projectControl=LiveProjectControl.setup(s.draft,data.project_control,data.campaigns,s.editing);if(pristine)s.initial=fingerprint(s.draft);}
             }else{
                 s.context.market=data.play_store_raw || null;
@@ -103,7 +104,7 @@
         finally{
             s.readers=s.readers.filter(function(r){return r!==c;});
             if(accessible(s)){s.context[kind+'Loading']=false;refresh(s);
-                if(kind==='market' && s.step===1||kind==='campaigns'&&s.step===4)render(s,false);
+                if(kind==='market' && s.step===1||kind==='campaigns'&&[1,4].includes(s.step))render(s,false);
             }else if(session===s)dispose(s);
         }
     }
@@ -127,7 +128,7 @@
         if(s.confirming||s.saving)return;
         var field=el.dataset.lcwInput;if(!field)return;
         if(field==='manualKey'){s.context.manualKey=el.value;return;}
-        if(['daily','period','target','retention','pauseHours'].includes(field)||field.indexOf('cap:')===0){
+        if(['daily','period','target','retention','pauseHours'].includes(field)||field.indexOf('cap:')===0||field.indexOf('plan:')===0){
             var min=Number(el.min),max=Number(el.max),value=Number(el.value);
             var ok=/^\d+$/.test(el.value) && Number.isSafeInteger(value) && value>=min && value<=max;
             el.setAttribute('aria-invalid',String(!ok));el.setCustomValidity(ok?'':text('lcwInvalidCount'));
@@ -191,7 +192,7 @@
             if(s.editing)return;s.media.clear();var projectPolicy=Object.assign({},s.draft.volume);s.draft=LiveCampaignDraft.applyStrategy(s.draft,template);if(s.context.projectControl)Object.assign(s.draft.volume,LiveProjectControl.policy(projectPolicy));s.draft.name=text({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep'}[template]);if(template==='deep')s.draft.activity.instructions=text('lcgDefaultScenario');s.edited=false;s.webEdited=false;s.context.manualKey='';s.quickStatus='paused';return save(s,s.quickStatus);
         }
         if(field){
-            var value=button.dataset.value;value=field==='source'?value:value==='true'?true:value==='false'?false:Number(value);
+            var value=button.dataset.value;value=(['source','mode'].includes(field)||LiveManualPlan.textField(field))?value:value==='true'?true:value==='false'?false:Number(value);
             if(field.indexOf('cap:')===0){if(!s.context.projectControl)return;LiveProjectControl.change(s.context.projectControl,field.slice(4),value);s.context.allocationEdited=true;render(s,false);return;}
             var next=LiveCampaignDraft.change(s.draft,field,value);
             if(field==='checkpoint' && next===s.draft){toast('lcwMinimum');return;}s.draft=next;s.edited=true;
@@ -242,5 +243,9 @@
         window.addEventListener('beforeunload',beforeUnload);render(session,true);syncBack();
         session.hudTimer=setInterval(function(){if(session&&session.layer===layer)refresh(session);},60000);session.campaignRead=readData(session,'campaigns');readData(session,'sources');if(!session.context.market)readData(session,'market');readGeo(session,false);
     }
-    window.LiveCampaignWizard={open:open,edit:function(id,campaign,event){return open(id,event,campaign);},close:close,back:back};
+    function openSource(id,source){open(id);var s=session;if(!s||s.draft.appId!==Number(id)||s.editing)return false;s.draft=LiveCampaignDraft.change(s.draft,'source',source);s.step=1;s.unlocked=1;s.context.asoOpen=source==='keywords';s.initial=fingerprint(s.draft);render(s,true);return true;}
+    window.addEventListener('live-project:pool-saved',function(event){var s=session;if(!s||!accessible(s)||s.draft.appId!==event.detail.appId)return;var control=event.detail.control;s.context.poolAvailable=control.pool_available;if(s.context.projectControl)s.context.projectControl.revision=control.revision;render(s,false);});
+    function editAt(id,campaign,step){open(id,null,campaign);var s=session;if(!s||!s.editing||s.editing.id!==campaign.id)return false;s.step=step===3?3:1;render(s,true);return true;}
+    function scenario(id){if(!openSource(id,'link'))return false;session.draft=LiveCampaignDraft.change(session.draft,'activity',true);session.draft=LiveCampaignDraft.change(session.draft,'screenshot',true);session.step=3;session.unlocked=3;render(session,true);return true;}
+    window.LiveCampaignWizard={editAt:editAt,scenario:scenario,openSource:openSource,open:open,edit:function(id,campaign,event){return open(id,event,campaign);},close:close,back:back};
 })();

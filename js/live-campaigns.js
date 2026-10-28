@@ -86,7 +86,7 @@
         return p.needed>0&&Date.now()-Date.parse(p.cycle_started_at)>18*3600000?'<div class="lcp-project-notice"><p>⚠️ '+esc(tr('lpcStatusDeficit',{n:p.needed}))+'</p><div>'+button('showcase',tr('lcpShowcase'),null,false,'meta-chip')+button('guests',tr('lcpGuests'),null,false,'meta-chip')+'</div></div>':'';
     }
     function campaign(c,s) {
-        var allocation=s.control&&(s.control.allocations||[]).find(function(a){return a.campaign_id===c.id;});c=Object.assign({},c,{cycle_used:allocation&&allocation.used||0,project_paced:!!(s.control&&s.control.policy.paced),project_reviews:s.control&&s.control.parameters.request_reviews});
+        var allocation=s.control&&(s.control.allocations||[]).find(function(a){return a.campaign_id===c.id;});c=Object.assign({},c,{cycle_used:allocation&&allocation.used||0,project_paced:!!(s.control&&s.control.policy.paced&&s.control.policy.mode!=='auto'),project_reviews:s.control&&s.control.parameters.request_reviews});
         if(c.definition)return LiveCampaignGrowthCard.build(c,s.pending.has(c.id)||s.pending.has(-1));
         var busy=s.pending.has(c.id)||s.pending.has(-1), cost=Number(c.overlimit_cost || 0);
         return '<article class="card lc-campaign" data-campaign-id="' + Number(c.id) + '">' +
@@ -116,16 +116,18 @@
     function plusIcon(){return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';}
     function projectBudget(s){
         if(!s.control)return '';var c=s.control;
-        return '<div class="lc-section-balance"><button type="button" class="lc-action lpc-project-budget" data-lc-action="project-pool" aria-haspopup="dialog" aria-label="'+esc(tr('lcPoolEdit')+': '+amount(c.pool_available)+' $BUST')+'"'+(s.pending.has(-1)?' disabled':'')+'><strong>'+esc(amount(c.pool_available))+' <span>$BUST</span></strong><span class="lc-pool-topup-icon" aria-hidden="true">'+plusIcon()+'</span></button>'+(c.allow_wallet_spending?'<small class="lc-wallet-badge">✓ '+esc(tr('lcWalletEnabled'))+'</small>':'')+(c.reserved_bust?'<small class="lc-note">'+esc(tr('lcReserved',{n:amount(c.reserved_bust)}))+'</small>':'')+'</div>';
+        var hint=tr('lcPoolEdit')+': '+amount(c.pool_available)+' $BUST'+(c.reserved_bust?' · '+tr('lcReserved',{n:amount(c.reserved_bust)}):'');
+        return '<div class="lc-section-balance"><button type="button" class="lc-action lpc-project-budget" data-lc-action="project-pool" aria-haspopup="dialog" aria-label="'+esc(hint)+'" title="'+esc(hint)+'"'+(s.pending.has(-1)?' disabled':'')+'><strong>'+esc(amount(c.pool_available))+' <span>$BUST</span></strong><span class="lc-pool-topup-icon" aria-hidden="true">'+plusIcon()+'</span></button>'+(c.allow_wallet_spending?'<span class="lc-wallet-badge" title="'+esc(tr('lcWalletEnabled'))+'" aria-label="'+esc(tr('lcWalletEnabled'))+'"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M13 8h5v4h-5z"/></svg><span aria-hidden="true">✓</span></span>':'')+'</div>';
     }
     function projectBar(s){
         if(!s.control)return '';var c=s.control,v=c.policy||{},p=s.pace||{};
-        return '<div class="lc-project-controls"><button type="button" class="lpc-pace-bar" data-lc-action="project-pace"'+(s.pending.has(-1)?' disabled':'')+'><span><strong>'+esc(tr(v.paced?'lpcPaceSummary':'lcpFree',{n:v.dailyInstalls,h:v.pauseHours,r:v.rampDays}))+'</strong>'+(v.paced?'<small>'+esc(tr('lpcCycleProgress',{used:p.admitted||0,total:p.quota||v.dailyInstalls}))+'</small>':'')+'</span>'+LiveCampaignGrowthCard.chevron+'</button>'+(window.LiveAdmission?'<button type="button" class="lpc-pace-bar" data-lc-action="project-admission"><span><strong>'+esc(tr('lmAdmission'))+'</strong><small>'+esc(tr(c.admission_mode==='instant_install'?'lmInstantMode':'lmRequestOnly'))+'</small></span>'+LiveCampaignGrowthCard.chevron+'</button>':'')+paceNotice(s)+'</div>';
+        return '<div class="lc-project-controls"><button type="button" class="lpc-pace-bar" data-lc-action="project-pace"'+(s.pending.has(-1)?' disabled':'')+'><span><strong>'+esc(tr(v.mode==='auto'?'lpcAuto':v.manualPlan&&v.paced?'lpSummary':v.paced?'lpcPaceSummary':'lcpFree',{n:v.manualPlan?p.quota:v.dailyInstalls,h:v.pauseHours,r:v.rampDays}))+'</strong>'+(v.paced?'<small>'+esc(tr('lpcCycleProgress',{used:p.admitted||0,total:p.quota||v.dailyInstalls}))+'</small>':'')+'</span>'+LiveCampaignGrowthCard.chevron+'</button>'+(window.LiveAdmission?'<button type="button" class="lpc-pace-bar" data-lc-action="project-admission"><span><strong>'+esc(tr('lmAdmission'))+'</strong><small>'+esc(tr(c.admission_mode==='instant_install'?'lmInstantMode':'lmRequestOnly'))+'</small></span>'+LiveCampaignGrowthCard.chevron+'</button>':'')+paceNotice(s)+'</div>';
     }
     function build(p) { var s=state(p.id||p.app_id);s.project=p;return '<section class="lc-section" data-live-campaigns="'+s.id+'">'+content(s)+'</section>'; }
     function controlSelector(node){return node&&node.dataset.lcAction&&node.dataset.campaign?'[data-campaign-id="'+Number(node.dataset.campaign)+'"] [data-lc-action="'+node.dataset.lcAction+'"]'+(node.dataset.keyword?'[data-keyword="'+Number(node.dataset.keyword)+'"]':''):null;}
     function repaint(s, preserveContractDrafts) {
         if(s.actor!==actor())return;
+        if(s.keyboardAction){s.repaintAfterKey=true;return;}
         var panel=document.querySelector('[data-live-campaigns="'+s.id+'"]');if(!panel)return;
         var focus=panel.contains(document.activeElement)?document.activeElement:null;
         var selector=focus && focus.dataset.projectParam ? '[data-project-param="'+focus.dataset.projectParam+'"]' : null;
@@ -143,6 +145,7 @@
     }
     function queueRead(s,delay){clearTimeout(s.paceTimer);s.paceTimer=setTimeout(function(){if(s.actor===actor()&&document.querySelector('[data-live-campaigns="'+s.id+'"]'))read(s);},delay);}
     async function read(s) {
+        if(s.keyboardAction){queueRead(s,100);return;}
         if(s.pending.size){queueRead(s,1000);return;}
         var seq=++s.seq;if(s.controller)s.controller.abort();var controller=s.controller=new AbortController();
         try {
@@ -180,6 +183,7 @@
             var response=await parse(await fetch(endpoint(s.id,'/'+path),{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({init_data:s.actor,request_key:id},path==='pace'?{control:data}:data))}));
             if(s.actor!==actor())return false;s.control=response.project_control;s.pace=response.pace;s.requests.delete(key);project(s).live_project_control=s.control;Object.assign(project(s),s.control.parameters);LiveProjectControl.updateStatus(project(s),s.pace,s.rows);
             if(typeof visibilityStats!=='undefined'&&visibilityStats)visibilityStats.balance_bust=s.control.wallet_balance;
+            if(path==='pool')window.dispatchEvent(new CustomEvent('live-project:pool-saved',{detail:{appId:s.id,control:s.control}}));
             return true;
         }catch(error){toastCode(error.message);return false;}
         finally{s.pending.delete(-1);if(s.actor===actor())await read(s);}
@@ -196,6 +200,11 @@
     function mount(card,p) {
         if(p.phase!=='live')return;
         var s=state(p.id||p.app_id);s.project=p;var panel=card.querySelector('[data-live-campaigns]');if(!panel)return;
+        // A native checkbox toggles on Space keyup. Replacing it between
+        // keydown and keyup loses the action, even if focus is restored.
+        panel.onkeydown=function(event){if(event.code==='Space'&&event.target.matches('input[role="switch"]'))s.keyboardAction=true;};
+        panel.onkeyup=function(event){if(event.code!=='Space')return;s.keyboardAction=false;setTimeout(function(){if(s.repaintAfterKey){s.repaintAfterKey=false;repaint(s,true);}},0);};
+        panel.onfocusout=function(){if(s.keyboardAction)setTimeout(function(){if(!panel.contains(document.activeElement)){s.keyboardAction=false;if(s.repaintAfterKey){s.repaintAfterKey=false;repaint(s,true);}}},0);};
         panel.oninput=function(event){var editor=event.target.closest('.lc-contract-editor');if(editor)ProjectContractPricing.update(editor);};
         panel.onclick=async function(event) {
             var summary=event.target.closest('summary');
@@ -206,9 +215,9 @@
             if(action==='showcase'||action==='guests'){if(window.switchTab)window.switchTab('market');if(window.switchMarketSubTab)window.switchMarketSubTab('seeking');if(action==='guests'){var guests=document.getElementById('guest-projects-section');if(guests){if(!guests.classList.contains('expanded')&&window.toggleGuestProjectsAccordion)window.toggleGuestProjectsAccordion();guests.scrollIntoView({behavior:'smooth',block:'start'});}}return;}
             if(action==='create')return window.LiveCampaignWizard.open(s.id,event);
             if(action==='retry')return read(s);
-            if(action==='project-pool')return LiveCampaignWallet.open({get:function(){return s.actor===actor()?s.control:null;},change:function(data){return projectChange(s,'pool','POST',data);}},control);
+            if(action==='project-pool')return openPool(s.id,control);
             if(action==='project-admission'&&window.LiveAdmission)return LiveAdmission.open(s.id,s.control);
-            if(action==='project-pace')return LiveProjectControl.open({appId:s.id,get:function(){return s.actor===actor()?s.control:null;},project:function(){return project(s);},rows:function(){return s.rows;},save:function(data,key){return projectChange(s,'pace','PATCH',data,key);}},control);
+            if(action==='project-pace')return openPace(s.id,control);
             if(action==='buy-active')return buyActive(s);
             if(action==='keyword'&&c)return mutate(s,c,'keywords/'+Number(control.dataset.keyword),'PATCH',{revision:c.revision,enabled:control.dataset.enabled==='true'});
             if(!c||s.pending.has(c.id))return;
@@ -255,5 +264,10 @@
  function reports(test){var values=test.live_bridge&&test.live_bridge.additional_reports||[];return values.length?'<details class="lc-report-tasks"><summary>'+esc(tr('lcReportsTask'))+'</summary><ul>'+values.map(function(v){return '<li>'+esc(v)+'</li>';}).join('')+'</ul></details>':'';}
 
  window.addEventListener('live-campaigns:refresh',async function(event){var s=state(event.detail.appId);await read(s);if(s.actor!==actor())return;var row=event.detail.reveal&&document.querySelector('[data-live-campaigns="'+s.id+'"] [data-campaign-id="'+Number(event.detail.campaignId)+'"]');if(row){row.scrollIntoView({behavior:'smooth',block:'start'});var edit=row.querySelector('[data-lc-action="edit"]');if(edit)edit.focus({preventScroll:true});}});
- window.LiveCampaigns={requestKey:uuid,build:build,mount:mount,toastCode:toastCode,marketBadges:marketBadges,normalActions:normalActions,reports:reports,isControl:function(test,day){return !!(test&&test.live_bridge&&(test.live_bridge.control_days||[]).includes(Number(day)));}};
+ async function ready(id,force){var s=state(id);if(force&&(s.pending.size||s.keyboardAction))return null;if(force||!s.control||Date.now()-s.readAt>30000)await read(s);return s.actor===actor()&&s.control&&!s.error?s:null;}
+ async function openPool(id,trigger){var s=await ready(id);if(!s)return false;LiveCampaignWallet.open({get:function(){return s.actor===actor()?s.control:null;},change:function(data){return projectChange(s,'pool','POST',data);}},trigger);return true;}
+ async function openPace(id,trigger,mode){var s=await ready(id);if(!s)return false;LiveProjectControl.open({appId:s.id,get:function(){return s.actor===actor()?s.control:null;},project:function(){return project(s);},rows:function(){return s.rows;},save:function(data,key){return projectChange(s,'pace','PATCH',data,key);}},trigger,mode);return true;}
+ async function openParameters(id){var s=await ready(id);if(!s)return false;parameters(null,s);ProjectParameters.toggleReviews('campaign-'+s.id+'-0');return true;}
+ window.addEventListener('blur',function(){states.forEach(function(s){if(!s.keyboardAction)return;s.keyboardAction=false;if(s.repaintAfterKey){s.repaintAfterKey=false;repaint(s,true);}});});
+ window.LiveCampaigns={workspace:async function(id){var s=await ready(id,true);return s?{control:s.control,rows:s.rows||[]}:null;},openPool:openPool,openPace:openPace,openParameters:openParameters,requestKey:uuid,build:build,mount:mount,toastCode:toastCode,marketBadges:marketBadges,normalActions:normalActions,reports:reports,isControl:function(test,day){return !!(test&&test.live_bridge&&(test.live_bridge.control_days||[]).includes(Number(day)));}};
 })();

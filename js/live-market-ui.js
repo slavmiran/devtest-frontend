@@ -60,11 +60,11 @@
         var area = line('U_opt') + ' ' + days.map(function (d, i) { return x(i) + ',' + y(d.L_floor); }).reverse().join(' ');
         return '<section class="lm-thermal"><header class="lm-inline"><h2>' + e(t('lmThermal')) + '</h2><small>' + e(t('lmUTC')) + '</small></header>' + impulse(market) + '<svg class="lm-week-chart" viewBox="0 0 304 142" role="img" aria-label="' + e(t('lmThermal') + ' · ' + t('lmUTC')) + '"><polygon points="' + area + '" class="lm-corridor"/><polyline points="' + line('B_t') + '" class="lm-baseline"/><polyline points="' + line('U_opt') + '" class="lm-upper"/><polyline points="' + line('U_crit') + '" class="lm-critical"/><polyline points="' + line('C_t') + '" class="lm-actual"/>' + days.map(function (d, i) { return '<circle cx="' + x(i) + '" cy="' + y(d.C_t) + '" r="3"/><text x="' + x(i) + '" y="133" text-anchor="middle">' + e(String(d.day || '').slice(5)) + '</text>'; }).join('') + '</svg><div class="lm-chart-legend"><span class="lm-key-actual">' + e(t('lmActual')) + '</span><span class="lm-key-base">' + e(t('lmBaseline')) + '</span><span class="lm-key-upper">' + e(t('lmCorridor')) + '</span></div>' + thermalStatus(market.thermal) + '<details><summary>' + e(t('lmDetails')) + '</summary><p>' + e(t('lmThermalHint')) + '</p><div class="lm-week-data">' + days.map(function (d) { return '<div><time>' + e(d.day) + '</time><span>C ' + e(n(d.C_t)) + ' · B ' + e(n(d.B_t)) + ' · L ' + e(n(d.L_floor)) + ' · Uopt ' + e(n(d.U_opt)) + ' · Ucrit ' + e(n(d.U_crit)) + ' · P₃d ' + e(n(d.P_3d)) + '</span></div>'; }).join('') + '</div></details><p class="lm-caption">' + e(t('lmSimulation')) + '</p></section>';
     }
-    function lever(scoring) {
+    function lever(scoring, appId) {
         var code = scoring.growth_lever && scoring.growth_lever.code;
         var key = code ? code.replace(/^MARKET_/, '').toLowerCase() : '';
         if (/^THERMAL_/.test(code || '')) key = code;
-        return '<p class="lm-lever"><strong>' + e(t('lmLever')) + '</strong><span>' + e(t(key ? 'lmLever_' + key : 'lmLeverNone')) + '</span></p>';
+        return '<div class="lm-lever"><strong>' + e(t('lmLever')) + '</strong><span>' + e(t(key ? 'lmLever_' + key : 'lmLeverNone')) + '</span>'+(appId&&window.LiveGuidance?LiveGuidance.forMarket(appId,scoring):'')+'</div>';
     }
     function closeTop() { var s = sheets.pop(); if (!s) return; s.node.remove(); document.body.style.overflow = s.overflow; if (s.focus && s.focus.isConnected) s.focus.focus({preventScroll: true}); if (s.onclose) s.onclose(); if (window.syncTelegramBackButton) window.syncTelegramBackButton(); }
     function sheet(title, body, options) {

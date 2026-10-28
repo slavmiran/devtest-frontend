@@ -15,7 +15,7 @@
  function counts(d){var c={link:0,web:0,keywords:0};c[d.source]=total(d);return c;}
  function applyStrategy(d,template){
   if(!['aso','retention','deep','custom'].includes(template))return d;
-  var n=create({id:d.appId,name:d.appTitle});n.baseline=clone(d.baseline);n.template=template;
+  var n=create({id:d.appId,name:d.appTitle});n.baseline=clone(d.baseline);n.corridor=d.corridor;n.autoDailyCost=d.autoDailyCost;n.template=template;
   var rate=d.baseline.available?d.baseline.perDay:0;
   if(template==='aso'){
    n.source='keywords';n.reviews.enabled=true;n.volume.rampDays=7;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.3)));
@@ -32,7 +32,8 @@
  function change(d,f,v){
   var n=clone(d);
   if(['daily','target','paced','pauseHours','rampDays','allowContractsDuringPause'].includes(f))n.volume.paceVersion=2;
-  if(f==='source'&&['link','web','keywords'].includes(v))n.source=v;
+  if(f.indexOf('plan:')===0)LiveManualPlan.change(n.volume,f,v);
+  else if(f==='source'&&['link','web','keywords'].includes(v))n.source=v;
   else if(f==='country'&&(v===null||typeof v==='string'&&/^[A-Z]{2}$/.test(v)))n.country=v;
   else if(f==='name'&&typeof v==='string'&&v.length<=80)n.name=v;
   else if(f==='webQuery'&&typeof v==='string'&&v.length<=200)n.web.query=v;
@@ -44,7 +45,8 @@
   }else if(f==='activity'){n.activity.enabled=!!v;if(!v)n.activity.screenshot=false;}
   else if(f==='screenshot'&&n.activity.enabled)n.activity.screenshot=!!v;
   else if(f==='reviews')n.reviews.enabled=!!v;
-  else if(f==='paced')n.volume.paced=!!v;
+  else if(f==='mode'&&['auto','manual','free'].includes(v)){n.volume.mode=v;n.volume.paced=v!=='free';}
+  else if(f==='paced'){n.volume.paced=!!v;n.volume.mode=v?'manual':'free';}
   else if(f==='pauseHours'&&Number.isInteger(v)&&v>=6&&v<=48)n.volume.pauseHours=v;
   else if(f==='rampDays'&&[0,7,10,14].includes(v))n.volume.rampDays=v;
   else if(f==='allowContractsDuringPause')n.volume.allowContractsDuringPause=!!v;
@@ -68,16 +70,16 @@
  function media(d,key,value){var n=clone(d);if(key==='web')n.web.screenshot=value;else{var row=n.keywords.find(function(k){return 'keyword:'+k.id===key;});if(!row)return d;row.screenshot=value;}return n;}
  function quote(d){
   var installs=total(d),unit=(d.retention.checkpoints.length-1)*10,channels=['link','web','keywords'].map(function(k){return {key:k,count:k===d.source?installs:0,percent:k===d.source?100:0};});
-  return {available:installs>0,installs:installs,checkpointUnit:10,perInstall:unit,totalCommitment:installs*unit,dailyCommitment:d.volume.paced?Math.round(unit*LiveCampaignPace.daily(d.volume)*100)/100:null,
+  return {available:installs>0,installs:installs,checkpointUnit:10,perInstall:unit,totalCommitment:installs*unit,dailyCommitment:d.volume.paced?Math.round(unit*(d.volume.mode==='auto'?Math.min(installs,d.corridor&&d.corridor.U_opt||0):d.volume.manualPlan?Math.min(installs,d.manualRuntime&&d.manualPlanSaved===JSON.stringify(d.volume.manualPlan)?d.manualRuntime.quota:LiveManualPlan.quota(d.volume.manualPlan,1)):LiveCampaignPace.daily(d.volume))*100)/100:null,
    acquisitionDays:null,completionDays:null,channels:channels};
  }
- function valid(d,step){return !!d.source&&(d.source!=='web'||!!d.web.query.trim())&&(d.source!=='keywords'||d.keywords.length>0)&&d.retention.checkpoints.length>=2&&(step!==4||!!d.icon||!!d.name.trim());}
+ function valid(d,step){return (!window.LiveManualPlan||LiveManualPlan.valid(d.volume.manualPlan))&&!!d.source&&(d.source!=='web'||!!d.web.query.trim())&&(d.source!=='keywords'||d.keywords.length>0)&&d.retention.checkpoints.length>=2&&(step!==4||!!d.icon||!!d.name.trim());}
  async function definition(d,serialize){
   var payload={name:d.name,icon:d.icon===null?null:d.icon||'rocket',template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:clone(d.reviews),volume:clone(d.volume),web:{query:d.source==='web'?d.web.query:'',screenshot:null},keywords:[]};
   if(d.country)payload.country=d.country;
   payload.volume.totalInstalls=total(d);
   // Project control is saved separately in the same transaction. Legacy volume fields no longer gate intake.
-  payload.volume.paced=false;payload.volume.paceVersion=2;
+  payload.volume.paced=false;payload.volume.paceVersion=2;delete payload.volume.mode;delete payload.volume.manualPlan;
   if(d.source==='web'&&d.web.screenshot)payload.web.screenshot=await serialize('web',d.web.screenshot);
   if(d.source==='keywords')for(var k of d.keywords)payload.keywords.push({keyword:k.keyword,position:k.position,enabled:k.enabled!==false,screenshot:k.screenshot?await serialize('keyword:'+k.id,k.screenshot):null});
   return payload;

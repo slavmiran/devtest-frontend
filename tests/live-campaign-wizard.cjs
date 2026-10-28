@@ -1,16 +1,16 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {chromium}=require('C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/live-campaign-wizard');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..'),out=path.resolve(process.env.LIVE_TEST_ARTIFACTS||path.resolve(root,'../artifacts/live-corridor-20261027/wizard'));fs.mkdirSync(out,{recursive:true});
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const css=[...index.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="\.\/([^"?]+)/g)].map(m=>m[1]);
 const bridge={id:3,app_id:42,kind:'closed_bridge',status:'active',total_slots:7,free_occupied:0,free_available:7,paid_active:0,overlimit_cost:40,pool_available:0,reserved_bust:0,next_slot:8,next_slot_price:350,revision:1,control_days:[1,4,7,10,14],request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:''};
 const listing={title:'Orbit Budget Planner',genre:'Finance',summary:'Family budget and travel expenses',description:'Plan your family budget. Track daily expenses and manage travel costs.'};
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lQ0AAAAASUVORK5CYII=','base64');
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
- for(const language of ['ru','en'])for(const width of [360,390]){
+ for(const language of ['ru','en'])for(const width of [360,390,430]){
   const page=await browser.newPage({viewport:{width,height:740}}),errors=[],posts=[],edits=[],slotKeys=new Set();
   let campaigns=[structuredClone(bridge)],limit=3,nextId=10,failSave=false,failEdit=false,loseResponse=false,geoFailure=false;
-  let projectControl={revision:1,pool_available:0,allow_wallet_spending:false,policy:{paced:true,dailyInstalls:4,pauseHours:24,rampDays:0,allowContractsDuringPause:true},parameters:{request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:''},allocations:[{campaign_id:3,kind:'closed_bridge',status:'active',limit:1}]};
+  let projectControl={revision:1,pool_available:0,allow_wallet_spending:false,corridor:{day:'2026-10-27',B_t:10,L_floor:3,U_opt:20},auto_daily_cost_bust:0,policy:{mode:'manual',paced:true,dailyInstalls:4,pauseHours:24,rampDays:0,allowContractsDuringPause:true},parameters:{request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:''},allocations:[{campaign_id:3,kind:'closed_bridge',status:'active',limit:1}]};
   const capacity=()=>({active:campaigns.filter(c=>c.kind!=='closed_bridge'&&c.status==='active').length,limit,next_slot:limit+1,next_price:(limit-1)*1000});
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://fixture.local/**',async route=>{
@@ -39,7 +39,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.goto('http://fixture.local/');
   for(const file of css)if(fs.existsSync(path.join(root,file)))await page.addStyleTag({path:path.join(root,file)});
   await page.addStyleTag({content:'body{padding:8px}#tab-projects{display:block}'});
-  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-campaign-geo.js','i18n/live-project-control.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/country-catalog.js','js/showcase-geo.js','js/live-campaign-geo.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
+  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-campaign-geo.js','i18n/live-project-control.js','i18n/live-guidance.js','i18n/live-smart-pro.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-manual-plan.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/country-catalog.js','js/showcase-geo.js','js/live-campaign-geo.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
   await page.evaluate(({language,index})=>{
    const ref=new DOMParser().parseFromString(index,'text/html').querySelector('#add-bounty-settings');const holder=document.createElement('div');holder.hidden=true;holder.appendChild(ref);document.body.appendChild(holder);
    const dom=new DOMParser().parseFromString(index,'text/html');['showcase-geo-picker-modal','showcase-geo-list-modal'].forEach(id=>document.body.appendChild(dom.getElementById(id)));
@@ -111,9 +111,9 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await layer.locator('[data-lcw-icon="none"]').click();await field('name').fill('');assert.equal(await layer.locator('[data-lcw-action="save"]').isDisabled(),true);await field('name').fill('Summer ASO');
   await layer.locator('[data-lpc-cap="own"]').click();await field('cap:own').fill('2');
   await field('target').fill('53');
-  assert.equal(await layer.locator('[data-lcw-field="paced"]').count(),2);
+  assert.equal(await layer.locator('[data-lcw-field="mode"]').count(),3);
   for(const hours of [6,18,24,36,48]){await layer.locator('[data-lcw-field="pauseHours"][data-value="'+hours+'"]').click();await fit();}
-  assert.equal(await layer.locator('.lcp-equalizer').getAttribute('data-zone'),'buffer');
+  assert.equal(await layer.locator('.lcp-equalizer').getAttribute('data-zone'),'risk');
   assert.equal(await layer.locator('.lcp-equalizer input').evaluate(el=>{el.value='18';el.dispatchEvent(new Event('input',{bubbles:true}));el.value='48';el.dispatchEvent(new Event('input',{bubbles:true}));return el.isConnected;}),true,'Dragging the equalizer keeps the same native range alive');
   assert.equal(await layer.locator('.lcw-counter [data-lcw-input="pauseHours"]').inputValue(),'48');
   await layer.locator('[data-lcw-field="rampDays"][data-value="14"]').click();assert.equal(await layer.locator('.lcp-ramp-chart>div').count(),14);
@@ -122,18 +122,19 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.screenshot({path:path.join(out,'learning-'+language+'-'+width+'.png'),animations:'disabled'});
   await page.evaluate(()=>tg.BackButton.callback());assert.equal(await page.locator('#live-campaign-learning').count(),0);assert.match(await layer.locator('#lcw-title').innerText(),/4/);
   await field('target').fill('53');
-  await layer.locator('[data-lcw-field="paced"][data-value="false"]').click();assert.equal(await field('target').inputValue(),'53');
-  await layer.locator('[data-lcw-field="paced"][data-value="true"]').click();
+  await layer.locator('[data-lcw-field="mode"][data-value="free"]').click();assert.equal(await field('target').inputValue(),'53');
+  await layer.locator('[data-lcw-field="mode"][data-value="manual"]').click();
   await page.setViewportSize({width,height:520});await fit();await page.setViewportSize({width,height:740});
   assert.match(await layer.locator('[data-lcw-installs]').innerText(),/53/);await fit();await layer.locator('.lcw-scroll').evaluate(el=>el.scrollTop=el.scrollHeight);await page.screenshot({path:path.join(out,'pace-'+language+'-'+width+'.png'),animations:'disabled'});
   await layer.locator('.lcw-heading').click();assert.equal(await layer.locator('[data-lcw-action="step"]').count(),4);
   await layer.locator('[data-step="1"]').click();assert.equal(await layer.locator('[data-keyword-row]').count(),2);
   await layer.locator('.lcw-heading').click();await layer.locator('[data-step="4"]').click();
+  await layer.locator('[data-lcw-field="plan:strategy"][data-value="wave"]').click();await layer.locator('[data-lcw-input="plan:minInstalls"]').fill('3');await layer.locator('[data-lcw-input="plan:maxInstalls"]').fill('6');await fit();
   failSave=true;await layer.locator('[data-lcw-action="save"]').click();await page.waitForFunction(()=>document.querySelector('[data-lcw-action="save"]:not(:disabled)'));
   assert.equal(await layer.isVisible(),true);const failedKey=posts.at(-1).request_key;
   failSave=false;await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});
   assert.equal(posts.at(-1).request_key,failedKey,'Retry preserves idempotency key');assert.equal(posts.at(-1).definition.volume.totalInstalls,53);assert.equal(posts.at(-1).definition.web.query,'');assert.equal(posts.at(-1).definition.keywords[0].screenshot.data_base64,png.toString('base64'));
-  assert.equal(posts.at(-1).definition.volume.paced,false,'Campaign definition cannot isolate the project independently');assert.equal(posts.at(-1).project_control.own_limit,2);assert.equal(posts.at(-1).project_control.policy.pauseHours,48);
+  assert.equal(posts.at(-1).definition.volume.manualPlan,undefined);assert.equal(posts.at(-1).project_control.policy.manualPlan.strategy,'wave');assert.equal(posts.at(-1).definition.volume.paced,false,'Campaign definition cannot isolate the project independently');assert.equal(posts.at(-1).project_control.own_limit,2);assert.equal(posts.at(-1).project_control.policy.pauseHours,48);
   assert.equal(posts.at(-1).definition.icon,null,'An explicit name allows a campaign without an icon');
   assert.equal(posts.at(-1).definition.country,'KZ','GEO survives traffic changes and all four steps');
   await page.locator('.lc-growth').waitFor();assert.equal(await page.evaluate(()=>revoked.length>0),true);
@@ -154,7 +155,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   const flip=async(id,on)=>{const toggle=page.locator('[data-campaign-id="'+id+'"] [data-lc-action="toggle-status"]');await toggle.locator('..').click();await page.waitForFunction(({id,on})=>document.querySelector('[data-campaign-id="'+id+'"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')===String(on),{id,on});};
   await flip(10,false);await flip(10,true);
   const keyboardToggle=growth.locator('[data-lc-action="toggle-status"]');await keyboardToggle.focus();await keyboardToggle.press('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='false');
-  assert.equal(await page.evaluate(()=>document.activeElement.dataset.lcAction),'toggle-status','Keyboard focus survives the request');await keyboardToggle.press('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='true');
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.lcAction),'toggle-status','Keyboard focus survives the request');await keyboardToggle.focus();await page.keyboard.down('Space');await page.evaluate(()=>window.dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:42}})));await page.waitForTimeout(150);assert.equal(await keyboardToggle.evaluate(el=>el===document.activeElement),true,'A poll must not replace the checkbox during Space');await page.keyboard.up('Space');await page.waitForFunction(()=>document.querySelector('[data-campaign-id="10"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='true');
   await open();await layer.locator('[data-lcw-template="aso"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="11"]').waitFor();assert.equal(posts.at(-1).status,'paused');assert.equal(capacity().active,1,'A template does not consume an active slot before the owner enables it');assert.equal(await page.locator('[data-campaign-id="11"] [data-lc-action="toggle-status"]').getAttribute('aria-checked'),'false');assert.equal(posts.at(-1).project_control.policy.rampDays,14,'A template preserves the existing project-wide pace');
   await open();loseResponse=true;await layer.locator('[data-lcw-template="retention"]').click();await layer.locator('[data-lcw-action="retry-template"]:not(:disabled)').waitFor();const committedKey=posts.at(-1).request_key,committedCount=campaigns.length;
   await layer.locator('[data-lcw-action="retry-template"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="12"]').waitFor();assert.equal(posts.at(-1).definition.retention.days,28);assert.equal(posts.at(-1).request_key,committedKey);assert.equal(campaigns.length,committedCount,'A lost response cannot duplicate or activate a paused template');assert.equal(posts.at(-1).status,'paused');assert.equal(capacity().active,1);
@@ -189,5 +190,5 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   assert.equal(await page.locator('#showcase-geo-picker-modal [data-geo-code=""]').count(),0,'The profile picker does not inherit campaign-only options');await page.keyboard.press('Escape');
   assert.deepEqual(errors,[]);await page.close();
  }
- console.log('RU/EN 360/390: entry HUD, four steps, source isolation, media persistence, retry identity, templates, keyword guards, active capacity and slot purchase passed.');
+ console.log('RU/EN 360/390/430: entry HUD, four steps, source isolation, media persistence, retry identity, templates, keyword guards, active capacity and slot purchase passed.');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

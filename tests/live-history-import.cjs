@@ -35,7 +35,8 @@ for(const [key,value] of Object.entries(dictionary.window.I18NRU))assert.deepEqu
   assert.equal(await page.locator('.lh-banner-actions button').count(),2);
   assert.equal(await page.locator('.lh-banner-actions [data-lh-open]').isEnabled(),true);
   assert.equal(await page.locator('.lh-banner-actions [data-lh-open]').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(76, 141, 255)');
-  assert.match(await page.locator('.lh-pace-note').first().innerText(),/28/);
+  assert.equal(await page.locator('.live-metrics .lh-pace-note').count(),0);
+  assert.match(await page.locator('.live-metric-card-sub').nth(1).getAttribute('data-live-hint'),/28/);
   await page.screenshot({path:path.join(out,`banner-${lang}-${width}.png`)});
   await page.locator('.lh-banner-actions [data-lh-open]').click();await page.locator('#lh-run').waitFor();
   await page.locator('[data-lh-action=close]').first().click();

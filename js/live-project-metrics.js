@@ -46,26 +46,28 @@
     function compact(item) { return Math.abs(Number(item)) < 10000 ? num(item) : Number(item).toLocaleString(window.lang === 'ru' ? 'ru-RU' : 'en-US', { notation: 'compact', maximumSignificantDigits: 3 }); }
     function bandRetention(value) { return value < 7 ? 'risk' : value < 14 ? 'basic' : value < 21 ? 'good' : value < 31 ? 'excellent' : 'superb'; }
     function bandFreshness(value) { return value <= 30 ? 'fresh' : value <= 60 ? 'aging' : 'stale'; }
-    function trend(metric) {
+    function hintAttrs(hint) { return ' data-live-hint="'+esc(hint)+'" title="'+esc(hint)+'" aria-label="'+esc(hint)+'" onclick="LiveProjectMetrics.explain(event)"'; }
+    function trend(metric, paceHint) {
         var pct = metric && metric.trend_available ? Number(metric.trend_percent) || 0 : 0;
         var direction = pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral';
         var hint = metric && metric.trend_reason === 'zero_baseline' ? t('baseline') : metric && metric.trend_reason === 'insufficient_history' ? t('history') : t('windows');
         var glyph = pct > 0 ? '↗ ' : pct < 0 ? '↘ ' : '→ ';
-        return '<span class="live-metric-trend is-' + direction + '" title="' + esc((pct > 0 ? '+' : '') + num(pct,1) + '% · ' + hint) + '">' + glyph + (pct > 0 ? '+' : '') + esc(Math.abs(pct) < 10000 ? num(pct, 1) : compact(pct)) + '%</span>';
+        hint=(paceHint?paceHint+' ':'')+hint;
+        return '<button type="button" class="live-metric-trend is-' + direction + '"'+hintAttrs((pct > 0 ? '+' : '') + num(pct,1) + '% · ' + hint)+'>' + glyph + (pct > 0 ? '+' : '') + esc(Math.abs(pct) < 10000 ? num(pct, 1) : compact(pct)) + '%</button>';
     }
-    function metricCard(label, main, metric) {
+    function metricCard(label, main, metric, paceHint) {
         var rate = metric ? esc(num(metric.per_day, 1)) : '—';
         return '<div class="live-metric-card live-metric-row">' +
             '<div class="live-metric-card-head">' +
                 '<span class="live-metric-card-label">' + esc(label) + '</span>' +
-                trend(metric) +
+                trend(metric, paceHint) +
             '</div>' +
             '<div class="live-metric-card-main">' + main + '</div>' +
-            '<div class="live-metric-card-sub">' +
+            '<button type="button" class="live-metric-card-sub"'+hintAttrs(paceHint||t('windows'))+'>' +
                 '<span class="live-metric-card-speed-label">' + esc(t('speedLabel')) + '</span> ' +
                 '<strong class="live-metric-card-speed-val">' + rate + '</strong> ' +
                 '<span class="live-metric-card-speed-unit">' + esc(t('day')) + '</span>' +
-            '</div>' +
+            '</button>' +
         '</div>';
     }
     function legend() {
@@ -78,29 +80,32 @@
     function render(project, failure) {
         var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
         if (metrics && metrics.source !== 'devtesthub_live') metrics = null;
+        var quick=window.LiveGuidance?LiveGuidance.quickStart(project,metrics):'';
         var reviews = metrics && metrics.reviews, installs = metrics && metrics.installs;
         var rating = reviews && reviews.rating != null ? num(reviews.rating, 1) : '—';
         var reviewMain = esc(rating) + '&nbsp;<span class="live-metric-star" aria-hidden="true">★</span>&nbsp;<span class="live-metric-count">(' + (reviews ? esc(compact(reviews.total)) : '—') + ')</span>';
         var installMain = (installs ? esc(compact(installs.total)) : '—') + '&nbsp;<span class="live-metric-unit">' + esc(t('installUnit')) + '</span>';
         var retention = metrics && metrics.avg_retention_days, freshness = metrics && metrics.days_since_update;
+        var retentionNote=metrics&&metrics.retention_observed_only_count&&window.LiveHistoryImport?window.t('lhiRetentionLower',{},window.lang==='ru'?'ru':'en'):'';
         var keywords = (metrics && metrics.keywords || []).filter(function(entry){return Number(entry.installs)>0;});
         var retentionVal = retention == null ? '—d' : '~' + esc(num(retention, Number.isInteger(retention) ? 0 : 1)) + 'd';
         var freshnessVal = freshness == null ? '—' : esc(num(freshness)) + '&nbsp;' + esc(t('daysUnit'));
-        var health = '<div class="live-health-col live-health-active" title="' + esc(t('activeHint') + (metrics ? ' · ' + num(metrics.active_users) : '')) + '">' +
+        var activeHealth = '<div class="live-health-col live-health-active" title="' + esc(t('activeHint') + (metrics ? ' · ' + num(metrics.active_users) : '')) + '">' +
                 '<span class="live-health-label">' + esc(t('activeLabel')) + '</span>' +
                 '<strong class="live-health-val">' + (metrics ? esc(compact(metrics.active_users)) : '—') + '</strong>' +
-            '</div>' +
-            '<div class="live-health-badge is-' + (retention == null ? 'unknown' : bandRetention(retention)) + '" title="' + esc(t('retentionHint')) + '">' +
+            '</div>';
+        var health = '<button type="button" class="live-health-badge live-health-info is-' + (retention == null ? 'unknown' : bandRetention(retention)) + '"'+hintAttrs(t('retentionHint')+(retentionNote?' '+retentionNote:''))+'>' +
                 '<span class="live-health-label">' + esc(t('retentionLabel')) + '</span>' +
                 '<strong class="live-health-val">' + retentionVal + '</strong>' +
-            '</div>' +
+            '</button>' +
             '<div class="live-health-badge live-health-freshness is-' + (freshness == null ? 'unknown' : bandFreshness(freshness)) + '" title="' + esc(freshness == null ? t('unknownUpdate') : esc(num(freshness)) + ' ' + esc(t('update'))) + '">' +
                 '<span class="live-health-label">' + esc(t('updateLabel')) + '</span>' +
                 '<strong class="live-health-val">' + freshnessVal + '</strong>' +
             '</div>';
         if (window.LiveMarketUI && metrics && metrics.engagement) {
-            health = LiveMarketUI.engagement(metrics.engagement, true) + health.slice(health.indexOf('<div class="live-health-badge'));
+            activeHealth = LiveMarketUI.engagement(metrics.engagement, true);
         }
+        health=activeHealth+health;
         var chips = keywords.map(function (entry) {
             return '<span class="live-keyword-chip" title="' + esc(entry.keyword) + '">' +
                 '<span class="live-keyword-hash" aria-hidden="true">#</span>' +
@@ -118,13 +123,10 @@
             '<div class="live-keywords" tabindex="0">' + chips + '</div>' +
         '</div>';
         var paceNote=window.LiveHistoryImport&&installs?window.LiveHistoryImport.pace(installs):'';
-        var retentionNote=metrics&&metrics.retention_observed_only_count&&window.LiveHistoryImport?window.t('lhiRetentionLower',{},window.lang==='ru'?'ru':'en'):'';
-        return '<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
-            '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs) + '</div>' +
-            (paceNote?'<p class="lh-pace-note">'+esc(paceNote)+'</p>':'')+
+        return quick+'<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
+            '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs, paceNote) + '</div>' +
             '<div class="live-metrics-health">' + health + '</div>' + aso +
-            (retentionNote?'<p class="lh-pace-note">'+esc(retentionNote)+'</p>':'')+
-            '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>'+(window.LiveHistoryImport&&metrics?window.LiveHistoryImport.banner(id,metrics.history_import):'');
+            '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>'+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
     }
     function remember(id, metrics) {
         cache.set(id, metrics);
@@ -178,7 +180,9 @@
         dialog.querySelector('input').focus();
     }
     window.LiveProjectMetrics = {
+        explain: function(event) { if(event)event.stopPropagation();var control=event&&event.currentTarget;var hint=control&&control.dataset.liveHint;if(hint&&window.showToast)window.showToast(hint,10000); },
         render: render,
+        repaint: function(id){update(Number(id),cache.get(Number(id)));},
         mount: function (card, project) {
             var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
             if (metrics && metrics.source === 'devtesthub_live') { remember(id, metrics); return; }

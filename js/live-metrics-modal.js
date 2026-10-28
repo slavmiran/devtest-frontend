@@ -84,6 +84,8 @@
         actionAging:'The build is {n} days old. Consider whether an update is needed.',
         actionStale:'Last update was {n} days ago. Check build relevance.',
     });
+    words.ru.sourceHint='От 80% установок приходится на один источник. Это предупреждение о балансе источников, а не о скорости установок. Кампании по ключам и веб-поиску помогут выровнять баланс.';
+    words.en.sourceHint='At least 80% of installs come from one source. This warning is about the source mix, not install speed. Keyword and web-search campaigns can help balance the mix.';
     function t(key) { return words[window.lang === 'ru' ? 'ru' : 'en'][key] || key; }
     function esc(value) { return window.escapeHTML(String(value == null ? '' : value)); }
     function n(value, digits) { return value == null ? '—' : Number(value).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{maximumFractionDigits:digits==null?1:digits}); }
@@ -153,7 +155,8 @@
                 '<header><span>'+esc(title)+'</span><strong>'+value+'</strong></header>'+track(left,right,baseline,tone,100)+'<div class="la-tree-note">'+body+'</div></section>';
         }
         var sourceNote=['key','link','browser','unknown'].filter(function(key){return key!=='unknown'||(i.sources_breakdown||{}).unknown_percent>0;}).map(function(key){
-            var p=(i.sources_breakdown||{})[key+'_percent'];return '<span class="la-tree-chip is-'+key+'">'+esc(t(key==='browser'?'treeBrowser':key))+' '+esc(p==null?'—':pct(p))+'</span>';
+            var p=(i.sources_breakdown||{})[key+'_percent'],label=t(key==='browser'?'treeBrowser':key)+' '+(p==null?'—':pct(p));
+            return i.dominant_source_warning&&p>=80?'<button type="button" class="la-tree-chip is-'+key+' is-source-warning" data-live-hint="'+esc(t('sourceHint'))+'" title="'+esc(t('sourceHint'))+'" aria-label="'+esc(label+'. '+t('sourceHint'))+'" onclick="LiveProjectMetrics.explain(event)">'+esc(label)+' <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m8 2 6 11H2L8 2Z" stroke="currentColor" stroke-linejoin="round"/><path d="M8 6v3m0 1.5v.5" stroke="currentColor" stroke-linecap="round"/></svg></button>':'<span class="la-tree-chip is-'+key+'">'+esc(label)+'</span>';
         }).join('');
         var trend=i.trend_available?i.trend_wma_percent:0;
         var early=r.recent_window_available?r.early_uninstalls_count:0,toxic=r.recent_window_available?r.toxic_dropoffs_d1_d3:0;
@@ -163,7 +166,7 @@
         var reviewTrend=v.trend_available?v.velocity_trend_percent:0;
         var freshValue=f.days_since_update==null?'—':n(f.days_since_update,0)+'d';
         return '<div class="la-tree-axis"><span>'+esc(t('declineZone'))+'</span><b>0</b><span>'+esc(t('growthZone'))+'</span></div><div class="la-tree">'+
-            branch('installs',t('treeInstalls'),badge(i.trend_wma_percent,i.trend_available),trend<0?-trend:0,trend>0?trend:0,sourceNote,trend<0?'<b>'+esc(signed(trend))+'</b>':'',i.dominant_source_warning?'warning':'good')+
+            branch('installs',t('treeInstalls')+' · '+n(i.total,0),badge(i.trend_wma_percent,i.trend_available),trend<0?-trend:0,trend>0?trend:0,sourceNote,trend<0?'<b>'+esc(signed(trend))+'</b>':'',i.dominant_source_warning?'warning':'good')+
             branch('retention',t('treeRetention'),retValue,early?Math.max(8,finite(r.early_rate_percent)):0,r.d30_target_percent,cohortTip,loss,'good',100)+
             branch('reviews',t('treeReviews'),esc(n(v.actual_reviews_count,0)+' / '+n(v.target_baseline_count,0)),reviewTrend<0?-reviewTrend:0,v.baseline_ratio_percent,
                 '<div class="la-tree-impulse">'+(reviewTrend>0?'<span class="la-growth-impulse" style="width:'+width(reviewTrend,100)+'%"></span>':'')+badge(v.velocity_trend_percent,v.trend_available)+'</div>',reviewTrend<0?'<b>▼ '+esc(signed(reviewTrend))+'</b>':'','good',100)+
@@ -171,14 +174,15 @@
                 esc(f.status==='unknown'?t('noDate'):t(f.status)),f.lifecycle_percent<0?'<b>'+esc(signed(f.lifecycle_percent))+'</b>':'',f.status==='aging'?'watch':'good')+
             (data.engagement&&window.LiveMarketUI?branch('engagement',LiveMarketUI.t('lmEngagement'),esc(data.engagement.discipline_percent==null?'—':pct(data.engagement.discipline_percent)),Math.max(data.engagement.discipline_percent==null?0:100-data.engagement.discipline_percent,data.engagement.status==='idle'?100:data.engagement.status==='stale'?50:0),data.engagement.discipline_percent,esc(LiveMarketUI.report(data.engagement))+(data.engagement.provisional?' · '+esc(LiveMarketUI.t('lmProvisional')):'')+'<small title="'+esc(LiveMarketUI.t('lmScenarioEvidence'))+'">'+esc(LiveMarketUI.t('lmDepth'))+': '+esc(n(data.engagement.depth_score))+'/100</small>',data.engagement.status==='idle'?'<b>'+esc(LiveMarketUI.t('lmNoReport'))+'</b>':'','good',100):'')+'</div>';
     }
+    function signalActions(code){return !current.demo&&!current.errorAccess&&window.LiveGuidance?LiveGuidance.forSignal(current.id,code):'';}
     function actions(data) {
         var summary=data.action_summary||{status:'collecting',signals:[]};
         var messages=summary.signals.map(function(signal){
             var key={INSTALL_TREND_DOWN:'actionInstall',REVIEW_TREND_DOWN:'actionReviews',EARLY_DROPOFFS:'actionEarly',ACTIVE_SLOTS_LOW:'actionActive',SOURCE_IMBALANCE:'actionSource',SOURCE_CONCENTRATION:'actionConcentration',UPDATE_AGING:'actionAging',UPDATE_STALE:'actionStale'}[signal.code];
-            if(!key&&window.LiveMarketUI){var engagementKey={ENGAGEMENT_DISCIPLINE_LOW:'lmSignalDiscipline',ENGAGEMENT_STALE_REPORT:'lmSignalStale',ENGAGEMENT_IDLE:'lmSignalIdle'}[signal.code];if(engagementKey)return '<li data-signal="'+esc(signal.code)+'">'+esc(LiveMarketUI.t(engagementKey,{n:n(signal.percent==null?signal.days:signal.percent)}))+'</li>';}
+            if(!key&&window.LiveMarketUI){var engagementKey={ENGAGEMENT_DISCIPLINE_LOW:'lmSignalDiscipline',ENGAGEMENT_STALE_REPORT:'lmSignalStale',ENGAGEMENT_IDLE:'lmSignalIdle',ENGAGEMENT_DEPTH_LOW:'lmSignalDepth'}[signal.code];if(engagementKey)return '<li data-signal="'+esc(signal.code)+'">'+esc(LiveMarketUI.t(engagementKey,{n:n(signal.percent==null?signal.days:signal.percent)}))+signalActions(signal.code)+'</li>';}
             if(!key)return '';
             var message=signal.code==='SOURCE_IMBALANCE'&&signal.channel==='link'&&window.LiveHistoryImport?window.t('lhiLinkImbalance',{n:n(signal.percent)},window.lang==='ru'?'ru':'en'):t(key).replace('{p}',n(Math.abs(signal.percent))).replace('{n}',n(signal.count==null?signal.days:signal.count,0)).replace('{d}',n(signal.toxic_count,0)).replace('{channel}',t(signal.channel));
-            return '<li data-signal="'+esc(signal.code)+'">'+esc(message)+'</li>';
+            return '<li data-signal="'+esc(signal.code)+'">'+esc(message)+signalActions(signal.code)+'</li>';
         }).join('');
         return '<section class="la-actions"><h2>💡 '+esc(t('actions'))+'</h2>'+(messages?'<ul>'+messages+'</ul>':'<p>'+esc(t(summary.status==='clear'?'allClear':'collecting'))+'</p>')+'</section>';
     }
@@ -195,7 +199,7 @@
         if(!data) {body.innerHTML='<div class="la-empty" role="status"><p>'+esc(current.loading?t('loading'):t(current.errorAccess?'noAccess':'error'))+'</p><button type="button" data-retry>'+esc(t('retry'))+'</button></div>';}
         else {
             var status=data.health_status==='good'?'good':data.health_status==='watch'?'watch':data.health_status==='risk'?'risk':'unknown';
-            body.innerHTML='<section class="la-score-section"><div class="la-score-ring is-'+status+'" style="--score:'+width(data.health_score,100)+'%"><div><strong>'+esc(n(data.health_score,0))+'</strong><span>/ 100</span></div></div><div class="la-score-copy"><h2>'+esc(t('index'))+'</h2><p>'+esc(t('internal'))+'</p><strong>'+esc(t('coverage'))+': '+esc(pct(data.coverage_percent))+'</strong>'+(data.calibration_status==='early'?'<small class="la-calibration">'+esc(t('earlyCalibration'))+'</small>':'')+(data.health_score==null?'<small>'+esc(t('minimum'))+'</small>':'')+'</div></section>'+
+            body.innerHTML='<section class="la-score-section"><div class="la-score-ring is-'+status+'" style="--score:'+width(data.health_score,100)+'%"><div><strong>'+esc(n(data.health_score,0))+'</strong><span>/ 100</span></div></div><div class="la-score-copy"><h2>'+esc(window.LiveGuidance?LiveGuidance.text('lgPulseTitle'):t('index'))+'</h2><p>'+esc(window.LiveGuidance?LiveGuidance.text('lgPulseSubtitle'):t('internal'))+'</p><strong>'+esc(t('coverage'))+': '+esc(pct(data.coverage_percent))+'</strong>'+(data.calibration_status==='early'?'<small class="la-calibration">'+esc(t('earlyCalibration'))+'</small>':'')+(data.health_score==null?'<small>'+esc(t('minimum'))+'</small>':'')+'</div></section>'+
                 (data.data_status==='no_activity'?'<section class="la-empty"><h2>'+esc(t('empty'))+'</h2><p>'+esc(t('emptyText'))+'</p></section>':'')+
                 (current.view==='tree'?'<section class="la-tree-section">'+tree(data)+'</section>'+actions(data):'<section><h2>'+esc(t('signals'))+'</h2>'+chart(data)+'</section><section class="la-checks-section"><h2>'+esc(t('checks'))+'</h2><ul class="la-checks">'+checks(data)+'</ul></section>'+actions(data))+
                 (window.LiveMarketUI?LiveMarketUI.thermal(data.market):'')+

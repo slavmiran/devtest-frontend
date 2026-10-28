@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(__dirname,'..');
-const artifacts = path.resolve(root,'../artifacts/live-metrics');
+const artifacts = path.resolve(root,'../artifacts/live-card-compact-20261027/metrics');
 fs.mkdirSync(artifacts,{recursive:true});
 const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_available:true,
     reviews:{total:68,rating:4.3,per_day:.5,trend_available:true,trend_percent:-1.2},
@@ -39,7 +39,7 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             });
             await page.goto('http://fixture.local/');
             for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/live-project-metrics.css']) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['ui/ui-helpers.js','js/live-project-metrics.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-history.js','i18n/core.js','ui/ui-helpers.js','js/live-history-import.js','js/live-market-ui.js','js/live-project-metrics.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(({lang,metrics})=>{
                 window.lang=lang;window.API_BASE='/api';window.getTelegramInitDataRaw=()=> 'signed-fixture';
                 window.myProjects=[{id:42,phase:'live',checkins_count:9999,play_store_raw:{score:5,ratings:999999},live_metrics:metrics}];
@@ -71,7 +71,7 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             // Exact threshold colors; missing values must remain neutral.
             for(const [days,band] of [[6.9,'risk'],[7,'basic'],[13.9,'basic'],[14,'good'],[20.9,'good'],[21,'excellent'],[30.9,'excellent'],[31,'superb']]) {
                 await page.evaluate(days=>{myProjects[0].live_metrics={...myProjects[0].live_metrics,avg_retention_days:days};paint();},days);
-                assert.equal(await page.locator('.live-metrics-health > .live-health-badge').nth(0).getAttribute('class'),`live-health-badge is-${band}`);
+                assert.match(await page.locator('.live-health-info').getAttribute('class'),new RegExp('is-'+band+'$'));
             }
             for(const [days,band] of [[30,'fresh'],[31,'aging'],[60,'aging'],[61,'stale']]) {
                 await page.evaluate(days=>{myProjects[0].live_metrics={...myProjects[0].live_metrics,days_since_update:days};paint();},days);
@@ -85,6 +85,24 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             });
             await assertNoOverflow();
             assert.equal(await page.locator('.live-keywords').evaluate(n=>n.scrollWidth>n.clientWidth),true);
+            // One imported install is a lifetime total, not fresh acquisition.
+            await page.evaluate(metrics=>{
+                window.showToast=message=>window.lastToast=message;
+                myProjects[0].live_metrics={...metrics,installs:{total:1,per_day:0,trend_available:false,trend_reason:'zero_baseline',baseline:{available:false}},
+                    retention_observed_only_count:1,avg_retention_days:2,keywords:[],engagement:{available:false,score:null,status:'unknown',discipline_percent:null,active_testers:0,depth_score:0}};paint();
+            },metrics);
+            assert.equal(await page.locator('.live-metrics .lh-pace-note').count(),0,'No explanatory paragraphs on the compact project card');
+            assert.equal(await page.locator('.live-metrics-health>*').count(),3,'Engagement must not remove the retention control');
+            assert.match(await page.locator('.live-metric-row').nth(1).locator('.live-metric-card-main').innerText(),/^1/);
+            assert.doesNotMatch(await page.locator('.live-metrics').innerText(),/7–28|последнего подтверждённого|last verified report/);
+            await page.locator('.live-metric-row').nth(1).locator('.live-metric-card-sub').click();
+            assert.match(await page.evaluate(()=>lastToast),/7–28/);
+            await page.locator('.live-metric-row').nth(1).locator('.live-metric-trend').click();
+            assert.match(await page.evaluate(()=>lastToast),/7–28/);
+            await page.locator('.live-health-info').focus();await page.keyboard.press('Enter');
+            assert.match(await page.evaluate(()=>lastToast),lang==='ru'?/дольше/:/longer/);
+            await page.locator('.live-health-info').evaluate(el=>el.blur());
+            await assertNoOverflow();await page.locator('.pc-state-unified').screenshot({path:path.join(artifacts,`imported-one-${lang}-${width}.png`)});
             // Unknown internal values must not fall back to Google Play or test checkins.
             responseMetrics={...metrics,reviews:{total:0,rating:null,per_day:0,trend_available:false,trend_percent:100},installs:{total:0,per_day:0,trend_available:false},avg_retention_days:null,days_since_update:null,active_users:0,keywords:[]};
             await page.evaluate(()=>{myProjects[0].live_metrics=null;LiveProjectMetrics.reload(42);});

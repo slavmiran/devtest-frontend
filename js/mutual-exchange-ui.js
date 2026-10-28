@@ -1150,7 +1150,10 @@
         var isTopic = mode === 'topic';
 
         var key = isTopic ? 'bellNotifyTopicMsg' : 'bellNotifyDmMsg';
-        if (reason === 'not_opened') {
+        var ctrlDay = Number(state.controlDay || 0);
+        if (ctrlDay === 1 && (reason === 'control' || reason === 'control_bulk' || reason === 'skips' || reason === 'not_opened' || reason === 'regular')) {
+            key = isTopic ? 'bellNotifyTopicMsg_control_day1' : 'bellNotifyDmMsg_control_day1';
+        } else if (reason === 'not_opened') {
             key = isTopic ? 'bellNotifyTopicMsg_not_opened' : 'bellNotifyDmMsg_not_opened';
         } else if (reason === 'skips') {
             key = isTopic ? 'bellNotifyTopicMsg_skips' : 'bellNotifyDmMsg_skips';

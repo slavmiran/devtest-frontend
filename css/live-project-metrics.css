@@ -149,7 +149,16 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    cursor: help;
 }
+
+.live-metric-trend,.live-health-info { font-family:inherit;cursor:help; }
+.live-metrics [data-live-hint]:focus-visible { outline:2px solid var(--accent-primary);outline-offset:2px;border-radius:6px; }
 
 .live-metric-card-speed-label {
     color: var(--text-tertiary);
