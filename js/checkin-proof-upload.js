@@ -449,7 +449,7 @@ async function handleCheckinProofFileSelected(event) {
     _syncCheckinProofControls();
     var known = new Set(_checkinProofUploadState.fingerprints || []);
     var duplicateCount = 0;
-    var excessCount = 0, invalidCount = 0, oversizedCount = 0, addedCount = 0;
+    var excessCount = 0, invalidCount = 0, oversizedCount = 0, dimensionsCount = 0, addedCount = 0;
     try {
         // Sequential hashing keeps peak memory small on budget Android devices.
         for (var selectedIndex = 0; selectedIndex < selected.length; selectedIndex += 1) {
@@ -461,6 +461,11 @@ async function handleCheckinProofFileSelected(event) {
             var type = String(selectedFile.type || '').toLowerCase();
             if (Number(selectedFile.size || 0) <= 0 || allowedTypes.indexOf(type) === -1) { invalidCount++; continue; }
             if (Number(selectedFile.size || 0) > (type.indexOf('video/') === 0 ? 50 : 5) * 1024 * 1024) { oversizedCount++; continue; }
+            if (type.indexOf('image/') === 0) {
+                var imageValid = await _checkinProofImageDimensionsValid(selectedFile);
+                if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
+                if (!imageValid) { dimensionsCount++; continue; }
+            }
             var fingerprint = await _checkinProofFileFingerprint(selectedFile);
             if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
             if (known.has(fingerprint)) {
@@ -484,14 +489,37 @@ async function handleCheckinProofFileSelected(event) {
         if (duplicateCount) warnings.push(window.t('checkinProofDuplicateSelected', { count: duplicateCount }, lang));
         if (invalidCount) warnings.push(window.t('invalid_image_type', {}, lang));
         if (oversizedCount) warnings.push(typeof reportCopy === 'function' ? reportCopy('videoLimit') : window.t('file_too_large', {}, lang));
+        if (dimensionsCount) warnings.push(window.t('image_dimensions_invalid', {}, lang));
         if (_checkinProofHasInvalidFiles()) warnings.push(window.t('checkinProofUsedFilesHint', {}, lang));
         if (warnings.length) {
             _setCheckinProofAlert(warnings.join(' '));
-            if ((excessCount || invalidCount || oversizedCount) && typeof showToast === 'function') showToast(warnings.join(' '));
+            if ((excessCount || invalidCount || oversizedCount || dimensionsCount) && typeof showToast === 'function') showToast(warnings.join(' '));
         }
         _syncCheckinProofControls();
     }
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function _checkinProofImageDimensionsValid(file) {
+    return new Promise(function(resolve) {
+        var image = new Image(), url = URL.createObjectURL(file);
+        var timer = setTimeout(function() { finish(false); }, 10000);
+        var settled = false;
+        function finish(valid) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            image.onload = image.onerror = null;
+            URL.revokeObjectURL(url);
+            resolve(valid);
+        }
+        image.onload = function() {
+            var width = image.naturalWidth, height = image.naturalHeight;
+            finish(width > 0 && height > 0 && width + height <= 10000 && Math.max(width, height) <= 20 * Math.min(width, height));
+        };
+        image.onerror = function() { finish(false); };
+        image.src = url;
+    });
 }
 
 function removeCheckinProofFile(index) {
@@ -510,6 +538,9 @@ function removeCheckinProofFile(index) {
 }
 
 function _checkinProofErrorMessage(result) {
+    if (result && result.code === 'telegram_rate_limited') {
+        return window.t('telegram_rate_limited', { seconds: Math.max(1, Math.ceil(Number((result.details || {}).retry_after) || 1)) }, lang);
+    }
     if (typeof reportErrorCopy === 'function' && result && reportErrorCopy(result.code)) return reportErrorCopy(result.code);
     var code = result && (result.code || result.detail);
     if (code === 'network_error') return window.t('networkError', {}, lang);
