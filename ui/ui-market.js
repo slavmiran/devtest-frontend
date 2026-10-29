@@ -10700,6 +10700,16 @@ function _getProjectOwnerLinkMeta(project, targetOwnerId) {
             && Number(tester.tester_id || 0) === Number(targetOwnerId);
     });
     const myLinkedTest = (myTests || []).find(function(test) {
+        // My own leg may outlive the partner's completed cycle. Its historical
+        // reciprocal app id must not reserve that project after a restart.
+        const exchange = test && test.exchange_state;
+        const canonicalStatus = String(exchange && exchange.version === 1 && exchange.right && exchange.right.leg_status || '').trim().toLowerCase();
+        const partnerStatus = String(test && test.partner_progress_status || '').trim().toLowerCase();
+        const reciprocalStatus = String(test && test.reciprocal_app_status || '').trim().toLowerCase();
+        if (canonicalStatus) {
+            if (canonicalStatus !== 'active') return false;
+        } else if (test && (test.partner_active === false || (partnerStatus && partnerStatus !== 'active')
+            || (reciprocalStatus && !['active', 'pending_completion'].includes(reciprocalStatus)))) return false;
         return test && Number(test.owner_id || 0) === Number(targetOwnerId)
             && Number(test.reciprocal_app_id || 0) === Number(project && project.id || 0)
             && String(test.progress_status || 'active').toLowerCase() === 'active' && !test.is_left_soft
