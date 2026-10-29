@@ -11,7 +11,7 @@
     width: min(100%, 580px);
     height: auto;
     min-height: 0;
-    max-height: min(var(--report-height, 92dvh), calc(var(--tg-viewport-stable-height, 100dvh) - env(safe-area-inset-top, 0px) - 8px));
+    max-height: min(var(--report-height, 92dvh), calc(100dvh - env(safe-area-inset-top, 0px) - 8px));
     padding: 44px 18px max(14px, env(safe-area-inset-bottom, 0px));
     overflow: hidden;
     border-radius: 26px 26px 0 0;

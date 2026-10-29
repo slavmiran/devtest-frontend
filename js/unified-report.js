@@ -221,9 +221,19 @@
             el('report-modal').classList.remove('is-review-compact');
         };
         syncReportViewport();
-        if (window.visualViewport && !window._reportViewportBound) {
-            window.visualViewport.addEventListener('resize', syncReportViewport);
-            window.visualViewport.addEventListener('scroll', syncReportViewport);
+        if (!window._reportViewportBound) {
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', syncReportViewport);
+                window.visualViewport.addEventListener('scroll', syncReportViewport);
+            }
+            window.addEventListener('resize', syncReportViewport);
+            window.addEventListener('pageshow', syncReportViewport);
+            document.addEventListener('visibilitychange', syncReportViewport);
+            var webApp = window.Telegram && window.Telegram.WebApp;
+            if (webApp && typeof webApp.onEvent === 'function') {
+                webApp.onEvent('viewportChanged', syncReportViewport);
+                webApp.onEvent('activated', syncReportViewport);
+            }
             window._reportViewportBound = true;
         }
     };
@@ -296,17 +306,36 @@
         }
         plain.classList.toggle('is-waiting', !ready);
         plain.textContent = t(ready ? 'plain' : seconds > 0 ? 'waiting' : 'openFirst', {seconds:seconds});
+        // Also repair a stale hidden/keyboard viewport if the host missed an event.
+        syncReportViewport(true);
     };
 
-    function syncReportViewport() {
+    function syncReportViewport(onlyIfChanged) {
         var sheet = document.querySelector('#report-modal .report-modal-sheet');
         var modal = el('report-modal'), vv = window.visualViewport;
-        if (sheet && vv && modal.classList.contains('active') && modal.classList.contains('is-proof-upload')) {
-            modal.classList.toggle('is-review-compact', document.activeElement === el('unified-report-note') && vv.height < 500);
-            sheet.style.setProperty('--report-height', Math.floor(vv.height * .92) + 'px');
-            // Do not infer keyboard size from innerHeight: Android and iOS resize different viewports.
-            modal.style.top = vv.offsetTop + 'px'; modal.style.height = vv.height + 'px'; modal.style.bottom = 'auto';
+        if (!sheet || !modal.classList.contains('active') || !modal.classList.contains('is-proof-upload')) return;
+        function usableHeight(value) {
+            value = Number(value);
+            // Hidden/resuming WebViews can briefly report 0 or a tiny viewport.
+            return Number.isFinite(value) && value >= 160 ? value : 0;
         }
+        var layoutHeight = usableHeight(window.innerHeight) || usableHeight(document.documentElement.clientHeight);
+        var visualHeight = usableHeight(vv && vv.height);
+        var webApp = window.Telegram && window.Telegram.WebApp;
+        var stableHeight = usableHeight(webApp && webApp.viewportStableHeight);
+        var height = visualHeight || layoutHeight || stableHeight;
+        if (!height) return;
+        if (layoutHeight) height = Math.min(height, layoutHeight);
+        if (stableHeight) height = Math.min(height, stableHeight);
+        var offset = visualHeight && Number.isFinite(vv.offsetTop) ? Math.max(0, vv.offsetTop) : 0;
+        var reportHeight = Math.floor(height * .92) + 'px';
+        if (onlyIfChanged === true && modal.style.top === offset + 'px' && modal.style.height === height + 'px'
+            && sheet.style.getPropertyValue('--report-height') === reportHeight) return;
+        modal.classList.toggle('is-review-compact', document.activeElement === el('unified-report-note') && height < 500);
+        sheet.style.setProperty('--report-height', reportHeight);
+        // VisualViewport keeps the keyboard geometry on both Android and iOS;
+        // a valid stable Telegram height also supports a partially expanded app.
+        modal.style.top = offset + 'px'; modal.style.height = height + 'px'; modal.style.bottom = 'auto';
         requestAnimationFrame(keepReportInputVisible);
     }
 

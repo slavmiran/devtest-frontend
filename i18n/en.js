@@ -981,6 +981,8 @@
             checkinProofAlreadyUsed: "Already used — replace",
             checkinProofRepeatedFile: "Repeated file — remove",
             checkinProofUsedFilesHint: "Remove the files marked in red and add different ones. Your other media have been kept.",
+            image_dimensions_invalid: "This image could not be accepted. Choose a regular screenshot: width plus height up to 10,000 pixels and aspect ratio up to 20:1.",
+            telegram_rate_limited: "Telegram temporarily limited uploads. Retry in {seconds} sec. Your selected files are kept while the app stays open.",
             checkinProofCheckingDuplicates: "Quickly checking images…",
             checkinProofDuplicateSelected: "Screenshot already added. Please attach different app screens and actions — this confirms good testing.",
             checkinProofCancel: "Cancel",

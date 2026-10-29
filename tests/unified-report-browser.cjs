@@ -65,8 +65,30 @@ const root = path.resolve(__dirname, '..');
             assert(await page.locator('#checkin-proof-submit').isDisabled());
             await page.locator('#unified-report-note').fill('A detailed bug description that explains the problem');
             assert(await page.locator('#checkin-proof-submit').isDisabled(),'Catch-up needs media even on a normal day');
+            const badDimensions = await page.evaluate(() => {
+                const canvas = document.createElement('canvas'); canvas.width = 21; canvas.height = 1;
+                return Array.from(Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]), char => char.charCodeAt(0)));
+            });
+            await page.locator('#checkin-proof-file-input').setInputFiles({name:'too-wide.png',mimeType:'image/png',buffer:Buffer.from(badDimensions)});
+            await page.waitForFunction(()=>!_checkinProofUploadState.checkingFiles);
+            assert.equal(await page.evaluate(()=>_checkinProofUploadState.files.length),0,'Reject incompatible image dimensions before upload');
+            assert((await page.locator('#checkin-proof-upload-alert').innerText()).includes('20:1'));
+            assert(await page.locator('#checkin-proof-submit').isDisabled());
+            const floodMessage = await page.evaluate(()=>_checkinProofErrorMessage({code:'telegram_rate_limited',details:{retry_after:90}}));
+            assert(floodMessage.includes('90') && floodMessage.includes(language==='ru'?'Telegram временно':'Telegram temporarily'));
             await page.locator('#checkin-proof-file-input').setInputFiles({name:'screen.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jJtEAAAAASUVORK5CYII=','base64')});
             await page.waitForFunction(()=>_checkinProofUploadState.files.length===1&&!_checkinProofUploadState.checkingFiles);
+            await page.locator('#checkin-proof-file-input').setInputFiles({name:'too-wide-again.png',mimeType:'image/png',buffer:Buffer.from(badDimensions)});
+            await page.waitForFunction(()=>!_checkinProofUploadState.checkingFiles);
+            assert.equal(await page.evaluate(()=>_checkinProofUploadState.files.length),1,'Invalid addition keeps the previously selected screenshot');
+            const rateRetry = await page.evaluate(async()=>{
+                const originalFetch=window.fetch;
+                let calls=0;
+                window.fetch=async()=>{calls++;return {ok:false,status:429,headers:{get:()=>"90"},json:async()=>({code:"telegram_rate_limited",details:{retry_after:90,retryable:true}})};};
+                try { const result=await _postCheckinProofScreenshot("/fixture-upload",new FormData());return {calls,status:result.response.status}; }
+                finally { window.fetch=originalFetch; }
+            });
+            assert.deepEqual(rateRetry,{calls:1,status:429},'Never immediately replay an upload when Telegram requires a longer wait');
             assert(await page.locator('#unified-report-info-details').isVisible(),'First selected photo automatically expands the bonus');
             await page.locator('.report-info-toggle').click();
             await page.waitForTimeout(550);
@@ -241,6 +263,7 @@ const root = path.resolve(__dirname, '..');
                 assert((await page.evaluate(()=>_checkinProofUploadState.files[0].name)).endsWith('-marked.jpg'));
                 assert.notEqual(await page.evaluate(()=>_checkinProofUploadState.idempotencyKey),originalKey);
                 await page.locator('.checkin-proof-preview-edit').first().click();
+                await page.locator('.report-editor').waitFor({state:'visible'});
                 await page.evaluate(()=>handleAppBack({source:'telegram'}));
                 assert.equal(await page.locator('.report-editor').count(),0,'Telegram Back closes only the editor');
                 assert(await page.locator('#report-modal').evaluate(el=>el.classList.contains('active')),'The report and its media survive editor Back');
