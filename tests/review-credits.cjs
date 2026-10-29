@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {chromium}=require('C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/review-credits-20261028');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..'),out=path.resolve(process.env.LIVE_TEST_ARTIFACTS||path.resolve(root,'../artifacts/review-credits-20261028'));fs.mkdirSync(out,{recursive:true});
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8'),png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lQ0AAAAASUVORK5CYII=','base64');
 const copy=v=>JSON.parse(JSON.stringify(v));
 (async()=>{const browser=await chromium.launch({channel:'chrome',headless:true});try{

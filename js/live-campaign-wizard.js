@@ -58,7 +58,7 @@
         var preview=s.layer.querySelector('[data-lcw-pace-preview]');if(preview)preview.innerHTML=LiveCampaignPaceView.preview(s.draft);
         var hud=s.layer.querySelector('[data-lcw-entry-hud]');if(hud)hud.innerHTML=LiveCampaignEntry.hud(s.draft,s.context);
         var validation=s.layer.querySelector('[data-lcw-validation]');
-        if(validation)validation.textContent=invalid(s)?text('lcwInvalidCount'):!LiveCampaignDraft.valid(s.draft,1)?text(s.draft.source==='keywords'?'lcgNeedKey':'lcwQueryRequired'):'';
+        if(validation)validation.textContent=invalid(s)?text('lcwInvalidCount'):!LiveCampaignDraft.valid(s.draft,1)?text(LiveCampaignDraft.allowed(s.draft).includes('keywords')&&!s.draft.keywords.length?'lcgNeedKey':'lcwQueryRequired'):'';
     }
     function render(s,changedStep){
         if(!accessible(s)){dispose(s);return;}
@@ -66,7 +66,7 @@
         var attrs=['lcwFocus','lcwInput','keyword','lcwStrategy'],identity=attrs.map(function(k){return focused && focused.dataset[k];});
         var start=focused && focused.selectionStart,end=focused && focused.selectionEnd;
         s.context.descriptionOpen=!!body.querySelector('.lcw-description[open]');
-        body.innerHTML=LiveCampaignWizardView.body(s.draft,s.step,s.context)+(s.step===1&&s.draft.source==='keywords'&&s.context.poolAvailable===0?'<aside class="lcp-note"><p>'+window.escapeHTML(text('lgEmptyPool'))+'</p><button type="button" class="meta-chip lg-action" data-live-action="pool" data-live-app="'+s.draft.appId+'">'+window.escapeHTML(text('lgPool'))+'</button></aside>':'');shell(s);
+        body.innerHTML=LiveCampaignWizardView.body(s.draft,s.step,s.context)+(s.step===1&&LiveCampaignDraft.allowed(s.draft).includes('keywords')&&s.context.poolAvailable===0?'<aside class="lcp-note"><p>'+window.escapeHTML(text('lgEmptyPool'))+'</p><button type="button" class="meta-chip lg-action" data-live-action="pool" data-live-app="'+s.draft.appId+'">'+window.escapeHTML(text('lgPool'))+'</button></aside>':'');shell(s);
         body.classList.toggle('lcw-enter-a',s.step%2===1);body.classList.toggle('lcw-enter-b',s.step%2===0);
         if(changedStep){body.scrollTop=0;var target=s.layer.querySelector('.lcw-heading')||body.querySelector('button');if(target)target.focus({preventScroll:true});}
         else{
@@ -129,7 +129,7 @@
         if(s.confirming||s.saving)return;
         var field=el.dataset.lcwInput;if(!field)return;
         if(field==='manualKey'){s.context.manualKey=el.value;return;}
-        if(['daily','period','target','retention','pauseHours'].includes(field)||field.indexOf('cap:')===0||field.indexOf('plan:')===0){
+        if(['daily','period','target','retention','minDays','maxDays','checkpointCount','checkpointInterval','pauseHours'].includes(field)||field.indexOf('cap:')===0||field.indexOf('plan:')===0){
             var min=Number(el.min),max=Number(el.max),value=Number(el.value);
             var ok=/^\d+$/.test(el.value) && Number.isSafeInteger(value) && value>=min && value<=max;
             el.setAttribute('aria-invalid',String(!ok));el.setCustomValidity(ok?'':text('lcwInvalidCount'));
@@ -194,7 +194,7 @@
             if(s.editing)return;s.media.clear();var projectPolicy=Object.assign({},s.draft.volume);s.draft=LiveCampaignDraft.applyStrategy(s.draft,template);if(s.context.projectControl)Object.assign(s.draft.volume,LiveProjectControl.policy(projectPolicy));s.draft.name=text({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep'}[template]);if(template==='deep')s.draft.activity.instructions=text('lcgDefaultScenario');s.edited=false;s.webEdited=false;s.context.manualKey='';s.quickStatus='paused';return save(s,s.quickStatus);
         }
         if(field){
-            var value=button.dataset.value;value=(['source','mode'].includes(field)||LiveManualPlan.textField(field))?value:value==='true'?true:value==='false'?false:Number(value);
+            var value=button.dataset.value;value=(['source','mode','allowedSource','preferredSource'].includes(field)||LiveManualPlan.textField(field))?value:value==='true'?true:value==='false'?false:Number(value);
             if(field.indexOf('cap:')===0){if(!s.context.projectControl)return;LiveProjectControl.change(s.context.projectControl,field.slice(4),value);s.context.allocationEdited=true;render(s,false);return;}
             var next=LiveCampaignDraft.change(s.draft,field,value);
             if(field==='checkpoint' && next===s.draft){toast('lcwMinimum');return;}s.draft=next;s.edited=true;
@@ -236,7 +236,7 @@
         function asset(assetId){return assetId?{assetId:assetId,name:text('lcwReference'),url:String(window.API_BASE||'/api').replace(/\/$/,'')+'/apps/'+Number(id)+'/campaigns/'+Number(campaign.id)+'/assets/'+Number(assetId)+'?init_data='+encodeURIComponent(signed)}:null;}
         var draft=campaign?LiveCampaignDraft.fromCampaign(p,campaign,asset):LiveCampaignDraft.create(p);
         session={draft:draft,editing:campaign||null,step:campaign?1:0,unlocked:campaign?4:1,actor:signed,layer:layer,initial:fingerprint(draft),edited:false,webEdited:!!campaign,confirming:false,outlineOpen:false,estimateOpen:false,
-            context:{editing:!!campaign,confirmedInstalls:campaign?campaign.confirmed_installs:0,sourceLocked:!!(campaign&&campaign.confirmed_installs>0),metrics:p.live_metrics||{},market:p.play_store_raw || null,sourceBaseline:LiveCampaignTraffic.baseline(p.live_analytics_snapshot) || LiveCampaignTraffic.baseline(p.live_metrics),asoOpen:false,manualKey:''},
+            context:{editing:!!campaign,confirmedInstalls:campaign?campaign.confirmed_installs:0,sourceLocked:false,metrics:p.live_metrics||{},market:p.play_store_raw || null,sourceBaseline:LiveCampaignTraffic.baseline(p.live_analytics_snapshot) || LiveCampaignTraffic.baseline(p.live_metrics),asoOpen:false,manualKey:''},
             readers:[],media:LiveCampaignWizardMedia.create(),focus:event && event.target && event.target.closest('button') || document.activeElement,overflow:document.body.style.overflow};
         document.body.style.overflow='hidden';document.body.appendChild(layer);
         layer.addEventListener('click',click);layer.addEventListener('input',input);

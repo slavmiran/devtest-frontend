@@ -2332,6 +2332,19 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
     _pendingActions.add(actionKey);
     _apiStart();
     try {
+        const liveTarget = typeof window.getMarketCandidateByAppId === 'function' ? window.getMarketCandidateByAppId(targetAppId) : null;
+        const liveProposer = (Array.isArray(window.myProjects) ? window.myProjects : []).find(p => Number(p.id || p.app_id) === Number(proposerAppId));
+        if (window.LiveDealUI && (liveTarget && liveTarget.phase === 'live' || liveProposer && liveProposer.phase === 'live')) {
+            closeProjectSelectModal();
+            const negotiated = await LiveDealUI.open({target_app_id:Number(targetAppId),proposer_app_id:Number(proposerAppId),mode:'request'});
+            if (negotiated) {
+                markMutualOfferPendingUi(targetAppId,targetOwnerId,uiContext && uiContext.sourceButton);
+                showToast(window.t('offerSentSuccess',{},lang));
+                if (window.LiveExchanges) LiveExchanges.load(true);
+                await loadIncomingOffers({background:true});
+            }
+            return;
+        }
         const response = await fetchWithRetry(`${API_BASE}/offers`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

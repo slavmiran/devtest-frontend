@@ -22,7 +22,7 @@
   lgCalibrationHint:'Наберите первые {target} установок для более устойчивой оценки. Полнота индексов и коридора также зависит от истории, удержания и отчётов.',
   lgStepPassport:'1. Паспорт Google Play',lgPassportReady:'✓ Паспорт подключён · открыть ↗',lgPassportLoad:'Загрузить данные из Google Play',
   lgStepHistory:'2. История прошлых запусков',lgImport:'Перенести установки из прошлых тестов',lgStepFlow:'Запустите поток установок',
-  lgBridgeTitle:'🤝 Closed Test ⇄ Live',lgBridgeHint:'14-дневный обмен по прямой ссылке с проектами закрытого теста. Включены 7 базовых слотов.',
+  lgBridgeTitle:'🤝 Closed Test ⇄ Live',lgBridgeHint:'14-дневный обмен по прямой ссылке с проектами закрытого теста. Включены 14 общих бесплатных мест с Фазой 1.',
   lgKeysTitle:'🔍 Поиск Google Play',lgKeysHint:'Установки по выбранным ключам с настройкой удержания и контрольных дней.',lgKeysSetup:'Настроить ключи и пул КД →',
   lgEmptyPool:'Пул КД пуст. Настройте кампанию, затем пополните общий пул перед её включением.',lgPool:'Пополнить общий пул КД',lgAutoTariffUnavailable:'Авто-темп временно недоступен: тариф ещё не подключён.'
  });
@@ -48,7 +48,7 @@
   lgCalibrationHint:'Reach {target} installs for a steadier estimate. Complete indices and the corridor also need history, retention outcomes and reports.',
   lgStepPassport:'1. Google Play Passport',lgPassportReady:'✓ Passport connected · open ↗',lgPassportLoad:'Load Google Play data',
   lgStepHistory:'2. Previous test runs',lgImport:'Import installs from previous tests',lgStepFlow:'Start an install flow',
-  lgBridgeTitle:'🤝 Closed Test ⇄ Live',lgBridgeHint:'A 14-day direct-link exchange with closed-test projects. Includes 7 base slots.',
+  lgBridgeTitle:'🤝 Closed Test ⇄ Live',lgBridgeHint:'A 14-day direct-link exchange with closed-test projects. Includes 14 shared free Phase 1 seats.',
   lgKeysTitle:'🔍 Google Play search',lgKeysHint:'Installs for selected keywords with retention and checkpoint controls.',lgKeysSetup:'Configure keywords and CP pool →',
   lgEmptyPool:'Your CP pool is empty. Set up the campaign, then fund the shared pool before enabling it.',lgPool:'Fund the shared CP pool',lgAutoTariffUnavailable:'Auto pace is temporarily unavailable: billing is not connected yet.'
  });

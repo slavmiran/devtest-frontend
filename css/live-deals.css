@@ -1,0 +1,25 @@
+/* Existing sheet, card and chip tokens; no separate modal implementation. */
+.ld-range-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ld-range-grid label,.ld-track{min-width:0}
+.ld-range-grid .lcw-counter{gap:3px}.ld-range-grid .lcw-quantity{width:48px;min-width:0}
+.ld-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.ld-track-summary{padding:10px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--bg-secondary,rgba(148,163,184,.05));min-width:0}
+.ld-track-summary strong,.ld-track-summary small,.ld-track>small{display:block;overflow-wrap:anywhere}
+.ld-track-summary small,.ld-track>small{color:var(--text-secondary,#94a3b8);font-size:12px;line-height:1.5}
+.ld-track-summary strong{font-size:13px;line-height:1.5;margin:4px 0}
+.ld-comparison>p,.ld-comparison>small{grid-column:1/-1;margin:0}
+.ld-pro{width:100%;margin:8px 0;text-align:left}.ld-pro[aria-checked=true]{border-color:var(--accent-primary)}
+.ld-day-line{display:flex;align-items:center;gap:12px;margin:12px 0}.ld-day-line input{width:88px}.ld-day-line b{font-size:15px}
+.ld-track .lcw-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+[data-ld-body]{min-width:0}[data-ld-body] .rv-panel{display:grid;gap:8px;margin:12px 0}[data-ld-body] .lm-action-primary{width:100%}
+[data-ld-body] .gtw-input{box-sizing:border-box;max-width:100%;min-width:0}
+[data-ld-body] .meta-chip[aria-pressed=true]{border-color:var(--accent-primary);background:rgba(59,130,246,.15)}
+.rv-choice{flex-wrap:wrap}.rv-choice>[data-rv-mode]{flex:1 1 110px;min-width:0;white-space:normal}
+.rv-settings .rv-choice:has(>[data-rv-mode]){grid-template-columns:repeat(3,minmax(0,1fr))}
+.rv-choice>[data-rv-mode]{font-size:12px;line-height:1.4;min-height:60px;text-align:left}
+.ld-bonus{color:var(--reward)}
+.ld-sheet .lm-sheet{display:flex;flex-direction:column;overflow:hidden}
+.ld-sheet .lm-sheet-header,.ld-sheet .project-instructions-sheet__handle{flex-shrink:0}
+.ld-sheet .lm-sheet-body{overflow-y:auto;min-height:0;overscroll-behavior:contain;padding-bottom:4px}
+.ld-sheet [data-ld-send]{position:sticky;bottom:0;z-index:1;box-shadow:0 -6px 12px var(--bg-surface-1,#171e29)}
+@media(max-width:370px){.ld-range-grid{gap:8px}.ld-range-grid .lcw-counter button{padding:4px;min-width:27px}.ld-range-grid .lcw-quantity{width:40px}}

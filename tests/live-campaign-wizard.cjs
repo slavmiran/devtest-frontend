@@ -53,7 +53,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   },{language,index});
   const layer=page.locator('#live-campaign-wizard'),open=()=>page.locator('.lc-create').click();
   const field=f=>layer.locator('[data-lcw-input="'+f+'"]'),next=()=>layer.locator('[data-lcw-action="next"]').click();
-  const choose=v=>layer.locator('[data-lcw-field="source"][data-value="'+v+'"]').click();
+  const choose=async v=>{const node=layer.locator('[data-lcw-field="allowedSource"][data-value="'+v+'"]');if(await node.getAttribute('aria-pressed')!=='true')await node.click();for(const src of ['link','web','keywords'])if(src!==v){const other=layer.locator('[data-lcw-field="allowedSource"][data-value="'+src+'"]');if(await other.getAttribute('aria-pressed')==='true')await other.click();}};
   const fit=async()=>{
    assert.equal(await layer.evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Fullscreen has no horizontal overflow');
    assert.equal(await layer.locator('.lcw-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Content has no horizontal overflow');
@@ -104,9 +104,9 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await field('position').first().fill('12 · blue icon');
   await layer.locator('[data-lcw-file="keyword:k1"]').setInputFiles({name:'reference.png',mimeType:'image/png',buffer:png});
   await layer.locator('.lcw-attachment figure').waitFor();await fit();await page.screenshot({path:path.join(out,'source-'+language+'-'+width+'.png'),animations:'disabled'});
-  await next();await layer.locator('[data-lcw-field="retention"][data-value="35"]').click();assert.equal(await field('retention').count(),0);assert.equal(await layer.locator('[data-lcw-field="checkpoint"][data-value="35"]').count(),1);
+  await next();await layer.locator('[data-lcw-field="retention"][data-value="35"]').click();assert.equal(await field('retention').inputValue(),'35');assert.match(await layer.locator('.lcw-scroll').innerText(),/D35/);await field('retention').fill('16');await field('retention').blur();assert.equal(await field('retention').inputValue(),'16');await fit();
   await layer.locator('[data-lcw-field="retention"][data-value="14"]').click();await next();
-  await layer.locator('[data-lcw-action="review-settings"]').click();await page.locator('[data-rv-setting=enabled]').check();await page.locator('[data-rv-save]').click();await next();
+  await layer.locator('[data-lcw-action="review-settings"]').click();await page.locator('[data-rv-mode=voluntary]').click();await page.locator('[data-rv-save]').click();await next();
   await field('name').fill('Summer ASO');
   await layer.locator('[data-lcw-icon="none"]').click();await field('name').fill('');assert.equal(await layer.locator('[data-lcw-action="save"]').isDisabled(),true);await field('name').fill('Summer ASO');
   await layer.locator('[data-lpc-cap="own"]').click();await field('cap:own').fill('2');
@@ -145,7 +145,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   const beforeEdit=campaigns.length;
   await growth.locator('[data-lc-action="edit"]').click();await layer.waitFor();assert.match(await layer.locator('#lcw-title').innerText(),/1.*4/);
   assert.equal(await layer.locator('[data-keyword-row]').count(),2);assert.equal(await layer.locator('.lcw-attachment img').count(),1);
-  await next();assert.deepEqual(await layer.locator('[data-lcw-field="retention"]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.value))),[7,14,21,28,35]);
+  await next();assert.deepEqual(await layer.locator('.lcw-chips [data-lcw-field="retention"]').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.value))),[7,14,21,28,35]);
   await layer.locator('[data-lcw-field="retention"][data-value="28"]').click();await next();await next();await field('name').fill('Edited ASO');
   failEdit=true;await layer.locator('[data-lcw-action="save"]').click();await page.waitForFunction(()=>document.querySelector('[data-lcw-action="save"]:not(:disabled)'));const editKey=edits.at(-1).request_key;
   failEdit=false;await layer.locator('[data-lcw-action="save"]').click();await layer.waitFor({state:'detached'});

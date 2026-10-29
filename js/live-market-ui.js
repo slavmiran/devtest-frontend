@@ -84,6 +84,12 @@
         return '<div class="lm-lever"><strong>' + e(t('lmLever')) + '</strong><span>' + e(t(key ? 'lmLever_' + key : 'lmLeverNone')) + '</span>'+(appId&&window.LiveGuidance?LiveGuidance.forMarket(appId,scoring):'')+'</div>';
     }
     function closeTop() { var s = sheets.pop(); if (!s) return; s.node.remove(); document.body.style.overflow = s.overflow; if (s.focus && s.focus.isConnected) s.focus.focus({preventScroll: true}); if (s.onclose) s.onclose(); if (window.syncTelegramBackButton) window.syncTelegramBackButton(); }
+    function closeSheet(node) {
+        var i=sheets.findIndex(function(s){return s.node===node;});if(i<0)return;
+        if(i===sheets.length-1){closeTop();return;}
+        var s=sheets.splice(i,1)[0];sheets[i].overflow=s.overflow;s.node.remove();
+        if(s.onclose)s.onclose();if(window.syncTelegramBackButton)window.syncTelegramBackButton();
+    }
     function sheet(title, body, options) {
         options = options || {}; var layer = document.createElement('div'), id = 'lm-sheet-' + (++serial);
         layer.id = id; layer.className = 'modal-overlay active lm-sheet-overlay'; layer.style.zIndex = Math.max(10000, ...Array.from(document.querySelectorAll('.modal-overlay.active')).map(function(el){return parseInt(getComputedStyle(el).zIndex,10)||0;})) + 10;
@@ -108,5 +114,5 @@
             var value = await response.json(); if (!response.ok) { var error = new Error(value.code || value.error || 'unavailable'); error.status = response.status; throw error; } return value;
         });
     }
-    window.LiveMarketUI = {t:t,e:e,n:n,clamp:clamp,tone:tone,report:report,engagement:engagement,factors:factors,thermal:thermal,thermalStatus:thermalStatus,impulse:impulse,phase:phase,competition:competition,tierBadge:tierBadge,lever:lever,sheet:sheet,closeTop:closeTop,api:api,auth:auth};
+    window.LiveMarketUI = {t:t,e:e,n:n,clamp:clamp,tone:tone,report:report,engagement:engagement,factors:factors,thermal:thermal,thermalStatus:thermalStatus,impulse:impulse,phase:phase,competition:competition,tierBadge:tierBadge,lever:lever,sheet:sheet,closeTop:closeTop,close:closeSheet,api:api,auth:auth};
 })();

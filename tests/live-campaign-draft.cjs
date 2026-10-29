@@ -18,9 +18,9 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  d=model.change(d,'daily',5);assert.equal(model.quote(d).installs,42);
  d=model.change(d,'paced',false);assert.equal(model.quote(d).installs,42);assert.equal(model.quote(d).dailyCommitment,null);
  d=model.change(d,'target',53);assert.equal(model.quote(d).totalCommitment,1060);
- d=model.change(d,'checkpoint',7);assert.equal(model.quote(d).totalCommitment,530);
- assert.equal(model.change(d,'checkpoint',14),d,'At least one paid checkpoint remains');assert.equal(model.change(d,'checkpoint',1),d);
- d=model.change(d,'retention',35);assert.ok(d.retention.checkpoints.includes(35));assert.equal(model.change(d,'retention',36),d);
+ d=model.change(d,'checkpointCount',1);assert.equal(model.quote(d).totalCommitment,530);
+ assert.equal(model.change(d,'checkpointCount',0),d,'At least one paid checkpoint remains');assert.equal(model.change(d,'checkpoint',1),d);
+ d=model.change(d,'retention',35);assert.ok(d.retention.checkpoints.includes(35));assert.equal(model.change(d,'retention',36).retention.days,36);assert.equal(model.change(d,'retention',61),d);
  assert.equal(model.change(d,'target',0),d);assert.equal(model.change(d,'daily',1.5),d);assert.equal(model.change(d,'daily',Infinity),d);
  d=model.change(d,'source','web');d=model.change(d,'webQuery','');assert.equal(model.valid(d,1),false);
  d=model.change(d,'webQuery','Family budget Android');assert.equal(model.valid(d,1),true);
@@ -32,10 +32,10 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  for(const key of [...d.keywords])d=model.keyword(d,key.id,'remove');assert.equal(model.valid(d,4),false);
  const base=traffic.baseline({source:'devtesthub_live',install_velocity:{source_counts:{link:90,browser:5,key:5,unknown:0}}});
  const forecast=traffic.mix(model.applyStrategy(model.create(project),'aso'),base);assert.equal(forecast.total,142);assert.equal(forecast.status,'balanced');
- assert.equal(scope.LiveCampaignPace.quota(5,7,1),1);assert.equal(scope.LiveCampaignPace.quota(5,7,7),5);assert.equal(scope.LiveCampaignPace.risk(18),'risk');assert.equal(scope.LiveCampaignPace.risk(24),'caution');assert.equal(scope.LiveCampaignPace.risk(48),'buffer');
- const original=model.applyStrategy(model.create(project),'retention');assert.equal(original.retention.days,28);assert.equal(model.change(original,'retention',30),original);
+ assert.equal(scope.LiveCampaignPace.quota(5,7,1),1);assert.equal(scope.LiveCampaignPace.quota(5,7,7),5);assert.equal(scope.LiveCampaignPace.risk(18),'caution');assert.equal(scope.LiveCampaignPace.risk(24),'caution');assert.equal(scope.LiveCampaignPace.risk(48),'risk');
+ const original=model.applyStrategy(model.create(project),'retention');assert.equal(original.retention.days,28);assert.equal(model.change(original,'retention',30).retention.days,30);
  const legacy={name:'Legacy',definition:JSON.parse(JSON.stringify(original)),keywords:[]};delete legacy.definition.volume.paceVersion;legacy.definition.volume.dailyInstalls=3;legacy.definition.volume.acquisitionDays=14;legacy.definition.volume.totalInstalls=1;legacy.definition.retention={days:30,checkpoints:[1,7,14,21,30]};
- const loaded=model.fromCampaign(project,legacy,()=>null);assert.equal(loaded.retention.days,28);assert.equal(loaded.volume.totalInstalls,42);assert.equal(loaded.volume.paceVersion,1);assert.equal(model.change(loaded,'name','Renamed').volume.paceVersion,1);assert.equal(model.change(loaded,'target',53).volume.paceVersion,2);
+ const loaded=model.fromCampaign(project,legacy,()=>null);assert.equal(loaded.retention.days,30);assert.equal(loaded.volume.totalInstalls,42);assert.equal(loaded.volume.paceVersion,1);assert.equal(model.change(loaded,'name','Renamed').volume.paceVersion,1);assert.equal(model.change(loaded,'target',53).volume.paceVersion,2);
  const custom=model.create(project);assert.equal(traffic.mix(custom,null).status,'warning');
  assert.equal(traffic.baseline({source:'devtesthub_live',is_demo:true,source_counts:{link:90,browser:5,key:5}}),null);
  const unknown=traffic.baseline({source:'devtesthub_live',source_counts:{link:0,browser:0,key:0,unknown:100}});assert.equal(traffic.mix(custom,unknown).status,'uncertain');
@@ -45,5 +45,6 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  const monthly=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:0,baseline:{available:true,days:28,per_day:.5}}}});assert.equal(monthly.baseline.available,true);assert.equal(monthly.baseline.perDay,.5);assert.equal(monthly.baseline.days,28);
  const inactive=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:0,baseline:{available:false,days:null,per_day:null}}}});assert.equal(inactive.baseline.available,false);
  for(const strategy of ['aso','retention','deep','custom']){const preset=model.applyStrategy(model.create(project),strategy),quote=model.quote(preset);assert.equal(quote.channels.reduce((sum,c)=>sum+c.count,0),quote.installs);assert.ok(preset.retention.checkpoints.length>=2);}
- console.log('Single-source model: pool without quotas, paced/fixed volume, KD-only budget, source isolation, forecast and bounds passed.');
+ const multi=model.change(model.create(project),'allowedSource','web');assert.equal(model.counts(multi).unknown,14);const payload=await model.definition(model.change(multi,'retention',16),async()=>null);assert.deepEqual(JSON.parse(JSON.stringify(payload.allowed_sources)),['link','web']);assert.equal(payload.preferred_track.days,16);assert.deepEqual(Array.from(model.checkpoints(16,3)),[1,6,11,16]);assert.equal(model.change(multi,'minDays',20).retention.days,20);
+ console.log('Track model: pool without quotas, paced/fixed volume, KD-only budget, source isolation, forecast and bounds passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
