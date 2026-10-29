@@ -115,6 +115,61 @@ const root = path.resolve(__dirname, '..');
             showProjectSelectModal(myProjects, 1204, 554, {});
         });
         assert.equal(await page.locator('#project-select-list button:not(:disabled)').count(), 2, 'Normal proposal selection remains interactive after closing inspection');
+        // A completed partner leg belongs to the former exchange, even when
+        // my own test is still active and the same app id has been restarted.
+        for (const language of ['ru', 'en']) {
+            await page.evaluate(language => {
+                lang = language;
+                myProjects[1].run_iteration = 2;
+                myProjects[1].created_at = '2026-10-28T07:32:06Z';
+                myTests = [{ id: 1203, name: 'CryptoVPN', owner_id: 554, join_type: 'mutual',
+                    progress_status: 'active', app_status: 'active', reciprocal_app_id: 1225,
+                    reciprocal_app_status: 'completed', partner_progress_status: 'completed', partner_active: false,
+                    partner_start_date: '2026-10-11' }];
+                draw(); showProjectSelectModal(myProjects, 1204, 554, {});
+            }, language);
+            assert(await page.locator('#project-select-list button').last().isEnabled(), 'Old CryptoVPN exchange must not reserve the restarted QuickSweep');
+            assert.doesNotMatch(await page.locator('#project-select-list').innerText(), /CryptoVPN/);
+            assert.equal(await page.evaluate(() => getExistingMutualTargetLink(1203, 554) !== null), true, 'My active CryptoVPN leg still cannot fund another exchange');
+            const selected = await page.evaluate(async () => {
+                const original = window.sendMutualOffer, calls = [];
+                window.sendMutualOffer = async (...args) => calls.push(args.slice(0, 3));
+                try { await window._selectProjectForOffer(1225); } finally { window.sendMutualOffer = original; }
+                return calls;
+            });
+            assert.deepEqual(selected, [[1204, 554, 1225]], 'The new proposal uses the chosen target and restarted source project');
+            for (const state of [{ reciprocal_app_status: 'completed' }, { partner_progress_status: 'completed' }, { partner_active: false }]) {
+                await page.evaluate(state => {
+                    Object.assign(myTests[0], { reciprocal_app_status: '', partner_progress_status: '', partner_active: undefined }, state);
+                    showProjectSelectModal(myProjects, 1204, 554, {});
+                }, state);
+                assert(await page.locator('#project-select-list button').last().isEnabled(), 'Any explicit terminal partner signal overrides a stale reciprocal app id');
+            }
+            await page.evaluate(() => {
+                Object.assign(myTests[0], { reciprocal_app_status: 'active', partner_progress_status: 'active', partner_active: true });
+                showProjectSelectModal(myProjects, 1204, 554, {});
+            });
+            assert(await page.locator('#project-select-list button').last().isDisabled(), 'A genuinely active reciprocal leg remains reserved');
+            await page.evaluate(() => {
+                Object.assign(myTests[0], { reciprocal_app_status: 'completed', partner_progress_status: 'completed', partner_active: false });
+                myProjects[1].testers = [{ tester_id: 554, join_type: 'mutual', progress_status: 'active', reciprocal_app_id: 1204, reciprocal_app_name: 'New exchange' }];
+                showProjectSelectModal(myProjects, 1204, 554, {});
+            });
+            assert(await page.locator('#project-select-list button').last().isDisabled(), 'The current project roster remains authoritative');
+            await page.evaluate(() => {
+                myProjects[1].testers = [];
+                Object.assign(myTests[0], { reciprocal_app_status: 'active', partner_progress_status: 'active', partner_active: true,
+                    exchange_state: { version: 1, right: { leg_status: 'completed' } } });
+                showProjectSelectModal(myProjects, 1204, 554, {});
+            });
+            assert(await page.locator('#project-select-list button').last().isEnabled(), 'The canonical completed leg overrides stale flat fields');
+            await page.evaluate(() => {
+                Object.assign(myTests[0], { reciprocal_app_status: 'completed', partner_progress_status: 'completed', partner_active: false,
+                    exchange_state: { version: 1, right: { leg_status: 'active' } } });
+                showProjectSelectModal(myProjects, 1204, 554, {});
+            });
+            assert(await page.locator('#project-select-list button').last().isDisabled(), 'The canonical active leg remains reserved');
+        }
         assert.deepEqual(errors, []);
         console.log('Mutual target: exclusivity, valid 2↔2, direct participation, clickable read-only overview, actual paired names, pending reasons, late reads and normal selection passed');
     } finally { await browser.close(); }
