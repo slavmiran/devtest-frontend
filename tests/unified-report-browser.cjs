@@ -30,11 +30,20 @@ const root = path.resolve(__dirname, '..');
                 myTests=[{id:30,progress_id:300,run_iteration:1,name:'Picture Drop Solitaire',testing_days:6,status:'daily',app_status:'active',progress_status:'active',start_date:'2026-10-18',checkins_count:4,request_reviews:true,
                     owner_full_name:'Giuseppe',owner_username:'developer',owner_pending_open:4,owner_accepted_total:0,
                     control_proof_catchups:[{id:8,missed_testing_day:4,state:'requested'}]}];
-                const before=performance.now(); openCheckinOptionsModal(30,'developer');
-                window.openDuration=performance.now()-before;
+                const ready=isRuntimeConfigReady, ensure=ensureRuntimeConfigReady;
+                let release;
+                window.isRuntimeConfigReady=()=>false;
+                window.ensureRuntimeConfigReady=()=>new Promise(resolve=>{release=resolve;});
+                try {
+                    openCheckinOptionsModal(30,'developer');
+                    window.openedWhileConfigPending=!!release&&document.getElementById('report-modal').classList.contains('active');
+                } finally {
+                    if(release)release(false);
+                    window.isRuntimeConfigReady=ready; window.ensureRuntimeConfigReady=ensure;
+                }
             },language);
             assert(await page.locator('#report-modal').evaluate(el=>el.classList.contains('active')),'Open is synchronous');
-            assert(await page.evaluate(()=>openDuration<100),'No network barrier');
+            assert(await page.evaluate(()=>openedWhileConfigPending),'A pending config request must not block opening');
             assert(!(await page.locator('#checkin-options-modal').evaluate(el=>el.classList.contains('active'))));
             assert((await page.locator('#unified-report-catchup').innerText()).includes('4'));
             assert(await page.locator('#unified-report-info').isVisible(),'Reward information is visible before media selection');
