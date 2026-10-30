@@ -185,6 +185,12 @@
     flex: 1;
 }
 
+.checkin-proof-files-retry {
+    margin-top: 8px;
+    min-height: 44px;
+    font-size: 12px;
+}
+
 .checkin-proof-upload-status[hidden],
 .checkin-proof-upload-status:empty {
     display: none !important;

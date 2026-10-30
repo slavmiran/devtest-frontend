@@ -172,19 +172,120 @@ const root = path.resolve(__dirname, '..');
             assert.equal(retained.acceptedDespitePreviewFailure, 1, 'Preview decode failure is not evidence of invalid dimensions; server validates bytes');
             assert.equal(retained.alert, '');
 
+            const alternateRead = await page.evaluate(async () => {
+                const canvas = document.createElement('canvas'); canvas.width = 1258; canvas.height = 2560;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const source = new File([blob], 'samsung-screen.png', { type: 'image/png', lastModified: 1234 });
+                const expected = Array.from(new Uint8Array(await source.arrayBuffer()));
+                const NativeReader = window.FileReader;
+                window.FileReader = function () { this.readAsArrayBuffer = () => { throw new DOMException('Provider unavailable on this reader', 'NotReadableError'); }; };
+                try {
+                    await handleCheckinProofFileSelected({ target: { files: [source], value: 'selected' } });
+                    const stored = _checkinProofUploadState.files[0];
+                    return { count: _checkinProofUploadState.files.length,
+                        exactBytes: !!stored && JSON.stringify(Array.from(new Uint8Array(await stored.arrayBuffer()))) === JSON.stringify(expected),
+                        alert: document.getElementById('checkin-proof-upload-alert').textContent };
+                } finally { window.FileReader = NativeReader; _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {}); }
+            });
+            assert.equal(alternateRead.count, 1, 'Do not reject a readable screenshot solely because FileReader fails');
+            assert(alternateRead.exactBytes); assert.equal(alternateRead.alert, '');
+
+            const readerFallback = await page.evaluate(async () => {
+                const canvas = document.createElement('canvas'); canvas.width = 1258; canvas.height = 2560;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const source = new File([blob], 'reader-fallback.png', { type: 'image/png' });
+                const expected = Array.from(new Uint8Array(await source.arrayBuffer()));
+                source.arrayBuffer = async () => { throw new DOMException('Modern reader unavailable', 'NotReadableError'); };
+                const stored = await _snapshotCheckinProofImage(source);
+                const partial = new File([blob], 'short-read.png', { type: 'image/png' });
+                partial.arrayBuffer = async () => new ArrayBuffer(2);
+                const recovered = await _snapshotCheckinProofImage(partial);
+                const results = await Promise.all([stored.arrayBuffer(), recovered.arrayBuffer()]);
+                return stored !== source && results.every(bytes => JSON.stringify(expected) === JSON.stringify(Array.from(new Uint8Array(bytes))));
+            });
+            assert(readerFallback, 'FileReader fallback must recover a rejected or short modern read without admitting partial bytes');
+
+            const cancelledRead = await page.evaluate(async () => {
+                const source = new File(['delayed'], 'delayed.png', { type: 'image/png' });
+                const bytes = await source.arrayBuffer(); let release;
+                source.arrayBuffer = () => new Promise(resolve => { release = resolve; });
+                const selection = handleCheckinProofFileSelected({ target: { files: [source], value: 'selected' } });
+                closeReportModal(); openReportModal(30, 'developer');
+                const key = _checkinProofUploadState.idempotencyKey;
+                release(bytes); await selection;
+                return { count: _checkinProofUploadState.files.length, busy: _checkinProofUploadState.checkingFiles,
+                    sameKey: key === _checkinProofUploadState.idempotencyKey };
+            });
+            assert.deepEqual(cancelledRead, { count: 0, busy: false, sameKey: true }, 'A late read cannot add media or alter a reopened form');
+
+            const timeoutRead = await page.evaluate(async () => {
+                const source = new File(['exact bytes'], 'slow.png', { type: 'image/png' });
+                const expected = await source.arrayBuffer(); let late;
+                source.arrayBuffer = () => new Promise(resolve => { late = resolve; });
+                const nativeTimeout = window.setTimeout, NativeReader = window.FileReader;
+                window.setTimeout = (callback, delay) => nativeTimeout(callback, delay === 15000 ? 1 : delay);
+                window.FileReader = function () {
+                    this.readAsArrayBuffer = () => { this.result = expected; queueMicrotask(() => this.onload()); };
+                    this.abort = () => {};
+                };
+                try {
+                    const copy = await _snapshotCheckinProofImage(source);
+                    late(new ArrayBuffer(1)); await Promise.resolve();
+                    return Array.from(new Uint8Array(await copy.arrayBuffer()));
+                } finally { window.FileReader = NativeReader; window.setTimeout = nativeTimeout; }
+            });
+            assert.deepEqual(timeoutRead, Array.from(Buffer.from('exact bytes')), 'Modern-reader timeout uses the fallback and ignores late results');
+
+            const exhaustedRead = await page.evaluate(async () => {
+                const now = Date.now, started = now(), NativeReader = window.FileReader; let reads = 0;
+                const source = new File(['data'], 'expired.png', { type: 'image/png' });
+                source.arrayBuffer = async () => { Date.now = () => started + 60000; throw new DOMException('Unavailable', 'NotReadableError'); };
+                window.FileReader = function () { this.readAsArrayBuffer = () => { reads++; }; };
+                try { await _snapshotCheckinProofImage(source); return { reads, rejected: false }; }
+                catch (error) { return { reads, rejected: error.name === 'TimeoutError' }; }
+                finally { Date.now = now; window.FileReader = NativeReader; }
+            });
+            assert.deepEqual(exhaustedRead, { reads: 0, rejected: true }, 'An expired total budget cannot start another read');
+
+            await pick([file(0)]);
             const readFailure = await page.evaluate(async () => {
                 const NativeReader = window.FileReader;
+                const nativeTimeout = window.setTimeout;
                 window.FileReader = function () { this.readAsArrayBuffer = () => { throw new DOMException('Provider unavailable', 'NotReadableError'); }; };
+                window.setTimeout = (callback, delay) => nativeTimeout(callback, delay === 6000 ? 1 : delay);
                 try {
                     const source = new File(['unavailable'], 'cloud.png', { type: 'image/png' });
+                    source.arrayBuffer = async () => { throw new DOMException('Provider unavailable', 'NotReadableError'); };
                     await handleCheckinProofFileSelected({ target: { files: [source], value: 'selected' } });
+                    await new Promise(resolve => nativeTimeout(resolve, 10));
                     return { count: _checkinProofUploadState.files.length, busy: _checkinProofUploadState.checkingFiles,
                         alert: document.getElementById('checkin-proof-upload-alert').textContent,
                         expected: window.t('report_media_read_failed', {}, lang) };
-                } finally { window.FileReader = NativeReader; }
+                } finally { window.FileReader = NativeReader; window.setTimeout = nativeTimeout; }
             });
-            assert.equal(readFailure.count, 0); assert.equal(readFailure.busy, false);
+            assert.equal(readFailure.count, 1); assert.equal(readFailure.busy, false);
             assert(readFailure.alert.includes(readFailure.expected) && !readFailure.alert.includes('20:1'), 'Unreadable provider files have a distinct error and do not poison the queue');
+            assert(await page.locator('.checkin-proof-files-retry').isVisible(), 'The recovery action survives the ordinary alert timeout');
+            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Read-error recovery fits the mobile viewport');
+            await page.locator('#report-modal').screenshot({ path: path.resolve(root, '../artifacts/proof-reader-20261030/read-error-' + language + '.png') });
+            const openFiles = async () => {
+                const [chooser] = await Promise.all([page.waitForEvent('filechooser', { timeout: 2000 }), page.locator('.checkin-proof-files-retry').tap()]);
+                assert.equal(await chooser.element().getAttribute('accept'), '*/*', 'Explicit Files recovery requests a document picker');
+                return chooser;
+            };
+            const cancelledFiles = await openFiles();
+            await cancelledFiles.setFiles([]);
+            await page.locator('#checkin-proof-file-input').dispatchEvent('cancel');
+            assert(await page.locator('.checkin-proof-files-retry').isVisible(), 'Cancelling keeps the alternative action available');
+            assert.deepEqual(await names(), [file(0).name], 'Good attachments survive all-read failure and picker cancellation');
+            assert((await page.locator('#checkin-proof-file-input').getAttribute('accept')).includes('image/png'), 'Cancel restores the normal filter');
+            const recoveredFiles = await openFiles();
+            await recoveredFiles.setFiles([{ name: 'wrong.pdf', mimeType: 'application/pdf', buffer: Buffer.from('pdf') }, file(1)]);
+            await page.waitForFunction(() => !_checkinProofUploadState.checkingFiles);
+            assert.deepEqual(await names(), [file(0).name, file(1).name], 'Document picker still skips unsupported types and keeps good media');
+            assert.equal(await page.locator('.checkin-proof-files-retry').count(), 0);
+            assert((await page.locator('#checkin-proof-file-input').getAttribute('accept')).includes('image/png'), 'Change restores the normal filter');
+            await page.evaluate(() => { _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {}); });
 
             const decodeTimeout = await page.evaluate(async () => {
                 const NativeImage = window.Image, nativeTimeout = window.setTimeout;
