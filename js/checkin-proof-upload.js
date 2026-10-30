@@ -111,7 +111,7 @@ function _clearCheckinProofKey(progressId) {
 var CHECKIN_PROOF_KARMA_ICON_HTML = '<img src="images/Icons/Yin_yang.svg" class="checkin-proof-karma-icon" alt="☯" width="14" height="14">';
 var _checkinProofAlertTimer = null;
 
-function _setCheckinProofAlert(message) {
+function _setCheckinProofAlert(message, allowFilePicker) {
     var alertEl = document.getElementById('checkin-proof-upload-alert');
     if (!alertEl) return;
     if (_checkinProofAlertTimer) {
@@ -126,6 +126,14 @@ function _setCheckinProofAlert(message) {
     }
     alertEl.innerHTML = '<span class="checkin-proof-alert-icon" aria-hidden="true">⚠️</span><span class="checkin-proof-alert-text">' + text + '</span>';
     alertEl.hidden = false;
+    if (allowFilePicker) {
+        var retry = document.createElement('button');
+        retry.type = 'button'; retry.className = 'btn btn-secondary checkin-proof-files-retry';
+        retry.textContent = window.t('report_choose_from_files', {}, lang);
+        retry.onclick = function() { chooseCheckinProofFile('files'); };
+        alertEl.querySelector('.checkin-proof-alert-text').appendChild(retry);
+        return; // Keep the recovery action visible until the next selection/reset.
+    }
     _checkinProofAlertTimer = setTimeout(function() {
         if (alertEl) {
             alertEl.hidden = true;
@@ -337,7 +345,7 @@ function _syncCheckinProofControls() {
     if (submit) submit.disabled = _checkinProofUploadState.files.length < 1 || _checkinProofUploadState.checkingFiles || _checkinProofHasInvalidFiles();
     var picker = document.getElementById('checkin-proof-picker');
     if (picker) picker.disabled = _checkinProofUploadState.checkingFiles;
-    document.querySelectorAll('.checkin-proof-preview-add').forEach(function(addButton) {
+    document.querySelectorAll('.checkin-proof-preview-add, .checkin-proof-files-retry').forEach(function(addButton) {
         addButton.disabled = _checkinProofUploadState.checkingFiles;
     });
     var label = document.getElementById('t-checkinProofSubmit');
@@ -360,7 +368,10 @@ function _resetCheckinProofSelection() {
     _checkinProofUploadState.checkingFiles = false;
     _checkinProofUploadState.selectionGeneration += 1;
     var input = document.getElementById('checkin-proof-file-input');
-    if (input) input.value = '';
+    if (input) {
+        input.value = '';
+        if (input.dataset.mediaAccept) input.accept = input.dataset.mediaAccept;
+    }
     _setCheckinProofAlert('');
     _setCheckinProofStatus('', '');
     _renderCheckinProofPreviews();
@@ -399,10 +410,15 @@ function isScreenshotProofUploadPending(appId) {
     return !!_checkinProofPendingAppIds[Number(appId || 0)];
 }
 
-function chooseCheckinProofFile() {
+function chooseCheckinProofFile(source) {
     if (_checkinProofUploadState.checkingFiles) return;
     var input = document.getElementById('checkin-proof-file-input');
     if (!input) return;
+    if (!input.dataset.mediaAccept) input.dataset.mediaAccept = input.accept;
+    input.oncancel = function() { input.accept = input.dataset.mediaAccept; };
+    // An explicit Files retry requests the system document picker. Selection
+    // and server validation still enforce the same media types and limits.
+    input.accept = source === 'files' ? '*/*' : input.dataset.mediaAccept;
     // Keep native picker activation in the original tap, before any async work.
     if (typeof input.showPicker === 'function') {
         try { input.showPicker(); return; }
@@ -455,6 +471,8 @@ async function _checkinProofFileFingerprint(file) {
 }
 
 async function handleCheckinProofFileSelected(event) {
+    var pickerInput = document.getElementById('checkin-proof-file-input');
+    if (pickerInput && pickerInput.dataset.mediaAccept) pickerInput.accept = pickerInput.dataset.mediaAccept;
     if (_checkinProofUploadState.checkingFiles) {
         if (event && event.target) event.target.value = '';
         return;
@@ -520,7 +538,7 @@ async function handleCheckinProofFileSelected(event) {
         if (unreadableCount) warnings.push(window.t('report_media_read_failed', {}, lang));
         if (_checkinProofHasInvalidFiles()) warnings.push(window.t('checkinProofUsedFilesHint', {}, lang));
         if (warnings.length) {
-            _setCheckinProofAlert(warnings.join(' '));
+            _setCheckinProofAlert(warnings.join(' '), unreadableCount > 0);
             if ((excessCount || invalidCount || oversizedCount || dimensionsCount || unreadableCount) && typeof showToast === 'function') showToast(warnings.join(' '));
         }
         _syncCheckinProofControls();
@@ -528,20 +546,52 @@ async function handleCheckinProofFileSelected(event) {
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-function _snapshotCheckinProofImage(file) {
+async function _snapshotCheckinProofImage(file) {
+    var deadline = Date.now() + 30000;
+    function snapshot(bytes) {
+        if (Date.now() >= deadline) throw new DOMException('Image read timed out', 'TimeoutError');
+        if (!bytes || bytes.byteLength !== file.size) throw new Error('report_media_read_failed');
+        return new File([bytes], file.name, { type: file.type, lastModified: file.lastModified });
+    }
+    var modernError = 'unavailable', modernTimer;
+    if (typeof file.arrayBuffer === 'function') {
+        try {
+            var bytes = await Promise.race([
+                file.arrayBuffer(),
+                new Promise(function(resolve, reject) {
+                    modernTimer = setTimeout(function() { reject(new DOMException('Image read timed out', 'TimeoutError')); }, 15000);
+                }),
+            ]);
+            return snapshot(bytes);
+        } catch (error) { modernError = error && error.name || 'Error'; }
+        finally { clearTimeout(modernTimer); }
+    }
     return new Promise(function(resolve, reject) {
-        var reader = new FileReader();
-        var timer = setTimeout(function() { reader.abort(); reject(new Error('report_media_read_failed')); }, 30000);
+        var reader = new FileReader(), settled = false;
+        var timer = setTimeout(function() {
+            fail(new DOMException('Image read timed out', 'TimeoutError'));
+            try { reader.abort(); } catch (error) {}
+        }, Math.max(0, Math.min(15000, deadline - Date.now())));
+        function fail(error) {
+            if (settled) return;
+            settled = true; clearTimeout(timer);
+            console.warn('Report image read failed:', { array_buffer_error: modernError,
+                file_reader_error: error && error.name || 'Error', size: Number(file.size), type: file.type });
+            reject(error);
+        }
         reader.onload = function() {
+            if (settled) return;
             clearTimeout(timer);
             try {
-                if (!reader.result || reader.result.byteLength !== file.size) throw new Error('report_media_read_failed');
-                resolve(new File([reader.result], file.name, { type: file.type, lastModified: file.lastModified }));
-            } catch (error) { reject(error); }
+                var copy = snapshot(reader.result);
+                settled = true; resolve(copy);
+            } catch (error) { fail(error); }
         };
-        reader.onerror = reader.onabort = function() { clearTimeout(timer); reject(new Error('report_media_read_failed')); };
+        reader.onerror = function() { fail(reader.error || new Error('report_media_read_failed')); };
+        reader.onabort = function() { fail(new DOMException('Image read cancelled', 'AbortError')); };
+        if (Date.now() >= deadline) { fail(new DOMException('Image read timed out', 'TimeoutError')); return; }
         try { reader.readAsArrayBuffer(file); }
-        catch (error) { clearTimeout(timer); reject(error); }
+        catch (error) { fail(error); }
     });
 }
 
