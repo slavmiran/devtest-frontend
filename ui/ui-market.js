@@ -6,6 +6,7 @@ window.feedbackCaptionRegistry = window.feedbackCaptionRegistry || {};
 
 /* === Reliability / dossier / guest helpers (moved from ui-tests.js) === */
 var _showReliabilityRules = false;
+var _showReliabilityInfluences = false;
 var _reliabilityDashboardFilter = 'formula';
 window._activeGrantIndex = 0;
 function getGuestProjectFreshness(createdAt) {
@@ -465,6 +466,12 @@ window.toggleReliabilityRules = function(event) {
     renderReliabilityAlphaModal();
 };
 
+window.toggleReliabilityInfluences = function(event) {
+    if (event) event.stopPropagation();
+    _showReliabilityInfluences = !_showReliabilityInfluences;
+    renderReliabilityAlphaModal();
+};
+
 window.selectActiveGrant = function(idx, event) {
     if (event) event.stopPropagation();
     window._activeGrantIndex = idx;
@@ -679,20 +686,21 @@ function renderReliabilityAlphaModal() {
             </div>
           </div>
 
-          <div class="ri-influence">
-            <div class="ri-influence-card">
-              <div class="ri-influence-header">
-                <div class="ri-influence-icon is-showcase">🌍</div>
-                <div class="ri-influence-title">${window.escapeHTML(window.t('influenceShowcaseTitle', {}, lang))}</div>
-              </div>
-              <div class="ri-influence-text">${window.escapeHTML(window.t('influenceShowcaseText', {}, lang))}</div>
-            </div>
-            <div class="ri-influence-card">
-              <div class="ri-influence-header">
-                <div class="ri-influence-icon is-mail">📨</div>
-                <div class="ri-influence-title">${window.escapeHTML(window.t('influenceMatchmakingTitle', {}, lang))}</div>
-              </div>
-              <div class="ri-influence-text">${window.escapeHTML(window.t('influenceMatchmakingText', {}, lang))}</div>
+          <div class="ri-influence${_showReliabilityInfluences ? ' is-open' : ' is-compact'}">
+            <button type="button" class="ri-rules-btn ri-influence-toggle${_showReliabilityInfluences ? ' active' : ''}" aria-expanded="${_showReliabilityInfluences ? 'true' : 'false'}" onclick="toggleReliabilityInfluences(event)">
+              <span class="ri-rules-btn-left">${window.escapeHTML(window.t('influenceSectionTitle', {}, lang))}</span>
+              <span class="ri-rules-chevron">▼</span>
+            </button>
+            <div class="ri-influence-grid">
+              ${[
+                ['🌍', 'is-showcase', 'influenceShowcaseTitle', 'influenceShowcaseText'],
+                ['📨', 'is-mail', 'influenceMatchmakingTitle', 'influenceMatchmakingText'],
+                ['🎟️', 'is-slots', 'influenceSlotsTitle', 'influenceSlotsText'],
+                ['⭐', 'is-reviews', 'influenceReviewsTitle', 'influenceReviewsText'],
+                ['🎁', 'is-welcome', 'influenceWelcomeTitle', 'influenceWelcomeText']
+              ].map(function(item) {
+                return '<div class="ri-influence-card"><div class="ri-influence-header"><div class="ri-influence-icon ' + item[1] + '">' + item[0] + '</div><div class="ri-influence-title">' + window.escapeHTML(window.t(item[2], {}, lang)) + '</div></div><div class="ri-influence-text">' + window.escapeHTML(window.t(item[3], {}, lang)) + '</div></div>';
+              }).join('')}
             </div>
           </div>
 
@@ -705,7 +713,6 @@ function renderReliabilityAlphaModal() {
           </div>
 
           ${grantsSectionHtml}
-          ${window.ReviewCredits ? '<details class="rv-policy"><summary>⭐ '+window.escapeHTML(window.t('rvTitle',{},lang))+'</summary><p>'+window.escapeHTML(window.t('rvReliabilityBonus',{},lang))+'</p></details>' : ''}
 
           <section class="ri-surface">
             <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</h4>
@@ -6611,12 +6618,6 @@ async function showKarmaInfo() {
 
     const rows = (Array.isArray(result && result.breakdown) ? result.breakdown : [])
         .filter((item) => Number(item && item.count) !== 0 || Number(item && item.amount) !== 0);
-    if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'screenshot_bonus')) {
-        rows.push({ source_type: 'screenshot_bonus', amount: 0, count: 0 });
-    }
-    if (!rows.some((item) => String(item && item.source_type || '').toLowerCase() === 'video_report_bonus')) {
-        rows.push({ source_type: 'video_report_bonus', amount: 0, count: 0 });
-    }
     const rowHtml = rows.map((item) => {
             const sourceLabel = window.escapeHTML(getKarmaSourceLabel(item.source_type));
             const amount = Number(item && item.amount) || 0;

@@ -352,13 +352,63 @@
    3. INFLUENCE CHIPS
    ========================================================================== */
 .ri-influence {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ri-influence-toggle.active {
+    border-radius: 14px;
+    border-bottom: 1px solid var(--border-strong);
+}
+
+.ri-influence.is-open .ri-rules-chevron {
+    transform: rotate(180deg);
+}
+
+.ri-influence-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
 }
 
+.ri-influence.is-compact .ri-influence-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ri-influence.is-compact .ri-influence-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    padding: 6px 10px 6px 6px;
+    border-radius: 999px;
+}
+
+.ri-influence.is-compact .ri-influence-header {
+    gap: 6px;
+}
+
+.ri-influence.is-compact .ri-influence-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    font-size: 13px;
+}
+
+.ri-influence.is-compact .ri-influence-title {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ri-influence.is-compact .ri-influence-text {
+    display: none;
+}
+
 @media (max-width: 400px) {
-    .ri-influence {
+    .ri-influence.is-open .ri-influence-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -395,9 +445,20 @@
     border: 1px solid var(--security-border);
 }
 
-.ri-influence-icon.is-mail {
+.ri-influence-icon.is-mail,
+.ri-influence-icon.is-slots {
     background: var(--reward-surface);
     border: 1px solid var(--reward-border);
+}
+
+.ri-influence-icon.is-reviews {
+    background: rgba(177, 140, 255, 0.12);
+    border: 1px solid rgba(177, 140, 255, 0.28);
+}
+
+.ri-influence-icon.is-welcome {
+    background: rgba(243, 196, 110, 0.12);
+    border: 1px solid rgba(243, 196, 110, 0.28);
 }
 
 .ri-influence-title {

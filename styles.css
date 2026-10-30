@@ -1624,6 +1624,17 @@ input::placeholder,
     gap: 2px;
 }
 
+.karma-why-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--hint-color);
+}
+
 .karma-how-group {
     margin: 10px 0 4px;
     font-size: 13px;

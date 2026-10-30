@@ -5263,6 +5263,7 @@ function showCheckinRewardToasts(result) {
     }
 
     var earnedBust = Number(result.earned_bust != null ? result.earned_bust : result.bust_earned || 0);
+    if(result.live_contract&&window.LiveContracts){var contractToast=LiveContracts.receipt(result);if(contractToast){showPrimaryCheckinToast(contractToast);LiveContracts.load();return;}}
     var baseEarnedBust = Math.max(0, earnedBust - screenshotBoostEarned);
     var earnedKarma = Number(result.earned_karma != null ? result.earned_karma : result.karma_earned || 0);
     var sourceType = String(result.source_type || '').toLowerCase();

@@ -102,7 +102,7 @@
             '<div class="lc-campaign__section lc-budget"><strong>'+esc(tr('lcOver',{price:amount(cost)}))+'</strong></div>'+controls(c,s)+'</div></details></article>';
     }
     function content(s) {
-        var rows=s.rows || [], active=rows.filter(function(c){return c.status==='active'&&c.kind!=='closed_bridge';});var capacity=s.capacity||{limit:3};
+        var rows=s.rows || [], active=rows.filter(function(c){return (c.status==='active'||c.contracts_enabled)&&c.kind!=='closed_bridge';});var capacity=s.capacity||{limit:3};
         var visible=rows.filter(function(c){return c.definition||c.kind==='closed_bridge'||c.status==='active';});
         var paused=rows.filter(function(c){return !c.definition&&c.kind!=='closed_bridge'&&c.status!=='active';});
         return '<div class="lc-section-head"><div class="lc-section-heading"><h3>'+esc(tr('lcTitle'))+'</h3>'+projectBudget(s)+'</div><div class="lc-section-actions"><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
@@ -117,7 +117,7 @@
     function projectBudget(s){
         if(!s.control)return '';var c=s.control;
         var hint=tr('lcPoolEdit')+': '+amount(c.pool_available)+' $BUST'+(c.reserved_bust?' · '+tr('lcReserved',{n:amount(c.reserved_bust)}):'');
-        return '<div class="lc-section-balance"><button type="button" class="lc-action lpc-project-budget" data-lc-action="project-pool" aria-haspopup="dialog" aria-label="'+esc(hint)+'" title="'+esc(hint)+'"'+(s.pending.has(-1)?' disabled':'')+'><strong>'+esc(amount(c.pool_available))+' <span>$BUST</span></strong><span class="lc-pool-topup-icon" aria-hidden="true">'+plusIcon()+'</span></button>'+(c.allow_wallet_spending?'<span class="lc-wallet-badge" title="'+esc(tr('lcWalletEnabled'))+'" aria-label="'+esc(tr('lcWalletEnabled'))+'"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M13 8h5v4h-5z"/></svg><span aria-hidden="true">✓</span></span>':'')+'</div>';
+        return '<div class="lc-section-balance"><button type="button" class="lc-action lpc-project-budget" data-lc-action="project-pool" aria-haspopup="dialog" aria-label="'+esc(hint)+'" title="'+esc(hint)+'"'+(s.pending.has(-1)?' disabled':'')+'><strong>'+esc(amount(c.pool_available))+' <span>$BUST</span></strong><span class="lc-pool-topup-icon" aria-hidden="true">'+plusIcon()+'</span></button>'+(c.reserves?'<button type="button" class="lc-action ct-locked" data-ct-reserves="'+s.id+'">🔒 '+esc(tr('ctLockedAmount',{n:amount(c.reserved_bust||0)}))+'</button>':'')+(c.allow_wallet_spending?'<span class="lc-wallet-badge" title="'+esc(tr('lcWalletEnabled'))+'" aria-label="'+esc(tr('lcWalletEnabled'))+'"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M13 8h5v4h-5z"/></svg><span aria-hidden="true">✓</span></span>':'')+'</div>';
     }
     function projectBar(s){
         if(!s.control)return '';var c=s.control,v=c.policy||{},p=s.pace||{};
@@ -256,6 +256,7 @@
  function marketBadges(item){if(!item.live_bridge)return '';var days=item.live_bridge.control_days||[1,4,7,10,14];return '<button type="button" class="meta-chip lc-market-live" data-lc-hint="live">Live</button>'+(days.length<5?'<button type="button" class="meta-chip lc-market-days" data-lc-hint="days" data-days="'+days.join(' · ')+'">📸 '+days.join(' · ')+'</button>':'');}
  document.addEventListener('click',function(event){var target=event.target.closest('[data-lc-hint]');if(!target)return;event.stopPropagation();if(window.showToast)window.showToast(tr(target.dataset.lcHint==='live'?'lcLiveHint':'lcDaysHint',{days:target.dataset.days||''}));});
  function normalActions(test,day) {
+    if(test.live_bridge?.billing==='live_contract'&&window.LiveContracts)return LiveContracts.testActions(test,day);
     var id=Number(test.id||test.app_id),user=esc(String(test.owner_username||'').replace(/[^A-Za-z0-9_]/g,''));
     if(day>14)return '<p class="lc-note">'+esc(tr('lcComplete'))+'</p><button type="button" class="btn" onclick="openCheckinOptionsModal('+id+',\''+user+'\')">📎 '+esc(tr('checkinOptionsTitle'))+'</button>';
     var offer=typeof getScreenshotBoostOffer==='function'?getScreenshotBoostOffer(test,day):null;
