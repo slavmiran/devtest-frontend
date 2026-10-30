@@ -55,6 +55,120 @@ const root = path.resolve(__dirname, '..');
             };
             const names = () => page.evaluate(() => _checkinProofUploadState.files.map(file => file.name));
 
+            const retained = await page.evaluate(async () => {
+                const canvas = document.createElement('canvas'); canvas.width = 1258; canvas.height = 2560;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const source = new File([blob], 'galaxy-screen.png', { type: 'image/png', lastModified: 1234 });
+                const expected = Array.from(new Uint8Array(await source.arrayBuffer()));
+                await handleCheckinProofFileSelected({ target: { files: [source], value: 'selected' } });
+                const retained = _checkinProofUploadState.files[0];
+                // Android's picker owns the source; the queued copy must not depend on it.
+                const independent = retained !== source;
+                const bytes = Array.from(new Uint8Array(await retained.arrayBuffer()));
+                _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {});
+                const NativeImage = window.Image;
+                window.Image = function () {
+                    const image = new NativeImage();
+                    Object.defineProperty(image, 'src', { set() { queueMicrotask(() => image.onerror && image.onerror()); } });
+                    return image;
+                };
+                try { await handleCheckinProofFileSelected({ target: { files: [source], value: 'selected' } }); }
+                finally { window.Image = NativeImage; }
+                const acceptedDespitePreviewFailure = _checkinProofUploadState.files.length;
+                const alert = document.getElementById('checkin-proof-upload-alert').textContent;
+                _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {});
+                return { independent, bytesPreserved: JSON.stringify(expected) === JSON.stringify(bytes), acceptedDespitePreviewFailure, alert };
+            });
+            assert(retained.independent, 'Queue owns an immutable byte copy, not the Android picker File');
+            assert(retained.bytesPreserved, 'Snapshot must not recompress or change exact duplicate fingerprints');
+            assert.equal(retained.acceptedDespitePreviewFailure, 1, 'Preview decode failure is not evidence of invalid dimensions; server validates bytes');
+            assert.equal(retained.alert, '');
+
+            const readFailure = await page.evaluate(async () => {
+                const NativeReader = window.FileReader;
+                window.FileReader = function () { this.readAsArrayBuffer = () => { throw new DOMException('Provider unavailable', 'NotReadableError'); }; };
+                try {
+                    const source = new File(['unavailable'], 'cloud.png', { type: 'image/png' });
+                    await handleCheckinProofFileSelected({ target: { files: [source], value: 'selected' } });
+                    return { count: _checkinProofUploadState.files.length, busy: _checkinProofUploadState.checkingFiles,
+                        alert: document.getElementById('checkin-proof-upload-alert').textContent,
+                        expected: window.t('report_media_read_failed', {}, lang) };
+                } finally { window.FileReader = NativeReader; }
+            });
+            assert.equal(readFailure.count, 0); assert.equal(readFailure.busy, false);
+            assert(readFailure.alert.includes(readFailure.expected) && !readFailure.alert.includes('20:1'), 'Unreadable provider files have a distinct error and do not poison the queue');
+
+            const decodeTimeout = await page.evaluate(async () => {
+                const NativeImage = window.Image, nativeTimeout = window.setTimeout;
+                window.Image = function () {};
+                window.setTimeout = (callback, delay) => nativeTimeout(callback, delay === 10000 ? 1 : delay);
+                try { return await _checkinProofImageDimensionsValid(new File(['valid-header-checked-by-server'], 'screen.png', { type: 'image/png' })); }
+                finally { window.Image = NativeImage; window.setTimeout = nativeTimeout; }
+            });
+            assert.equal(decodeTimeout, null, 'Decoder timeout cannot prove that an image exceeds dimensions');
+            await page.evaluate(() => _setCheckinProofAlert(''));
+
+            const proxyFailure = await page.evaluate(async () => {
+                const NativeXHR = window.XMLHttpRequest; let attempts = 0;
+                window.XMLHttpRequest = function () {
+                    this.upload = {}; this.open = () => {}; this.getResponseHeader = () => null;
+                    this.send = () => { attempts++; this.status = 503; this.responseText = '<html>Service unavailable</html>'; queueMicrotask(() => this.onload()); };
+                };
+                try {
+                    const sent = await _postCheckinProofScreenshot('/fixture-upload', new FormData(), () => {});
+                    return { attempts, status: sent.response.status, code: sent.result.code, retryable: sent.retryable };
+                } finally { window.XMLHttpRequest = NativeXHR; }
+            });
+            assert.deepEqual(proxyFailure, { attempts: 2, status: 503, code: 'report_server_response_invalid', retryable: true }, 'HTML proxy errors preserve HTTP status instead of becoming network failures');
+
+            const otherResponses = await page.evaluate(async () => {
+                const nativeFetch = window.fetch;
+                const results = [];
+                try {
+                    for (const [status, body, retryAfter] of [
+                        [413, '<html>Too large</html>'], [200, 'null'], [200, '{}'], [200, '{"status":"success"}'],
+                        [503, '<html>Unavailable</html>', '60'], [429, '{"code":"telegram_rate_limited","details":{"retry_after":90,"retryable":true}}', '90'],
+                    ]) {
+                        let attempts = 0; const forms = [], form = new FormData();
+                        form.append('idempotency_key', '42c17279-f1aa-4a0d-aab7-0dc3afac15c4');
+                        window.fetch = async (url, options) => {
+                            attempts++; forms.push(options.body);
+                            return { ok: status === 200, status, headers: { get: () => retryAfter || null }, json: async () => JSON.parse(body) };
+                        };
+                        const sent = await _postCheckinProofScreenshot('/fixture-upload', form);
+                        results.push({ attempts, status: sent.response.status, code: sent.result.code, retryable: sent.retryable, sameForm: forms.every(value => value === form) });
+                    }
+                } finally { window.fetch = nativeFetch; }
+                return results;
+            });
+            assert.deepEqual(otherResponses, [
+                { attempts: 1, status: 413, code: 'file_too_large', retryable: false, sameForm: true },
+                ...Array(3).fill({ attempts: 2, status: 200, code: 'report_server_response_invalid', retryable: true, sameForm: true }),
+                { attempts: 1, status: 503, code: 'report_server_response_invalid', retryable: true, sameForm: true },
+                { attempts: 1, status: 429, code: 'telegram_rate_limited', retryable: true, sameForm: true },
+            ], 'Malformed successes retain UUID/form; long Retry-After keeps the draft without an immediate repeat; a 413 is not retried');
+
+            await pick([file(0)]);
+            const draftRecovery = await page.evaluate(async () => {
+                const s = _checkinProofUploadState, originalPost = _postCheckinProofScreenshot, originalToast = showToast;
+                const messages = [], job = { appId: 30, progressId: 300, actor: String(userId), initData: 'fixture',
+                    files: s.files.slice(), fingerprints: s.fingerprints.slice(), idempotencyKey: s.idempotencyKey,
+                    submissionMode: s.submissionMode, catchupRequested: s.catchupRequested, reportKind: 'screenshot', note: 'Keep my note' };
+                _postCheckinProofScreenshot = async () => ({ response: { ok: false, status: 503 }, result: { code: 'report_server_response_invalid' }, retryable: true });
+                window.showToast = message => messages.push(message);
+                try {
+                    closeReportModal(); await _runCheckinProofUploadJob(job); openReportModal(30, 'developer');
+                    return { count: s.files.length, sameKey: s.idempotencyKey === job.idempotencyKey,
+                        sameBytes: s.files[0] === job.files[0], note: document.getElementById('unified-report-note').value,
+                        message: messages[0], expected: window.t('report_server_response_invalid', {}, lang) };
+                } finally {
+                    _postCheckinProofScreenshot = originalPost; window.showToast = originalToast;
+                    _checkinProofRetryDrafts.clear(); _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {});
+                }
+            });
+            assert.equal(draftRecovery.count, 1); assert(draftRecovery.sameKey && draftRecovery.sameBytes);
+            assert.equal(draftRecovery.note, 'Keep my note'); assert(draftRecovery.message.includes(draftRecovery.expected));
+
             await pick(images.slice(0, 7).map((_, index) => file(index)));
             assert.deepEqual(await names(), [0, 1, 2, 3, 4].map(index => file(index).name));
             assert.match(await page.locator('#checkin-proof-upload-alert').innerText(), /\(2\)/);

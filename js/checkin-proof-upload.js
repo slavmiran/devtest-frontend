@@ -449,7 +449,7 @@ async function handleCheckinProofFileSelected(event) {
     _syncCheckinProofControls();
     var known = new Set(_checkinProofUploadState.fingerprints || []);
     var duplicateCount = 0;
-    var excessCount = 0, invalidCount = 0, oversizedCount = 0, dimensionsCount = 0, addedCount = 0;
+    var excessCount = 0, invalidCount = 0, oversizedCount = 0, dimensionsCount = 0, unreadableCount = 0, addedCount = 0;
     try {
         // Sequential hashing keeps peak memory small on budget Android devices.
         for (var selectedIndex = 0; selectedIndex < selected.length; selectedIndex += 1) {
@@ -462,9 +462,17 @@ async function handleCheckinProofFileSelected(event) {
             if (Number(selectedFile.size || 0) <= 0 || allowedTypes.indexOf(type) === -1) { invalidCount++; continue; }
             if (Number(selectedFile.size || 0) > (type.indexOf('video/') === 0 ? 50 : 5) * 1024 * 1024) { oversizedCount++; continue; }
             if (type.indexOf('image/') === 0) {
+                // Android gallery/cloud providers may invalidate the original File
+                // after the picker closes. Keep exact bytes for the queue and retry.
+                try { selectedFile = await _snapshotCheckinProofImage(selectedFile); }
+                catch (error) {
+                    if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
+                    unreadableCount++; continue;
+                }
+                if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
                 var imageValid = await _checkinProofImageDimensionsValid(selectedFile);
                 if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
-                if (!imageValid) { dimensionsCount++; continue; }
+                if (imageValid === false) { dimensionsCount++; continue; }
             }
             var fingerprint = await _checkinProofFileFingerprint(selectedFile);
             if (selectionGeneration !== _checkinProofUploadState.selectionGeneration) return;
@@ -490,20 +498,38 @@ async function handleCheckinProofFileSelected(event) {
         if (invalidCount) warnings.push(window.t('invalid_image_type', {}, lang));
         if (oversizedCount) warnings.push(typeof reportCopy === 'function' ? reportCopy('videoLimit') : window.t('file_too_large', {}, lang));
         if (dimensionsCount) warnings.push(window.t('image_dimensions_invalid', {}, lang));
+        if (unreadableCount) warnings.push(window.t('report_media_read_failed', {}, lang));
         if (_checkinProofHasInvalidFiles()) warnings.push(window.t('checkinProofUsedFilesHint', {}, lang));
         if (warnings.length) {
             _setCheckinProofAlert(warnings.join(' '));
-            if ((excessCount || invalidCount || oversizedCount || dimensionsCount) && typeof showToast === 'function') showToast(warnings.join(' '));
+            if ((excessCount || invalidCount || oversizedCount || dimensionsCount || unreadableCount) && typeof showToast === 'function') showToast(warnings.join(' '));
         }
         _syncCheckinProofControls();
     }
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
+function _snapshotCheckinProofImage(file) {
+    return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        var timer = setTimeout(function() { reader.abort(); reject(new Error('report_media_read_failed')); }, 30000);
+        reader.onload = function() {
+            clearTimeout(timer);
+            try {
+                if (!reader.result || reader.result.byteLength !== file.size) throw new Error('report_media_read_failed');
+                resolve(new File([reader.result], file.name, { type: file.type, lastModified: file.lastModified }));
+            } catch (error) { reject(error); }
+        };
+        reader.onerror = reader.onabort = function() { clearTimeout(timer); reject(new Error('report_media_read_failed')); };
+        try { reader.readAsArrayBuffer(file); }
+        catch (error) { clearTimeout(timer); reject(error); }
+    });
+}
+
 function _checkinProofImageDimensionsValid(file) {
     return new Promise(function(resolve) {
         var image = new Image(), url = URL.createObjectURL(file);
-        var timer = setTimeout(function() { finish(false); }, 10000);
+        var timer = setTimeout(function() { finish(null); }, 10000);
         var settled = false;
         function finish(valid) {
             if (settled) return;
@@ -517,7 +543,9 @@ function _checkinProofImageDimensionsValid(file) {
             var width = image.naturalWidth, height = image.naturalHeight;
             finish(width > 0 && height > 0 && width + height <= 10000 && Math.max(width, height) <= 20 * Math.min(width, height));
         };
-        image.onerror = function() { finish(false); };
+        // A WebView decoder failure/timeout says nothing about dimensions.
+        // The server independently validates the actual image headers.
+        image.onerror = function() { finish(null); };
         image.src = url;
     });
 }
@@ -624,6 +652,9 @@ function _applyBufferCatchupProofResult(appId, result) {
 }
 
 async function _postCheckinProofScreenshot(url, form, onProgress) {
+    function invalidResponse(status) {
+        return { status: 'error', code: status === 413 ? 'file_too_large' : 'report_server_response_invalid' };
+    }
     // Replay the SAME UUID and files, once. The endpoint resolves the existing
     // proof first and uses the same-day check-in winner to prevent double credit.
     for (var attempt = 0; attempt < 2; attempt += 1) {
@@ -634,26 +665,36 @@ async function _postCheckinProofScreenshot(url, form, onProgress) {
                 var sent = await new Promise(function(resolve, reject) {
                     var xhr = new XMLHttpRequest(); xhr.open('POST', url); xhr.timeout = 15 * 60 * 1000;
                     xhr.upload.onprogress = function(event) { if (event.lengthComputable) onProgress(Math.min(99, Math.round(event.loaded * 100 / event.total))); };
-                    xhr.onerror = xhr.ontimeout = function() { reject(new Error('network_error')); };
+                    xhr.onerror = function() { reject(new Error('network_error')); };
+                    xhr.ontimeout = function() { reject(new Error('report_upload_timeout')); };
                     xhr.onload = function() {
-                        try { resolve({ response: { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, headers: { get: function(name) { return xhr.getResponseHeader(name); } } }, result: JSON.parse(xhr.responseText) }); }
-                        catch (e) { reject(e); }
+                        var payload;
+                        try { payload = JSON.parse(xhr.responseText); }
+                        catch (e) { payload = invalidResponse(xhr.status); }
+                        resolve({ response: { ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, headers: { get: function(name) { return xhr.getResponseHeader(name); } } }, result: payload });
                     };
                     xhr.send(form);
                 });
                 response = sent.response; result = sent.result;
             } else {
                 response = await fetch(url, { method: 'POST', body: form });
-                result = await response.json();
+                try { result = await response.json(); }
+                catch (error) { result = invalidResponse(response.status); }
             }
         } catch (error) {
             if (attempt === 1) throw error;
             await new Promise(function(resolve) { setTimeout(resolve, 1000); });
             continue;
         }
+        if (!result || typeof result !== 'object' || Array.isArray(result)
+            || (!result.code && result.status !== 'success')
+            || (result.status === 'success' && (!result.proof || typeof result.proof !== 'object'
+                || (result.proof.state !== 'attached' && !result.report_only)))) result = invalidResponse(response.status);
         var unavailableSchema = result && ['proof_media_items_storage_not_ready', 'proof_content_hash_storage_not_ready'].indexOf(result.code) !== -1;
-        var retryable = !unavailableSchema && ([408, 425, 429, 500, 502, 503, 504].indexOf(response.status) !== -1
-            || (result && result.details && result.details.retryable === true));
+        var retryable = !unavailableSchema && ((response.ok && result && result.code === 'report_server_response_invalid')
+            || [408, 425, 429, 500, 502, 503, 504].indexOf(response.status) !== -1
+            || !!(result && result.details && result.details.retryable === true));
+        var retryAutomatically = retryable;
         var retryDelay = 1000;
         var retryAfter = response.headers && response.headers.get('Retry-After');
         if (retryAfter) {
@@ -661,10 +702,11 @@ async function _postCheckinProofScreenshot(url, form, onProgress) {
                 ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now();
             if (Number.isFinite(waitMs)) {
                 retryDelay = Math.max(retryDelay, waitMs);
-                if (retryDelay > 30000) retryable = false; // Never retry before the server permits it.
+                // A long wait prevents an automatic replay, not draft retention.
+                if (retryDelay > 30000) retryAutomatically = false;
             }
         }
-        if (attempt === 0 && retryable) {
+        if (attempt === 0 && retryAutomatically) {
             await new Promise(function(resolve) { setTimeout(resolve, retryDelay); });
             continue;
         }
@@ -758,7 +800,7 @@ async function _runCheckinProofUploadJob(job) {
             setTimeout(function() { if (typeof loadTasks === 'function') loadTasks(true).catch(function() {}); }, 150);
             return;
         }
-        var payload = error && error.isApiError ? error.payload : { code: 'network_error' };
+        var payload = error && error.isApiError ? error.payload : { code: error && error.message === 'report_upload_timeout' ? 'report_upload_timeout' : 'network_error' };
         if (['duplicate_screenshot_in_run', 'duplicate_screenshot_selected'].indexOf(payload.code) >= 0) {
             var indices = payload.details && payload.details.duplicate_indices;
             // Older servers cannot identify an album member. Never mark good
