@@ -402,7 +402,19 @@ function isScreenshotProofUploadPending(appId) {
 function chooseCheckinProofFile() {
     if (_checkinProofUploadState.checkingFiles) return;
     var input = document.getElementById('checkin-proof-file-input');
-    if (input) input.click();
+    if (!input) return;
+    // Keep native picker activation in the original tap, before any async work.
+    if (typeof input.showPicker === 'function') {
+        try { input.showPicker(); return; }
+        catch (error) { /* Older hosts can still support the click path. */ }
+    }
+    try { input.click(); }
+    catch (error) {
+        console.warn('Report file picker failed:', error && error.name || 'unknown');
+        var message = window.t('report_picker_unavailable', {}, lang);
+        _setCheckinProofAlert(message);
+        if (typeof showToast === 'function') showToast(message);
+    }
 }
 
 function _checkinProofMetadataFingerprint(file) {
@@ -423,12 +435,19 @@ async function _checkinProofFileFingerprint(file) {
         typeof window.crypto.subtle.digest === 'function' &&
         file && typeof file.arrayBuffer === 'function'
     ) {
+        var fingerprintTimeout;
         try {
-            var digest = await window.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+            var digest = await Promise.race([
+                (async function() { return window.crypto.subtle.digest('SHA-256', await file.arrayBuffer()); })(),
+                new Promise(function(resolve, reject) {
+                    fingerprintTimeout = setTimeout(function() { reject(new Error('fingerprint_timeout')); }, 10000);
+                }),
+            ]);
             return 'sha256:' + Array.from(new Uint8Array(digest)).map(function(value) {
                 return value.toString(16).padStart(2, '0');
             }).join('');
         } catch (error) {}
+        finally { clearTimeout(fingerprintTimeout); }
     }
     // Older WebViews still get a cheap best-effort guard. The backend remains
     // authoritative and computes SHA-256 from the uploaded bytes.

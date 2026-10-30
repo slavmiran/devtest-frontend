@@ -978,6 +978,7 @@
             checkinProofUsedFilesHint: "Remove the files marked in red and add different ones. Your other media have been kept.",
             image_dimensions_invalid: "This image could not be accepted. Choose a regular screenshot: width plus height up to 10,000 pixels and aspect ratio up to 20:1.",
             report_media_read_failed: "The gallery file could not be read. Save it to your phone and select it again. Your other files have been kept.",
+            report_picker_unavailable: "The file picker could not be opened. Tap again. If it still does not appear, close and reopen the Mini App.",
             report_server_response_invalid: "The server returned an incomplete or unexpected response. Retry sending: your selected files are kept while the app stays open.",
             report_upload_timeout: "The upload response took too long. Retry sending: your selected files are kept while the app stays open.",
             telegram_rate_limited: "Telegram temporarily limited uploads. Retry in {seconds} sec. Your selected files are kept while the app stays open.",
