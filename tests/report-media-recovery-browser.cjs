@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
     const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--unsafely-treat-insecure-origin-as-secure=http://fixture.local'] });
     try {
         for (const [language, width] of [['ru', 360], ['en', 390]]) {
-            const page = await browser.newPage({ viewport: { width, height: 850 } });
+            const page = await browser.newPage({ viewport: { width, height: 850 }, hasTouch: true });
             const errors = [], submissions = [];
             page.on('pageerror', error => errors.push(error.message));
             await page.addInitScript(language => {
@@ -41,6 +41,70 @@ const root = path.resolve(__dirname, '..');
                 window._getCheckinOpenToken = () => 'fixture-open';
                 openReportModal(30, 'developer');
             }, language);
+
+            let nativePickers = 0;
+            page.on('filechooser', () => nativePickers++);
+            async function openNativePicker(selector = '#checkin-proof-picker') {
+                const before = nativePickers;
+                const [chooser] = await Promise.all([
+                    page.waitForEvent('filechooser', { timeout: 2000 }),
+                    page.locator(selector).tap(),
+                ]);
+                assert(chooser.isMultiple(), 'Native chooser allows an album');
+                assert.equal(await chooser.element().getAttribute('id'), 'checkin-proof-file-input');
+                await chooser.setFiles([]); // Cancelling does not lock the report.
+                assert.equal(nativePickers, before + 1, 'One tap must open exactly one chooser');
+                assert.equal(await page.evaluate(() => _checkinProofUploadState.checkingFiles), false);
+                assert(await page.locator('#report-modal').evaluate(el => el.classList.contains('active')));
+            }
+            await openNativePicker();
+            await page.evaluate(() => {
+                closeReportModal();
+                myTests[0].control_proof_catchups = [{ id: 8, missed_testing_day: 4, state: 'requested' }];
+                openControlProofCatchupInfo(30);
+            });
+            await page.locator('[onclick="openControlProofCatchupScreenshot(30)"]').tap();
+            assert.equal(await page.evaluate(() => _checkinProofUploadState.catchupRequested), true);
+            assert.equal(await page.evaluate(() => _checkinProofUploadState.catchupRequestId), 8);
+            await openNativePicker();
+            await page.evaluate(() => {
+                closeReportModal();
+                myTests[0].testing_days = 15; myTests[0].app_status = 'pending_completion';
+                openControlProofCatchupScreenshot(30);
+            });
+            assert.equal(await page.evaluate(() => _checkinProofUploadState.submissionMode), 'buffer_catchup');
+            await openNativePicker();
+            await page.evaluate(() => {
+                closeReportModal(); myTests[0].testing_days = 6; myTests[0].app_status = 'active';
+                myTests[0].control_proof_catchups = []; openReportModal(30, 'developer');
+                // Model a host where a synthetic click is ignored. The standard
+                // picker API must still run synchronously within the trusted tap.
+                const input = document.getElementById('checkin-proof-file-input');
+                input.click = () => {};
+            });
+            await openNativePicker();
+            await page.evaluate(() => { delete document.getElementById('checkin-proof-file-input').click; });
+            await page.evaluate(() => { document.getElementById('checkin-proof-file-input').showPicker = undefined; });
+            await openNativePicker();
+            await page.evaluate(() => { document.getElementById('checkin-proof-file-input').showPicker = () => { throw new DOMException('Unsupported host', 'NotSupportedError'); }; });
+            await openNativePicker();
+            await page.evaluate(() => {
+                const input = document.getElementById('checkin-proof-file-input');
+                input.click = () => { throw new DOMException('Host unavailable', 'InvalidStateError'); };
+                window.__pickerToast = ''; window.__pickerOriginalToast = showToast;
+                window.showToast = message => { window.__pickerToast = message; };
+            });
+            await page.locator('#checkin-proof-picker').tap();
+            assert.equal(await page.evaluate(() => window.__pickerToast), await page.evaluate(() => window.t('report_picker_unavailable', {}, lang)));
+            assert(await page.locator('#checkin-proof-upload-alert').isVisible());
+            await page.evaluate(() => {
+                const input = document.getElementById('checkin-proof-file-input'); delete input.click; delete input.showPicker;
+                window.showToast = window.__pickerOriginalToast; _setCheckinProofAlert('');
+                _checkinProofUploadState.checkingFiles = true; _syncCheckinProofControls();
+            });
+            assert(await page.locator('#checkin-proof-picker').isDisabled(), 'Do not interrupt files that are being read');
+            await page.evaluate(() => { chooseCheckinProofFile(); _checkinProofUploadState.checkingFiles = false; _syncCheckinProofControls(); });
+
             const images = await page.evaluate(() => Array.from({ length: 8 }, (_, index) => {
                 const canvas = document.createElement('canvas'); canvas.width = 240; canvas.height = 360;
                 const ctx = canvas.getContext('2d');
@@ -54,6 +118,30 @@ const root = path.resolve(__dirname, '..');
                 await page.waitForFunction(() => !_checkinProofUploadState.checkingFiles);
             };
             const names = () => page.evaluate(() => _checkinProofUploadState.files.map(file => file.name));
+
+            await pick([file(0)]);
+            await openNativePicker('.checkin-proof-preview-add');
+            assert.deepEqual(await names(), [file(0).name], 'Cancel after Add keeps existing attachments');
+            await page.evaluate(() => { _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {}); });
+
+            const stalledFingerprint = await page.evaluate(async () => {
+                const nativeDigest = crypto.subtle.digest, nativeTimeout = window.setTimeout;
+                const canvas = document.createElement('canvas'); canvas.width = 240; canvas.height = 360;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                crypto.subtle.digest = () => new Promise(() => {});
+                window.setTimeout = (callback, delay) => nativeTimeout(callback, delay === 10000 ? 1 : delay);
+                try {
+                    const selection = handleCheckinProofFileSelected({ target: { files: [new File([blob], 'stalled-hash.png', { type: 'image/png' })], value: 'selected' } });
+                    const finished = await Promise.race([selection.then(() => true), new Promise(resolve => nativeTimeout(() => resolve(false), 1000))]);
+                    return { finished, busy: _checkinProofUploadState.checkingFiles, count: _checkinProofUploadState.files.length,
+                        fingerprint: _checkinProofUploadState.fingerprints[0], addDisabled: document.querySelector('.checkin-proof-preview-add')?.disabled };
+                } finally {
+                    crypto.subtle.digest = nativeDigest; window.setTimeout = nativeTimeout;
+                    _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {});
+                }
+            });
+            assert(stalledFingerprint.finished && !stalledFingerprint.busy && !stalledFingerprint.addDisabled, 'Stalled local hashing must release file selection');
+            assert.equal(stalledFingerprint.count, 1); assert.match(stalledFingerprint.fingerprint, /^meta:/);
 
             const retained = await page.evaluate(async () => {
                 const canvas = document.createElement('canvas'); canvas.width = 1258; canvas.height = 2560;
