@@ -49,6 +49,10 @@ function offer(id,state){return {offer_id:id,owner_id:1,proposer_id:2,target_app
   await page.waitForFunction(()=>document.querySelectorAll('.lm-project').length===30);
   const loaded=async()=>page.waitForFunction(()=>!document.querySelector('#live-market-slot [aria-busy=true]'));
   const fits=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.locator('[data-lm-model]').click();await page.locator('.lm-sheet').waitFor();await fits();await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.lm-sheet').count(),0,'Model explanation closes cleanly');
+  assert.equal(await page.locator('.lm-density-caption').count(),0,'Technical density caption is not on the main screen');
+  assert.match(await page.locator('.lm-tier-segments').innerText(),/Tier 5/);
   await fits();assert.equal(await page.locator('.lm-radar .lm-factor').count(),6);assert.match(await page.locator('.lm-radar-rank').innerText(),/#3/);assert.equal(await page.locator('.lm-radar .lm-provisional').count(),0);
   for(const code of ['stabilizing','growing','stable','cooling','overheated','collecting','adjusting']){
    await page.evaluate(({phase,code})=>{const host=document.createElement('div');host.id='phase-matrix';host.className='lm-radar';host.innerHTML=LiveMarketUI.phase({...phase,code,trend_percent:25,stabilization_days_remaining:code==='stabilizing'?5:0});document.body.append(host);},{phase,code});

@@ -2,7 +2,7 @@
 (function(){
  'use strict';var C=window.ReviewCredits,session=null,sequence=0,starts=new Map();
  function t(k,v){return C.t(k,v);}function e(v){return C.e(v);}function n(v){return C.n(v);}function test(id){return (window.myTests||[]).find(function(x){return Number(x.id||x.app_id)===Number(id);});}
- function mark(row){var item=test(row.app_id);if(!item)return;item.review_request=row;item.play_review_status={draft_pending:'draft_pending',ready:'ready',submitted:'pending',appeal:'appeal',accepted:'approved',rejected:'rejected'}[row.state]||'none';if(window.persistTestsCacheSnapshot)window.persistTestsCacheSnapshot();}
+ function mark(row){var item=test(row.app_id);if(!item)return;item.review_request=row;if(session&&session.id===Number(row.app_id)&&session.context&&session.context.required_window)item.required_review_window=session.context.required_window;item.play_review_status={draft_pending:'draft_pending',ready:'ready',submitted:'pending',appeal:'appeal',accepted:'approved',rejected:'rejected'}[row.state]||'none';if(window.persistTestsCacheSnapshot)window.persistTestsCacheSnapshot();}
  function state(row){return t('rvState_'+row.state);}
  function button(action,label,primary){return '<button type="button" class="'+(primary?'btn btn-primary':'meta-chip')+'" data-rv-action="'+action+'">'+e(t(label))+'</button>';}
  function images(config){return (config.screenshots||[]).length?'<div class="rv-images">'+config.screenshots.map(function(img,i){return '<a target="_blank" rel="noopener noreferrer" href="'+e(C.assetURL(img.asset_id))+'"><img src="'+e(C.assetURL(img.asset_id))+'" alt="'+e(t('rvReference',{n:i+1}))+'" referrerpolicy="no-referrer"></a>';}).join('')+'</div>':'';}
@@ -10,6 +10,7 @@
  function render(){var s=session;if(!s)return;var body=document.getElementById('play-review-modal-body');if(!body)return;
   var ctx=s.context||{},r=ctx.request,c=r&&r.settings_snapshot||ctx.settings||{},html='<header><h3>⭐ '+e(t('rvTaskTitle'))+'</h3><small>'+e(s.name)+'</small></header>';
   if(c.mode&&c.mode!=='off')html+='<p class="rv-task-tag">'+e(t('ldReview_'+c.mode))+(c.bonus_bust>0?' · +'+n(c.bonus_bust)+' $BUST':'')+'</p>';
+  if(!s.loading&&!s.error)html+=C.requiredHTML(ctx.required_window,r&&r.state);
   if(s.loading)html+='<p class="rv-muted">'+e(t('rvLoading'))+'</p>';
   else if(s.error)html+='<p class="rv-error" role="alert">'+e(C.error(s.error))+'</p>'+button('reload','rvRetry');
   else if(r){
@@ -23,13 +24,14 @@
    else if(r.state==='appeal')html+='<p class="rv-state">'+e(t('rvAppealHint'))+'</p><p>'+e(t('playReviewRejectReason_'+r.rejection_reason))+'</p>';
    else html+='<p class="rv-state">'+e(t(r.state==='accepted'?'rvAcceptedHint':r.state==='rejected'?'rvRejectedHint':'rvCancelledHint'))+'</p>';
   }else if(c.enabled===false)html+='<p class="rv-state">'+e(t('rvCollectionOff'))+'</p>';
+  else if(ctx.share_selected===false)html+='<p class="rv-state">'+e(t('rvTargetNotSelected'))+'</p>';
   else if(!ctx.eligible)html+='<p class="rv-state">'+e(t('rvLocked',{n:ctx.unlocks_day||7}))+'</p>';
   else if(ctx.bonus_available===false)html+='<p class="rv-state">'+e(t('ldNoBonusFunds'))+'</p>';
   else if(!ctx.balance_available)html+='<p class="rv-state">'+e(t('rvOwnerNoBalance'))+'</p>';
   else{
    html+='<p class="rv-muted">'+e(t('rvIndependent'))+'</p><div class="rv-choice">'+(c.formats||[]).map(function(key){return '<button type="button" class="pc-project-param'+(s.format===key?' is-active':'')+'" data-rv-format="'+key+'" aria-pressed="'+(s.format===key)+'"'+(key==='template'&&!ctx.template_available?' disabled':'')+'>'+e(t('rvFormat_'+key))+'</button>';}).join('')+'</div><strong>'+e(t('rvYourRating'))+'</strong><div class="rv-rating" role="group" aria-label="'+e(t('rvYourRating'))+'">'+[1,2,3,4,5].map(function(x){return '<button type="button" class="meta-chip'+(s.rating===x?' accent-blue':'')+'" data-rv-rating="'+x+'" aria-pressed="'+(s.rating===x)+'">'+x+' ★</button>';}).join('')+'</div>'+(s.format==='author'?'<label class="gtw-label" for="rv-draft">'+e(t('rvDraft'))+'</label><textarea id="rv-draft" class="gtw-textarea" maxlength="2000" data-rv-draft>'+e(s.text||'')+'</textarea>':'')+'<p class="rv-muted">'+e(t(s.format==='template'&&!ctx.template_available?'rvTemplateUnavailable':'rvTaskCostHint'))+'</p>'+button('start',s.format==='author'?'rvSendDraft':'rvReserve',true);
   }
-  html+='<p class="rv-error" data-rv-error role="alert" hidden></p><button type="button" class="btn btn-secondary" data-rv-action="close">'+e(t('rvClose'))+'</button>';if(r&&r.expires_at&&['draft_pending','ready'].includes(r.state))html+='<small class="rv-muted">'+e(t('rvDeadline',{date:new Date(r.expires_at).toLocaleString(window.lang==='ru'?'ru-RU':'en-US')}))+'</small>';body.innerHTML='<div class="rv-settings">'+html+'</div>';
+  html+='<p class="rv-error" data-rv-error role="alert" hidden></p><button type="button" class="btn btn-secondary" data-rv-action="close">'+e(t('rvClose'))+'</button>';if(r&&r.expires_at&&['draft_pending','ready'].includes(r.state)&&!(ctx.required_window&&ctx.required_window.buffer_available&&ctx.required_window.is_open))html+='<small class="rv-muted">'+e(t('rvDeadline',{date:new Date(r.expires_at).toLocaleString(window.lang==='ru'?'ru-RU':'en-US')}))+'</small>';body.innerHTML='<div class="rv-settings">'+html+'</div>';
   body.querySelectorAll('button,input,textarea').forEach(function(node){if(s.busy||node.dataset.rvAction==='start'&&s.format==='template'&&!ctx.template_available)node.disabled=true;});
  }
  async function read(s){s.loading=true;s.error=null;render();try{var wallet=C.get()||await C.refresh();var value=await C.api('/apps/'+s.id+'/review-task');if(wallet.enabled===false&&!value.request){if(session===s){close();window.openPlayReviewModal(s.id,null,{legacy:true});}return;}if(session!==s)return;s.context=value;s.format=s.format||(value.settings&&value.settings.formats||[])[0]||'author';if(value.request)mark(value.request);}catch(err){if(session===s)s.error=err;}finally{if(session===s){s.loading=false;render();}}}
@@ -45,7 +47,7 @@
     if(!s.rating||!s.format||s.format==='author'&&(s.text||'').trim().length<10)throw new Error('review_settings_invalid');
     var fingerprint=JSON.stringify([s.id,s.format,s.rating,s.text]),key=starts.get(fingerprint)||C.uuid();starts.set(fingerprint,key);
     var result=await C.api('/apps/'+s.id+'/review-task','POST',{request_key:key,format:s.format,rating:s.rating,text:s.text||''});if(session!==s)return;
-    s.context.request=result.request;mark(result.request);if(result.checkin&&!result.checkin.already_checked_today){if(window.showCheckinRewardToasts)showCheckinRewardToasts(result.checkin);if(result.checkin.review_checkpoint_pending&&window.showToast)showToast(t('rvCheckinKdPending'));}else if(window.showToast)showToast(t('rvDraftSent'));C.refresh().catch(function(){});
+    s.context.request=result.request;mark(result.request);if(result.checkin&&!result.checkin.already_checked_today){if(window.showCheckinRewardToasts)showCheckinRewardToasts(result.checkin);if(result.checkin.review_checkpoint_pending&&window.showToast)showToast(t('rvCheckinKdPending'));}else if(window.showToast)showToast(t('rvDraftSent'));C.refresh().catch(function(){});if(s.context.required_window)await read(s);
    }else if(action==='submit'){if(!s.published||!s.proof)throw new Error('review_proof_required');await change(s,'submit',{proof:s.proof});}
    else if(action==='cancel'){if(!await confirm(t('rvCancelConfirm')))return;await change(s,'cancel',{});}
   }catch(err){if(session===s){s.actionError=C.error(err);}}finally{if(session===s){s.busy=false;render();if(s.actionError){var box=document.querySelector('#play-review-modal [data-rv-error]');box.hidden=false;box.textContent=s.actionError;s.actionError=null;}}}}

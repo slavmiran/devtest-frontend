@@ -1449,7 +1449,9 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
         if (canShowReviewChip) {
             let reviewLabel = window.t('playReviewChip', {}, lang);
             let reviewClass = 'meta-chip accent-yellow';
-            if (window.ReviewFlow && ['draft_pending','ready','appeal'].includes(reviewStatus)) { reviewLabel = window.t('rvState_'+reviewStatus,{},lang); reviewClass='meta-chip accent-blue'; } else if (reviewStatus === 'pending') {
+            const requiredWindow = test.required_review_window;
+            if(window.ReviewCredits&&requiredWindow){const deadlineLabel=ReviewCredits.requiredLabel(requiredWindow);if(deadlineLabel)reviewLabel=deadlineLabel;if(requiredWindow.days_remaining<0)reviewClass='meta-chip accent-red';}
+            if (window.ReviewFlow && ['draft_pending','ready','appeal'].includes(reviewStatus)&&!(reviewStatus==='ready'&&requiredWindow&&requiredWindow.is_open)) { reviewLabel = window.t('rvState_'+reviewStatus,{},lang); reviewClass='meta-chip accent-blue'; } else if (reviewStatus === 'pending') {
                 reviewLabel = '⭐️ ' + window.t('playReviewDetailsPendingChip', {}, lang);
                 reviewClass = 'meta-chip accent-blue';
             } else if (reviewStatus === 'approved') {
@@ -1459,7 +1461,8 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
                 reviewLabel = '⭐️ ' + window.t('playReviewDetailsRejectedChip', {}, lang);
                 reviewClass = 'meta-chip accent-red';
             }
-            parts.push(`<button type="button" class="${reviewClass}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}</button>`);
+            const showBufferNote=window.ReviewCredits&&requiredWindow&&requiredWindow.is_open&&requiredWindow.buffer_available&&reviewLabel===ReviewCredits.requiredLabel(requiredWindow)&&!requiredWindow.paused;
+            parts.push(`<button type="button" class="${reviewClass}${showBufferNote?' rv-required-review-chip':''}" onclick="openPlayReviewModal(${Number(test.id)}, event)">${window.escapeHTML(reviewLabel)}${showBufferNote?'<small>'+window.escapeHTML(window.t('rvRequiredBufferShort',{},lang))+'</small>':''}</button>`);
         }
         if (isProjectSynced(test)) {
             const extraPaid = Number(test.paid_protection_days || test.purchased_protection_days || 0);
