@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..');
     try {
         for (const [language, width] of [['ru', 360], ['en', 390]]) {
             const page = await browser.newPage({ viewport: { width, height: 850 }, hasTouch: true });
-            const errors = [], submissions = [];
+            const errors = [], submissions = [], reuseChecks = [];
             page.on('pageerror', error => errors.push(error.message));
             await page.addInitScript(language => {
                 window.__API_BASE__ = 'http://fixture.local/api'; localStorage.setItem('lang', language);
@@ -17,6 +17,22 @@ const root = path.resolve(__dirname, '..');
             }, language);
             await page.route('**/*', route => {
                 const url = new URL(route.request().url());
+                if (url.pathname.startsWith('/proof-fixture-')) {
+                    const index = url.pathname.includes('-1.') ? 1 : 0;
+                    return route.fulfill({ contentType: 'image/png', body: Buffer.from(images[index], 'base64') });
+                }
+                if (url.pathname === '/api/checkin-proofs/501/album-tickets') {
+                    return route.fulfill({ json: { status: 'success', image_count: 2, note: 'Report note',
+                        media_items: [{ mime_type: 'image/png', matching_day: 2 }, { mime_type: 'image/png' }],
+                        tickets: [0, 1].map(index => ({ media_index: index, url: '/proof-fixture-' + index + '.png', expires_at: Math.floor(Date.now() / 1000) + 3600 })) } });
+                }
+                if (url.pathname === '/api/checkin-proofs/501/media-ticket') {
+                    return route.fulfill({ json: { status: 'success', url: '/proof-fixture-0.png', expires_at: Math.floor(Date.now() / 1000) + 3600 } });
+                }
+                if (url.pathname.endsWith('/checkin-proof/media-check')) {
+                    reuseChecks.push(route.request().postDataJSON());
+                    return route.fulfill({ json: { status: 'success', warnings: [{ index: 0, testing_day: 2 }] } });
+                }
                 if (url.pathname.endsWith('/checkin-proof/report')) {
                     const body = route.request().postDataBuffer().toString('latin1');
                     submissions.push((body.match(/name="idempotency_key"\r\n\r\n([^\r]+)/) || [])[1]);
@@ -120,9 +136,38 @@ const root = path.resolve(__dirname, '..');
             const names = () => page.evaluate(() => _checkinProofUploadState.files.map(file => file.name));
 
             await pick([file(0)]);
+            await page.waitForFunction(() => document.querySelectorAll('#checkin-proof-preview-grid .has-content-match').length === 1);
+            await pick([file(1)]);
+            await page.waitForFunction(() => document.querySelectorAll('#checkin-proof-preview-grid .checkin-proof-preview-item').length === 2);
+            assert.equal(await page.locator('#checkin-proof-preview-grid .has-content-match').count(), 1, 'Only the matching file is marked');
+            assert.equal(await page.locator('#checkin-proof-preview-grid .is-invalid').count(), 0, 'A previous-day match is advisory');
+            assert(await page.locator('#checkin-proof-submit').isEnabled(), 'Content match must not prevent sending');
+            assert(await page.locator('#checkin-proof-content-match-notice').isVisible());
+            assert.match(await page.locator('#checkin-proof-content-match-notice').textContent(), language === 'ru' ? /свежий снимок/ : /fresh capture/);
+            assert.match(reuseChecks[0].files[0].hash, /^[a-f0-9]{64}$/);
+            assert.equal(reuseChecks[0].files[0].name, file(0).name);
+            assert(reuseChecks[0].files[0].last_modified > 0);
+            await page.locator('#report-modal').screenshot({ path: path.resolve(root, '../artifacts/report-content-match-' + language + '.png') });
+            await page.evaluate(() => removeCheckinProofFile(1));
             await openNativePicker('.checkin-proof-preview-add');
             assert.deepEqual(await names(), [file(0).name], 'Cancel after Add keeps existing attachments');
             await page.evaluate(() => { _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {}); });
+
+            const lateAdvisory = await page.evaluate(async () => {
+                const nativeFetch = window.fetch;
+                let release;
+                window.fetch = (...args) => String(args[0]).endsWith('/media-check')
+                    ? new Promise(resolve => { release = resolve; }) : nativeFetch(...args);
+                _checkinProofUploadState.files = [new File(['fresh'], 'fresh.jpg', { type: 'image/jpeg' })];
+                _checkinProofUploadState.fingerprints = ['sha256:' + 'a'.repeat(64)];
+                const check = _refreshCheckinProofReuse();
+                _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {});
+                release(new Response(JSON.stringify({ status: 'success', warnings: [{ index: 0, testing_day: 2 }] })));
+                await check;
+                window.fetch = nativeFetch;
+                return Object.keys(_checkinProofUploadState.repeatWarnings).length;
+            });
+            assert.equal(lateAdvisory, 0, 'A late hint cannot mark a reopened report');
 
             const stalledFingerprint = await page.evaluate(async () => {
                 const nativeDigest = crypto.subtle.digest, nativeTimeout = window.setTimeout;
@@ -434,6 +479,18 @@ const root = path.resolve(__dirname, '..');
             const savedPixel = await page.locator('.report-editor canvas').evaluate(el => Array.from(el.getContext('2d').getImageData(100, 150, 1, 1).data));
             assert.equal(savedPixel[3], 255);
             assert(savedPixel[0] < 95 && savedPixel[1] < 110 && savedPixel[2] < 125, 'The saved JPEG still contains the mask, not the original private text');
+            await page.evaluate(async () => {
+                closeReportImageEditor(); closeReportModal();
+                Object.assign(App, { testingControlEnabled: true, checkinProofGalleryEnabled: true });
+                await openCheckinProofOverview(501, { imageCount: 2, title: 'Content match', subtitle: 'Report', appId: 30, testerId: 880 });
+            });
+            await page.waitForFunction(() => document.querySelectorAll('.checkin-proof-overview-tile.has-content-match').length === 1);
+            assert.equal(await page.locator('.checkin-proof-overview-tile').count(), 2);
+            assert.match(await page.locator('#checkin-proof-preview-note').textContent(), language === 'ru' ? /нельзя определить дату/ : /does not establish the capture date/);
+            await page.locator('#checkin-proof-preview-modal').screenshot({ path: path.resolve(root, '../artifacts/report-content-match-owner-' + language + '.png') });
+            await page.locator('.checkin-proof-overview-tile').first().click();
+            await page.waitForFunction(() => document.querySelectorAll('.checkin-proof-preview-slide.has-content-match').length === 1);
+            assert.equal(await page.locator('.checkin-proof-preview-album.has-content-match').count(), 0, 'Do not label the entire album');
             assert.deepEqual(errors, []);
             await page.close();
         }

@@ -10,6 +10,7 @@ var _checkinProofUploadState = {
     fingerprints: [],
     invalidFingerprints: [],
     invalidFileReason: '',
+    repeatWarnings: {},
     checkingFiles: false,
     selectionGeneration: 0,
     idempotencyKey: '',
@@ -47,6 +48,7 @@ function restoreCheckinProofRetryDraft() {
     state.retrySignature = JSON.stringify([state.reportKind, state.note, state.fingerprints]);
     state.previewUrls = state.files.map(function(file) { return URL.createObjectURL(file); });
     _renderCheckinProofPreviews();
+    _refreshCheckinProofReuse();
     _syncCheckinProofControls();
     _setCheckinProofAlert(window.t(_checkinProofHasInvalidFiles() ? 'checkinProofUsedFilesHint' : 'checkinProofDraftRestored', {}, lang));
     return true;
@@ -278,6 +280,15 @@ function _renderCheckinProofPreviews() {
         item.className = 'checkin-proof-preview-item';
         var file = _checkinProofUploadState.files[index];
         var invalid = (_checkinProofUploadState.invalidFingerprints || []).indexOf(_checkinProofUploadState.fingerprints[index]) >= 0;
+        var matchingDay = (_checkinProofUploadState.repeatWarnings || {})[_checkinProofUploadState.fingerprints[index]];
+        if (!invalid && matchingDay) {
+            item.classList.add('has-content-match');
+            item.title = window.t('checkinProofContentMatchHint', { day: matchingDay }, lang);
+            var badge = document.createElement('span');
+            badge.className = 'checkin-proof-content-match-label';
+            badge.textContent = window.t('checkinProofContentMatch', {}, lang);
+            item.appendChild(badge);
+        }
         if (invalid) {
             item.classList.add('is-invalid');
             item.setAttribute('aria-invalid', 'true');
@@ -318,6 +329,16 @@ function _renderCheckinProofPreviews() {
         item.appendChild(remove);
         grid.appendChild(item);
     });
+    var matchNotice = document.getElementById('checkin-proof-content-match-notice');
+    if (!matchNotice) {
+        matchNotice = document.createElement('p');
+        matchNotice.id = 'checkin-proof-content-match-notice';
+        matchNotice.className = 'checkin-proof-content-match-notice';
+        matchNotice.setAttribute('role', 'status');
+        wrap.appendChild(matchNotice);
+    }
+    matchNotice.hidden = !grid.querySelector('.has-content-match');
+    matchNotice.textContent = window.t('checkinProofContentMatchNotice', {}, lang);
     if (_checkinProofUploadState.files.length < CHECKIN_PROOF_MAX_FILES) {
         var add = document.createElement('button');
         add.type = 'button';
@@ -359,6 +380,7 @@ function _resetCheckinProofSelection() {
     _checkinProofUploadState.fingerprints = [];
     _checkinProofUploadState.invalidFingerprints = [];
     _checkinProofUploadState.invalidFileReason = '';
+    _checkinProofUploadState.repeatWarnings = {};
     _checkinProofUploadState.reportKind = 'screenshot';
     _checkinProofUploadState.note = '';
     _checkinProofUploadState.reportContext = null;
@@ -528,6 +550,7 @@ async function handleCheckinProofFileSelected(event) {
         _checkinProofUploadState.checkingFiles = false;
         if (event.target) event.target.value = '';
         _renderCheckinProofPreviews();
+        _refreshCheckinProofReuse();
         _updateCheckinProofFileStatus();
         var warnings = [];
         if (excessCount) warnings.push(window.t('checkinProofExtraSkipped', { added: addedCount, count: excessCount, max: CHECKIN_PROOF_MAX_FILES }, lang));
@@ -544,6 +567,45 @@ async function handleCheckinProofFileSelected(event) {
         _syncCheckinProofControls();
     }
     if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+async function _refreshCheckinProofReuse() {
+    var state = _checkinProofUploadState;
+    if (!state.files.length || !state.expectedDay || !state.expectedStart) return;
+    var files = state.files.slice(), fingerprints = state.fingerprints.slice();
+    var generation = state.selectionGeneration;
+    var sequence = state.repeatCheckSequence = (state.repeatCheckSequence || 0) + 1;
+    var actor = String(typeof userId === 'undefined' ? '' : userId);
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timeout = controller ? setTimeout(function() { controller.abort(); }, 8000) : null;
+    try {
+        var response = await fetch(API_BASE + '/testing/' + state.progressId + '/checkin-proof/media-check', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            signal: controller ? controller.signal : undefined,
+            body: JSON.stringify({
+                init_data: typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : String((tg && tg.initData) || ''),
+                open_token: typeof _getCheckinOpenToken === 'function' ? _getCheckinOpenToken(state.appId) : '',
+                expected_day: state.expectedDay, expected_run: state.expectedRun, expected_start: state.expectedStart,
+                catchup_only: state.submissionMode === 'buffer_catchup',
+                files: files.map(function(file, index) { return {
+                    hash: /^sha256:[a-f0-9]{64}$/.test(fingerprints[index]) ? fingerprints[index].slice(7) : '',
+                    name: String(file.name || '').slice(0, 255), last_modified: Number(file.lastModified || 0),
+                }; }),
+            }),
+        });
+        if (!response.ok) return; // An advisory lookup never prevents sending.
+        var result = await response.json();
+        if (result.status !== 'success' || generation !== state.selectionGeneration || sequence !== state.repeatCheckSequence
+            || actor !== String(typeof userId === 'undefined' ? '' : userId)
+            || files.some(function(file, index) { return state.files[index] !== file; }) || files.length !== state.files.length) return;
+        state.repeatWarnings = {};
+        (result.warnings || []).forEach(function(item) {
+            if (Number.isInteger(item.index) && item.index >= 0 && item.index < fingerprints.length && Number(item.testing_day) > 0)
+                state.repeatWarnings[fingerprints[item.index]] = Number(item.testing_day);
+        });
+        _renderCheckinProofPreviews();
+    } catch (_) { /* Upload recomputes the match even if this optional lookup fails. */ }
+    finally { if (timeout) clearTimeout(timeout); }
 }
 
 async function _snapshotCheckinProofImage(file) {
@@ -630,6 +692,7 @@ function removeCheckinProofFile(index) {
     _checkinProofRetryDrafts.delete(_proofDraftKey(_checkinProofUploadState.progressId, _checkinProofUploadState.submissionMode));
     _setCheckinProofAlert(_checkinProofHasInvalidFiles() ? window.t('checkinProofUsedFilesHint', {}, lang) : '');
     _renderCheckinProofPreviews();
+    _refreshCheckinProofReuse();
     _updateCheckinProofFileStatus();
     _syncCheckinProofControls();
 }
@@ -803,6 +866,7 @@ async function _runCheckinProofUploadJob(job) {
         form.append('expected_day', String(job.expectedDay || 0));
         form.append('expected_run', String(job.expectedRun || 1));
         form.append('expected_start', job.expectedStart || '');
+        form.append('source_metadata', JSON.stringify(job.files.map(function(file) { return { last_modified: Number(file.lastModified || 0) }; })));
         form.append('catchup_request_id', String(job.catchupRequestId || 0));
         if (job.submissionMode === 'buffer_catchup') form.append('catchup_only', 'true');
         job.files.forEach(function(file, index) {
