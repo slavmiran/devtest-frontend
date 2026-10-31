@@ -976,7 +976,7 @@
             checkinProofAlreadyUsed: "Already used — replace",
             checkinProofContentMatch: "Content match",
             checkinProofContentMatchHint: "Content matches an image from the day {day} report. This may be a fresh capture of an unchanged screen. The capture date cannot be inferred from this match.",
-            checkinProofContentMatchNotice: "Files marked in yellow have the same content as a previous report. This may be a fresh capture of an unchanged screen. The match does not establish the capture date or assess the whole report.",
+            checkinProofContentMatchNotice: "The content matches that of the previous report. This may be a recent screenshot of a static screen. The date cannot be determined based on this match.",
             checkinProofRepeatedFile: "Repeated file — remove",
             checkinProofUsedFilesHint: "Remove the files marked in red and add different ones. Your other media have been kept.",
             image_dimensions_invalid: "This image could not be accepted. Choose a regular screenshot: width plus height up to 10,000 pixels and aspect ratio up to 20:1.",
