@@ -1321,23 +1321,8 @@ function restoreProjectViewportAnchor(anchor) {
 
 
 
-function renderProjects(force) {
-    if (!force && !isTabVisible('projects')) return;
-    if (typeof window.deferUntilProjectsScrollIdle === 'function' && window.deferUntilProjectsScrollIdle(
-        'render-projects',
-        function() { renderProjects(force); }
-    )) return;
-    if (typeof window.syncHomeScreenUi === 'function') {
-        window.syncHomeScreenUi();
-    }
-    const container = document.getElementById('projects-list');
-    if (!container) return;
-    const viewportAnchor = captureProjectViewportAnchor(container);
-    const openSettingsDrawerIds = Array.from(container.querySelectorAll('.project-settings-drawer.active'))
-        .map((drawer) => Number(String(drawer.id || '').replace('settings-drawer-', '')))
-        .filter(Boolean);
-    container.innerHTML = '';
-
+function buildDeveloperProfileWidget() {
+    const container = document.createElement('div');
     if (visibilityStats) {
         let reliabilityValue = '';
         let isNewbie = true;
@@ -1391,6 +1376,7 @@ function renderProjects(force) {
         const projectsList = (typeof myProjects !== 'undefined' && Array.isArray(myProjects)) ? myProjects : ((visibilityStats && visibilityStats.projects) || []);
         const reservedBust = projectsList.reduce(function(acc, p) {
             if (!p) return acc;
+            if(p.phase==='live')return acc+Math.max(0,Number(p.live_project_control&&p.live_project_control.reserved_bust||0));
             const status = String(p.status || p.app_status || 'active').toLowerCase();
             if (status === 'completed' || status === 'archived') return acc;
             const screenshotPool = Number(p.screenshot_boost_campaign && p.screenshot_boost_campaign.pool_remaining || 0);
@@ -1503,8 +1489,8 @@ function renderProjects(force) {
                     };
                     visibilityStats.contribution_score = Number(me.contribution_score || 0);
                 }
-                const sprintCard = container.querySelector('.metric-card-sprint .metric-sprint-body');
-                if (sprintCard && container.isConnected) {
+                const sprintCard = document.querySelector('#hud-profile .metric-card-sprint .metric-sprint-body') || container.querySelector('.metric-card-sprint .metric-sprint-body');
+                if (sprintCard && sprintCard.isConnected) {
                     const updatedSeason = (visibilityStats && visibilityStats.contribution_season) || {};
                     const updatedRank = Number(updatedSeason.rank || 0);
                     const updatedEndsAt = Date.parse(String(updatedSeason.ends_at || ''));
@@ -1519,9 +1505,33 @@ function renderProjects(force) {
                         '</div>' +
                         (updatedTimer ? '<div class="metric-sprint-timer">' + window.escapeHTML(updatedTimer) + '</div>' : '');
                 }
+                if (window.SmartTopBar) SmartTopBar.refresh();
             }).catch(function() { /* ignore */ });
         }
     }
+
+    return container.firstElementChild;
+}
+
+function renderProjects(force) {
+    if (!force && !isTabVisible('projects')) return;
+    if (typeof window.deferUntilProjectsScrollIdle === 'function' && window.deferUntilProjectsScrollIdle(
+        'render-projects',
+        function() { renderProjects(force); }
+    )) return;
+    if (typeof window.syncHomeScreenUi === 'function') {
+        window.syncHomeScreenUi();
+    }
+    const container = document.getElementById('projects-list');
+    if (!container) return;
+    const viewportAnchor = captureProjectViewportAnchor(container);
+    const openSettingsDrawerIds = Array.from(container.querySelectorAll('.project-settings-drawer.active'))
+        .map((drawer) => Number(String(drawer.id || '').replace('settings-drawer-', '')))
+        .filter(Boolean);
+    container.innerHTML = '';
+
+    if (window.SmartTopBar) SmartTopBar.refresh();
+    else { const widget=buildDeveloperProfileWidget(); if(widget)container.appendChild(widget); }
 
     const hasModerationInArchive = typeof archivedProjects !== 'undefined' && Array.isArray(archivedProjects) && archivedProjects.some(function(p) {
         var phase = typeof resolvePipelineProjectPhase === 'function'

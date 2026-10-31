@@ -3317,7 +3317,7 @@
             promo_card_badge: "Soon",
             promo_card_desc: "Attract users, improve store rankings, and grow your published project.",
             promo_card_toast: "App promotion and growth features are under development and will be available soon!",
-            gtOrdersSectionTitle: "Private Testing",
+            gtOrdersSectionTitle: "Coordinated",
             mutualOrdersSectionTitle: "Mutual testing",
             gtOrderCode: "Order {code}",
             gtStatusAwaitingPayment: "Awaiting payment details",
@@ -4890,3 +4890,44 @@ Object.assign(window.I18NEN, {
 });
 
 Object.assign(window.I18NEN,{rvRequiredBufferShort:'2 days before retention ends'});
+
+Object.assign(window.I18NEN, {
+  "hudTitle": "Profile and settings",
+  "hudProfile": "Profile",
+  "hudProfileWallet": "Profile & wallet",
+  "hudSettings": "Settings",
+  "hudLanguageGroup": "🌐 App language",
+  "hudIntakeGroup": "⚡ Intake & notifications",
+  "hudTesterGroup": "🧪 Tester details",
+  "hudBug": "🐛 Bug",
+  "hudIdea": "💡 Idea",
+  "hudQuestion": "❓ Question",
+  "hudClose": "Close panel",
+  "hudSprint": "Sprint",
+  "hudLoading": "Loading profile…",
+  "hudBalance": "{n} $BUST available. Open profile and wallet",
+  "hudReviews": "{n} ⭐ available. {progress}% saved toward the next whole credit. Open profile",
+  "ppControls": "Project controls",
+  "ppAdd": "+ Add",
+  "ppView": "Project view",
+  "ppCards": "Cards",
+  "ppList": "List",
+  "ppAll": "All",
+  "ppCoordinated": "Coordinated",
+  "ppMultiHint": "Select multiple phases. You can also hold a phase or use Shift",
+  "ppAttention": "Needs attention",
+  "ppCollapse": "Collapse",
+  "ppExpand": "Expand",
+  "ppPin": "Pin to focus",
+  "ppUnpin": "Remove from focus",
+  "ppFocus": "In focus",
+  "ppRest": "Other projects ({n})",
+  "ppFilterEmpty": "No projects in the selected sections yet",
+  "ppShowAll": "Show all",
+  "ppGoLive": "↗ Live",
+  "ppModerationDays": "🛂 In review · {n} days",
+  "ppTestSummary": "Day {day}/14 · 👥 {n}/12 · {percent} today",
+  "ppPace": "Pace: {used}/{max}"
+});
+
+Object.assign(window.I18NEN,{ppTierUnknown:'Tier —'});

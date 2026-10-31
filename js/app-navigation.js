@@ -13,6 +13,7 @@
     var BROWSER_GUARD_KEY = '__devtestBackGuardV1';
 
     var SPECIAL_LAYER_IDS = [
+        'system-drop-menu',
         'protection-center',
         'attract-testers-sheet-overlay',
         'add-project-chooser-overlay',
@@ -63,6 +64,7 @@
         if (element.classList.contains('modal-overlay')) {
             return element.classList.contains('active') && !element.hidden;
         }
+        if (element.id === 'system-drop-menu') return element.classList.contains('active');
         if (element.id === 'protection-center') return element.classList.contains('active');
         if (element.id === 'attract-testers-sheet-overlay') return element.classList.contains('is-active');
         if (element.id === 'add-project-chooser-overlay') return element.classList.contains('is-open') && isElementDisplayed(element);
@@ -127,6 +129,7 @@
     function closeSpecialLayer(element) {
         if (!element) return false;
         var id = element.id;
+        if(element.id==='system-drop-menu'&&window.SmartTopBar){SmartTopBar.close();return true;}
         if (element.classList.contains("lm-sheet-overlay") && window.LiveMarketUI) { window.LiveMarketUI.closeTop(); return true; }
         if (id === 'showcase-geo-picker-modal' && window.ShowcaseGeo) {window.ShowcaseGeo.closePicker();return true;}
         if (id === 'showcase-geo-list-modal' && window.ShowcaseGeo) {window.ShowcaseGeo.closeCommunityList();return true;}

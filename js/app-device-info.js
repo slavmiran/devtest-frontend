@@ -232,7 +232,7 @@ function openDeviceProfileFromPrompt() {
         closeEarnBustModal();
     }
     var settingsMenu = document.getElementById('system-drop-menu');
-    if (settingsMenu) settingsMenu.classList.remove('active');
+    if (settingsMenu) window.SmartTopBar ? SmartTopBar.close(false) : settingsMenu.classList.remove('active');
     openDeviceInfoEditorModal();
 }
 
@@ -502,7 +502,7 @@ async function saveDeviceInfoSettings(patch) {
 function openDeviceInfoEditorModal() {
     if (_deviceInfoSaveInFlight) return;
     var settingsMenu = document.getElementById('system-drop-menu');
-    if (settingsMenu) settingsMenu.classList.remove('active');
+    if (settingsMenu) window.SmartTopBar ? SmartTopBar.close(false) : settingsMenu.classList.remove('active');
     var modal = document.getElementById('device-info-modal');
     if (!modal) return;
     renderDeviceInfoModalFields();

@@ -29,9 +29,10 @@ function renderModerationSection(container, moderationProjects) {
     headerEl.textContent = window.t('moderationSectionTitle', {}, lang);
     sectionWrap.appendChild(headerEl);
 
-    moderationProjects.forEach(function(project) {
+    moderationProjects.forEach(function(project,index) {
         try {
             const card = buildModerationCard(project);
+            if(window.ProjectWorkspace)ProjectWorkspace.moderation(card,project,index);
             sectionWrap.appendChild(card);
         } catch (err) {
             console.error('[ui-projects-moderation] card render error for app', project.id, err);
@@ -263,6 +264,7 @@ async function handleModerationRequestLive(projectId, event) {
             var errMsg = (result && result.message) || window.t('moderationLiveError', {}, lang);
             if (errorTextEl) errorTextEl.textContent = errMsg;
             if (errorBlock) errorBlock.classList.add('is-visible');
+            if(window.ProjectWorkspace)ProjectWorkspace.expandModeration(projectId);
 
             btn.disabled = false;
             if (retestBtn) retestBtn.disabled = false;
@@ -275,6 +277,7 @@ async function handleModerationRequestLive(projectId, event) {
         var networkErrMsg = window.t('moderationLiveError', {}, lang);
         if (errorTextEl) errorTextEl.textContent = networkErrMsg;
         if (errorBlock) errorBlock.classList.add('is-visible');
+        if (window.ProjectWorkspace) ProjectWorkspace.expandModeration(projectId);
 
         btn.disabled = false;
         if (retestBtn) retestBtn.disabled = false;

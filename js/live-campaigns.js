@@ -151,7 +151,7 @@
         try {
             var data=await parse(await fetch(endpoint(s.id)+'?init_data='+encodeURIComponent(s.actor),{cache:'no-store',signal:controller.signal}));
             if(seq!==s.seq||s.actor!==actor())return;
-            s.control=data.project_control||null;s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;project(s).live_project_control=s.control;LiveProjectControl.updateStatus(project(s),s.pace,s.rows);s.error=false;s.loaded=true;s.readAt=Date.now();
+            s.control=data.project_control||null;s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;project(s).live_project_control=s.control;project(s).live_campaign_pace=s.pace;LiveProjectControl.updateStatus(project(s),s.pace,s.rows);s.error=false;s.loaded=true;s.readAt=Date.now();
             window.dispatchEvent(new CustomEvent('live-campaigns:data',{detail:{appId:s.id,control:s.control}}));
             clearTimeout(s.paceTimer);if(s.pace&&(s.pace.pause_until||s.pace.policies&&s.pace.policies.length))queueRead(s,Math.max(1000,Math.min(60000,Date.parse(s.pace.pause_until||'')-Date.now()||60000)));
         } catch(error) {
@@ -182,7 +182,7 @@
         var key=JSON.stringify(['project',path,data]),id=request||s.requests.get(key)||uuid();s.requests.set(key,id);s.pending.add(-1);++s.seq;if(s.controller){s.controller.abort();s.controller=null;}repaint(s);
         try{
             var response=await parse(await fetch(endpoint(s.id,'/'+path),{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({init_data:s.actor,request_key:id},path==='pace'?{control:data}:data))}));
-            if(s.actor!==actor())return false;s.control=response.project_control;s.pace=response.pace;s.requests.delete(key);project(s).live_project_control=s.control;Object.assign(project(s),s.control.parameters);LiveProjectControl.updateStatus(project(s),s.pace,s.rows);
+            if(s.actor!==actor())return false;s.control=response.project_control;s.pace=response.pace;s.requests.delete(key);project(s).live_project_control=s.control;project(s).live_campaign_pace=s.pace;Object.assign(project(s),s.control.parameters);LiveProjectControl.updateStatus(project(s),s.pace,s.rows);
             if(typeof visibilityStats!=='undefined'&&visibilityStats)visibilityStats.balance_bust=s.control.wallet_balance;
             if(path==='pool')window.dispatchEvent(new CustomEvent('live-project:pool-saved',{detail:{appId:s.id,control:s.control}}));
             return true;

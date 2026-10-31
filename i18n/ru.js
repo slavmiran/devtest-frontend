@@ -3323,7 +3323,7 @@
             promo_card_badge: "Скоро",
             promo_card_desc: "Привлекайте пользователей, улучшайте позиции и развивайте опубликованный проект.",
             promo_card_toast: "Функционал продвижения опубликованных приложений находится в разработке и скоро станет доступен!",
-            gtOrdersSectionTitle: "Приватное тестирование",
+            gtOrdersSectionTitle: "На координации",
             mutualOrdersSectionTitle: "Взаимное тестирование",
             gtOrderCode: "Заказ {code}",
             gtStatusAwaitingPayment: "Ожидание реквизитов",
@@ -4896,3 +4896,44 @@ Object.assign(window.I18NRU, {
 });
 
 Object.assign(window.I18NRU,{rvRequiredBufferShort:'За 2 дня до конца удержания'});
+
+Object.assign(window.I18NRU, {
+  "hudTitle": "Профиль и настройки",
+  "hudProfile": "Профиль",
+  "hudProfileWallet": "Профиль и кошелёк",
+  "hudSettings": "Настройки",
+  "hudLanguageGroup": "🌐 Язык приложения",
+  "hudIntakeGroup": "⚡ Приём и уведомления",
+  "hudTesterGroup": "🧪 Тестовые реквизиты",
+  "hudBug": "🐛 Баг",
+  "hudIdea": "💡 Идея",
+  "hudQuestion": "❓ Вопрос",
+  "hudClose": "Закрыть панель",
+  "hudSprint": "Спринт",
+  "hudLoading": "Загружаем профиль…",
+  "hudBalance": "Доступно {n} $BUST. Открыть профиль и кошелёк",
+  "hudReviews": "Доступно {n} ⭐. До следующего целого балла накоплено {progress}%. Открыть профиль",
+  "ppControls": "Управление проектами",
+  "ppAdd": "+ Добавить",
+  "ppView": "Вид проектов",
+  "ppCards": "Карточки",
+  "ppList": "Список",
+  "ppAll": "Все",
+  "ppCoordinated": "На координации",
+  "ppMultiHint": "Выбрать несколько фаз. Также можно удержать фазу или нажать Shift",
+  "ppAttention": "Требует внимания",
+  "ppCollapse": "Свернуть",
+  "ppExpand": "Развернуть",
+  "ppPin": "Закрепить в фокусе",
+  "ppUnpin": "Убрать из фокуса",
+  "ppFocus": "В фокусе",
+  "ppRest": "Остальные проекты ({n})",
+  "ppFilterEmpty": "В выбранных разделах пока нет проектов",
+  "ppShowAll": "Показать все",
+  "ppGoLive": "↗ В Live",
+  "ppModerationDays": "🛂 На модерации · {n} дн.",
+  "ppTestSummary": "День {day}/14 · 👥 {n}/12 · {percent} сегодня",
+  "ppPace": "Темп: {used}/{max}"
+});
+
+Object.assign(window.I18NRU,{ppTierUnknown:'Tier —'});

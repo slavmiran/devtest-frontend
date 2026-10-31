@@ -181,6 +181,7 @@ function updatePipelineHeader() {
     if (!header) return;
 
     refreshPipelineHeaderState();
+    if(window.ProjectWorkspace){ProjectWorkspace.sync();return;}
 
     var expandedTrack = document.getElementById('pipeline-track-expanded');
     var compactTrack = document.getElementById('pipeline-track-compact');
@@ -196,6 +197,7 @@ function _setSystemMenuInstantTransition(menu, enabled) {
 function syncSystemDropTabForActiveTab(activeTabId) {
     var menu = document.getElementById('system-drop-menu');
     if (!menu) return;
+    if(window.SmartTopBar){SmartTopBar.onTab(activeTabId);return;}
     var isProjects = activeTabId === 'tab-projects' || activeTabId === 'projects';
 
     _setSystemMenuInstantTransition(menu, true);
@@ -264,6 +266,7 @@ function _pulsePipelineCard(projectId) {
 
 function handlePipelinePhaseNav(phaseKey, event) {
     if (event) event.stopPropagation();
+    if(window.ProjectWorkspace){ProjectWorkspace.select(phaseKey,event);return;}
     if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 
     var meta = _pipelineHeaderState[phaseKey] || {};
@@ -304,6 +307,7 @@ function _onPipelineWindowScroll() {
         var header = document.getElementById('pipeline-header');
         if (!header || typeof isTabVisible !== 'function' || !isTabVisible('projects')) return;
 
+        if(window.ProjectWorkspace){ProjectWorkspace.scroll();return;}
         var scrollY = window.scrollY || window.pageYOffset || 0;
         if (!_pipelineCollapsed && scrollY > PIPELINE_COLLAPSE_AT) {
             _applyPipelineCollapsedState(header, true);

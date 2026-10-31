@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(__dirname,'..');
-const artifacts = path.resolve(root, '../artifacts/play-store-passport');
+const artifacts = path.resolve(process.env.LIVE_TEST_ARTIFACTS || path.resolve(root, '../artifacts/play-store-passport'));
 fs.mkdirSync(artifacts, {recursive:true});
 
 (async () => {
@@ -56,7 +56,7 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await page.evaluate(()=>{const card=document.querySelector('#project-card-30').getBoundingClientRect(), block=document.querySelector('[data-live-campaigns]').getBoundingClientRect();return block.left-card.left>=12 && card.right-block.right>=12;}),true,'Campaign block has side insets inside the actual project card');
             assert.equal(await page.locator('.lc-section').evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.borderTopWidth)>=1&&parseFloat(s.paddingLeft)>=10&&parseFloat(s.paddingRight)>=10;}),true,'One shared frame and inner padding unite the campaign controls');
             assert.equal(await page.locator('.lc-section [data-lc-action="learn"]').count(),0,'Learning lives in the campaign wizard header');
-            assert.equal(await page.locator('.lc-section-head h3').innerText(),language==='ru'?'Текущие Компании':'Current campaigns');
+            assert.equal(await page.locator('.lc-section-head h3').innerText(),language==='ru'?'Текущие Кампании':'Current Campaigns');
             assert.equal((await page.locator('.pc-project-params__toggle').first().innerText()).includes('NaN'),false,'Missing report settings must not produce NaN');
             assert.equal(await page.locator('#project-card-30 [data-lc-card]').getAttribute('open'),null);
             assert.match(await page.locator('#project-card-30 [data-lc-card]>summary').innerText(),/7 \/ 7/);
@@ -82,7 +82,7 @@ fs.mkdirSync(artifacts, {recursive:true});
             const results=page.locator('#project-card-30 .pc-results-block-slot>.pc-results-card--live');
             assert.equal(await results.isVisible(),true,'Results are shown without expanding another section');
             assert.equal(await results.evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.marginLeft)>=12&&parseFloat(s.marginRight)>=12&&parseFloat(s.paddingLeft)>=12&&parseFloat(s.marginBottom)>=14;}),true,'Results keep their outer and inner spacing');
-            assert.equal(await results.locator('.pc-results-title').innerText(),language==='ru'?'Пользовательский опыт и покрытие':'User experience and coverage');
+            assert.equal(await results.locator('.pc-results-title').innerText(),language==='ru'?'Покрытие и опыт':'Coverage and experience');
             assert.equal(await results.locator('.pc-results-subtitle').evaluate(el=>getComputedStyle(el).whiteSpace),'normal','The history scope is readable without truncation');
             await page.locator('#project-card-30 .lc-section').screenshot({path:path.join(artifacts,'live-campaign-section-'+language+'-'+width+'.png')});
             await results.screenshot({path:path.join(artifacts,'live-results-'+language+'-'+width+'.png')});

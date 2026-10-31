@@ -765,6 +765,7 @@ function _expandProjectCardWhenReady(projectId, attemptsLeft) {
 }
 
 function toggleSystemMenu() {
+    if(window.SmartTopBar)return SmartTopBar.toggle('settings');
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
         const willOpen = !menu.classList.contains('active');
@@ -789,6 +790,7 @@ function sendFeedback(type) {
         question: 'feedbackTypeQuestion'
     };
     _feedbackType = (type === 'idea' || type === 'question') ? type : 'bug';
+    if(window.SmartTopBar)SmartTopBar.close(false);
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
         menu.classList.remove('active');

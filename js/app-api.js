@@ -2208,6 +2208,7 @@ async function loadProjects(isBackground, force) {
         if (cached && Array.isArray(cached.projects)) {
             myProjects = cached.projects;
             visibilityStats = cached.visibilityStats || {};
+            if(window.SmartTopBar)SmartTopBar.refresh();
             if (typeof cached.is_community_member !== 'undefined') {
                 window.isCommunityMember = !!cached.is_community_member;
                 if (window.ProofPing && typeof window.ProofPing.setCommunityMember === 'function') {
@@ -2554,6 +2555,7 @@ async function _confirmProjectSyncPersistence(appId, expectedDay, expectedMessag
             if (confirmedDay === normalizedDay && confirmedMessage === normalizedMessage) {
                 myProjects = freshProjects;
                 visibilityStats = freshStats;
+                if (window.SmartTopBar) SmartTopBar.refresh();
                 _projectsLoadedOnce = true;
                 myProjectsLoadError = false;
                 _lastFetchTimes.projects = Date.now();
@@ -2613,6 +2615,7 @@ async function _loadProjectsImpl(options) {
         if (projectsChanged || statsChanged || !wasProjectsLoadedBeforeRequest) {
             myProjects = nextProjects;
             visibilityStats = nextStats;
+            if(window.SmartTopBar)SmartTopBar.refresh();
             if (projectsChanged && typeof renderMutualFeed === 'function') renderMutualFeed(true);
             myProjectsLoadError = false;
             markProjectsViewDirty();
