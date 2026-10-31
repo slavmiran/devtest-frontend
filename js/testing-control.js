@@ -1498,11 +1498,25 @@
     function renderReportMetadata(proofId) {
         var detail = state.albumDetails.get(Number(proofId)) || {};
         var note = document.getElementById('checkin-proof-preview-note');
-        if (note) { note.textContent = detail.note ? '💬 ' + detail.note : ''; note.hidden = !detail.note; }
+        var matches = (detail.media_items || []).filter(function(item) { return Number(item.matching_day) > 0; });
+        if (note) {
+            note.textContent = (detail.note ? '💬 ' + detail.note : '') + (matches.length
+                ? '\n' + text('checkinProofContentMatchNotice', 'Content matches a previous report. This may be a fresh capture of an unchanged screen; the capture date and the whole report cannot be assessed from this match.') : '');
+            note.hidden = !note.textContent;
+        }
         window.requestAnimationFrame(function () {
             if (Number(state.previewProofId) !== Number(proofId)) return;
-            document.querySelectorAll('#checkin-proof-preview-body [data-media-index]').forEach(function (slide) {
+            document.querySelectorAll('#checkin-proof-preview-body .checkin-proof-preview-slide[data-media-index], #checkin-proof-preview-body .checkin-proof-overview-tile[data-media-index]').forEach(function (slide) {
                 var index = Number(slide.dataset.mediaIndex || 0);
+                var matchingDay = Number(((detail.media_items || [])[index] || {}).matching_day || 0);
+                slide.classList.toggle('has-content-match', matchingDay > 0);
+                if (matchingDay > 0 && !slide.querySelector('.checkin-proof-content-match-label')) {
+                    var badge = document.createElement('span');
+                    badge.className = 'checkin-proof-content-match-label';
+                    badge.textContent = text('checkinProofContentMatch', 'Content match');
+                    slide.title = text('checkinProofContentMatchHint', 'Content matches day {day}. This may be a fresh capture of an unchanged screen; the capture date cannot be inferred.', { day: matchingDay });
+                    slide.appendChild(badge);
+                }
                 if (!isReportVideo(proofId, index) || slide.querySelector('.proof-video-open')) return;
                 slide.classList.remove('is-error', 'is-loading');
                 var button = document.createElement('button'); button.type = 'button'; button.className = 'proof-video-open';

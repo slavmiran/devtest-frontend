@@ -1,3 +1,35 @@
+.checkin-proof-preview-item.has-content-match {
+    outline: 2px solid #e9b949;
+    outline-offset: -2px;
+}
+
+.checkin-proof-content-match-label {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    right: 4px;
+    z-index: 2;
+    padding: 3px 5px;
+    border-radius: 5px;
+    background: #3f3213;
+    color: #ffe19a;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+    pointer-events: none;
+}
+
+.checkin-proof-content-match-notice {
+    color: var(--hint-color, #a6abb4);
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 8px 0 0;
+}
+
+.checkin-proof-preview-item .checkin-proof-content-match-label {
+    bottom: 34px;
+}
+
 .checkin-proof-upload-sheet {
     width: min(92vw, 460px);
     max-height: min(78svh, 640px);

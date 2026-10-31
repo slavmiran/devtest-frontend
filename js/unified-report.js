@@ -621,6 +621,7 @@
                             state().previewUrls[index] = URL.createObjectURL(replacement);
                             state().idempotencyKey = _newCheckinProofUuid();
                             _renderCheckinProofPreviews();
+                            _refreshCheckinProofReuse();
                             window.closeReportImageEditor();
                         } catch (_) { recover(t('editorFailed')); }
                     }, 'image/jpeg', .9);
