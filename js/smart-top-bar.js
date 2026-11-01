@@ -46,7 +46,7 @@
  function toggle(next,trigger){var key=logicalTab(next||'settings');if(suppressTab===key)return;if(openNow()&&tab===key){suppressTab=key;close();setTimeout(function(){if(suppressTab===key)suppressTab='';},280);return;}open(next||'settings',trigger);}
  function finite(value){return value!=null&&value!==''&&Number.isFinite(Number(value))?Number(value):null;}
  function reliabilityTone(score){if(score==null)return '';if(score>=80)return '#57d996';if(score>=65)return '#e5b567';if(score>=50)return '#e08c58';return '#e56b6f';}
- function alertTone(kind,value){if(kind==='karma'&&value<0)return value<=-10?'#e56b6f':value<=-3?'#e08c58':'#e5b567';if(kind==='sla'&&value>6)return value>12?'#e56b6f':'#e08c58';if(kind==='rate'&&value<50)return value<25?'#e56b6f':'#e08c58';return '';}
+ function alertTone(kind,value){if(kind==='karma'&&value<0)return value<=-10?'#e56b6f':value<=-3?'#e08c58':'#e5b567';if(kind==='sla'&&value>=24)return value>=36?'#e56b6f':'#e08c58';if(kind==='rate'&&value<50)return value<25?'#e56b6f':'#e08c58';return '';}
  function profileSummary(){
   var s=stats(),c=s.contribution||{},sent=s.feedback_sent_counts||{};
   var values=s.feedback_sent_counts?sent:c;

@@ -1709,12 +1709,10 @@ function renderProjects(force) {
         testingSection = document.createElement('div');
         testingSection.id = 'pipeline-section-testing';
         testingSection.className = 'pipeline-section';
-        if (moderationProjects.length > 0 || liveProjects.length > 0) {
-            const activeHeader = document.createElement('div');
-            activeHeader.className = 'moderation-section-header';
-            activeHeader.textContent = window.t('activeSectionTitle', {}, lang);
-            testingSection.appendChild(activeHeader);
-        }
+        const activeHeader = document.createElement('div');
+        activeHeader.className = 'moderation-section-header';
+        activeHeader.textContent = window.t('activeSectionTitle', {}, lang);
+        testingSection.appendChild(activeHeader);
         container.appendChild(testingSection);
     } else {
         const testingAnchor = document.createElement('div');
