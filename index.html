@@ -66,11 +66,11 @@
     <script src="./js/live-guidance.js?v=20261031-review-polish"></script>
     <script src="./js/live-project-metrics.js?v=20261027-smart-pro-v2"></script>
     <script src="./js/live-metrics-modal.js?v=20261031-review-polish"></script>
-    <script src="./ui/ui-projects.js?v=20261101-hud-polish-v2"></script>
+    <script src="./ui/ui-projects.js?v=20261101-hud-review"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
     <script src="./ui/ui-projects-moderation.js?v=20261101-hud-polish-v2"></script>
-    <script src="./js/smart-top-bar.js?v=20261101-hud-polish-v2"></script>
-    <script src="./js/project-workspace.js?v=20261101-hud-polish-v2"></script>
+    <script src="./js/smart-top-bar.js?v=20261101-hud-review"></script>
+    <script src="./js/project-workspace.js?v=20261101-hud-review"></script>
     <script src="./ui/ui-projects-pipeline-header.js?v=20261031-hud"></script>
     <script src="./js/project-contract-pricing.js?v=20261016-pace-v1"></script>
     <script src="./js/live-campaign-wallet.js?v=20261014-campaign-params-v3"></script>
@@ -100,12 +100,12 @@
     <script src="./js/env-config.js?v=20260806-api-discover-v1"></script>
     <script src="./js/app-config.js?v=20261024-phase2-main-sync-v2"></script>
     <script src="./js/app-navigation.js?v=20261031-hud"></script>
-    <script src="./js/app-api.js?v=20261101-hud-polish-v2"></script>
+    <script src="./js/app-api.js?v=20261101-hud-review"></script>
     <script src="./js/deploy-status.js?v=20261023-advisory-v1"></script>
     <script src="./js/checkin-recovery.js?v=20261022-v1"></script>
     <script src="./js/app-device-info.js?v=20261031-hud"></script>
-    <script src="./js/app-homescreen.js?v=20261031-hud"></script>
-    <script src="./js/app-actions.js?v=20261031-hud"></script>
+    <script src="./js/app-homescreen.js?v=20261101-hud-review"></script>
+    <script src="./js/app-actions.js?v=20261101-hud-review"></script>
     <script src="./js/checkin-proof-upload.js?v=20261031-phase2-content-match-v1"></script>
     <script src="./js/unified-report.js?v=20261031-phase2-content-match-v1"></script>
     <link rel="stylesheet" href="./css/unified-report.css?v=20261029-report-viewport-v1">
@@ -137,7 +137,7 @@
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20261030-influence-collapse-v1">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/review-credits.css?v=20261031-review-deadline">
-    <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261031-phase2-content-match-v1">
+    <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261101-hud-review">
     <link rel="stylesheet" href="./css/testing-control.css?v=20261031-phase2-content-match-v1">
     <link rel="stylesheet" href="./css/wizard.css?v=20261023-restart-buttons-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
@@ -156,7 +156,7 @@
     <link rel="stylesheet" href="./css/email-tester-modal.css?v=20260917-accordion-round-v1">
     <link rel="stylesheet" href="./css/lifecycle.css?v=20260803-jb-accordion">
     <link rel="stylesheet" href="./css/pipeline-moderation.css?v=20261016-retest-v1">
-    <link rel="stylesheet" href="./css/pipeline-header.css?v=20260709-pipeline-alerts">
+    <link rel="stylesheet" href="./css/pipeline-header.css?v=20261101-hud-review">
     <link rel="stylesheet" href="./css/access-issue.css?v=20260917-issue-proof-v2">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
     <link rel="stylesheet" href="./styles.css?v=20261030-karma-why-v1">
@@ -183,8 +183,8 @@
     <link rel="stylesheet" href="./css/live-history-import.css?v=20261027-history-picker-v2">
 <link rel="stylesheet" href="./css/live-deals.css?v=20261029-deals-v2">
 <link rel="stylesheet" href="./css/live-contracts.css?v=20261030-live-contracts-v1">
-    <link rel="stylesheet" href="./css/smart-top-bar.css?v=20261101-hud-polish-v2">
-    <link rel="stylesheet" href="./css/project-workspace.css?v=20261101-hud-polish-v2">
+    <link rel="stylesheet" href="./css/smart-top-bar.css?v=20261101-hud-review">
+    <link rel="stylesheet" href="./css/project-workspace.css?v=20261101-hud-review">
 </head>
 <body>
 
@@ -268,8 +268,8 @@
                 <div class="system-language-card-title" data-i18n="appLanguageCardTitle">Язык приложения</div>
                 <div class="system-language-card-subtitle" data-i18n="appLanguageCardHint">Выберите родной интерфейс RU/EN или включите экспериментальный автоперевод Google.</div>
                 <div class="seg-control system-language-native-control">
-                    <button class="seg-btn" id="lang-btn-ru" onclick="applyLanguage('ru')" data-i18n="appLanguageNativeRu">🇷🇺 RU</button>
-                    <button class="seg-btn" id="lang-btn-en" onclick="applyLanguage('en')" data-i18n="appLanguageNativeEn">🇬🇧 EN</button>
+                    <button class="seg-btn" id="lang-btn-ru" onclick="applyLanguage('ru')" data-i18n="appLanguageNativeRu">RU</button>
+                    <button class="seg-btn" id="lang-btn-en" onclick="applyLanguage('en')" data-i18n="appLanguageNativeEn">EN</button>
                 </div>
                 <div class="system-language-divider" aria-hidden="true"></div>
                 <label class="system-language-select-shell" for="auto-translate-language">
@@ -278,7 +278,7 @@
                 </label>
                 <div class="system-language-warning" data-i18n="appLanguageAutoTranslateWarning">Auto-translated by Google. May contain inaccuracies.</div>
             </div>
-            <div class="system-setting-row system-setting-row--homescreen" id="homescreen-shortcut-row" hidden>
+            <div class="system-setting-row system-setting-row--homescreen" id="homescreen-shortcut-row">
                 <div class="system-setting-copy-wrap">
                     <div class="system-setting-copy" id="homescreen-shortcut-label" data-i18n="homeScreenShortcutLabel">📲 Рабочий стол</div>
                     <div class="system-setting-meta" id="homescreen-shortcut-meta" data-i18n="homeScreenShortcutMetaMissed">Не добавлено</div>
@@ -2793,16 +2793,12 @@
             <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 8px;" id="t-feedbackModalTypeLabel" data-i18n="feedbackTypeBug">Тип: Баг</p>
             <textarea id="feedback-text-input" class="form-input" rows="5" style="margin-bottom: 8px; resize: vertical;" data-i18n-placeholder="feedbackModalPlaceholder"></textarea>
             <div class="platform-feedback-shot">
-                <input id="feedback-shot-input" type="file" accept="image/jpeg,image/png,image/webp,image/*" hidden onchange="onFeedbackScreenshotSelected(event)">
+                <input id="feedback-shot-input" type="file" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden onchange="onFeedbackScreenshotSelected(event)">
+                <div class="platform-feedback-shots" id="feedback-shot-strip" hidden></div>
                 <button type="button" class="platform-feedback-shot__add" id="feedback-shot-add" onclick="pickFeedbackScreenshot()">
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"></path><circle cx="12" cy="13" r="3.2"></circle></svg>
-                    <span id="t-feedbackAttachScreenshot" data-i18n="feedbackAttachScreenshot">Скриншот</span>
+                    <span id="t-feedbackAttachScreenshot" data-i18n="feedbackAttachScreenshotCount">Скриншот (0/5)</span>
                 </button>
-                <div class="platform-feedback-shot__chip" id="feedback-shot-chip" hidden>
-                    <img id="feedback-shot-thumb" alt="">
-                    <span id="feedback-shot-name"></span>
-                    <button type="button" id="feedback-shot-remove" onclick="clearFeedbackScreenshot()" aria-label="Убрать скриншот">×</button>
-                </div>
             </div>
             <button class="btn btn-primary" style="width: 100%;" id="send-feedback-btn" disabled onclick="submitFeedback()">
                 <span id="t-feedbackModalSendBtn" data-i18n="feedbackModalSendBtn">Отправить</span>

@@ -1390,10 +1390,25 @@ function buildDeveloperProfileWidget() {
         const reservedBustFormatted = (typeof formatUiAmount === 'function')
             ? formatUiAmount(reservedBust, 1)
             : String(Math.round(Number(reservedBust || 0) * 10) / 10);
+        const profileSummary = window.SmartTopBar ? SmartTopBar.profileSummary() : null;
         const achievementsLine = window.escapeHTML(
-            window.SmartTopBar ? SmartTopBar.profileSummary().closed : formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
+            profileSummary ? profileSummary.closed : formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
-        const feedbackLine = window.SmartTopBar ? window.escapeHTML(SmartTopBar.profileSummary().feedback) : '';
+        const qualityLine = profileSummary ? window.escapeHTML(profileSummary.quality) : '';
+        const feedbackLine = profileSummary ? window.escapeHTML(profileSummary.feedback) : '';
+        const deltaChip = function (kind) {
+            const deltas = (visibilityStats && visibilityStats.deltas_7d) || {};
+            const raw = deltas[kind];
+            if (raw == null || raw === '' || !Number.isFinite(Number(raw)) || Number(raw) === 0) return '';
+            const value = Number(raw);
+            const up = value > 0;
+            const abs = Math.abs(value);
+            const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
+            const digits = kind === 'reliability' || kind === 'karma' ? 1 : 0;
+            const body = abs.toLocaleString(locale, { maximumFractionDigits: digits, minimumFractionDigits: kind === 'reliability' ? 1 : 0 });
+            const suffix = kind === 'reliability' ? '%' : '';
+            return `<span class="metric-delta ${up ? 'is-up' : 'is-down'}">${up ? '↑' : '↓'} ${up ? '+' : '-'}${body}${suffix}</span>`;
+        };
         const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
         const tgUser = initData.user || {};
         const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim();
@@ -1410,6 +1425,7 @@ function buildDeveloperProfileWidget() {
                             ${devUsername ? '<span class="developer-widget-username">(' + devUsername + ')</span>' : ''}
                         </div>
                         <div class="developer-widget-stats-line">${achievementsLine}</div>
+                        ${qualityLine ? `<div class="developer-widget-quality-line">${qualityLine}</div>` : ''}
                         ${feedbackLine ? `<div class="developer-widget-feedback-line">${feedbackLine}</div>` : ''}
                     </div>
                 </div>
@@ -1417,6 +1433,7 @@ function buildDeveloperProfileWidget() {
                     <button type="button" class="metric-card metric-card-clickable ${metricClass}" onclick="showReliabilityInfo()">
                         <div class="metric-card-top">
                             <span class="metric-label">${window.t('metricReliabilityV2', {}, lang)}</span>
+                            ${deltaChip('reliability')}
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-value">
@@ -1427,6 +1444,7 @@ function buildDeveloperProfileWidget() {
                     <button type="button" class="metric-card metric-card-clickable metric-card-gold" onclick="showKarmaInfo()">
                         <div class="metric-card-top">
                             <span class="metric-label">${window.t('metricKarma', {}, lang)}</span>
+                            ${deltaChip('karma')}
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-value">${formatUiAmount(visibilityStats.ownerKarma || 0, 1)} <span class="metric-value-mark">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️'}</span></div>
@@ -1434,6 +1452,7 @@ function buildDeveloperProfileWidget() {
                     <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
                         <div class="metric-card-top">
                             <span class="metric-label">${window.t('metricBalanceBust', {}, lang) || 'Баланс'} $BUST</span>
+                            ${deltaChip('bust')}
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-bust-body">
@@ -1444,6 +1463,7 @@ function buildDeveloperProfileWidget() {
                     <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
                         <div class="metric-card-top">
                             <span class="metric-label">${window.t('metricSprintPositionLabel', {}, lang) || (lang === 'ru' ? 'Позиция в Спринте' : 'Sprint position')}</span>
+                            ${deltaChip('sprint_rank')}
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-sprint-body">

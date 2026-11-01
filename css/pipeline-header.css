@@ -171,10 +171,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%);
-    border: none;
-    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.28);
+    color: #e0f2fe;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.18));
+    border: 1px solid rgba(56, 189, 248, 0.38);
+    box-shadow: none;
 }
 
 .pipeline-header__menu-btn:active,
@@ -193,6 +193,9 @@
     gap: 8px;
     font-size: 15px;
     font-weight: 600;
+    color: #e0f2fe;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.18));
+    border: 1px solid rgba(56, 189, 248, 0.38);
 }
 
 .pipeline-header__add-icon {

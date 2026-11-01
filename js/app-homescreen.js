@@ -65,24 +65,19 @@ function syncHomeScreenUi() {
     if (bannerBtn) bannerBtn.textContent = window.t('homeScreenBannerAdd', {}, uiLang);
 
     if (row) {
-        if (status === 'unsupported') {
-            row.hidden = true;
-        } else {
-            row.hidden = false;
-            var isAdded = _isHomeScreenConfirmedAdded(status);
-            var canAdd = _canPromptHomeScreenAdd(status);
-            if (btn) {
-                // unknown → always show action; added → only when Telegram confirms
-                btn.hidden = !canAdd;
-                btn.disabled = !canAdd;
-                btn.setAttribute('aria-label', window.t('homeScreenShortcutAdd', {}, uiLang));
-                btn.title = window.t('homeScreenShortcutAdd', {}, uiLang);
-            }
-            if (statusEl) {
-                statusEl.hidden = !isAdded;
-                statusEl.setAttribute('aria-label', window.t('homeScreenShortcutAdded', {}, uiLang));
-                statusEl.title = window.t('homeScreenShortcutAdded', {}, uiLang);
-            }
+        row.hidden = false;
+        var isAdded = _isHomeScreenConfirmedAdded(status);
+        var canAdd = status !== 'added';
+        if (btn) {
+            btn.hidden = !canAdd;
+            btn.disabled = false;
+            btn.setAttribute('aria-label', window.t('homeScreenShortcutAdd', {}, uiLang));
+            btn.title = window.t('homeScreenShortcutAdd', {}, uiLang);
+        }
+        if (statusEl) {
+            statusEl.hidden = !isAdded;
+            statusEl.setAttribute('aria-label', window.t('homeScreenShortcutAdded', {}, uiLang));
+            statusEl.title = window.t('homeScreenShortcutAdded', {}, uiLang);
         }
     }
 

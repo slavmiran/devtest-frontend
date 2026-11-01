@@ -442,8 +442,57 @@
 .platform-feedback-shot {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
     min-height: 36px;
     margin: 0 0 12px;
+}
+
+.platform-feedback-shots {
+    display: flex;
+    gap: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.platform-feedback-shots[hidden] {
+    display: none !important;
+}
+
+.platform-feedback-shot__thumb {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+}
+
+.platform-feedback-shot__thumb img {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.platform-feedback-shot__thumb button {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #243044;
+    color: #f0f6fc;
+    font-size: 11px;
+    line-height: 16px;
+    cursor: pointer;
+}
+
+.platform-feedback-shot__add:disabled {
+    opacity: 0.45;
+    cursor: default;
 }
 
 .platform-feedback-shot__add,

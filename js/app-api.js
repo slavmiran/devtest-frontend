@@ -2471,6 +2471,7 @@ function _mapStatsFromApi(data) {
         avg_handle_hours: data.avg_handle_hours ?? null,
         acceptance_rate_pct: data.acceptance_rate_pct ?? null,
         feedback_sent_counts: data.feedback_sent_counts || null,
+        deltas_7d: data.deltas_7d || null,
         rank: data.rank || 0,
         total_developers: data.total_developers || 0,
         my_active_tests: data.my_active_tests || 0,

@@ -4798,43 +4798,76 @@ async function submitFeedbackReward() {
     }
 }
 
-var _feedbackScreenshot = null;
+var _feedbackShots = [];
+var FEEDBACK_SHOT_LIMIT = 5;
 
 function pickFeedbackScreenshot() {
+    if (_feedbackShots.length >= FEEDBACK_SHOT_LIMIT) {
+        showToast(window.t('feedbackScreenshotLimit', {}, lang));
+        return;
+    }
     var input = document.getElementById('feedback-shot-input');
     if (input) input.click();
 }
 
-function clearFeedbackScreenshot() {
-    if (_feedbackScreenshot && _feedbackScreenshot.url) {
-        try { URL.revokeObjectURL(_feedbackScreenshot.url); } catch (error) {}
-    }
-    _feedbackScreenshot = null;
+function _renderFeedbackShots() {
+    var strip = document.getElementById('feedback-shot-strip');
     var addBtn = document.getElementById('feedback-shot-add');
-    var chip = document.getElementById('feedback-shot-chip');
-    var thumb = document.getElementById('feedback-shot-thumb');
+    var label = document.getElementById('t-feedbackAttachScreenshot');
+    var count = _feedbackShots.length;
+    if (label && typeof window.t === 'function') {
+        label.textContent = window.t('feedbackAttachScreenshotCount', { count: count, max: FEEDBACK_SHOT_LIMIT }, lang);
+    }
+    if (addBtn) {
+        addBtn.disabled = count >= FEEDBACK_SHOT_LIMIT;
+        addBtn.hidden = false;
+    }
+    if (!strip) return;
+    var removeLabel = typeof window.t === 'function' ? window.t('feedbackScreenshotRemove', {}, lang) : '×';
+    strip.hidden = count === 0;
+    strip.innerHTML = _feedbackShots.map(function (shot, index) {
+        return '<span class="platform-feedback-shot__thumb"><img src="' + shot.url + '" alt=""><button type="button" data-shot-index="' + index + '" aria-label="' + removeLabel + '">×</button></span>';
+    }).join('');
+    strip.onclick = function (event) {
+        var button = event.target.closest('[data-shot-index]');
+        if (!button) return;
+        removeFeedbackScreenshot(Number(button.dataset.shotIndex));
+    };
+}
+
+function clearFeedbackScreenshot() {
+    _feedbackShots.forEach(function (shot) {
+        if (shot && shot.url) {
+            try { URL.revokeObjectURL(shot.url); } catch (error) {}
+        }
+    });
+    _feedbackShots = [];
     var fileInput = document.getElementById('feedback-shot-input');
-    if (addBtn) addBtn.hidden = false;
-    if (chip) chip.hidden = true;
-    if (thumb) thumb.removeAttribute('src');
     if (fileInput) fileInput.value = '';
+    _renderFeedbackShots();
+}
+
+function removeFeedbackScreenshot(index) {
+    var shot = _feedbackShots[index];
+    if (!shot) return;
+    if (shot.url) {
+        try { URL.revokeObjectURL(shot.url); } catch (error) {}
+    }
+    _feedbackShots.splice(index, 1);
+    _renderFeedbackShots();
 }
 
 function _showFeedbackScreenshot(prepared) {
-    clearFeedbackScreenshot();
-    _feedbackScreenshot = prepared;
-    var addBtn = document.getElementById('feedback-shot-add');
-    var chip = document.getElementById('feedback-shot-chip');
-    var thumb = document.getElementById('feedback-shot-thumb');
-    var nameEl = document.getElementById('feedback-shot-name');
-    var removeBtn = document.getElementById('feedback-shot-remove');
-    if (thumb) thumb.src = prepared.url;
-    if (nameEl) nameEl.textContent = prepared.name || 'screenshot.jpg';
-    if (removeBtn && typeof window.t === 'function') {
-        removeBtn.setAttribute('aria-label', window.t('feedbackScreenshotRemove', {}, lang));
+    if (!prepared) return;
+    if (_feedbackShots.length >= FEEDBACK_SHOT_LIMIT) {
+        if (prepared.url) {
+            try { URL.revokeObjectURL(prepared.url); } catch (error) {}
+        }
+        showToast(window.t('feedbackScreenshotLimit', {}, lang));
+        return;
     }
-    if (addBtn) addBtn.hidden = true;
-    if (chip) chip.hidden = false;
+    _feedbackShots.push(prepared);
+    _renderFeedbackShots();
 }
 
 function _compressFeedbackScreenshot(file) {
@@ -4884,25 +4917,37 @@ function _compressFeedbackScreenshot(file) {
 }
 
 async function onFeedbackScreenshotSelected(event) {
-    var file = event && event.target && event.target.files && event.target.files[0];
+    var files = Array.from(event && event.target && event.target.files || []);
     if (event && event.target) event.target.value = '';
-    if (!file) return;
-    var type = String(file.type || '').toLowerCase();
+    if (!files.length) return;
+    var room = FEEDBACK_SHOT_LIMIT - _feedbackShots.length;
+    if (room <= 0) {
+        showToast(window.t('feedbackScreenshotLimit', {}, lang));
+        return;
+    }
+    if (files.length > room) {
+        showToast(window.t('feedbackScreenshotLimit', {}, lang));
+        files = files.slice(0, room);
+    }
     var allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-    if (Number(file.size || 0) <= 0 || (type && allowed.indexOf(type) === -1)) {
-        showToast(window.t('invalid_image_type', {}, lang));
-        return;
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        var type = String(file.type || '').toLowerCase();
+        if (Number(file.size || 0) <= 0 || (type && allowed.indexOf(type) === -1)) {
+            showToast(window.t('invalid_image_type', {}, lang));
+            continue;
+        }
+        if (Number(file.size || 0) > 8 * 1024 * 1024) {
+            showToast(window.t('file_too_large', {}, lang));
+            continue;
+        }
+        var prepared = await _compressFeedbackScreenshot(file);
+        if (!prepared || !prepared.base64) {
+            showToast(window.t('invalid_image_type', {}, lang));
+            continue;
+        }
+        _showFeedbackScreenshot(prepared);
     }
-    if (Number(file.size || 0) > 8 * 1024 * 1024) {
-        showToast(window.t('file_too_large', {}, lang));
-        return;
-    }
-    var prepared = await _compressFeedbackScreenshot(file);
-    if (!prepared || !prepared.base64) {
-        showToast(window.t('invalid_image_type', {}, lang));
-        return;
-    }
-    _showFeedbackScreenshot(prepared);
     if (tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged) tg.HapticFeedback.selectionChanged();
 }
 
@@ -4921,8 +4966,11 @@ async function submitFeedback() {
         type: _feedbackType,
         text: text,
     };
-    if (_feedbackScreenshot && _feedbackScreenshot.base64) {
-        payload.screenshot = _feedbackScreenshot.base64;
+    if (_feedbackShots.length) {
+        payload.screenshots = _feedbackShots.slice(0, FEEDBACK_SHOT_LIMIT).map(function (shot) {
+            return { data: shot.base64, mime: 'image/jpeg' };
+        });
+        payload.screenshot = _feedbackShots[0].base64;
         payload.screenshot_mime = 'image/jpeg';
     }
     if (button) button.disabled = true;
