@@ -240,6 +240,7 @@ async function handleModerationRequestLive(projectId, event) {
                     package: archived.package_name || archived.package || '', testers: archived.testers || [],
                 }));
             }
+            if (window.ProjectWorkspace) ProjectWorkspace.onPublished();
             if (window.renderProjects) window.renderProjects(true);
 
             // Moderation cards normally originate from the archive. Reload the

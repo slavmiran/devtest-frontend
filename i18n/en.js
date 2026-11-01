@@ -4931,3 +4931,35 @@ Object.assign(window.I18NEN, {
 });
 
 Object.assign(window.I18NEN,{ppTierUnknown:'Tier —'});
+
+Object.assign(window.I18NEN, {
+  "hudReliability": "Reliability {n}",
+  "hudKarma": "Karma",
+  "hudSprint": "Sprint",
+  "hudSla": "SLA",
+  "hudHours": "{n} h",
+  "hudAcceptance": "Acceptance",
+  "hudBugs": "Bugs",
+  "hudIdeas": "Ideas",
+  "hudReviewsShort": "Reviews",
+  "hudTests": "Tests",
+  "hudGrants": "Grants",
+  "hudActive": "Active",
+  "hudLive": "Live",
+  "hudQuotas": "Credits",
+  "hudClosedSummary": "Tests: {tests} · Grants: {grants} · Active: {active}",
+  "hudFeedbackSent": "Sent: 🐞 Bugs: {bugs} · 💡 Ideas: {ideas} · ⭐ Reviews: {reviews}",
+  "hudFeedbackAccepted": "Accepted: 🐞 Bugs: {bugs} · 💡 Ideas: {ideas} · ⭐ Reviews: {reviews}",
+  "hudAutoGroup": "⚡ Auto-accept requests",
+  "hudProfileGroup": "📱 Profile Settings & access",
+  "hudNotificationsGroup": "🔔 Notifications & language",
+  "hudPrivacyGroup": "🛡️ Privacy & app shortcut",
+  "autoAcceptSectionLabel": "Auto-accept requests",
+  "settingsEmailTitle": "Email for closed tests",
+  "settingsDefaultGroupLabel": "Google testers group",
+  "settingsProofPingLabel": "Chat notifications (ProofPing)",
+  "ppMultiHint": "Hold a phase to select several. Hold it again to reset. Keyboard: Shift + click.",
+  "ppLiveEmptyTitle": "Scale up and go to market (Live)",
+  "ppLiveEmptyBody": "Scale apps published on Google Play: reach a real audience, introduce app features through scenarios, and grow in the Live Market by managing key metrics. Build your product and brand with the developer community. Move a project here after moderation or add a published app.",
+  "ppLiveEmptyAdd": "+ Add app"
+});

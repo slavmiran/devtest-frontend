@@ -4937,3 +4937,35 @@ Object.assign(window.I18NRU, {
 });
 
 Object.assign(window.I18NRU,{ppTierUnknown:'Tier —'});
+
+Object.assign(window.I18NRU, {
+  "hudReliability": "Надёжность {n}",
+  "hudKarma": "Карма",
+  "hudSprint": "Спринт",
+  "hudSla": "SLA",
+  "hudHours": "{n} ч",
+  "hudAcceptance": "Принятие",
+  "hudBugs": "Баги",
+  "hudIdeas": "Идеи",
+  "hudReviewsShort": "Отзывы",
+  "hudTests": "Тестов",
+  "hudGrants": "Грантов",
+  "hudActive": "Активных",
+  "hudLive": "Live",
+  "hudQuotas": "Квоты",
+  "hudClosedSummary": "Тестов: {tests} · Грантов: {grants} · Активных: {active}",
+  "hudFeedbackSent": "Отправлено: 🐞 Багов: {bugs} · 💡 Идей: {ideas} · ⭐ Отзывов: {reviews}",
+  "hudFeedbackAccepted": "Принято: 🐞 Багов: {bugs} · 💡 Идей: {ideas} · ⭐ Отзывов: {reviews}",
+  "hudAutoGroup": "⚡ Авто-принятие заявок",
+  "hudProfileGroup": "📱 Настройки профиля",
+  "hudNotificationsGroup": "🔔 Уведомления и язык",
+  "hudPrivacyGroup": "🛡️ Быстрый доступ и персонализация",
+  "autoAcceptSectionLabel": "Авто-принятие заявок",
+  "settingsEmailTitle": "Email для закрытых тестов",
+  "settingsDefaultGroupLabel": "Google-группа тестировщиков",
+  "settingsProofPingLabel": "Уведомления в чате (ProofPing)",
+  "ppMultiHint": "Удерживайте фазу, чтобы выбрать несколько. Повторное удержание сбрасывает фильтр. С клавиатуры — Shift + нажатие.",
+  "ppLiveEmptyTitle": "Масштабирование и запуск в рынок (Live)",
+  "ppLiveEmptyBody": "Масштабируйте приложения, вышедшие в Google Play: привлекайте живую аудиторию, знакомьте пользователей с возможностями приложения через сценарии и растите в рейтинге Live-Маркета, управляя ключевыми метриками. Развивайте продукт и укрепляйте бренд вместе с сообществом разработчиков. Переведите сюда проект после модерации или добавьте опубликованное приложение.",
+  "ppLiveEmptyAdd": "+ Добавить приложение"
+});

@@ -1391,8 +1391,9 @@ function buildDeveloperProfileWidget() {
             ? formatUiAmount(reservedBust, 1)
             : String(Math.round(Number(reservedBust || 0) * 10) / 10);
         const achievementsLine = window.escapeHTML(
-            formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
+            window.SmartTopBar ? SmartTopBar.profileSummary().closed : formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
+        const feedbackLine = window.SmartTopBar ? window.escapeHTML(SmartTopBar.profileSummary().feedback) : '';
         const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
         const tgUser = initData.user || {};
         const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim();
@@ -1409,6 +1410,7 @@ function buildDeveloperProfileWidget() {
                             ${devUsername ? '<span class="developer-widget-username">(' + devUsername + ')</span>' : ''}
                         </div>
                         <div class="developer-widget-stats-line">${achievementsLine}</div>
+                        ${feedbackLine ? `<div class="developer-widget-feedback-line">${feedbackLine}</div>` : ''}
                     </div>
                 </div>
                 <div class="metrics-grid">

@@ -2468,6 +2468,9 @@ function _mapStatsFromApi(data) {
     var previousSeason = (visibilityStats && visibilityStats.contribution_season) || null;
     return {
         ownerKarma: data.karma || 0,
+        avg_handle_hours: data.avg_handle_hours ?? null,
+        acceptance_rate_pct: data.acceptance_rate_pct ?? null,
+        feedback_sent_counts: data.feedback_sent_counts || null,
         rank: data.rank || 0,
         total_developers: data.total_developers || 0,
         my_active_tests: data.my_active_tests || 0,
