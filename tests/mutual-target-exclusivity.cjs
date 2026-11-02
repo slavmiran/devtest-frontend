@@ -62,8 +62,13 @@ const root = path.resolve(__dirname, '..');
             incomingOffers = [{ offer_id: 82, owner_id: 880, proposer_id: 554, proposer_app_id: 1203, target_app_id: 1225, status: 'pending' }];
             draw();
         });
-        assert.match(await page.locator('#feed button').getAttribute('onclick'), /openMutualExchangeDetails/, 'Second pending acceptance offers details instead of acceptance');
+        assert.match(await page.locator('#feed button').getAttribute('onclick'), /decideOffer/, 'Incoming decisions must reach the server even when local relationship data looks occupied');
+        await page.evaluate(() => {
+            window.acceptRequests = 0; window.API_BASE = '/api'; window.withInitData = data => ({ ...data, init_data: 'fixture' });
+            window.fetch = async () => { acceptRequests++; return { ok: true, status: 200, json: async () => ({status:'error',code:'mutual_target_already_linked'}) }; };
+        });
         await page.evaluate(async () => { await decideOffer(82, 'accept'); });
+        assert.equal(await page.evaluate(() => acceptRequests), 1, 'Only the server decides whether the selected pair is actually occupied');
         assert.equal(await page.evaluate(() => notices.length), 3);
         await page.evaluate(() => {
             incomingOffers = []; myTests[0].join_type = 'invite'; myTests[0].reciprocal_app_id = null; draw();
