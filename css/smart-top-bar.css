@@ -2,7 +2,8 @@
 body.smart-hud-enabled{padding-top:var(--smart-top-height)}body.smart-hud-open{overflow:hidden}
 .smart-top-bar{position:fixed;inset:0 0 auto;z-index:9991;height:var(--smart-top-height);padding:calc(5px + var(--smart-top-inset)) max(10px,env(safe-area-inset-right)) 5px max(10px,env(safe-area-inset-left));box-sizing:border-box;display:flex;gap:5px;align-items:stretch;background:#141a22;border-bottom:1px solid var(--border-strong,#ffffff24);color:var(--text-primary,#edf3ff)}
 .hud-chip{appearance:none;border:1px solid transparent;border-radius:9px;background:transparent;min-width:0;min-height:36px;padding:4px 8px;color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
-.hud-chip[aria-expanded=true]{background:#24344d;border-color:#48658d}
+.hud-chip[aria-expanded=true]{box-shadow:inset 0 0 0 1px rgba(148,163,184,.34)}
+.hud-settings[aria-expanded=true]{background:rgba(255,255,255,.05)}
 .hud-profile{flex:1;justify-content:flex-start;padding:2px 6px;background:#1c2633}
 .hud-identity{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;width:100%;text-align:left}
 .hud-name-line{display:flex;align-items:center;gap:5px;min-width:0}

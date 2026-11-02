@@ -63,7 +63,7 @@
   var map=models(),coord=list.querySelector('#pipeline-section-coordinated');if(!coord){coord=document.createElement('section');coord.id='pipeline-section-coordinated';coord.className='pipeline-section';list.prepend(coord);}list.querySelectorAll('.gt-draft-banner,.guaranteed-orders-section:not(.archive-gt-orders)').forEach(function(n){if(n.parentElement!==coord)coord.appendChild(n);});
   var cards=Array.from(list.querySelectorAll('.card[data-project-phase]'));
   var visibleCards=cards.filter(function(card){var p=map.get(String(card.dataset.projectId||card.id.replace('project-card-','')));var phase=card.dataset.projectPhase||(p&&window.resolvePipelineProjectPhase&&resolvePipelineProjectPhase(p))||'testing';return visible(phase);});
-  var focusCards=visibleCards.filter(function(card){var p=map.get(String(card.dataset.projectId||card.id.replace('project-card-','')));return p&&(state.pins.includes(String(p.id||p.app_id))||window.projectNeedsPipelineAttention&&projectNeedsPipelineAttention(p));});
+  var focusCards=visibleCards.filter(function(card){var p=map.get(String(card.dataset.projectId||card.id.replace('project-card-','')));if(!p)return false;var id=String(p.id||p.app_id),phase=card.dataset.projectPhase||(window.resolvePipelineProjectPhase&&resolvePipelineProjectPhase(p))||'testing';if(phase==='moderation')return false;return state.pins.includes(id)||window.projectNeedsPipelineAttention&&projectNeedsPipelineAttention(p);});
   var visibleTotal=visibleCards.length+(visible('coordinated')?counts().coordinated:0);
   var grouped=focusCards.length>0&&visibleTotal>=5;
   var focus=list.querySelector('#projects-focus-section'),rest=list.querySelector('#projects-rest-section');

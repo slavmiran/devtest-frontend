@@ -129,7 +129,7 @@
     function closeSpecialLayer(element) {
         if (!element) return false;
         var id = element.id;
-        if(element.id==='system-drop-menu'&&window.SmartTopBar){SmartTopBar.close();return true;}
+        if(element.id==='system-drop-menu'&&window.SmartTopBar){SmartTopBar.close(false);return true;}
         if (element.classList.contains("lm-sheet-overlay") && window.LiveMarketUI) { window.LiveMarketUI.closeTop(); return true; }
         if (id === 'showcase-geo-picker-modal' && window.ShowcaseGeo) {window.ShowcaseGeo.closePicker();return true;}
         if (id === 'showcase-geo-list-modal' && window.ShowcaseGeo) {window.ShowcaseGeo.closeCommunityList();return true;}
