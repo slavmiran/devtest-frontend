@@ -486,22 +486,23 @@
     function getLastPing(appId) {
         var safeId = Number(appId || 0);
         if (safeId <= 0) return null;
+        var cached = null;
         try {
             var raw = localStorage.getItem('pc_smart_ping_last_' + safeId);
             if (raw) {
                 var parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object') return parsed;
+                if (parsed && typeof parsed === 'object' && parseSentAt(parsed.sentAt)) cached = parsed;
             }
         } catch (_) {}
         var project = projectById(safeId);
-        if (project && project.smart_ping_sent_at) {
+        if (project && parseSentAt(project.smart_ping_sent_at) > parseSentAt(cached && cached.sentAt)) {
             return {
                 sentAt: project.smart_ping_sent_at,
                 count: 0,
                 testerIds: [],
             };
         }
-        return null;
+        return cached;
     }
 
     function setLastPing(appId, data) {
@@ -530,7 +531,7 @@
         var safeId = Number(appId || 0);
         var ping = getLastPing(safeId);
         if (!ping || !ping.sentAt) return '';
-        var d = new Date(ping.sentAt);
+        var d = new Date(parseSentAt(ping.sentAt));
         if (isNaN(d.getTime())) return '';
         var locale = (typeof lang !== 'undefined' && lang === 'ru') ? 'ru-RU' : 'en-GB';
         return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
@@ -558,6 +559,7 @@
     function parseSentAt(value) {
         var raw = String(value || '').trim();
         if (!raw) return 0;
+        if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(raw) && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)) raw = raw.replace(' ', 'T') + 'Z';
         var ms = Date.parse(raw);
         return Number.isFinite(ms) ? ms : 0;
     }
@@ -749,15 +751,19 @@
         var foot = node.querySelector('.smart-ping-sheet__foot');
         var lastStatusEl = node.querySelector('.smart-ping-sheet__last-status');
         if (lastPing && lastPing.sentAt) {
-            var pingDate = new Date(lastPing.sentAt);
+            var pingDate = new Date(parseSentAt(lastPing.sentAt));
             var now = new Date();
             var isToday = pingDate.toDateString() === now.toDateString();
-            if (isToday || (Date.now() - pingDate.getTime() < 24 * 3600 * 1000)) {
+            if (parseSentAt(lastPing.sentAt) && pingDate.getTime() <= Date.now() + 60000) {
+                var yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+                var dateStr = isToday ? text('smartPingToday', 'сегодня')
+                    : pingDate.toDateString() === yesterday.toDateString() ? text('smartPingYesterday', 'вчера')
+                    : pingDate.toLocaleDateString((typeof lang !== 'undefined' && lang === 'ru') ? 'ru-RU' : 'en-GB');
                 var timeStr = getTesterPingTime(state.appId, 0) || pingDate.toLocaleTimeString((typeof lang !== 'undefined' && lang === 'ru') ? 'ru-RU' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
                 var count = Number(lastPing.count || (Array.isArray(lastPing.testerIds) ? lastPing.testerIds.length : 0));
                 var statusText = count > 0
-                    ? text('smartPingLastToday', '⚡ Последний пинг: сегодня в {time} (доставлено: {count})', { time: timeStr, count: count })
-                    : text('smartPingLastTodayNoCount', '⚡ Последний пинг: сегодня в {time}', { time: timeStr });
+                    ? text('smartPingLastDate', '⚡ Последний пинг: {date} в {time} (доставлено: {count})', { date: dateStr, time: timeStr, count: count })
+                    : text('smartPingLastDateNoCount', '⚡ Последний пинг: {date} в {time}', { date: dateStr, time: timeStr });
                 if (!lastStatusEl && foot) {
                     lastStatusEl = document.createElement('div');
                     lastStatusEl.className = 'smart-ping-sheet__last-status';

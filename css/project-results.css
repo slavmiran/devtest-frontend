@@ -1164,6 +1164,12 @@
 .coverage-cockpit-countries__list::-webkit-scrollbar {
     display: none;
 }
+.coverage-cockpit-countries.is-expanded { flex-wrap: wrap; }
+.coverage-cockpit-countries.is-expanded .coverage-cockpit-countries__list {
+    flex: 0 0 100%; flex-wrap: wrap; overflow-x: visible;
+}
+.coverage-cockpit-countries.is-expanded .coverage-country-sep { display: none; }
+.coverage-cockpit-countries .coverage-country-expand { position: static; flex-shrink: 0; box-shadow: none; }
 .coverage-country-pill {
     display: inline-flex;
     align-items: center;

@@ -156,9 +156,10 @@ function syncIncomingApplicationsSection() {
     var countEl = document.getElementById('offers-count');
     if (!section || !countEl) return;
 
-    var mutualPending = (typeof incomingOffers !== 'undefined' && Array.isArray(incomingOffers))
-        ? incomingOffers.filter(function(offer) { return !!offer && offer.status === 'pending'; }).length
-        : 0;
+    var mutualPending = typeof getVisibleIncomingMutualOffers === 'function'
+        ? getVisibleIncomingMutualOffers().length
+        : ((typeof incomingOffers !== 'undefined' && Array.isArray(incomingOffers))
+            ? incomingOffers.filter(function(offer) { return !!offer && offer.status === 'pending'; }).length : 0);
     var bountyPending = (bountyApplications || []).filter(function(item) {
         return !!item && item.status === 'pending';
     }).length;

@@ -3,6 +3,7 @@
     'use strict';
 
     var _items = [];
+    var _blockedBy = [];
     var _ids = new Set();
     var _showBlockedProjects = false;
     var _loaded = false;
@@ -71,6 +72,7 @@
 
     function applyPayload(payload) {
         _items = Array.isArray(payload && payload.items) ? payload.items.slice() : [];
+        _blockedBy = Array.isArray(payload && payload.blocked_by) ? payload.blocked_by.slice() : [];
         _ids = new Set(_items.map(function (item) { return Number(item && item.id); }).filter(function (id) { return id > 0; }));
         _showBlockedProjects = !!(payload && payload.show_blocked_projects);
         _loaded = true;
@@ -163,6 +165,7 @@
                         '<div class="blacklist-row__name notranslate">' + escapeHtml(name) + '</div>' +
                         (username ? '<div class="blacklist-row__username notranslate">@' + escapeHtml(username) + '</div>' : '') +
                         (dateLabel ? '<div class="blacklist-row__date">' + escapeHtml(t('blacklistBlockedOn', { date: dateLabel })) + '</div>' : '') +
+                        (item.reason ? '<div class="blacklist-row__reason">' + escapeHtml(t('blacklistReasonLabel')) + ': ' + escapeHtml(item.reason) + '</div>' : '') +
                     '</div>' +
                 '</div>' +
                 '<button type="button" class="btn btn-secondary blacklist-row__unblock" onclick="unblockBlacklistUser(' + id + ')">' +
@@ -191,14 +194,14 @@
         var target = Number(targetUserId || 0);
         if (target <= 0 || target === currentUserId()) return false;
         if (_busyIds.has(target)) return false;
-        var confirmed = await confirmAction(t('blacklistConfirmBlock', { name: displayName || t('unknownLabel') }));
-        if (!confirmed) return false;
         _busyIds.add(target);
+        var reason = await requestBlockReason(displayName);
+        if (reason === null) { _busyIds.delete(target); return false; }
         try {
             var response = await fetch(apiBase() + '/user/blacklist/' + target, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(initPayload({})),
+                body: JSON.stringify(initPayload({ reason: reason })),
             });
             var payload = null;
             try { payload = await response.json(); } catch (e) { payload = null; }
@@ -257,6 +260,60 @@
         } finally {
             _busyIds.delete(target);
         }
+    }
+
+    function blockDialog(content) {
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay active blacklist-reason-overlay';
+        overlay.innerHTML = '<div class="modal-content blacklist-sheet" role="dialog" aria-modal="true">' + content + '</div>';
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    function requestBlockReason(displayName) {
+        return new Promise(function(resolve) {
+            var previousFocus = document.activeElement;
+            var overlay = blockDialog('<h3>' + escapeHtml(t('blacklistConfirmBlock', { name: displayName || t('unknownLabel') })) + '</h3>' +
+                '<label for="blacklist-reason-input">' + escapeHtml(t('blacklistReasonLabel')) + '</label>' +
+                '<p class="blacklist-sheet__hint">' + escapeHtml(t('blacklistReasonShared')) + '</p>' +
+                '<div class="blacklist-reason-chips">' + ['blacklistReasonMissed', 'blacklistReasonReports', 'blacklistReasonCommunication'].map(function(key) {
+                    return '<button type="button" class="meta-chip" data-reason-key="' + key + '">' + escapeHtml(t(key)) + '</button>';
+                }).join('') + '</div>' +
+                '<textarea id="blacklist-reason-input" maxlength="500" rows="4" placeholder="' + escapeHtml(t('blacklistReasonPlaceholder')) + '"></textarea>' +
+                '<div class="action-row"><button type="button" class="btn btn-secondary" data-cancel>' + escapeHtml(t('blacklistReasonCancel')) + '</button>' +
+                '<button type="button" class="btn btn-primary" data-confirm>' + escapeHtml(t('dossierBtnBlacklist')) + '</button></div>');
+            var input = overlay.querySelector('textarea');
+            function finish(value) {
+                document.removeEventListener('keydown', keydown);
+                overlay.remove();
+                if (previousFocus && previousFocus.isConnected) previousFocus.focus();
+                resolve(value);
+            }
+            function keydown(event) { if (event.key === 'Escape') { event.stopPropagation(); finish(null); } }
+            document.addEventListener('keydown', keydown);
+            overlay.addEventListener('click', function(event) {
+                if (event.target === overlay || event.target.closest('[data-cancel]')) finish(null);
+                else if (event.target.closest('[data-confirm]')) finish(input.value.trim());
+                else {
+                    var chip = event.target.closest('[data-reason-key]');
+                    if (chip) { input.value = t(chip.dataset.reasonKey); input.focus(); }
+                }
+            });
+            overlay.querySelector('[data-cancel]').focus();
+        });
+    }
+
+    async function showMarketBlockReason(ownerId) {
+        try { await ensureUserBlacklistLoaded(true); }
+        catch (_) { toast(t('blacklistLoadError')); return; }
+        var relation = _blockedBy.find(function(row) { return Number(row.owner_id) === Number(ownerId); });
+        var overlay = blockDialog('<h3>' + escapeHtml(t('blacklistBlockedByOwner')) + '</h3>' +
+            '<p class="blacklist-row__reason">' + escapeHtml(relation
+                ? t('blacklistReasonLabel') + ': ' + (relation.reason || t('blacklistReasonNone'))
+                : t('blacklistBlockNoLongerActive')) + '</p>' +
+            '<button type="button" class="btn btn-secondary">' + escapeHtml(t('btnClose')) + '</button>');
+        overlay.addEventListener('click', function(event) { if (event.target === overlay || event.target.closest('button')) overlay.remove(); });
+        overlay.querySelector('button').focus();
     }
 
     async function setShowBlockedProjects(enabled) {
@@ -325,6 +382,7 @@
     window.closeBlacklistModal = closeBlacklistModal;
     window.unblockBlacklistUser = unblockFromList;
     window.blockUserOnBlacklist = blockUser;
+    window.showMarketBlockReason = showMarketBlockReason;
     window.unblockUserOnBlacklist = unblockUser;
     window.ensureUserBlacklistLoaded = ensureUserBlacklistLoaded;
     window.isUserBlacklisted = isUserBlacklisted;

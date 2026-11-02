@@ -496,7 +496,8 @@
     var _activeCoverageTab = 'overview';
     var _coverageCountryObserver = null;
     var _activeCoverageModelFilter = 'all';
-    var _activeCoverageCountry = '';
+    var _activeCoverageCountries = new Set();
+    var _isCountryFilterExpanded = false;
     var _activeCoverageAndroid = 0;
     var _activeCoverageData = null;
     var _expandedModelKeys = {};
@@ -667,7 +668,8 @@
             _activeBrandFilter = 'all';
             _isBrandFilterExpanded = false;
             _activeCoverageModelFilter = 'all';
-            _activeCoverageCountry = '';
+            _activeCoverageCountries.clear();
+            _isCountryFilterExpanded = false;
             _activeCoverageAndroid = 0;
         }
         _activeCoverageAppId = targetAppId;
@@ -969,7 +971,7 @@
             var countryPills = countries.map(function (c) {
                 var cName = (lang === 'ru' ? c.name_ru : c.name) || c.code;
                 var isNew = seenCountries.indexOf(String(c.code).toUpperCase()) < 0;
-                var active = _activeCoverageCountry === String(c.code).toUpperCase();
+                var active = _activeCoverageCountries.has(String(c.code).toUpperCase());
                 hasNewCountries = hasNewCountries || isNew;
                 return '<button type="button" class="coverage-country-pill' + (isNew ? ' is-new-country' : '') + (active ? ' is-active' : '') + '" data-country="' + window.escapeHTML(c.code) + '" aria-pressed="' + active + '" onclick="selectCoverageCountry(this.getAttribute(\'data-country\'))" title="' + window.escapeHTML(cName) + '">' +
                     '<span class="coverage-country-flag" aria-hidden="true">' + (c.flag || '🌐') + '</span> ' +
@@ -984,9 +986,10 @@
                 : (cCount === 1 ? 'country' : 'countries');
 
             countriesLineHtml = (
-                '<div class="coverage-cockpit-countries">' +
+                '<div class="coverage-cockpit-countries' + (_isCountryFilterExpanded ? ' is-expanded' : '') + '">' +
                     '<div class="coverage-cockpit-countries__list">' + countryPills + '</div>' +
                     '<span class="coverage-cockpit-countries__badge">🌐 ' + cCount + ' ' + window.escapeHTML(cWord) + '</span>' +
+                    '<button type="button" class="brand-filter-expand-btn coverage-country-expand" aria-expanded="' + _isCountryFilterExpanded + '" aria-label="' + window.escapeHTML(window.t(_isCountryFilterExpanded ? 'coverageCountriesCollapse' : 'coverageCountriesExpand', {}, lang)) + '" onclick="toggleCoverageCountryFilter()">' + (_isCountryFilterExpanded ? '−' : '+') + '</button>' +
                 '</div>' +
                 (hasNewCountries ? '<div class="coverage-countries-help">' + window.escapeHTML(window.t('coverageCountrySeenHint', {}, lang)) + '<button type="button" class="coverage-mark-all-seen" onclick="markCoverageCountryViewed()">' + window.escapeHTML(window.t('coverageCountriesMarkAll', {}, lang)) + '</button></div>' : '')
             );
@@ -1140,17 +1143,17 @@
     }
 
     function coverageModelMatchesDimensions(model) {
-        if (!_activeCoverageCountry && !_activeCoverageAndroid) return true;
+        if (!_activeCoverageCountries.size && !_activeCoverageAndroid) return true;
         var testers = model.testers || [];
-        if (_activeCoverageCountry && _activeCoverageAndroid) {
+        if (_activeCoverageCountries.size && _activeCoverageAndroid) {
             return testers.some(function (tester) {
-                return String((tester.country || {}).code || '').toUpperCase() === _activeCoverageCountry &&
+                return _activeCoverageCountries.has(String((tester.country || {}).code || '').toUpperCase()) &&
                     coverageAndroidMajor(tester.android_version) === _activeCoverageAndroid;
             });
         }
-        if (_activeCoverageCountry) {
+        if (_activeCoverageCountries.size) {
             return testers.some(function (tester) {
-                return String((tester.country || {}).code || '').toUpperCase() === _activeCoverageCountry;
+                return _activeCoverageCountries.has(String((tester.country || {}).code || '').toUpperCase());
             });
         }
         return (model.android_major_versions || []).some(function (version) {
@@ -1188,7 +1191,7 @@
             });
         }
 
-        if (_activeCoverageCountry || _activeCoverageAndroid) {
+        if (_activeCoverageCountries.size || _activeCoverageAndroid) {
             filteredModels = filteredModels.filter(coverageModelMatchesDimensions);
             if (!filteredModels.length) {
                 return '<div class="coverage-dimension-empty">' +
@@ -1566,11 +1569,11 @@
 
         var aggregatedModels = aggregateModelStacks(models);
         var cockpitHtml = renderCoverageCockpit(data, lang);
-        var selectedCountry = (data.countries || []).find(function (country) {
-            return String(country.code || '').toUpperCase() === _activeCoverageCountry;
+        var selectedCountries = (data.countries || []).filter(function (country) {
+            return _activeCoverageCountries.has(String(country.code || '').toUpperCase());
         });
         var dimensionNames = [];
-        if (_activeCoverageCountry) dimensionNames.push((selectedCountry && ((lang === 'ru' ? selectedCountry.name_ru : selectedCountry.name) || selectedCountry.code)) || _activeCoverageCountry);
+        selectedCountries.forEach(function(country) { dimensionNames.push((lang === 'ru' ? country.name_ru : country.name) || country.code); });
         if (_activeCoverageAndroid) dimensionNames.push('Android ' + _activeCoverageAndroid);
         var dimensionFilterHtml = dimensionNames.length && _activeCoverageModelFilter !== 'archive'
             ? '<div class="coverage-dimension-active"><span>' + window.escapeHTML(window.t('coverageDimensionLabel', {}, lang)) + ' ' + window.escapeHTML(dimensionNames.join(' · ')) + '</span>' +
@@ -1603,7 +1606,7 @@
         var unknownDeviceHtml = '';
         if (_activeCoverageModelFilter === 'all' && !_activeCoverageAndroid && _activeBrandFilter === 'all') {
             var unknownTesters = (data.testers_without_device || []).filter(function(tester) {
-                return !_activeCoverageCountry || String(tester.country_code || 'unknown').toUpperCase() === _activeCoverageCountry;
+                return !_activeCoverageCountries.size || _activeCoverageCountries.has(String(tester.country_code || 'unknown').toUpperCase());
             });
             if (unknownTesters.length) {
                 unknownDeviceHtml = '<section class="coverage-unknown-devices">' + unknownTesters.map(function(tester) {
@@ -1693,7 +1696,7 @@
     function selectCoverageModelFilter(filter) {
         _activeCoverageModelFilter = filter || 'all';
         if (_activeCoverageModelFilter === 'archive') {
-            _activeCoverageCountry = '';
+            _activeCoverageCountries.clear();
             _activeCoverageAndroid = 0;
         }
         if (typeof window !== 'undefined') {
@@ -1727,8 +1730,14 @@
         var selected = String(code || '').trim().toUpperCase();
         if (!selected) return;
         markCoverageCountryViewed(selected);
-        _activeCoverageCountry = _activeCoverageCountry === selected ? '' : selected;
+        if (_activeCoverageCountries.has(selected)) _activeCoverageCountries.delete(selected);
+        else _activeCoverageCountries.add(selected);
         if (_activeCoverageModelFilter === 'archive') _activeCoverageModelFilter = 'all';
+        refreshCoverageDimensions();
+    }
+
+    function toggleCoverageCountryFilter() {
+        _isCountryFilterExpanded = !_isCountryFilterExpanded;
         refreshCoverageDimensions();
     }
 
@@ -1741,7 +1750,7 @@
     }
 
     function clearCoverageDimensions() {
-        _activeCoverageCountry = '';
+        _activeCoverageCountries.clear();
         _activeCoverageAndroid = 0;
         refreshCoverageDimensions();
     }
@@ -3192,6 +3201,7 @@
     window.switchCoverageTab = switchCoverageTab;
     window.selectCoverageBrand = selectCoverageBrand;
     window.selectCoverageCountry = selectCoverageCountry;
+    window.toggleCoverageCountryFilter = toggleCoverageCountryFilter;
     window.selectCoverageAndroid = selectCoverageAndroid;
     window.clearCoverageDimensions = clearCoverageDimensions;
     window.toggleCoverageBrandFilter = toggleCoverageBrandFilter;

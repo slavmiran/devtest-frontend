@@ -772,3 +772,16 @@
 .mutual-offer-card .bounty-app-accept-btn.is-processing {
     opacity: 1 !important;
 }
+.offer-decision-error {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--danger-color, #ff8585);
+    background: rgba(239, 83, 80, 0.1);
+    font-size: 13px;
+    line-height: 1.45;
+}
+.mutual-offer-card .bounty-app-actions { flex-wrap: wrap; }
+.offer-counter-btn { flex: 2; min-width: 160px; white-space: normal; }
+.offer-dismiss-btn { flex: 1; }
+.offer-auto-hide { flex-basis: 100%; color: var(--text-secondary, #9aa3ad); font-size: 12px; text-align: center; }

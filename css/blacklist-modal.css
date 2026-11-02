@@ -4,6 +4,11 @@
     flex-direction: column;
     padding: 10px 16px 20px;
 }
+.blacklist-reason-overlay { z-index: 12000; }
+.blacklist-reason-overlay .blacklist-sheet { gap: 12px; overflow-y: auto; }
+.blacklist-reason-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.blacklist-reason-overlay textarea { width: 100%; box-sizing: border-box; min-height: 100px; padding: 12px; border-radius: 12px; color: var(--text-color); background: var(--bg-color); border: 1px solid var(--border-strong); resize: vertical; }
+.blacklist-row__reason { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
 
 .blacklist-sheet__title {
     margin: 0 0 6px;

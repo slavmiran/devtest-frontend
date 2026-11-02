@@ -1742,7 +1742,10 @@ function renderIncomingOffers() {
         _offersTimerId = null;
     }
 
-    const pending = (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending' && !(window.LiveExchanges && window.LiveExchanges.managed(offer.offer_id)));
+    const pending = (typeof getVisibleIncomingMutualOffers === 'function'
+        ? getVisibleIncomingMutualOffers()
+        : (incomingOffers || []).filter((offer) => !!offer && offer.status === 'pending'))
+        .filter((offer) => !(window.LiveExchanges && window.LiveExchanges.managed(offer.offer_id)));
     const isLoading = !!_offersInFlight;
 
     if (!pending.length) {
@@ -1771,8 +1774,13 @@ function renderIncomingOffers() {
             ? ('<div class="bounty-app-handle notranslate">' + window.escapeHTML(handle) + '</div>')
             : '';
         const remain = formatOfferRemaining(offer.created_at);
+        if (!remain && Number.isFinite(Date.parse(offer.created_at)) && typeof _showOfferDecisionError === 'function'
+            && !_offerTerminalErrors[String(offer.offer_id)]) {
+            _showOfferDecisionError(offer.offer_id, 'offer_expired', {}, { notify: false });
+        }
         const leftTimeText = window.t('offerTimeLeftValue', { hours: remain ? remain.hours : 0, minutes: remain ? remain.minutes : 0 }, lang);
-        const expireText = remain ? window.t('bountyAppTimeLeftShort', { time: leftTimeText }, lang) : window.t('offerTimeUnknown', {}, lang);
+        const expireText = remain ? window.t('bountyAppTimeLeftShort', { time: leftTimeText }, lang)
+            : window.t(Number.isFinite(Date.parse(offer.created_at)) ? 'err_offer_expired' : 'offerTimeUnknown', {}, lang);
         const targetAppName = offer.target_app_name || window.t('unknownLabel', {}, lang);
         const proposerAppName = offer.proposer_app_name || window.t('unknownLabel', {}, lang);
 
@@ -1823,6 +1831,8 @@ function renderIncomingOffers() {
 
         const dossierLabel = window.escapeHTML(window.t('bountyAppOpenDossier', {}, lang));
         const dossierSvg = typeof _bountyDossierIconSvg === 'function' ? _bountyDossierIconSvg() : '';
+        const decisionError = typeof _offerDecisionErrors !== 'undefined' ? _offerDecisionErrors[String(offer.offer_id)] : '';
+        const terminalError = typeof _offerTerminalErrors !== 'undefined' && _offerTerminalErrors[String(offer.offer_id)];
 
         return '' +
             '<div class="offer-card bounty-app-card mutual-offer-card" data-offer-id="' + offer.offer_id + '">' +
@@ -1873,14 +1883,16 @@ function renderIncomingOffers() {
                     '<span class="bounty-app-project-name notranslate">' + window.escapeHTML(proposerAppName) + '</span>' +
                 '</div>' +
                 '<div class="action-row bounty-app-actions">' +
+                    (terminalError ? renderOfferDismissButton(offer.offer_id) :
                     '<button type="button" class="btn bounty-app-accept-btn" onclick="decideOffer(' + offer.offer_id + ', \'accept\', event)">' +
                         window.escapeHTML(window.t('bountyAppAcceptBtn', {}, lang)) +
                     '</button>' +
                     '<button type="button" class="btn bounty-app-reject-btn" onclick="decideOffer(' + offer.offer_id + ', \'reject\', event)">' +
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
-                    '</button>' +
+                    '</button>') +
                 '</div>' +
                 renderIncomingAccessIssue(offer, lang) +
+                (decisionError ? '<p class="offer-decision-error" role="alert">' + window.escapeHTML(decisionError) + '</p>' : '') +
             '</div>';
     }).join('');
 
@@ -1901,8 +1913,11 @@ function renderIncomingOffers() {
             const remain = formatOfferRemaining(offer.created_at);
             if (!remain) {
                 hasExpired = true;
-                if (expireEl) {
-                    expireEl.textContent = window.t('offerTimeUnknown', {}, lang);
+                if (Number.isFinite(Date.parse(offer.created_at))) {
+                    if (expireEl) expireEl.textContent = window.t('err_offer_expired', {}, lang);
+                    if (typeof _showOfferDecisionError === 'function' && !_offerTerminalErrors[String(offer.offer_id)]) {
+                        _showOfferDecisionError(offer.offer_id, 'offer_expired', {}, { notify: false });
+                    }
                 }
                 return;
             }

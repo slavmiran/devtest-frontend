@@ -946,8 +946,12 @@ function renderFeedCard(item, kind) {
         ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
         : '';
     const blockedByMe = !!item.blocked_by_me;
+    const blockedByOwner = !!item.blocked_by_owner;
     const blockedChip = blockedByMe
         ? `<span class="meta-chip accent-red">${window.escapeHTML(window.t('blacklistMarketChip', {}, lang))}</span>`
+        : '';
+    const blockedByOwnerChip = blockedByOwner
+        ? `<button type="button" class="meta-chip accent-red market-owner-block" aria-label="${window.escapeHTML(window.t('blacklistBlockedByOwner', {}, lang))}" onclick="event.stopPropagation(); showMarketBlockReason(${Number(item.owner_id || 0)})">🚫</button>`
         : '';
     const botContactChip = item.owner_bot_unreachable === true
         ? `<button type="button" class="market-bot-contact-dot" aria-label="${window.escapeHTML(window.t('marketBotUnreachableHint', {}, lang))}" onclick="event.stopPropagation(); showToast('${escapeInlineJsString(window.t('marketBotUnreachableHint', {}, lang))}', 6000)"><span aria-hidden="true"></span></button>`
@@ -1054,7 +1058,7 @@ function renderFeedCard(item, kind) {
         buttonDisabledAttr = 'disabled';
         buttonExtraAttrs = '';
     }
-    if (blockedByMe && !isOwnProject) {
+    if ((blockedByMe || blockedByOwner) && !isOwnProject) {
         buttonText = window.t('blacklistBlockedCta', {}, lang);
         clickAction = 'void(0)';
         buttonClass = 'btn btn-secondary disabled';
@@ -1094,7 +1098,7 @@ function renderFeedCard(item, kind) {
                 ${bountyChip}
                 ${syncChip}
                 ${accessIssueChip}
-                ${blockedChip}
+                ${blockedChip}${blockedByOwnerChip}
             </div>
             <button class="${buttonClass}" ${buttonDisabledAttr} ${buttonExtraAttrs} onclick="${clickAction}">${buttonText}</button>
             ${(kind === 'mutual-seeking' && pendingOfferMeta) ? `<div class="market-offer-note">${window.escapeHTML(pendingOfferMeta)}</div>` : ''}
@@ -9109,7 +9113,7 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         ? window.t('dossierOwnerReliability', { pct: reliabilityState.reliabilityPct, status: reliabilityState.reliabilityText }, lang)
         : window.t('dossierOwnerReliabilityNewbie', {}, lang);
     var joinBlocked = _isDossierProjectJoinBlocked(project)
-        || !!project.blocked_by_me
+        || !!project.blocked_by_me || !!project.blocked_by_owner
         || (typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId || project.owner_id));
     var projectMode = String(project.mode || 'mutual').toLowerCase();
     var isBountyProject = projectMode === 'bounty';
@@ -10541,7 +10545,7 @@ async function openDossierModal(username, testerId, appId) {
     const canTakeFromShowcase = !!marketCandidate && !project && !marketCandidate.is_own_project
         && marketCandidate.market_kind !== 'mutual-return';
     const takeFromShowcaseBlockedByAccess = !!(marketCandidate && marketCandidate.has_access_issue);
-    const takeFromShowcaseBlockedByUser = !!(marketCandidate && marketCandidate.blocked_by_me)
+    const takeFromShowcaseBlockedByUser = !!(marketCandidate && (marketCandidate.blocked_by_me || marketCandidate.blocked_by_owner))
         || (typeof window.isUserBlacklisted === 'function' && window.isUserBlacklisted(testerId));
     const takeFromShowcaseDisabled = !!(marketCandidate && (marketCandidate.has_pending_offer || takeFromShowcaseBlockedByAccess || takeFromShowcaseBlockedByUser));
     const takeFromShowcaseIsPrelaunch = !!(marketCandidate && marketCandidate.market_kind === 'mutual-prelaunch');
