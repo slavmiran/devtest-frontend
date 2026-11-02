@@ -2060,14 +2060,142 @@ function _onStoreLinkClickedForIssueFlow(id) {
     persistTestsCacheSnapshot();
 }
 
+var _offerDecisionErrors = Object.create(null);
+var _offerTerminalErrors = Object.create(null);
+var _offerTerminalCards = Object.create(null);
+var _offerDismissTimer = null;
+var _dismissedOffersByUser = Object.create(null);
+
+function _getDismissedOffers() {
+    var actor = String(userId || '');
+    if (!_dismissedOffersByUser[actor]) {
+        var ids = [];
+        try { ids = JSON.parse(localStorage.getItem('dismissed_mutual_offers_v1_' + actor) || '[]'); } catch (_) {}
+        _dismissedOffersByUser[actor] = Array.isArray(ids) ? ids.slice(-200) : [];
+    }
+    return _dismissedOffersByUser[actor];
+}
+
+function isMutualOfferDismissed(offerId) {
+    return _getDismissedOffers().includes(Number(offerId));
+}
+
+function getVisibleIncomingMutualOffers() {
+    var offers = (incomingOffers || []).filter(function(offer) { return offer && offer.status === 'pending'; });
+    Object.keys(_offerTerminalCards).forEach(function(id) {
+        if (!offers.some(function(offer) { return String(offer.offer_id) === id; })) offers.push(_offerTerminalCards[id].offer);
+    });
+    return offers.filter(function(offer) { return !isMutualOfferDismissed(offer.offer_id); });
+}
+
+function renderOfferDismissButton(offerId) {
+    var state = _offerTerminalCards[String(offerId)];
+    var expired = state && state.code === 'offer_expired';
+    var busy = state && state.busy;
+    return (expired ? '<button type="button" class="btn offer-counter-btn" ' + (busy ? 'disabled ' : '') +
+        'onclick="sendExpiredOfferCounter(' + Number(offerId) + ', event)">' +
+        window.escapeHTML(window.t(busy ? 'offerCounterSending' : 'offerCounterSend', {}, lang)) + '</button>' : '') +
+        '<button type="button" class="btn offer-dismiss-btn" ' + (busy ? 'disabled ' : '') +
+        'onclick="dismissMutualOffer(' + Number(offerId) + ', event)">' +
+        window.escapeHTML(window.t(expired ? 'offerCounterSkip' : 'btnClose', {}, lang)) + '</button>' +
+        '<span class="offer-auto-hide" data-offer-countdown="' + Number(offerId) + '">' +
+        window.escapeHTML(window.t(busy ? 'offerCounterSending' : 'offerAutoHide',
+            { seconds: state ? Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000)) : 30 }, lang)) + '</span>';
+}
+
+function _tickOfferDismissals() {
+    Object.keys(_offerTerminalCards).forEach(function(id) {
+        var state = _offerTerminalCards[id];
+        if (state.busy) return;
+        if (Date.now() >= state.deadline) { dismissMutualOffer(Number(id)); return; }
+        var label = document.querySelector('[data-offer-countdown="' + Number(id) + '"]');
+        if (label) label.textContent = window.t('offerAutoHide', { seconds: Math.ceil((state.deadline - Date.now()) / 1000) }, lang);
+    });
+    if (!Object.keys(_offerTerminalCards).length) { clearInterval(_offerDismissTimer); _offerDismissTimer = null; }
+}
+
+async function sendExpiredOfferCounter(offerId, event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    var state = _offerTerminalCards[String(offerId)];
+    if (!state || state.code !== 'offer_expired' || state.busy || isMutualOfferDismissed(offerId)) return;
+    var offer = state.offer;
+    state.busy = true;
+    renderIncomingOffers();
+    try {
+        var result = await sendMutualOffer(offer.proposer_app_id, offer.proposer_id, offer.target_app_id, { returnOutcome: true });
+        if (result && result.status === 'success') {
+            state.busy = false;
+            dismissMutualOffer(offerId);
+            try { showToast(window.t(result.mode === 'auto_accepted' ? 'offerStartedInstantly' : 'offerSentSuccess', {}, lang)); } catch (_) {}
+            await Promise.allSettled([loadTasks(false), loadProjects(true)]);
+        } else {
+            _offerDecisionErrors[String(offerId)] = handleApiError(result && result.code || 'offer_create_failed', result && result.details || {}, { silent: true });
+        }
+    } catch (_) {
+        _offerDecisionErrors[String(offerId)] = handleApiError('network_error', {}, { silent: true });
+    } finally {
+        state.busy = false;
+        state.deadline = Date.now() + 30000;
+        renderIncomingOffers();
+    }
+}
+
+function dismissMutualOffer(offerId, event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    if (!_offerTerminalErrors[String(offerId)]) return;
+    if (_offerTerminalCards[String(offerId)] && _offerTerminalCards[String(offerId)].busy) return;
+    var ids = _getDismissedOffers();
+    if (!ids.includes(Number(offerId))) ids.push(Number(offerId));
+    ids.splice(0, Math.max(0, ids.length - 200));
+    try { localStorage.setItem('dismissed_mutual_offers_v1_' + String(userId || ''), JSON.stringify(ids)); } catch (_) {}
+    delete _offerDecisionErrors[String(offerId)];
+    delete _offerTerminalErrors[String(offerId)];
+    delete _offerTerminalCards[String(offerId)];
+    renderIncomingOffers();
+}
+
+function _showOfferDecisionError(offerId, code, details, options) {
+    var message = handleApiError(code, details || {}, { silent: true });
+    _offerDecisionErrors[String(offerId)] = message;
+    var terminal = [
+        'offer_expired', 'mutual_limit_reached', 'app_not_accepting_new_testers',
+        'mutual_target_already_linked', 'mutual_contract_active_conflict',
+        'offer_forbidden', 'offer_not_pending', 'offer_not_found',
+        'offer_app_not_found', 'offer_inactive_app', 'offer_owner_mismatch'
+    ].includes(code);
+    _offerTerminalErrors[String(offerId)] = terminal;
+    if (terminal && !_offerTerminalCards[String(offerId)]) {
+        var offer = (incomingOffers || []).find(function(item) { return Number(item.offer_id) === Number(offerId); });
+        if (offer) _offerTerminalCards[String(offerId)] = { offer: Object.assign({}, offer), code: code, deadline: Date.now() + 30000, busy: false };
+        if (!_offerDismissTimer) _offerDismissTimer = setInterval(_tickOfferDismissals, 1000);
+    }
+    var card = document.querySelector('.offer-card[data-offer-id="' + Number(offerId) + '"]');
+    if (card) {
+        var actions = card.querySelector('.bounty-app-actions');
+        if (terminal && actions) actions.innerHTML = renderOfferDismissButton(offerId);
+        var error = card.querySelector('.offer-decision-error');
+        if (!error) {
+            error = document.createElement('p');
+            error.className = 'offer-decision-error';
+            error.setAttribute('role', 'alert');
+            card.appendChild(error);
+        }
+        error.textContent = message || window.t('err_offer_accept_failed', {}, lang);
+    }
+    if (options && options.notify === false) return;
+    try { handleApiError(code, details || {}); }
+    catch (_) { /* The persistent card message remains visible if the host cannot display a toast. */ }
+}
+
 async function decideOffer(offerId, action, event) {
+    if (isMutualOfferDismissed(offerId) || _offerTerminalErrors[String(offerId)]) return;
     var proposedOffer = (Array.isArray(incomingOffers) ? incomingOffers : []).find(function(offer) {
         return Number(offer.offer_id) === Number(offerId);
     });
     if (action === 'accept' && proposedOffer && typeof getExistingMutualTargetLink === 'function'
         && getExistingMutualTargetLink(proposedOffer.proposer_app_id, proposedOffer.proposer_id)) {
         if (event) { event.preventDefault(); event.stopPropagation(); }
-        showToast(window.t('err_mutual_target_already_linked', {}, lang));
+        _showOfferDecisionError(offerId, 'mutual_target_already_linked');
         return;
     }
     if (event) {
@@ -2077,6 +2205,9 @@ async function decideOffer(offerId, action, event) {
     if (!offerId) return;
 
     var card = document.querySelector('.offer-card[data-offer-id="' + offerId + '"]');
+    delete _offerDecisionErrors[String(offerId)];
+    var previousError = card && card.querySelector('.offer-decision-error');
+    if (previousError) previousError.remove();
     var cardBtn = card && card.querySelector(action === 'accept' ? '.bounty-app-accept-btn' : '.bounty-app-reject-btn');
     var clickedBtn = cardBtn || (event && event.currentTarget);
     var processingLabel = action === 'accept'
@@ -2095,18 +2226,21 @@ async function decideOffer(offerId, action, event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(withInitData({ user_id: userId }))
         });
-        const result = await response.json();
-        if (result.status !== 'success') {
+        var result;
+        try { result = await response.json(); }
+        catch (_) { result = { code: 'offer_accept_failed' }; }
+        if (!response.ok || !result || result.status !== 'success') {
             if (typeof applyActionButtonProcessing === 'function') {
                 applyActionButtonProcessing(clickedBtn, false);
             }
             if (typeof applyCardButtonsBusy === 'function') {
                 applyCardButtonsBusy(card, false);
             }
-            handleApiError(getBackendErrorCode(result), result && result.details ? result.details : {});
+            _showOfferDecisionError(offerId, response.status >= 500 ? 'network_error' : (getBackendErrorCode(result) || 'offer_accept_failed'), result && result.details ? result.details : {});
             return;
         }
 
+        delete _offerDecisionErrors[String(offerId)];
         if (window.tg && window.tg.HapticFeedback) {
             window.tg.HapticFeedback.notificationOccurred('success');
         }
@@ -2147,7 +2281,7 @@ async function decideOffer(offerId, action, event) {
         if (typeof applyCardButtonsBusy === 'function') {
             applyCardButtonsBusy(card, false);
         }
-        handleApiError('network_error');
+        _showOfferDecisionError(offerId, 'network_error');
     }
 }
 
@@ -2323,6 +2457,7 @@ async function _continueMutualOffer(targetAppId, targetOwnerId, sourceButton) {
 
 async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiContext) {
     if (typeof getExistingMutualTargetLink === 'function' && getExistingMutualTargetLink(targetAppId, targetOwnerId)) {
+        if (uiContext && uiContext.returnOutcome) return { status: 'error', code: 'mutual_target_already_linked' };
         showToast(window.t('err_mutual_target_already_linked', {}, lang));
         return;
     }
@@ -2353,6 +2488,7 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         if (!response.ok) {
             const code = getBackendErrorCode(result) || 'err_default_api';
             const details = result && result.details ? result.details : {};
+            if (uiContext && uiContext.returnOutcome) return { status: 'error', code: response.status >= 500 ? 'network_error' : code, details: details };
             handleApiError(code, details);
             return;
         }
@@ -2360,9 +2496,11 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         if (!result || result.status !== 'success') {
             const code = getBackendErrorCode(result) || 'err_default_api';
             const details = result && result.details ? result.details : {};
+            if (uiContext && uiContext.returnOutcome) return { status: 'error', code: code, details: details };
             handleApiError(code, details);
             return;
         }
+        if (uiContext && uiContext.returnOutcome) return result;
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         if (result.mode === 'auto_accepted') {
             closeProjectSelectModal();
@@ -2394,6 +2532,7 @@ async function sendMutualOffer(targetAppId, targetOwnerId, proposerAppId, uiCont
         closeProjectSelectModal();
     } catch (error) {
         console.error('Create offer error:', error);
+        if (uiContext && uiContext.returnOutcome) return { status: 'error', code: 'network_error' };
         handleApiError('network_error');
     } finally {
         _apiEnd();
