@@ -1233,7 +1233,7 @@ async function buildHttpStatusError(response, fallbackKey) {
     return new Error('HTTP ' + (response && response.status ? response.status : 'error'));
 }
 
-function handleApiError(code, details = {}) {
+function handleApiError(code, details = {}, options = {}) {
     var keyMap = {
         ALREADY_OWNED: 'ALREADY_OWNED',
         ALREADY_ACTIVE: 'ALREADY_ACTIVE',
@@ -1286,6 +1286,7 @@ function handleApiError(code, details = {}) {
         offer_forbidden: 'err_offer_forbidden',
         offer_not_pending: 'err_offer_not_pending',
         offer_expired: 'err_offer_expired',
+        app_not_accepting_new_testers: 'app_not_accepting_new_testers',
         offer_app_not_found: 'err_offer_app_not_found',
         offer_inactive_app: 'err_offer_inactive_app',
         offer_owner_mismatch: 'err_offer_owner_mismatch',
@@ -1354,6 +1355,7 @@ function handleApiError(code, details = {}) {
         message = getApiErrorMessage({ code: normalizedCode, details: details }, 'networkError');
     }
 
+    if (options && options.silent) return message;
     if (window.showToast) {
         window.showToast(message);
     } else if (typeof showToast === 'function') {

@@ -18,6 +18,7 @@ const root = path.resolve(__dirname, '..');
             window.tg = {}; window.myProjectsLoadError = false; window.myTests = []; window.incomingOffers = [];
             window._blockedOfferProjectsByOwner = {}; window._blockedOfferProjectsFetchedAt = {};
             window.notices = []; window.showToast = message => notices.push(message);
+            window.handleApiError = (code, details, options = {}) => { const message = window.t('err_' + code, {}, lang); if (!options.silent) notices.push(message); return message; };
             window.fetch = () => { throw new Error('Unexpected write'); };
             window.isProjectSynced = () => false; window.getLangBadge = () => '';
             window.isOwnerBlockedByMe = () => false;
