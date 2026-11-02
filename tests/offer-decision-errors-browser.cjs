@@ -15,6 +15,7 @@ const root = path.resolve(__dirname, '..');
             page.on('pageerror', error => errors.push(error.message));
             await page.addInitScript(language => {
                 window.__API_BASE__ = 'http://fixture.local/api'; localStorage.setItem('lang', language);
+                localStorage.setItem('dismissed_mutual_offers_v1_880', '[82]');
                 window.Telegram = { WebApp: { initData: 'signed-fixture', platform: 'web',
                     initDataUnsafe: { user: { id: 880, username: 'fixture', language_code: language } },
                     themeParams: {}, colorScheme: 'dark', ready() {}, expand() {}, onEvent() {}, offEvent() {},
@@ -59,6 +60,7 @@ const root = path.resolve(__dirname, '..');
                 bountyApplications = []; _bountyAppsInFlight = null; _bountyAppsLoadedOnce = true;
                 document.body.innerHTML = '<section id="offers-section" style="max-width:600px;margin:20px auto"><span id="offers-count"></span><div id="offers-carousel"></div></section>';
                 window.__renderIncomingOffers(true);
+                window.getExistingMutualTargetLink = () => ({projectId: 645}); // stale roster must not veto acceptance
                 window.showToast = () => { throw new Error('Toast unavailable in this host'); };
             }, language);
             let offerId = 82;
@@ -94,7 +96,7 @@ const root = path.resolve(__dirname, '..');
                     assert.equal(await page.locator('#offers-section').isVisible(), false, 'No empty inbox header or stale counter after dismissal');
                     await page.evaluate(() => { _dismissedOffersByUser = Object.create(null); window.__renderIncomingOffers(true); });
                     assert.equal(await page.locator('.offer-card').count(), 0, 'Dismissal survives rereading browser storage');
-                    assert.equal(await page.evaluate(() => localStorage.getItem('dismissed_mutual_offers_v1_881')), null,
+                    assert.equal(await page.evaluate(() => localStorage.getItem('dismissed_mutual_offers_v2_881')), null,
                         'Acknowledgment must not write another account\'s hidden offers');
                 } else {
                     assert.equal(await page.locator('.offer-dismiss-btn').count(), 0);
@@ -108,6 +110,7 @@ const root = path.resolve(__dirname, '..');
             await page.waitForFunction(() => !document.querySelector('.offer-card'));
             await page.evaluate(() => {
                 window.renderIncomingOffers = () => window.__renderIncomingOffers(true);
+                window.getExistingMutualTargetLink = () => null;
                 incomingOffers[0].offer_id = 999;
                 incomingOffers[0].created_at = new Date(Date.now() - 6 * 3600000).toISOString();
                 const nativeInterval = window.setInterval;
