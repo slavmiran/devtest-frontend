@@ -49,10 +49,18 @@ const root=path.resolve(__dirname,'..');
             window.API_BASE='/api'; window.tg={HapticFeedback:{impactOccurred(){}}};
             window.getTelegramInitDataRaw=()=>'';
             window.fetchWithRetry=async()=>({ok:true,json:async()=>({status:'ok',coverage:{
-                app_id:30,name:'Coverage',current_iteration:1,models:[],android_versions:[],archived_screenshots:[],
+                app_id:30,name:'Coverage',current_iteration:1,
+                models:[
+                    {model_key:'ru14',model_name:'RU device',testers:[{tester_id:21,country:{code:'RU'},android_version:'14'}]},
+                    {model_key:'tr15',model_name:'TR device',testers:[{tester_id:22,country:{code:'TR'},android_version:'15'}]},
+                    {model_key:'shared',model_name:'Shared device',testers:[{tester_id:23,country:{code:'RU'},android_version:'14'},
+                        {tester_id:24,country:{code:'TR'},android_version:'15'}]}
+                ],android_versions:[],archived_screenshots:[],
                 stats:{countries_count:8,models_count:0},
                 countries:['RU','VN','RS','US','TH','IN','GB','TR'].map(code=>({code,name:code,name_ru:code,testers_count:1,models:[]})),
-                testers_without_device:[{tester_id:11,username:'turkish_tester',full_name:'Tester from Turkey',country_code:'TR'}]
+                testers_without_device:[{tester_id:11,username:'turkish_tester',full_name:'Tester from Turkey',country_code:'TR'},
+                    {tester_id:12,username:'russian_tester',full_name:'Tester from Russia',country_code:'RU'},
+                    {tester_id:13,username:'vietnamese_tester',full_name:'Tester from Vietnam',country_code:'VN'}]
             }})});
         });
         await page.evaluate(()=>openProjectCoverage(30));
@@ -69,9 +77,25 @@ const root=path.resolve(__dirname,'..');
         assert(scroll.left>0,'Country strip must not jump to its beginning');
         assert.match(await page.locator('.coverage-unknown-device').innerText(),/Tester from Turkey.*turkish_tester.*Device details unavailable/s);
         assert.equal(await page.locator('.coverage-dimension-empty').count(),0,'No false empty-device message for an actual participant');
+        await page.evaluate(()=>selectCoverageCountry('RU'));
+        assert.equal(await page.locator('.coverage-country-pill.is-active').count(),2,'Countries add to selection');
+        assert.equal(await page.locator('.coverage-device-card').count(),3,'Models from either selected country are included');
+        assert.equal(await page.locator('.coverage-unknown-device').count(),2,'Union of selected countries');
+        assert.match(await page.locator('.coverage-dimension-active').innerText(),/RU.*TR|TR.*RU/);
+        await page.locator('.coverage-country-expand').click();
+        assert.equal(await page.locator('.coverage-country-expand').getAttribute('aria-expanded'),'true');
+        assert.equal(await page.locator('.coverage-cockpit-countries__list').evaluate(el=>getComputedStyle(el).flexWrap),'wrap');
+        await page.locator('.coverage-country-pill[data-country="RU"]').click();
+        assert.equal(await page.locator('.coverage-country-pill.is-active').count(),1,'Second click deselects only that country');
+        assert.equal(await page.locator('.coverage-country-expand').getAttribute('aria-expanded'),'true','Expansion survives filtering');
+        assert.equal(await page.locator('.coverage-country-expand').evaluate(el=>getComputedStyle(el).position),'static','Country toggle belongs to its row, not the bottom of the screen');
+        await page.locator('.coverage-cockpit-countries').screenshot({path:path.resolve(root,'../artifacts/coverage-country-multiselect.png')});
         await page.evaluate(()=>selectCoverageAndroid(14));
         assert.equal(await page.locator('.coverage-unknown-device').count(),0,'Unknown devices must not invent an Android version');
+        assert.equal(await page.locator('.coverage-device-card').count(),0,'Country and Android must match the same tester, not different testers on one model');
+        await page.evaluate(()=>selectCoverageCountry('RU'));
+        assert.equal(await page.locator('.coverage-device-card').count(),2,'Android filter intersects the union of countries');
         assert.deepEqual(errors,[]);
-        console.log('Market and coverage: disabled/status CTA, eligible choice, expired cache, unknown tester and country scroll passed');
+        console.log('Market and coverage: CTA guards, country scroll/expand/multi-select, union and Android intersection passed');
     } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
