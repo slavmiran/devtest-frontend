@@ -6820,6 +6820,10 @@ function _getCachedContributionFallback() {
         bugs_count: Number(cached.bugs_count || 0),
         ideas_count: Number(cached.ideas_count || 0),
         play_reviews_count: Number(cached.play_reviews_count || 0),
+        five_screens_count: Number(cached.five_screens_count || 0),
+        text_reports_count: Number(cached.text_reports_count || 0),
+        video_reports_count: Number(cached.video_reports_count || 0),
+
         season_rank: seasonCached.rank != null ? Number(seasonCached.rank) : null,
         season_number: seasonCached.season_number != null ? Number(seasonCached.season_number) : null,
     };
@@ -6842,6 +6846,10 @@ function _cacheContributionSeasonSnapshot(currentPayload) {
         bugs_count: Number(me.bugs_count || 0),
         ideas_count: Number(me.ideas_count || 0),
         play_reviews_count: Number(me.play_reviews_count || 0),
+        five_screens_count: Number(me.five_screens_count || 0),
+        text_reports_count: Number(me.text_reports_count || 0),
+        video_reports_count: Number(me.video_reports_count || 0),
+
     };
     visibilityStats.contribution_score = Number(me.contribution_score || 0);
     try {
@@ -7210,6 +7218,9 @@ function _renderContributionCurrentTab(payload) {
     if (ideasEl) ideasEl.textContent = String(Math.round(Number(me.ideas_count || 0)));
     if (reviewsEl) reviewsEl.textContent = String(Math.round(Number(me.play_reviews_count || 0)));
 
+    let extraCounts=document.getElementById('contribution-report-counts');
+    if(!extraCounts&&reviewsEl){extraCounts=document.createElement('div');extraCounts.id='contribution-report-counts';extraCounts.className='mk-report-counts';reviewsEl.closest('.contribution-stats')?.appendChild(extraCounts);if(!extraCounts.isConnected)reviewsEl.parentElement.parentElement.appendChild(extraCounts);}
+    if(extraCounts)extraCounts.textContent=['five_screens_count','text_reports_count','video_reports_count'].map((k,i)=>window.t('mkContribution'+(i+3),{},lang)+': '+Number(me[k]||0)).join(' · ');
     const moderationEl = document.getElementById('contribution-moderation-summary');
     if (moderationEl) {
         // Summary line now lives inside the moderation accordion header.
@@ -7427,11 +7438,12 @@ function _renderContributionHistoryTab(payload) {
             score: lifetimeScore,
             points_word: pluralizePointsWord(lifetimeScore),
         }, lang);
-        const breakdownText = window.t('contributionLifetimeBreakdownLine', {
+        let breakdownText = window.t('contributionLifetimeBreakdownLine', {
             bugs: bugsTotal,
             ideas: ideasTotal,
             reviews: reviewsTotal,
         }, lang);
+        breakdownText += ' · ' + ['five_screens_count','text_reports_count','video_reports_count'].map((k,i)=>window.t('mkContribution'+(i+3),{},lang)+': '+Number(lifetime[k]||0)).join(' · ');
         if (scoreLine && breakdownLine) {
             scoreLine.textContent = scoreText;
             breakdownLine.textContent = breakdownText;
@@ -7475,6 +7487,10 @@ async function _loadContributionCurrentTab() {
             bugs_count: fallback.bugs_count,
             ideas_count: fallback.ideas_count,
             play_reviews_count: fallback.play_reviews_count,
+            five_screens_count: fallback.five_screens_count,
+            text_reports_count: fallback.text_reports_count,
+            video_reports_count: fallback.video_reports_count,
+
         },
         gap_to_top5: (visibilityStats && visibilityStats.contribution_season && visibilityStats.contribution_season.gap_to_top5) || 0,
         leaderboard: [],

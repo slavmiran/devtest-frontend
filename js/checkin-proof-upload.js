@@ -740,7 +740,7 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     if (wasFirstCheckin && !checkin.already_checked_today && typeof markDefaultGroupJoined === 'function') {
         markDefaultGroupJoined({ silent: true, rerender: false });
     }
-    if ((!checkin.already_checked_today || Number(checkin.screenshot_boost_earned || 0) > 0)
+    if ((!checkin.already_checked_today || Number(checkin.screenshot_boost_earned || 0) > 0 || Number(checkin.earned_contribution || 0) > 0)
         && typeof showCheckinRewardToasts === 'function') showCheckinRewardToasts(checkin);
     if (typeof setFirstDayScreenshotVisible === 'function') setFirstDayScreenshotVisible(appId, false);
     if (typeof setTimerReadyForConfirm === 'function') setTimerReadyForConfirm(appId, false, false, '');
@@ -776,7 +776,7 @@ function _applyBufferCatchupProofResult(appId, result) {
     }
     if (typeof renderTests === 'function') renderTests(true);
     if (typeof refreshOpenModals === 'function') refreshOpenModals();
-    if (typeof showToast === 'function') showToast(window.t('catchupTesterSent', {}, lang));
+    if (typeof showToast === 'function') showToast(window.t('catchupTesterSent', {}, lang)+(result.contribution&&result.contribution.points>0?'\n'+window.t('mkContributionEarned',{n:result.contribution.points},lang):''));
     setTimeout(function() {
         if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
         if (typeof loadProjects === 'function') loadProjects(true).catch(function() {});
@@ -915,6 +915,7 @@ async function _runCheckinProofUploadJob(job) {
         } else {
             _applyScreenshotCheckinResult(job.appId, result, job.files ? job.files.filter(function(file) { return file.type.indexOf('image/') === 0; }).length : 0);
         }
+        if(result.contribution&&result.contribution.points>0){window.dispatchEvent(new CustomEvent('contribution:earned',{detail:result.contribution}));if(typeof loadProjects==='function')loadProjects({background:true}).catch(function(){});}
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
         if (confirmedResult) {

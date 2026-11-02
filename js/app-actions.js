@@ -5437,7 +5437,7 @@ function showCheckinRewardToasts(result) {
         }, lang)
         : '';
     var showPrimaryCheckinToast = function(message) {
-        showToast(String(message || '') + catchupSuffix + screenshotBoostSuffix + (window.ReviewCredits ? ReviewCredits.earned(result) : ''));
+        showToast(String(message || '') + catchupSuffix + screenshotBoostSuffix + (window.ReviewCredits ? ReviewCredits.earned(result) : '') + (result.earned_contribution > 0 ? '\n' + window.t('mkContributionEarned', {n:result.earned_contribution}, lang) : ''));
     };
     if (result.already_checked_today) {
         showPrimaryCheckinToast(window.t('checkinAlreadyDone', {}, lang));

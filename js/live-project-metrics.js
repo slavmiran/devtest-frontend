@@ -126,9 +126,11 @@
         return quick+'<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
             '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs, paceNote) + '</div>' +
             '<div class="live-metrics-health">' + health + '</div>' + aso +
+            '<button type="button" data-market-radar="' + id + '">' + esc(window.LiveMarket?LiveMarket.radarLabel(id):window.t('mkRadarOpen',{},window.lang)) + '</button>' +
             '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>'+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
     }
     function remember(id, metrics) {
+        if(window.LiveMarket)LiveMarket.prefetch();
         cache.set(id, metrics);
         (window.myProjects || []).concat(window.archivedProjects || []).forEach(function (project) {
             if (Number(project.id || project.app_id) === id) project.live_metrics = metrics;

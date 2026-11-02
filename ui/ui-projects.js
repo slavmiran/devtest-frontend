@@ -1508,6 +1508,10 @@ function buildDeveloperProfileWidget() {
                         bugs_count: Number(me.bugs_count || 0),
                         ideas_count: Number(me.ideas_count || 0),
                         play_reviews_count: Number(me.play_reviews_count || 0),
+                        five_screens_count: Number(me.five_screens_count || 0),
+                        text_reports_count: Number(me.text_reports_count || 0),
+                        video_reports_count: Number(me.video_reports_count || 0),
+
                     };
                     visibilityStats.contribution_score = Number(me.contribution_score || 0);
                 }
@@ -2477,7 +2481,7 @@ function renderProjects(force) {
         const visibilityMeta = getProjectVisibilityMeta(project);
         const visibilitySubText = (() => {
             if (visibilityMeta.mode === 'isolated') return window.t('settingsVisibilityIsolated', {}, lang) || 'Полная изоляция';
-            if (visibilityMeta.mode === 'hidden_manual') return window.t('settingsVisibilityPrivate', {}, lang) || 'Скрыто из витрины';
+            if (visibilityMeta.mode === 'hidden_manual') return window.t('settingsVisibilityPrivate', {}, lang) || 'Скрыто из Маркета';
             return window.t('settingsVisibilityPublic', {}, lang) || 'Публичный';
         })();
         const visibilitySvg = (() => {

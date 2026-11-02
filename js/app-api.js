@@ -404,6 +404,7 @@ function _buildGuestProjectsUrl() {
     const params = new URLSearchParams();
     params.set('lang', normalizeGuestProjectsFilterLang(_guestProjectsFilters.lang));
     params.set('category', String(_guestProjectsFilters.category || 'ALL').toUpperCase());
+    params.set('init_data', getTelegramInitDataRaw());
     return `${API_BASE}/guest-apps?${params.toString()}`;
 }
 
@@ -2007,7 +2008,7 @@ async function _loadMutualFeedImpl(options) {
     }
     _apiStart();
     try {
-        const response = await fetchWithRetry(`${API_BASE}/feed/mutual/${userId}`);
+        const response = await fetchWithRetry(`${API_BASE}/feed/mutual/${userId}?init_data=${encodeURIComponent(getTelegramInitDataRaw())}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
@@ -2107,7 +2108,7 @@ async function _loadBountyFeedImpl(options) {
     }
     _apiStart();
     try {
-        const response = await fetchWithRetry(`${API_BASE}/feed/bounty/${userId}`);
+        const response = await fetchWithRetry(`${API_BASE}/feed/bounty/${userId}?init_data=${encodeURIComponent(getTelegramInitDataRaw())}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
@@ -2493,6 +2494,9 @@ function _mapStatsFromApi(data) {
             bugs_count: Number(contribution.bugs_count || 0),
             ideas_count: Number(contribution.ideas_count || 0),
             play_reviews_count: Number(contribution.play_reviews_count || 0),
+            five_screens_count: Number(contribution.five_screens_count || 0),
+            text_reports_count: Number(contribution.text_reports_count || 0),
+            video_reports_count: Number(contribution.video_reports_count || 0),
         },
         contribution_score: Number(contribution.contribution_score || data.contribution_score || 0),
         // Keep client-cached season snapshot across projects refresh (avoids widget text jump).
@@ -3764,7 +3768,7 @@ async function apiPipelineRequestLive(appId) {
         var response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId) })
+            body: JSON.stringify({ app_id: Number(appId), owner_id: Number(userId), init_data: getTelegramInitDataRaw() })
         });
         var data = await response.json();
         if (response.ok && data.status === 'success') {
