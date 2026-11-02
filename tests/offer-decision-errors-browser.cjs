@@ -23,6 +23,9 @@ const root = path.resolve(__dirname, '..');
             }, language);
             await page.route('**/*', async route => {
                 const url = new URL(route.request().url());
+                // Exercise real decision/render modules without app bootstrap's
+                // delayed inbox fetch overwriting this test's controlled state.
+                if (url.pathname === '/app.js') return route.fulfill({ contentType: 'application/javascript', body: '' });
                 if (url.pathname === '/api/offers' && route.request().method() === 'POST') {
                     counterWrites++;
                     counterPayload = route.request().postDataJSON();
