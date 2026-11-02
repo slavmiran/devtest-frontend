@@ -2073,7 +2073,7 @@ function _getDismissedOffers() {
     var actor = String(userId || '');
     if (!_dismissedOffersByUser[actor]) {
         var ids = [];
-        try { ids = JSON.parse(localStorage.getItem('dismissed_mutual_offers_v1_' + actor) || '[]'); } catch (_) {}
+        try { ids = JSON.parse(localStorage.getItem('dismissed_mutual_offers_v2_' + actor) || '[]'); } catch (_) {}
         _dismissedOffersByUser[actor] = Array.isArray(ids) ? ids.slice(-200) : [];
     }
     return _dismissedOffersByUser[actor];
@@ -2150,7 +2150,7 @@ function dismissMutualOffer(offerId, event) {
     var ids = _getDismissedOffers();
     if (!ids.includes(Number(offerId))) ids.push(Number(offerId));
     ids.splice(0, Math.max(0, ids.length - 200));
-    try { localStorage.setItem('dismissed_mutual_offers_v1_' + String(userId || ''), JSON.stringify(ids)); } catch (_) {}
+    try { localStorage.setItem('dismissed_mutual_offers_v2_' + String(userId || ''), JSON.stringify(ids)); } catch (_) {}
     delete _offerDecisionErrors[String(offerId)];
     delete _offerTerminalErrors[String(offerId)];
     delete _offerTerminalCards[String(offerId)];
@@ -2192,15 +2192,8 @@ function _showOfferDecisionError(offerId, code, details, options) {
 
 async function decideOffer(offerId, action, event) {
     if (isMutualOfferDismissed(offerId) || _offerTerminalErrors[String(offerId)]) return;
-    var proposedOffer = (Array.isArray(incomingOffers) ? incomingOffers : []).find(function(offer) {
-        return Number(offer.offer_id) === Number(offerId);
-    });
-    if (action === 'accept' && proposedOffer && typeof getExistingMutualTargetLink === 'function'
-        && getExistingMutualTargetLink(proposedOffer.proposer_app_id, proposedOffer.proposer_id)) {
-        if (event) { event.preventDefault(); event.stopPropagation(); }
-        _showOfferDecisionError(offerId, 'mutual_target_already_linked');
-        return;
-    }
+    // Incoming decisions must reach the authenticated server. My Tests and
+    // project rosters can lag behind restarts or another accepted offer.
     if (event) {
         event.preventDefault();
         event.stopPropagation();

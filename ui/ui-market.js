@@ -1043,14 +1043,6 @@ function renderFeedCard(item, kind) {
             buttonExtraAttrs = 'aria-haspopup="dialog"';
         }
     }
-    if (kind === 'mutual-seeking' && singleIncomingOffer && typeof getExistingMutualTargetLink === 'function'
-        && getExistingMutualTargetLink(singleIncomingOffer.proposer_app_id, singleIncomingOffer.proposer_id)) {
-        buttonText = window.t('mutualTargetLinkedDetailsBtn', {}, lang);
-        clickAction = `openMutualExchangeDetails(${singleIncomingOffer.proposer_app_id}, ${singleIncomingOffer.proposer_id}, event)`;
-        buttonClass = 'btn btn-secondary';
-        buttonDisabledAttr = '';
-        buttonExtraAttrs = 'aria-haspopup="dialog"';
-    }
     if (hasAccessIssue && !isOwnProject) {
         buttonText = window.t('accessIssueCta', {}, lang);
         clickAction = 'void(0)';

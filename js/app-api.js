@@ -1295,6 +1295,7 @@ function handleApiError(code, details = {}, options = {}) {
         offer_no_available_apps: 'err_offer_no_available_apps',
         mutual_contract_active_conflict: 'err_mutual_contract_active_conflict',
         mutual_target_already_linked: 'err_mutual_target_already_linked',
+        bridge_requires_mutual_offer: 'err_bridge_requires_mutual_offer',
         offer_accept_failed: 'err_offer_accept_failed',
         offer_create_failed: 'err_offer_create_failed',
         bounty_application_already_pending: 'err_bounty_application_already_pending',
