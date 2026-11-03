@@ -1347,6 +1347,8 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(editMatch[1] || 0);
             break;
         }
+        var marketProjectMatch=normalized.match(/^market[_:](\d+)$/);
+        if(marketProjectMatch){routeKind='market_project';feedbackProjectId=Number(marketProjectMatch[1]);break;}
         var projectMatch = normalized.match(/^project[_:](\d+)$/);
         if (projectMatch) {
             routeKind = 'project';
@@ -1567,6 +1569,7 @@ function _parseInitialRouteTarget() {
             appId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
+    if(routeKind==='market_project')return {tab:'market',openMarketProject:true,appId:feedbackProjectId};
     if (routeKind === 'project') {
         return {
             tab: 'market',
@@ -1782,6 +1785,8 @@ async function _handleInitialRoute() {
         }
         return;
     }
+
+    if(route.openMarketProject&&route.appId&&window.LiveMarket){await LiveMarket.openFromLink(route.appId);return;}
 
     // ── Project route: open market and scroll to project card ──
     if (route.openProject && route.appId) {

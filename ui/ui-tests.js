@@ -1852,7 +1852,7 @@ function renderIncomingOffers() {
                         '<div class="bounty-app-name notranslate">' + primaryName + '</div>' +
                         secondaryName +
                         '<div class="bounty-app-signal bounty-app-signal--neutral">' +
-                            '<span>' + window.escapeHTML(contribLine) + '</span>' +
+                            '<span>' + window.escapeHTML(contribLine) + '</span>' + (window.LivePartnerUI?LivePartnerUI.contribution({contribution_score:offer.proposer_contribution_score,bugs_count:bugsCount,ideas_count:ideasCount,play_reviews_count:reviewsCount,five_screens_count:offer.proposer_five_screens_count,text_reports_count:offer.proposer_text_reports_count,video_reports_count:offer.proposer_video_reports_count}):'') +
                         '</div>' +
                     '</div>' +
                     '<button type="button" class="bounty-app-dossier-btn" title="' + dossierLabel + '" aria-label="' + dossierLabel + '" ' +
@@ -1882,6 +1882,7 @@ function renderIncomingOffers() {
                     '<span class="bounty-app-project-label">' + window.escapeHTML(window.t('mutualOfferSwapProject', {}, lang)) + '</span>' +
                     '<span class="bounty-app-project-name notranslate">' + window.escapeHTML(proposerAppName) + '</span>' +
                 '</div>' +
+                (window.LivePartnerUI?LivePartnerUI.html(offer.partner,{duration_days:14,install_source:'link'}):'') +
                 '<div class="action-row bounty-app-actions">' +
                     (terminalError ? renderOfferDismissButton(offer.offer_id) :
                     '<button type="button" class="btn bounty-app-accept-btn" onclick="decideOffer(' + offer.offer_id + ', \'accept\', event)">' +

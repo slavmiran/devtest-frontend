@@ -83,7 +83,7 @@
         if (/^THERMAL_/.test(code || '')) key = code;
         return '<div class="lm-lever"><strong>' + e(t('lmLever')) + '</strong><span>' + e(t(key ? 'lmLever_' + key : 'lmLeverNone')) + '</span>'+(appId&&window.LiveGuidance?LiveGuidance.forMarket(appId,scoring):'')+'</div>';
     }
-    function closeTop() { var s = sheets.pop(); if (!s) return; s.node.remove(); document.body.style.overflow = s.overflow; if (s.focus && s.focus.isConnected) s.focus.focus({preventScroll: true}); if (s.onclose) s.onclose(); if (window.syncTelegramBackButton) window.syncTelegramBackButton(); }
+    function closeTop() { var s = sheets.pop(); if (!s) return; s.node.remove(); document.body.style.overflow = s.overflow; if (s.focus && s.focus.isConnected && !s.focus.disabled) s.focus.focus({preventScroll: true}); else if(sheets.length){var parent=sheets[sheets.length-1].node.querySelector('[data-lm-close]');if(parent)parent.focus({preventScroll:true});} if (s.onclose) s.onclose(); if (window.syncTelegramBackButton) window.syncTelegramBackButton(); }
     function closeSheet(node) {
         var i=sheets.findIndex(function(s){return s.node===node;});if(i<0)return;
         if(i===sheets.length-1){closeTop();return;}
@@ -99,7 +99,7 @@
         layer.addEventListener('keydown', function (ev) {
             if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeTop(); return; }
             if (ev.key !== 'Tab') return;
-            var nodes = Array.from(layer.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),summary,a[href]')).filter(function (el) { return el.getClientRects().length; });
+            var nodes = Array.from(layer.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,a[href]')).filter(function (el) { return el.getClientRects().length; });
             if (!nodes.length) return;
             if (ev.shiftKey && document.activeElement === nodes[0]) { ev.preventDefault(); nodes[nodes.length - 1].focus(); }
             else if (!ev.shiftKey && document.activeElement === nodes[nodes.length - 1]) { ev.preventDefault(); nodes[0].focus(); }

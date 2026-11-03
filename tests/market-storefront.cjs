@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const {marketFixture}=require('./fixtures/live-market-fixture.cjs');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/market-storefront-20261102');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/market-communication-20261102');fs.mkdirSync(out,{recursive:true});
 function decorate(row){return {...row,package_name:'com.example.notes',icon_url:'https://cdn.fixture/icon.svg',
  passport:{title:row.name,category:'Productivity',content_type:'app',app_size_text:'24 MB',description:'Plan notes. <script>Never execute</script>',rating:4.6,ratings:120,
  screenshots_preview:['https://cdn.fixture/screen.svg']},owner_public:{username:'developer',reliability_index:94,karma:26.9,contribution_score:57,bugs_count:3,ideas_count:2,play_reviews_count:4,five_screens_count:5,text_reports_count:6,video_reports_count:7},owner_activity:{status:'online',hours_ago:2}};}
@@ -15,6 +15,10 @@ function decorate(row){return {...row,package_name:'com.example.notes',icon_url:
    if(url.hostname==='cdn.fixture')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="160" height="260"><rect width="160" height="260" rx="20" fill="#37b9a2"/><text x="32" y="140" fill="white" font-size="40">N</text></svg>'});
    if(url.pathname==='/api/live-market/snapshot'){
     queries.push(Object.fromEntries(url.searchParams));const data=marketFixture(40,url.searchParams,true);
+    const league={leaders:[{...decorate(marketFixture(40,new URLSearchParams(),true).ranking[0]),scoring:{...marketFixture(40,new URLSearchParams(),true).ranking[0].scoring,market_score:850,tier:1}}],flow:data.ranking.filter(p=>p.scoring.tier===3).slice(0,6),start:data.ranking.filter(p=>p.scoring.tier>=4).slice(0,6)};
+    data.league_previews=league;data.league_totals={leaders:1,flow:league.flow.length,start:league.start.length};
+    if(url.searchParams.get('tier_group')){data.ranking=league[url.searchParams.get('tier_group')]||[];data.queue=data.ranking.filter(p=>!p.own);}
+    if(url.searchParams.has('app_id'))data.ranking=[decorate({...marketFixture(40,new URLSearchParams(),true).ranking[1],app_id:Number(url.searchParams.get('app_id'))})];
     for(const k of ['ranking','queue','radar'])data[k]=data[k].map(decorate);
     if(url.searchParams.get('search'))for(const k of ['ranking','queue'])data[k]=data[k].filter(p=>p.name.toLowerCase().includes(url.searchParams.get('search').toLowerCase()));
     return route.fulfill({json:data});
@@ -42,7 +46,7 @@ function decorate(row){return {...row,package_name:'com.example.notes',icon_url:
   assert.equal(await page.locator('#live-market-legacy').evaluate(n=>n.tagName),'DIV');
   assert.equal(await page.locator('.mk-radar-capsule').getAttribute('open'),null);
   const rect=await page.locator('.mk-radar-capsule').boundingBox();assert(rect.height<=70);
-  assert.equal(await page.locator('.mk-shelf').count(),5);assert.equal(await page.locator('.mk-card.is-priority[data-mk-project="app:42"]').count(),1);assert(await page.locator('.mk-card.is-own:not(.is-priority)').count()>0);assert(await page.locator('.mk-card').first().isVisible());
+  assert.equal(await page.locator('.mk-shelf').count(),7);assert.equal(await page.locator('.mk-card.is-priority[data-mk-project="app:42"]').count(),1);assert(await page.locator('.mk-card.is-own:not(.is-priority)').count()>0);assert(await page.locator('.mk-card').first().isVisible());
   assert((await page.locator('.mk-card').first().boundingBox()).y<700,'Apps on the first screen');
   const peek=await page.locator('[data-mk-shelf=sandbox] .mk-carousel').evaluate(n=>({w:n.clientWidth,page:n.firstElementChild.offsetWidth,total:n.scrollWidth}));
   assert(peek.page<peek.w*.95&&peek.page>peek.w*.8&&peek.total>peek.w,'Visible next-column peek');
@@ -52,7 +56,7 @@ function decorate(row){return {...row,package_name:'com.example.notes',icon_url:
   await page.locator('.mk-radar-capsule>summary').click();assert.equal(await page.locator('.mk-radar-capsule .lm-factor').count(),6);
   assert(await page.locator('[data-lm-radar]').isVisible());await fits();await page.screenshot({path:path.join(out,`radar-${lang}-${width}.png`)});
   await page.locator('.mk-radar-capsule>summary').click();
-  await page.locator('[data-mk-shelf=live] .mk-card').first().click();await page.waitForSelector('.lm-sheet .mk-passport');
+  await page.locator('[data-mk-shelf=flow] .mk-card').first().click();await page.waitForSelector('.lm-sheet .mk-passport');
   assert.equal(await page.locator('.mk-gallery img').count(),1);assert.equal(await page.locator('.mk-contribution>div span').count(),6);
   await page.locator('.mk-contribution>summary').click();await fits();await page.screenshot({path:path.join(out,`about-${lang}-${width}.png`)});
   await page.keyboard.press('Escape');assert.equal(await page.locator('.lm-sheet').count(),0);
@@ -62,12 +66,12 @@ function decorate(row){return {...row,package_name:'com.example.notes',icon_url:
   await page.locator('[data-mk-search]').fill('Orbit Notes 100');await page.waitForTimeout(600);assert.equal(await page.locator('[data-mk-search]').inputValue(),'Orbit Notes 100');
   assert.equal(await page.locator('[data-mk-search]').evaluate(n=>n===document.activeElement),true,'Search focus survives server render');assert(queries.some(q=>q.search==='Orbit Notes 100'));
   await page.locator('[data-mk-search]').fill('');await page.waitForTimeout(600);
-  await page.locator('[data-mk-section=live]').click();await page.locator('[data-mk-league=leaders]').click();await page.waitForTimeout(300);assert(queries.some(q=>q.tier_group==='leaders'));
+  await page.locator('[data-mk-section=live]').click();await page.locator('[data-mk-league-all=leaders]').click();await page.waitForTimeout(300);assert(queries.some(q=>q.tier_group==='leaders'));
   await page.locator('[data-mk-geo]').click();await page.waitForTimeout(300);assert(queries.some(q=>q.country==='TH'));
   await page.evaluate(()=>{window.capturedToasts=[];window.showToast=text=>capturedToasts.push(text);showCheckinRewardToasts({already_checked_today:true,earned_contribution:2});showCheckinRewardToasts({already_checked_today:true,earned_contribution:0});});
   const receipts=await page.evaluate(()=>capturedToasts);assert.match(receipts[0],/\+2/);assert.doesNotMatch(receipts[1],/\+2/);
   await page.evaluate(async()=>{resetMarketFetchThrottle();await Promise.all([loadMutualFeed(),loadBountyFeed(),loadGuestApps({force:true})]);});assert(feedReads.some(p=>p.includes('/feed/mutual/'))&&feedReads.some(p=>p.includes('/feed/bounty/'))&&feedReads.includes('/api/guest-apps'));
   await fits();assert.deepEqual(errors,[]);await page.close();
  }
- console.log('Market storefront: real index RU/EN × 360/390/430; collapsed Radar, five shelves, peek, metadata, owner, six contribution categories, original Closed actions, filters/query/caret, About sheet/Escape and overflow passed.');
+ console.log('Market storefront: real index RU/EN × 360/390/430; collapsed Radar, three league shelves and four thematic shelves, peek, metadata, owner, six contribution categories, original Closed actions, filters/query/caret, About sheet/Escape and overflow passed.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -5061,3 +5061,63 @@ Object.assign(window.I18NEN, {
 Object.assign(window.I18NEN, {mkPublicScore: 'Market rating indicators'});
 
 Object.assign(window.I18NEN, {mkStartBuffer: '🛡 D1–D3 buffer'});
+
+Object.assign(window.I18NEN, {
+  "mkLeagueLeaders": "🏆 Premier league · Tier 1–2",
+  "mkLeagueFlow": "⚡ Steady growth · Tier 3",
+  "mkLeagueStart": "🌱 Launch and momentum · Tier 4–5",
+  "mkFiltertier": "Tier",
+  "mkT1": "Tier 1",
+  "mkT2": "Tier 2",
+  "mkT3": "Tier 3",
+  "mkT4": "Tier 4",
+  "mkT5": "Tier 5",
+  "lqUnlock": "Opens: {date}",
+  "lqDeadline": "Install by: {date}",
+  "lqWindow": "{hours}h after opening · an unused reservation expires without penalty",
+  "lqScheduleFrozen": "The schedule is being confirmed. Your responsibility clock is paused.",
+  "lqCountdown": "🔒 Window opens in: {time}",
+  "lqEarly": "⚡ Skip the timer — install now",
+  "lqAllowEarly": "⚡ Allow installation now",
+  "lqTitle": "⚡ Early installation outside the pace queue",
+  "lqWarning": "The project is on a protective pause to spread installations over time.",
+  "lqConsequences": "The slot opens immediately. Daily traffic may exceed the upper corridor: a confirmed install may increase the heat indicator and postpone windows for the next participants. Retention, checkpoint payments and exchange credit stay the same.",
+  "lqOwnerHint": "You open the participant’s window. They must install and confirm the app themselves.",
+  "lqWait": "Wait as scheduled (recommended)",
+  "lqConfirm": "⚡ Install now anyway",
+  "lqConfirmOwner": "⚡ Open the window anyway",
+  "lqSuccess": "The installation window is open",
+  "lqError": "The window cannot open now. Check the latest schedule and project visibility.",
+  "mtpTitle": "📢 Telegram Market post",
+  "mtpBump": "🚀 Bump · 100 $BUST",
+  "mtpPublished": "Published in the topic",
+  "mtpOpenPost": "↗ View the post",
+  "mtpNotPublished": "No post yet. Save the settings to publish it for free.",
+  "mtpPitch": "Presentation text (optional)",
+  "mtpPitchHint": "Up to 400 characters. Leave empty to use Google Play text.",
+  "mtpPassport": "From Google Play Passport",
+  "mtpCustom": "Custom banner",
+  "mtpUpload": "Choose PNG / JPEG / WebP · up to 5 MB",
+  "mtpSave": "Save and update the post",
+  "mtpSaved": "Post updated",
+  "mtpWallet": "Your balance: {n} $BUST",
+  "mtpBumpHint": "A new post will appear at the end of the topic. You pay 100 $BUST only after it is sent successfully. Available once every 15 minutes.",
+  "mtpBumpConfirm": "Bump for 100 $BUST",
+  "mtpCancel": "Cancel",
+  "mtpBusy": "Publication is in progress. Refresh the status in a few seconds.",
+  "mtpUncertain": "Telegram did not confirm delivery. Another send is blocked to avoid a duplicate. You were not charged. Contact support.",
+  "mtpFailed": "The post could not be updated. Settings were saved; please retry.",
+  "mtpCooldown": "You can bump once every 15 minutes.",
+  "mtpLowBalance": "You need 100 $BUST in your main wallet.",
+  "mtpPrivate": "Posting is available for public Live projects. Restore visibility in settings.",
+  "mtpInvalidImage": "Choose a PNG, JPEG or WebP up to 5 MB.",
+  "mtpAsset": "Upload a custom banner first.",
+  "mtpConflict": "Settings changed elsewhere. Refresh the status and retry.",
+  "mtpRefresh": "Refresh status",
+  "mtpPreview": "Post banner",
+  "mtpNoData": "Could not load post settings."
+});
+
+Object.assign(window.I18NEN, {"lpLive": "🚀 Live Market · Tier {tier} (#{rank} · {score})", "lpCalibration": "🚀 Live Market · rating calibrating", "lpTesting": "🧪 Closed test · Day {day}/14", "lpTrack": "{source} · {days} days · Review: {review}", "lpReview_off": "Off", "lpReview_voluntary": "Voluntary", "lpReview_required": "Required", "lpPro": "PRO supplement: {n} $BUST", "lpOwner": "Reliability: {reliability}% · Karma: {karma} · Tests: {tests}", "lpPlay": "View on Google Play"});
+
+Object.assign(window.I18NEN, {"lqOwnerQueue": "Participant queue", "lqNoWaiting": "No participants are waiting to install."});
