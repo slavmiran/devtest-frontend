@@ -3,7 +3,7 @@
     'use strict';
     var U = window.LiveMarketUI, data = null, root = null, frame = 0, searchTimer;
     var view = {section:'all', search:'', content:'', country:'', reviews:false, instant:false, scenario:false, source:'', term:'', league:'', tier:''};
-    var radarOpen = false, actor = '', contributionKeys = ['bugs_count','ideas_count','play_reviews_count','five_screens_count','text_reports_count','video_reports_count'];
+    var inactiveFilter='',inactiveOpen=false;var radarOpen = false, actor = '', contributionKeys = ['bugs_count','ideas_count','play_reviews_count','five_screens_count','text_reports_count','video_reports_count'];
     function t(key,vars) { return window.t(key,vars||{},window.lang||'ru'); }
     function e(value) { return window.escapeHTML(String(value==null?'':value)); }
     function money(value) { return U.n(value,0); }
@@ -56,26 +56,28 @@
             var prior=rows.find(function(x){return x._key===key;});if(kind==='bounty'){prior._contract=item;prior._hasContract=true;}if(kind==='returns')prior._return=true;return;}
             seen.add(key);if(kind==='bounty')row._hasContract=true;if(kind==='returns')row._return=true;rows.push(row);});}
         Object.values(data&&data.leaguePreviews||{}).forEach(function(rows){add(rows,'live');});
-        add(data?data.ranking:[],'live');add(data?data.queue:[],'live');
+        add(data?data.inactivePreviews:[],'live');add(data?data.ranking:[],'live');add(data?data.queue:[],'live');
         var clean=typeof window._showcaseAvailableFeedItems==='function'?window._showcaseAvailableFeedItems:function(x){return x||[];};
         add(clean(array('mutualReturns')),'returns');add(clean(array('mutualSeeking')),'mutual-seeking');add(clean(array('bountyContracts')),'bounty');add(clean(array('mutualPrelaunch')),'mutual-prelaunch');add(array('guestProjects'),'guest');add(array('mutualIsolated'),'isolated');
         return rows.filter(visible);
     }
+    function dormant(row){var a=row.owner_activity;if(a&&a.hours_ago!=null)return a.hours_ago>=168;var stamp=Date.parse(row.last_seen_at||row.last_owner_activity);return Number.isFinite(stamp)&&Date.now()-stamp>=7*86400000;}
+    function inactiveShelf(rows){if(!rows.length)return '';var selected=rows.filter(function(r){var tier=r.scoring&&r.scoring.tier;return !inactiveFilter||inactiveFilter==='instant'&&offers(r).some(function(o){return o.instant_install;})||inactiveFilter==='high'&&tier<=3||inactiveFilter==='low'&&tier>=4||inactiveFilter==='sandbox'&&r._kind!=='live';});return '<details class="mk-inactive" data-mk-shelf="inactive" '+(inactiveOpen?'open':'')+'><summary>'+e(t('mkInactive',{n:Math.max(rows.length,data&&data.inactiveTotal||0)}))+'</summary><div class="mk-leagues">'+[['','mkAll'],['instant','mkInstant'],['high','mkHighTiers'],['low','mkLowTiers'],['sandbox','mkSandbox']].map(function(v){return '<button type="button" data-mk-inactive="'+v[0]+'" aria-pressed="'+(inactiveFilter===v[0])+'">'+e(t(v[1]))+'</button>';}).join('')+'</div><div class="mk-carousel">'+pages(selected,2)+'</div>'+((data&&data.inactiveOffset||12)<(data&&data.inactiveTotal||0)?'<button class="lm-action" data-mk-inactive-more>'+e(t('lmMore'))+'</button>':'')+'</details>';}
     function sourceText(source) {return t({keywords:'lmKeywords',key:'lmKeywords',web:'lmWeb',browser:'lmWeb',link:'lmLink'}[source]||'lmLink');}
     function card(row) {
         var p=row.passport||{},o=owner(row),sc=row.scoring||{},tasks=offers(row),tier=sc.tier;
         var icon=U.safeImage?U.safeImage(row.icon_url||p.icon_url):/^https:\/\//.test(row.icon_url||p.icon_url||'');
-        var chosen=data&&((data.radar||[]).find(function(p){return Number(p.app_id)===Number(data.radarId);})||(data.radar||[])[0]),priority=row.own&&chosen&&id(chosen)===id(row);
-        var tags=[];if(row.own)tags.push(t(priority?'lmPriorityOwn':'lmOwnRank',{rank:row.rank}));
+        var chosen=data&&((data.radar||[]).find(function(p){return Number(p.app_id)===Number(data.radarId);})||(!data.radarId?(data.radar||[])[0]:null)),priority=row.own&&chosen&&id(chosen)===id(row);
+        var tags=[];var bridge=tasks.find(function(o){return o.closed_test_compatible&&o.ready;});if(bridge){tags.push(t('mkTakesClosed'));if(bridge.control_day_count<5)tags.push(t('mkFewerReports',{n:bridge.control_day_count}));}if(row.own)tags.push(t(priority?'lmPriorityOwn':'lmOwnRank',{rank:row.rank}));
         if(available(row))tags.push(t(tasks.some(function(x){return x.instant_install;})?'mkInstant':'mkSuitable'));
         var task=tasks[0];if(task)tags.push(sourceText(task.source)+' · D'+(task.min_days&&task.min_days!==task.max_days?task.min_days+'–'+task.max_days:task.duration_days||14));
         var contract=tasks.find(function(x){return x.offer_type==='contract';});if(contract||row._hasContract){var reward=contract&&(contract.reward_min||contract.reward_bust)||row.bounty_per_tester||row._contract&&row._contract.bounty_per_tester,max=contract&&contract.reward_max;tags.push('💎 '+(reward?money(reward)+(max&&max!==reward?'–'+money(max):'')+' $BUST':t('lmContracts')));if(contract&&contract.schemaVersion===6)tags.push(t('mkStartBuffer'));}
         if(tasks.some(function(x){return x.reviews_available;}))tags.push(t('mkReviewTag'));
-        if(row.instructions||tasks.some(function(x){return x.scenario_enabled;}))tags.push(t('mkScenario'));
+        if(row.instructions||tasks.some(function(x){return x.scenario_enabled;}))tags.push(window.LiveRouteUI&&tasks.find(function(x){return x.activity&&x.activity.enabled;})?LiveRouteUI.badge(tasks.find(function(x){return x.activity&&x.activity.enabled;}).activity):t('mkScenario'));
         var geo=tasks.map(function(x){return x.country;}).filter(Boolean).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ');
         return '<button type="button" class="mk-card'+(row.own?' is-own':'')+(priority?' is-priority':'')+(!available(row)?' is-unavailable':'')+'" data-mk-project="'+e(row._key)+'"><span class="mk-app-icon">'+(icon?'<img src="'+e(row.icon_url||p.icon_url)+'" loading="lazy" referrerpolicy="no-referrer" alt="">':'📱')+'<small>'+e(tier?'T'+tier:row._kind==='guest'?'👽':'🧪')+'</small></span><span class="mk-card-copy"><strong class="notranslate">'+e(row.name||p.title||row.package_name||t('lmProject'))+'</strong><span class="mk-owner-mini">'+activity(row,true)+'<span>🛡 '+e(o.reliability_index==null?'—':money(o.reliability_index)+'%')+'</span><span>⚡ '+e(money(o.contribution_score||0))+'</span><span>'+e(t('mkKarma',{n:o.karma==null?'—':U.n(o.karma)}))+'</span>'+(row.rank?'<span>#'+e(row.rank)+'</span>':'')+'</span>'+(metadata(row)||geo?'<small class="mk-meta">'+e([metadata(row),geo].filter(Boolean).join(' · '))+'</small>':'')+'<span class="mk-tags">'+tags.slice(0,6).map(function(tag){return '<i>'+e(tag)+'</i>';}).join('')+'</span></span></button>';
     }
-    function pages(rows) {var html='',size=matchMedia('(min-width:760px)').matches?6:3;for(var i=0;i<rows.length;i+=size)html+='<div class="mk-page">'+rows.slice(i,i+size).map(card).join('')+'</div>';return html;}
+    function pages(rows,height) {var html='',size=(height||3)*(matchMedia('(min-width:760px)').matches?2:1);for(var i=0;i<rows.length;i+=size)html+='<div class="mk-page">'+rows.slice(i,i+size).map(card).join('')+'</div>';return html;}
     function shelf(key,rows,title) {
         if(!rows.length&&key==='returns')return '';
         var total=rows.length;
@@ -84,11 +86,11 @@
         return '<section class="mk-shelf" data-mk-shelf="'+key+'"><header><h2>'+e(t(title))+'</h2><button type="button" data-mk-all="'+key+'">'+e(t('mkSeeAll',{n:total}))+' ›</button></header>'+(key==='live'?leagueTabs():'')+'<div class="mk-carousel" tabindex="0" aria-label="'+e(t(title))+'">'+(rows.length?pages(rows):'<p class="mk-empty">'+e(t('mkNoResults'))+'</p>')+'</div></section>';
     }
     function liveShelves(rows){
-        return '<section class="mk-live-leagues"><h2 class="mk-live-heading">'+e(t('mkLive'))+'</h2>'+[['leaders',[1,2],'mkLeagueLeaders'],['flow',[3],'mkLeagueFlow'],['start',[4,5,null],'mkLeagueStart']].map(function(group){
-            if(view.league&&view.league!==group[0])return '';
+        return '<section class="mk-live-leagues"><h2 class="mk-live-heading">'+e(t('mkLive'))+'</h2>'+[['1',[1],'mkTier1'],['2',[2],'mkTier2'],['3',[3],'mkTier3'],['4',[4],'mkTier4'],['5',[5,null],'mkTier5']].map(function(group){
+            if(view.tier&&view.tier!==group[0])return '';
             var projects=rows.filter(function(p){return group[1].includes(p.scoring&&p.scoring.tier||null);}),total=data&&data.leagueTotals&&data.leagueTotals[group[0]];
             if(!projects.length&&!total)return '';
-            return '<section class="mk-shelf mk-league is-'+group[0]+'" data-mk-shelf="'+group[0]+'"><header><span class="mk-league-emblem" aria-hidden="true">'+({leaders:'♜',flow:'ϟ',start:'↗'}[group[0]])+'</span><h2>'+e(t(group[2]))+'</h2><button type="button" data-mk-league-all="'+group[0]+'">'+e(t('mkSeeAll',{n:total==null?projects.length:total}))+' ›</button></header><div class="mk-carousel" tabindex="0" aria-label="'+e(t(group[2]))+'">'+pages(projects)+'</div></section>';
+            return '<section class="mk-shelf mk-league is-'+group[0]+'" data-mk-shelf="'+group[0]+'"><header><span class="mk-league-emblem" aria-hidden="true">'+({1:'♜',2:'◆',3:'ϟ',4:'↗',5:'◦'}[group[0]])+'</span><h2>'+e(t(group[2]))+'</h2><button type="button" data-mk-league-all="'+group[0]+'">'+e(t('mkSeeAll',{n:total==null?projects.length:total}))+' ›</button></header><div class="mk-carousel" style="--mk-rows:'+({1:5,2:4,3:3,4:2,5:2}[group[0]])+'" tabindex="0" aria-label="'+e(t(group[2]))+'">'+pages(projects,{1:5,2:4,3:3,4:2,5:2}[group[0]])+'</div></section>';
         }).join('')+'</section>';
     }
     function leagueTabs(){return '<div class="mk-leagues">'+[['','mkAll'],['leaders','mkLeaders'],['flow','mkFlow'],['start','mkStart']].map(function(v){return '<button type="button" data-mk-league="'+v[0]+'" aria-pressed="'+(view.league===v[0])+'">'+e(t(v[1]))+'</button>';}).join('')+'</div>';}
@@ -99,9 +101,11 @@
     function update(node,snapshot) {
         root=node;data=snapshot;
         var who=U.auth();if(actor!==who){actor=who;radarOpen=false;view={section:'all',search:'',content:'',country:'',reviews:false,instant:false,scenario:false,source:'',term:'',league:'',tier:''};}
-        var radar=root.querySelector('.lm-radar');
+        var radar=root.querySelector('.lm-radar'),closed=((data.sandbox||{}).own_projects||[]).find(function(p){return Number(p.app_id)===Number(data.radarId);});
         if(radar){var chosen=(data.radar||[]).find(function(r){return Number(r.app_id)===Number(data.radarId);})||(data.radar||[])[0],capsule=document.createElement('details');capsule.className='mk-radar-capsule';capsule.open=radarOpen;
             capsule.innerHTML='<summary><span class="mk-radar-symbol">◎</span><span><strong>'+e(t('lmRadar'))+(chosen?': '+e(chosen.name):'')+'</strong><small>'+e(chosen?'Tier '+(chosen.scoring.tier||'—')+' · #'+chosen.rank+' / '+chosen.out_of+' · '+money(chosen.scoring.market_score)+'/1000':t('lmNoLiveRadar'))+'</small></span><span class="mk-radar-next">'+e(chosen&&chosen.next_rank_score!=null?t('mkNextRank',{n:chosen.rank-1,diff:money(chosen.points_to_next_rank)}):'')+'</span><i aria-hidden="true">⌄</i></summary>';
+            if(closed){var count=Number(closed.team)||0;capsule.querySelector('summary').innerHTML='<span>🧪</span><span><strong>'+e(closed.name)+'</strong><small>'+e(t(count<12?'mkTeamMinimum':'mkTeamReserve',{day:closed.day,n:count,left:Math.max(0,(count<12?12:20)-count)}))+'</small></span><i>⌄</i>';}
+            var choices=(data.radar||[]).map(function(p){return {app_id:p.app_id,name:p.name,label:'🚀 #'+p.rank};}).concat(((data.sandbox||{}).own_projects||[]).map(function(p){return {app_id:p.app_id,name:p.name,label:'🧪 D'+p.day};}));if(choices.length){var chooser=document.createElement('select');chooser.className='mk-priority-select';chooser.setAttribute('aria-label',t('lmPriorityProject'));chooser.innerHTML=choices.map(function(p){return '<option value="'+p.app_id+'" '+(Number(p.app_id)===Number(data.radarId)?'selected':'')+'>'+e(p.label+' · '+p.name)+'</option>';}).join('');chooser.onchange=function(){LiveMarket.selectPriority(this.value);};radar.prepend(chooser);}
             radar.replaceWith(capsule);capsule.appendChild(radar);capsule.addEventListener('toggle',function(){radarOpen=capsule.open;});}
         root.classList.add('mk-enabled');
         var host=document.createElement('div');host.id='market-storefront';root.appendChild(host);paint();
@@ -110,11 +114,11 @@
     function paint() {
         if(!root)return;var host=root.querySelector('#market-storefront');if(!host)return;
         var active=document.activeElement,searchFocused=active&&active.hasAttribute('data-mk-search'),cursor=searchFocused?active.selectionStart:null;
-        var rows=allRows(),groups={returns:rows.filter(function(p){return p._return;}),recommended:rows.filter(function(p){return available(p)&&!p.own&&!p.is_own_project;}),contracts:rows.filter(function(p){return !p.own&&!p.is_own_project&&(p._hasContract||offers(p).some(function(o){return o.offer_type==='contract';}));}),live:rows.filter(function(p){return p._kind==='live';}),sandbox:rows.filter(function(p){return p._kind!=='live';})};
+        var combined=allRows(),inactive=combined.filter(dormant),rows=combined.filter(function(p){return !dormant(p);}),groups={returns:rows.filter(function(p){return p._return;}),recommended:rows.filter(function(p){return available(p)&&!p.own&&!p.is_own_project;}),contracts:rows.filter(function(p){return !p.own&&!p.is_own_project&&(p._hasContract||offers(p).some(function(o){return o.offer_type==='contract';}));}),live:rows.filter(function(p){return p._kind==='live';}),sandbox:rows.filter(function(p){return p._kind!=='live';})};
         var priority=new Map((data&&data.queue||[]).map(function(p,i){return [id(p),i];}));groups.recommended.sort(function(a,b){return (priority.has(id(a))?priority.get(id(a)):100000)-(priority.has(id(b))?priority.get(id(b)):100000);});
         groups.live.sort(function(a,b){return (a.rank||1e9)-(b.rank||1e9);});
         if(view.league)groups.live=groups.live.filter(function(p){var tier=p.scoring&&p.scoring.tier;return view.league==='leaders'?tier<=2:view.league==='flow'?tier===3:!tier||tier>=4;});
-        host.innerHTML='<header class="mk-title"><h1>'+e(t('tabMarket'))+'</h1><button type="button" class="lm-icon" data-lm-model aria-label="'+e(t('lmModelInfo'))+'">ⓘ</button><button type="button" class="lm-icon" data-lm-refresh aria-label="'+e(t('lmRefresh'))+'">↻</button></header>'+controls()+(view.section==='live'&&!view.league?liveShelves(groups.live):view.section==='all'?shelf('returns',groups.returns,'mkReturns')+shelf('recommended',groups.recommended,'mkRecommended')+shelf('contracts',groups.contracts,'mkEarn')+liveShelves(groups.live)+shelf('sandbox',groups.sandbox,'mkSandbox'):'<section class="mk-full-list"><h2>'+e(t({recommended:'mkRecommended',contracts:'mkEarn',live:'mkLive',sandbox:'mkSandbox',returns:'mkReturns'}[view.section]))+'</h2>'+(view.section==='live'?leagueTabs():'')+(groups[view.section]||[]).map(card).join('')+(!(groups[view.section]||[]).length?'<p class="mk-empty">'+e(t('mkNoResults'))+'</p>':'')+'</section>')+(data&&data.error?'<p role="alert" class="lm-error">'+e(t('lmError'))+'</p>':'')+(data&&data.loading?'<p role="status" class="mk-empty">'+e(t('lmLoading'))+'</p>':'')+(data&&Math.max(data.totals.ranking||0,data.totals.queue||0)>data.offset?'<button type="button" class="lm-action" data-mk-more>'+e(t('lmMore'))+'</button>':'');
+        host.innerHTML='<header class="mk-title"><h1>'+e(t('tabMarket'))+'</h1><button type="button" class="lm-icon" data-lm-model aria-label="'+e(t('lmModelInfo'))+'">ⓘ</button><button type="button" class="lm-icon" data-lm-refresh aria-label="'+e(t('lmRefresh'))+'">↻</button></header>'+controls()+(view.section==='live'&&!view.league?liveShelves(groups.live):view.section==='all'?shelf('returns',groups.returns,'mkReturns')+shelf('recommended',groups.recommended,'mkRecommended')+shelf('contracts',groups.contracts,'mkEarn')+liveShelves(groups.live)+shelf('sandbox',groups.sandbox,'mkSandbox'):'<section class="mk-full-list"><h2>'+e(t({recommended:'mkRecommended',contracts:'mkEarn',live:'mkLive',sandbox:'mkSandbox',returns:'mkReturns'}[view.section]))+'</h2>'+(view.section==='live'?leagueTabs():'')+(groups[view.section]||[]).map(card).join('')+(!(groups[view.section]||[]).length?'<p class="mk-empty">'+e(t('mkNoResults'))+'</p>':'')+'</section>') +inactiveShelf(inactive)+(data&&data.error?'<p role="alert" class="lm-error">'+e(t('lmError'))+'</p>':'')+(data&&data.loading?'<p role="status" class="mk-empty">'+e(t('lmLoading'))+'</p>':'')+(data&&Math.max(data.totals.ranking||0,data.totals.queue||0)>data.offset?'<button type="button" class="lm-action" data-mk-more>'+e(t('lmMore'))+'</button>':'');
         if(searchFocused){var input=host.querySelector('[data-mk-search]');input.focus({preventScroll:true});if(cursor!=null)input.setSelectionRange(cursor,cursor);}
     }
     function refreshQuery(){var pending;if(window.LiveMarket&&LiveMarket.filter)pending=LiveMarket.filter({source:view.source,term:view.term,country:view.country,instant:view.instant,reviews:view.reviews,contracts:view.section==='contracts',search:view.search,content:view.content,scenario:view.scenario,league:view.league,tier:view.tier});paint();return pending;}
@@ -134,17 +138,20 @@
         layer.addEventListener('click',function(ev){var action=ev.target.closest('.market-card button[onclick]');if(action&&!action.disabled)U.close(layer);},true);
     }
     function show(section){view.section=section;return refreshQuery();}
-    document.addEventListener('click',function(ev){var b=ev.target.closest('[data-mk-section],[data-mk-all],[data-mk-toggle],[data-mk-league],[data-mk-league-all],[data-mk-geo],[data-mk-project],[data-market-radar],[data-mk-more]');if(!b)return;
+    document.addEventListener('click',function(ev){var b=ev.target.closest('[data-mk-section],[data-mk-all],[data-mk-toggle],[data-mk-league],[data-mk-league-all],[data-mk-geo],[data-mk-project],[data-market-radar],[data-mk-more],[data-mk-inactive],[data-mk-inactive-more]');if(!b)return;
+        if(b.hasAttribute('data-mk-inactive-more')){LiveMarket.loadDormant(true);return;}
+        if(b.hasAttribute('data-mk-inactive')){inactiveFilter=b.dataset.mkInactive;inactiveOpen=true;paint();return;}
         if(b.hasAttribute('data-market-radar')){ev.preventDefault();LiveMarket.openRadar(Number(b.dataset.marketRadar));return;}
         if(b.hasAttribute('data-mk-project'))return open(b.dataset.mkProject);
         if(b.hasAttribute('data-mk-section'))return show(b.dataset.mkSection);
         if(b.hasAttribute('data-mk-all'))return show(b.dataset.mkAll);
         if(b.hasAttribute('data-mk-more'))return LiveMarket.more();
-        if(b.hasAttribute('data-mk-league-all')){view.section='live';view.league=b.dataset.mkLeagueAll;refreshQuery();return;}
+        if(b.hasAttribute('data-mk-league-all')){view.section='live';view.league='';view.tier=b.dataset.mkLeagueAll;refreshQuery();return;}
         if(b.hasAttribute('data-mk-league')){view.league=b.dataset.mkLeague;refreshQuery();return;}
         if(b.hasAttribute('data-mk-toggle')){view[b.dataset.mkToggle]=!view[b.dataset.mkToggle];refreshQuery();return;}
         if(b.hasAttribute('data-mk-geo')&&window.ShowcaseGeo)ShowcaseGeo.openPicker({value:view.country,titleKey:'lmGeo',anyKey:'lmAll',onChoose:function(code){view.country=code||'';refreshQuery();}});
     });
+    document.addEventListener('toggle',function(ev){if(ev.target.classList&&ev.target.classList.contains('mk-inactive')){inactiveOpen=ev.target.open;if(inactiveOpen&&window.LiveMarket)LiveMarket.loadDormant(false);}},true);
     document.addEventListener('input',function(ev){if(ev.target.hasAttribute('data-mk-search')){view.search=ev.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(refreshQuery,300);}});
     document.addEventListener('change',function(ev){if(ev.target.dataset.mkFilter){view[ev.target.dataset.mkFilter]=ev.target.value;refreshQuery();}});
     document.addEventListener('DOMContentLoaded',function(){var sources=document.getElementById('live-market-legacy');if(sources){var observer=new MutationObserver(function(){if(frame)return;frame=requestAnimationFrame(function(){frame=0;paint();});});observer.observe(sources,{childList:true,subtree:true});}});

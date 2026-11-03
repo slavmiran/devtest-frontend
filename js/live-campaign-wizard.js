@@ -116,20 +116,22 @@
         catch(_){if(accessible(s))s.context.geoError=true;}
         finally{if(accessible(s)){s.context.geoLoading=false;if(s.step===1)render(s,false);}}
     }
-    function mediaExists(s,key){return key==='web' || s.draft.keywords.some(function(k){return 'keyword:'+k.id===key;});}
+    function mediaExists(s,key){return key==='web' || /^scenario:[0-4]$/.test(key) || (key.startsWith('step:')&&(s.draft.activity.steps||[]).some(function(x){return 'step:'+x._key===key;})) || s.draft.keywords.some(function(k){return 'keyword:'+k.id===key;});}
     async function fileInput(s,input){
         var key=input.dataset.lcwFile,file=input.files[0];if(!file)return;
         try{
             var result=await s.media.attach(key,file,function(){return accessible(s) && mediaExists(s,key);});
             if(result && accessible(s)){s.draft=LiveCampaignDraft.media(s.draft,key,result);s.edited=true;render(s,false);}
-        }catch(_){if(accessible(s))toast('lcwInvalidImage');}
+        }catch(_){if(accessible(s))toast(key.startsWith('step:')?'lseInvalidMedia':'lcwInvalidImage');}
         input.value='';
     }
     function input(event){
         var s=session,el=event.target;if(!s)return;if(!accessible(s)){dispose(s);return;}
         if(s.confirming||s.saving)return;
         if(el.dataset.ctField){var name=el.dataset.ctField,value=Number(el.value),ok=el.value.trim()!==''&&Number.isInteger(value)&&value>=Number(el.min)&&value<=Number(el.max);el.setAttribute('aria-invalid',String(!ok));if(ok){if(name.startsWith('source_'))s.draft.contracts.source_bonus_bust[name.slice(7)]=value;else s.draft.contracts[name]=value;s.edited=true;}refresh(s);return;}
-        var field=el.dataset.lcwInput;if(!field)return;
+        if(window.LiveScenarioEditor&&LiveScenarioEditor.input(s.draft.activity,el)){s.edited=true;refresh(s);return;}var field=el.dataset.lcwInput;if(!field)return;
+        if(field==='scenarioLimit'){var limit=el.value===''?null:Number(el.value),valid=limit===null||Number.isInteger(limit)&&limit>=1&&limit<=100000;el.setAttribute('aria-invalid',String(!valid));if(valid){s.draft=LiveCampaignDraft.change(s.draft,field,limit);s.edited=true;}refresh(s);return;}
+        if(field==='scenarioTitle'){s.draft=LiveCampaignDraft.change(s.draft,field,el.value);s.edited=true;refresh(s);return;}
         if(field==='manualKey'){s.context.manualKey=el.value;return;}
         if(['daily','period','target','retention','minDays','maxDays','checkpointCount','checkpointInterval','pauseHours'].includes(field)||field.indexOf('cap:')===0||field.indexOf('plan:')===0){
             var min=Number(el.min),max=Number(el.max),value=Number(el.value);
@@ -151,7 +153,7 @@
         var s=session;if(!s)return;if(!accessible(s)){event.preventDefault();dispose(s);return;}
         if(s.outlineOpen && !event.target.closest('.gtw-header')){s.outlineOpen=false;shell(s);}
         var button=event.target.closest('button');if(!button || button.disabled)return;event.stopPropagation();if(s.confirming||s.saving)return;
-        var action=button.dataset.lcwAction,field=button.dataset.lcwField,id=button.dataset.keyword;
+        var action=button.dataset.lcwAction,field=button.dataset.lcwField,id=button.dataset.keyword;if(window.LiveScenarioEditor&&LiveScenarioEditor.click(s.draft.activity,button,s.media)){s.edited=true;render(s,false);return;}
         if(button.hasAttribute('data-ct-enable')){s.draft.contracts.enabled=!s.draft.contracts.enabled;s.edited=true;render(s,false);return;}
         if(button.dataset.ctMode){s.draft.contracts.payout_mode=button.dataset.ctMode;s.edited=true;render(s,false);return;}
         if(action==='key-geo'){var row=s.draft.keywords.find(function(k){return k.id===id;});if(!row)return;ShowcaseGeo.openPicker({value:null,titleKey:'kwGeo',hintKey:'kwGeoHint',anyKey:'lcGeoAny',onChoose:function(code){if(!accessible(s))return;var countries=code?Array.from(new Set((row.geo_countries||[]).concat(code))).slice(0,50):[];s.draft=LiveCampaignDraft.keyword(s.draft,id,'geo_countries',countries);s.edited=true;render(s,false);}});return;}
@@ -201,7 +203,7 @@
             if(s.editing)return;s.media.clear();var projectPolicy=Object.assign({},s.draft.volume);s.draft=LiveCampaignDraft.applyStrategy(s.draft,template);if(s.context.projectControl)Object.assign(s.draft.volume,LiveProjectControl.policy(projectPolicy));s.draft.name=text({aso:'lcwAso',retention:'lcwRetention',deep:'lcwDeep'}[template]);if(template==='deep')s.draft.activity.instructions=text('lcgDefaultScenario');s.edited=false;s.webEdited=false;s.context.manualKey='';s.quickStatus='paused';return save(s,s.quickStatus);
         }
         if(field){
-            var value=button.dataset.value;value=(['source','mode','allowedSource','preferredSource'].includes(field)||LiveManualPlan.textField(field))?value:value==='true'?true:value==='false'?false:Number(value);
+            var value=button.dataset.value;value=(['source','mode','allowedSource','preferredSource','limit_mode'].includes(field)||LiveManualPlan.textField(field))?value:value==='true'?true:value==='false'?false:Number(value);
             if(field.indexOf('cap:')===0){if(!s.context.projectControl)return;LiveProjectControl.change(s.context.projectControl,field.slice(4),value);s.context.allocationEdited=true;render(s,false);return;}
             var next=LiveCampaignDraft.change(s.draft,field,value);
             if(field==='checkpoint' && next===s.draft){toast('lcwMinimum');return;}s.draft=next;s.edited=true;

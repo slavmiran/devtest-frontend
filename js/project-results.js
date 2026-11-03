@@ -357,6 +357,7 @@
             }
         ];
 
+        if (project.phase === 'live' || summary.scenarios_count) indicators.push({key:'scenarios',type:'scenario',iconSvg:'🎮',label:window.t('lrScenarios',{},lang),newCount:0,totalCount:Number(summary.scenarios_count||0),detail:'',title:window.t('lrScenarios',{},lang),action:'openProjectResultsFeedback('+appId+', \'scenario\', 0, false);'});
         var visibleIndicators = indicators.filter(function (ind) {
             return Number(ind.newCount || 0) > 0 || Number(ind.totalCount || 0) > 0;
         });

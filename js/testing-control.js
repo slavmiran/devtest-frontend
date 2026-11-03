@@ -436,6 +436,7 @@
                 '<span class="testing-control-chevron">›</span>' +
             '</button>' +
             (device ? '<div class="testing-control-device">' + escape(device) + '</div>' : '') +
+            (item.live_retention_warning && window.LiveRetentionUI ? LiveRetentionUI.alerts({retention_alerts:[item.live_retention_warning]}) : '') +
             '<div class="testing-control-timeline" role="list" aria-label="' + escape(text('testingControlTimeline', 'Check-in timeline')) + '">' + timeline + '</div>' +
             (Number(item.timeline_overflow_count || 0) > 0
                 ? '<div class="testing-control-overflow">+' + Number(item.timeline_overflow_count) + '</div>'

@@ -5069,6 +5069,7 @@ function getFeedbackPreviewText(item, isReviewTicket) {
 
 function getFeedbackTypePillLabel(item) {
     const feedbackType = String((item && item.type) || 'bug').toLowerCase();
+    if (feedbackType === 'scenario') return window.t('lrScenario', {}, lang);
     if (feedbackType.indexOf('google_play_review') === 0) {
         return window.t('feedbackChipReview', {}, lang) || '⭐️ Review';
     }
@@ -5176,6 +5177,7 @@ window.toggleFeedbackCardCollapse = toggleFeedbackCardCollapse;
 
 function getFeedbackTypeChip(item) {
     const feedbackType = String(item.type || 'bug').toLowerCase();
+    if (feedbackType === 'scenario') return '<span class="fb-type-chip type-scenario">'+window.escapeHTML(window.t('lrScenario', {}, lang))+'</span>';
     if (feedbackType.indexOf('google_play_review') === 0) {
         return `<span class="fb-type-chip type-google-play">${window.escapeHTML(window.t('feedbackChipReview', {}, lang) || '⭐️ Review')}</span>`;
     }
@@ -5195,6 +5197,7 @@ function getProjectFeedbackHeader(project, items, meta) {
     let googlePlayCount = 0;
     let bugCount = 0;
     let ideaCount = 0;
+    let scenarioCount = 0;
     let openCount = 0;
     let processedCount = 0;
 
@@ -5204,6 +5207,8 @@ function getProjectFeedbackHeader(project, items, meta) {
             const isReviewTicket = feedbackType.indexOf('google_play_review') === 0;
             if (isReviewTicket) {
                 googlePlayCount++;
+            } else if (feedbackType === 'scenario') {
+                scenarioCount++;
             } else if (feedbackType === 'idea') {
                 ideaCount++;
             } else {
@@ -5281,6 +5286,7 @@ function getProjectFeedbackHeader(project, items, meta) {
             </div>
 
             <div class="feedback-filters">
+                <button type="button" class="filter-chip${typeFilter === 'scenario' ? ' active' : ''}" data-filter="scenario" onclick="filterFeedback('scenario')">${window.escapeHTML(window.t('lrScenario', {}, lang))} <span class="filter-count">${scenarioCount}</span></button>
                 <button type="button" class="filter-chip${typeFilter === 'all' ? ' active' : ''}" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
                 <button type="button" class="filter-chip${typeFilter === 'google_play' ? ' active' : ''}" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
                 <button type="button" class="filter-chip${typeFilter === 'bug' ? ' active' : ''}" data-filter="bug" onclick="filterFeedback('bug')">${window.escapeHTML(window.t('feedbackFilterBugs', {}, lang))} <span class="filter-count">${bugCount}</span></button>
@@ -5322,7 +5328,7 @@ var _projectFeedbackStatusFilter = 'all';
 var _projectFeedbackCardNodes = null;
 
 function resetProjectFeedbackFilters(preferUnprocessed, typeFilter) {
-    _projectFeedbackTypeFilter = ['all', 'google_play', 'bug', 'idea'].includes(typeFilter) ? typeFilter : 'all';
+    _projectFeedbackTypeFilter = ['all', 'google_play', 'bug', 'idea', 'scenario'].includes(typeFilter) ? typeFilter : 'all';
     _projectFeedbackStatusFilter = preferUnprocessed ? 'new' : 'all';
     _projectFeedbackCardNodes = null;
 }
@@ -5439,6 +5445,7 @@ function feedbackMatchesTypeFilter(cardType, filterType) {
     if (filterType === 'google_play') return isGooglePlay;
     if (filterType === 'bug') return !isGooglePlay && (cardType === 'bug' || cardType === 'general' || cardType === 'question');
     if (filterType === 'idea') return !isGooglePlay && cardType === 'idea';
+    if (filterType === 'scenario') return cardType === 'scenario';
     return true;
 }
 

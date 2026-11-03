@@ -123,7 +123,8 @@
             '<div class="live-keywords" tabindex="0">' + chips + '</div>' +
         '</div>';
         var paceNote=window.LiveHistoryImport&&installs?window.LiveHistoryImport.pace(installs):'';
-        return quick+(window.LiveTopic?LiveTopic.buttons(id):'')+'<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
+        var impact=metrics&&metrics.early_exit_impact;var impactHtml=impact&&impact.points_lost?'<button type="button" class="lm-action"'+hintAttrs(window.t('mkEarlyLossHint',{},window.lang))+'>'+esc(window.t('mkEarlyLoss',{n:impact.points_lost},window.lang))+'</button>':'';
+        return impactHtml+quick+(window.LivePaceSignals&&metrics?LivePaceSignals.html(metrics.pace_signals,id,true):'')+(window.LiveTopic?LiveTopic.buttons(id):'')+'<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
             '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs, paceNote) + '</div>' +
             '<div class="live-metrics-health">' + health + '</div>' + aso +
             '<button type="button" data-market-radar="' + id + '">' + esc(window.LiveMarket?LiveMarket.radarLabel(id):window.t('mkRadarOpen',{},window.lang)) + '</button>' +

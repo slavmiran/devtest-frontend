@@ -6,10 +6,10 @@
         function remove(key){pending.delete(key);var row=entries.get(key);if(row)URL.revokeObjectURL(row.url);entries.delete(key);}
         function clear(){generation++;Array.from(entries.keys()).forEach(remove);pending.clear();}
         async function attach(key,file,isCurrent){
-            if(!file || !['image/png','image/jpeg','image/webp'].includes(file.type) || !file.size || file.size>5*1024*1024)throw new Error('lcwInvalidImage');
+            if(!file || !['image/png','image/jpeg','image/webp'].concat(key.startsWith('step:')?['video/mp4','video/webm']:[]).includes(file.type) || !file.size || file.size>5*1024*1024)throw new Error('lcwInvalidImage');
             var token={},epoch=generation,url=URL.createObjectURL(file);pending.set(key,token);
             try{
-                await new Promise(function(resolve,reject){var img=new Image();img.onload=function(){if(img.naturalWidth*img.naturalHeight>24000000)reject(new Error('lcwInvalidImage'));else resolve();};img.onerror=function(){reject(new Error('lcwInvalidImage'));};img.src=url;});
+                await new Promise(function(resolve,reject){if(file.type.startsWith('video/')){var video=document.createElement('video');video.preload='metadata';video.onloadedmetadata=function(){if(!video.videoWidth||!video.videoHeight||video.videoWidth*video.videoHeight>24000000)reject(new Error('lcwInvalidImage'));else resolve();};video.onerror=function(){reject(new Error('video_decode_'+(video.error&&video.error.code)+': '+(video.error&&video.error.message||'')));};video.src=url;return;}var img=new Image();img.onload=function(){if(img.naturalWidth*img.naturalHeight>24000000)reject(new Error('lcwInvalidImage'));else resolve();};img.onerror=function(){reject(new Error('lcwInvalidImage'));};img.src=url;});
                 if(epoch!==generation || pending.get(key)!==token || !isCurrent()){URL.revokeObjectURL(url);return null;}
                 remove(key);var row={url:url,name:file.name,type:file.type,size:file.size};entries.set(key,{url:url,file:file});return row;
             }catch(error){URL.revokeObjectURL(url);if(pending.get(key)===token)pending.delete(key);throw error;}

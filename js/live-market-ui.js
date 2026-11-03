@@ -93,6 +93,7 @@
     function sheet(title, body, options) {
         options = options || {}; var layer = document.createElement('div'), id = 'lm-sheet-' + (++serial);
         layer.id = id; layer.className = 'modal-overlay active lm-sheet-overlay'; layer.style.zIndex = Math.max(10000, ...Array.from(document.querySelectorAll('.modal-overlay.active')).map(function(el){return parseInt(getComputedStyle(el).zIndex,10)||0;})) + 10;
+        if (options.presentation === 'dialog') layer.classList.add('lm-centered-dialog');
         layer.innerHTML = '<section class="project-instructions-sheet lm-sheet" role="dialog" aria-modal="true" aria-labelledby="' + id + '-title"><div class="project-instructions-sheet__handle"></div><header class="lm-sheet-header"><h2 id="' + id + '-title">' + e(title) + '</h2><button type="button" class="lm-icon" data-lm-close aria-label="' + e(t('lmClose')) + '">×</button></header><div class="lm-sheet-body">' + body + '</div></section>';
         sheets.push({node: layer, overflow: document.body.style.overflow, focus: document.activeElement, onclose: options.onclose}); document.body.style.overflow = 'hidden'; document.body.appendChild(layer);
         layer.addEventListener('click', function (ev) { if (ev.target === layer || ev.target.closest('[data-lm-close]')) closeTop(); });

@@ -2055,7 +2055,7 @@ async function deleteSettingsEmail() {
 
 async function fetchMassInvitePreviewEmails(projectId, recipientCount) {
     try {
-        var payload = { init_data: tg.initData || '' };
+        var payload = { init_data: tg.initData || '', include_live: window._massInviteIncludeLive !== false };
         if (Number(recipientCount) > 0) payload.recipient_count = Number(recipientCount);
         var response = await fetch(`${API_BASE}/projects/${Number(projectId)}/mass_invite/preview`, {
             method: 'POST',
@@ -3148,6 +3148,7 @@ async function startMassInvite(projectId, recipientCount) {
             body: JSON.stringify(withInitData({
                 owner_id: Number(userId),
                 recipient_count: Math.max(0, Number(recipientCount || 0)) || undefined,
+                include_live: window._massInviteIncludeLive !== false,
             }))
         });
         var startData = await startResponse.json();

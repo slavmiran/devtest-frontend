@@ -32,7 +32,8 @@
   if(!active)return {key:'lpcStatusIdle',tone:'neutral'};
   if(pace&&Date.parse(pace.pause_until)>Date.now())return {key:'lpcStatusPaused',tone:'paused',vars:{time:new Date(pace.pause_until).toLocaleTimeString(window.lang==='ru'?'ru-RU':'en-US',{hour:'2-digit',minute:'2-digit'})}};
   if(pace&&pace.accepting===false||!pace&&p.is_accepting_new_testers===false)return {key:'lpcStatusClosed',tone:'neutral'};
-  if(pace&&pace.paced&&pace.needed>0&&Date.now()-Date.parse(pace.cycle_started_at)>18*3600000)return {key:'lpcStatusDeficit',tone:'warning',vars:{n:pace.needed}};
+  var completed=p.live_metrics&&p.live_metrics.pace_signals||p.live_project_control&&p.live_project_control.thermal_phase&&p.live_project_control.thermal_phase.pace_signals;
+  if(completed&&completed.below_floor)return {key:'lpsBelow',tone:'warning',vars:{n:completed.below_floor_days,count:completed.deficit_installs}};
   if(pace&&pace.paced)return {key:'lpcStatusOpen',tone:'active',vars:{used:pace.admitted||0,total:pace.quota}};
   return {key:'lpcStatusFree',tone:'active'};
  }

@@ -25,6 +25,7 @@
    else html+='<p class="rv-state">'+e(t(r.state==='accepted'?'rvAcceptedHint':r.state==='rejected'?'rvRejectedHint':'rvCancelledHint'))+'</p>';
   }else if(c.enabled===false)html+='<p class="rv-state">'+e(t('rvCollectionOff'))+'</p>';
   else if(ctx.share_selected===false)html+='<p class="rv-state">'+e(t('rvTargetNotSelected'))+'</p>';
+  else if(ctx.review_pace&&ctx.review_pace.paused)html+='<p class="rv-state">'+e(t('lrReviewCooldown',{date:new Date(ctx.review_pace.unlock_at).toLocaleString(window.lang==='ru'?'ru-RU':'en-US')}))+'</p>';
   else if(!ctx.eligible)html+='<p class="rv-state">'+e(t('rvLocked',{n:ctx.unlocks_day||7}))+'</p>';
   else if(ctx.bonus_available===false)html+='<p class="rv-state">'+e(t('ldNoBonusFunds'))+'</p>';
   else if(!ctx.balance_available)html+='<p class="rv-state">'+e(t('rvOwnerNoBalance'))+'</p>';
@@ -47,6 +48,7 @@
     if(!s.rating||!s.format||s.format==='author'&&(s.text||'').trim().length<10)throw new Error('review_settings_invalid');
     var fingerprint=JSON.stringify([s.id,s.format,s.rating,s.text]),key=starts.get(fingerprint)||C.uuid();starts.set(fingerprint,key);
     var result=await C.api('/apps/'+s.id+'/review-task','POST',{request_key:key,format:s.format,rating:s.rating,text:s.text||''});if(session!==s)return;
+    if(result.review_pace&&result.review_pace.paused){s.context.review_pace=result.review_pace;s.context.eligible=false;return;}
     s.context.request=result.request;mark(result.request);if(result.checkin&&!result.checkin.already_checked_today){if(window.showCheckinRewardToasts)showCheckinRewardToasts(result.checkin);if(result.checkin.review_checkpoint_pending&&window.showToast)showToast(t('rvCheckinKdPending'));}else if(window.showToast)showToast(t('rvDraftSent'));C.refresh().catch(function(){});if(s.context.required_window)await read(s);
    }else if(action==='submit'){if(!s.published||!s.proof)throw new Error('review_proof_required');await change(s,'submit',{proof:s.proof});}
    else if(action==='cancel'){if(!await confirm(t('rvCancelConfirm')))return;await change(s,'cancel',{});}

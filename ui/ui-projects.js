@@ -1577,6 +1577,7 @@ function renderProjects(force) {
                 <p>${t.emptyProjects}</p>
             </div>
         `);
+        if(window.LiveProjectAdd)LiveProjectAdd.mount();
         if (typeof updatePipelineHeader === 'function') updatePipelineHeader();
         if (typeof window.updateProjectsRefreshUi === 'function') {
             window.updateProjectsRefreshUi();
@@ -2669,6 +2670,7 @@ function renderProjects(force) {
     }
     restoreProjectViewportAnchor(viewportAnchor);
     if (window.ProofPing) window.ProofPing.syncMasterSwitch();
+    if(window.LiveProjectAdd)LiveProjectAdd.mount();
 }
 
 function openOvertimeModal(appId, event) {
@@ -5421,7 +5423,7 @@ function refreshAddProjectChooserTexts(overlay) {
         var boostBadge = boostOpt.querySelector('.add-project-chooser-option-tag');
         var boostDesc = boostOpt.querySelector('.add-project-chooser-option-desc');
         if (boostTitle) boostTitle.textContent = getProjectUiText('promo_card_title', 'Продвижение в Google Play');
-        if (boostBadge) boostBadge.textContent = getProjectUiText('promo_card_badge', 'Скоро');
+        if (boostBadge) boostBadge.hidden = true;
         if (boostDesc) boostDesc.textContent = getProjectUiText('promo_card_desc', 'Привлекайте пользователей, улучшайте позиции и развивайте опубликованный проект.');
     }
 }
@@ -5534,9 +5536,7 @@ function ensureAddProjectChooser() {
             if (typeof tg !== 'undefined' && tg && tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             }
-            if (typeof showToast === 'function') {
-                showToast(getProjectUiText('promo_card_toast', 'App promotion and growth features are under development and will be available soon!'));
-            }
+            closeAddProjectChooser(function(){if(window.LiveProjectAdd)LiveProjectAdd.open();});
         });
     }
     return overlay;
@@ -9692,7 +9692,7 @@ async function fetchAndCacheMassInvitePlan(projectId, options) {
             var response = await fetch(API_BASE + '/projects/' + id + '/mass_invite/plan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(withInitData({})),
+                body: JSON.stringify(withInitData({include_live: window._massInviteIncludeLive !== false})),
             });
             var data = await response.json();
             if (!response.ok || !data || data.status !== 'success') {
@@ -9978,6 +9978,7 @@ function renderMassInviteModalContent(renderOpts) {
                     <b class="mi-recipient-counter" id="mi-recipient-counter">${window.escapeHTML(counterText)}</b>
                 </div>
                 <input id="mi-recipient-range" class="mi-recipient-range" type="range" min="${rangeMin}" max="${rangeMax}" value="${rangeVal}" ${rangeDisabled ? 'disabled' : ''} oninput="syncMassInviteRecipientUi()">
+                <label class="mi-live-opt"><input type="checkbox" ${window._massInviteIncludeLive!==false?'checked':''} onchange="window._massInviteIncludeLive=this.checked;fetchAndCacheMassInvitePlan(${project.id},{force:true})"> ${window.escapeHTML(window.t('mkInviteLive',{},lang))}</label>
                 ${subHintHtml}
                 <div id="mi-paid-note" class="mi-paid-note" ${paidExtra > 0 ? '' : 'hidden'}>${paidExtra > 0 ? window.escapeHTML(window.t('massInvitePaidBanner', { paid: paidExtra, cost: paidCost }, lang)) : ''}</div>
                 ${zeroQuotaBanner}
