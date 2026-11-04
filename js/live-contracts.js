@@ -5,7 +5,7 @@
  function toast(key,args){if(window.showToast)showToast(t(key,args));}
  function error(err){return t('ctErr_'+err.message)===('ctErr_'+err.message)?t('lmUnavailable'):t('ctErr_'+err.message);}
  function button(key,attrs,primary){return '<button type="button" class="lm-action'+(primary?' lm-action-primary':'')+'" '+attrs+'>'+e(t(key))+'</button>';}
- function cfg(d){d.contracts=d.contracts||JSON.parse(JSON.stringify(defaults));return d.contracts;}
+ function cfg(d){var saved=d.contracts||{};d.contracts=Object.assign({},defaults,saved,{source_bonus_bust:Object.assign({},defaults.source_bonus_bust,saved.source_bonus_bust||{})});return d.contracts;}
  function input(key,value,min,max){return '<label class="ct-field"><span>'+e(t('ctField_'+key))+'</span><span class="gtw-input-wrapper"><input class="gtw-input" type="number" inputmode="numeric" min="'+min+'" max="'+max+'" value="'+value+'" data-ct-field="'+key+'"></span></label>';}
  function costs(d,days,src){var c=cfg(d),r=d.retention,kd=['count','interval'].includes(r.checkpoint_mode)?LiveCampaignDraft.checkpoints(days,r.checkpoint_count||r.checkpoints.length-1,r.checkpoint_mode==='interval'?r.checkpoint_interval:null):Array.from(new Set(r.checkpoints.concat([days]))),review=d.reviews.config&&d.reviews.config.mode==='required',core=days*c.daily_rate_bust+(kd.length-1)*c.kd_rate_bust+(c.source_bonus_bust[src]||0)+(d.activity.enabled?c.scenario_bonus_bust:0);return core+(review?c.required_review_bonus_bust:0);}
  function range(d){var r=d.retention,values=[];for(var day=r.min_days||r.days;day<=(r.max_days||r.days);day++)LiveCampaignDraft.allowed(d).forEach(function(src){values.push(costs(d,day,src));});return {min:Math.min.apply(Math,values),max:Math.max.apply(Math,values)};}
