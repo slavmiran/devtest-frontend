@@ -3,7 +3,7 @@
  'use strict';
  var U,state=null,busy=false,lastActor='',keys=new Map();
  function t(k,v){return U.t('qa'+k,v);}function e(v){return U.e(v);}
- var groups=[['Resources',['resources']],['Partners',['incoming','incoming_pro','incoming_closed','partner_d1','report']],['Time',['ready','advance','day3','day7','day12','day13','finish','early_tester','early_owner','cancel_unstarted']],['Keywords',['keyword_video','keyword_extend','keyword_request_extend','keyword_confirm_extend','keyword_reject_extend','keyword_link']],['Reviews',['extension','review_four_star']],['Reset',['restore_case','refresh_dates','refresh_all','pause','resume']]];
+ var groups=[['Resources',['resources']],['Partners',['incoming','incoming_pro','incoming_closed','partner_d1','report']],['Time',['ready','advance','day3','day7','day12','day13','finish','early_tester','early_owner','cancel_unstarted','tier']],['Keywords',['keyword_video','keyword_extend','keyword_request_extend','keyword_confirm_extend','keyword_reject_extend','keyword_link']],['Reviews',['extension','review_four_star']],['Reset',['restore_case','refresh_dates','refresh_all','pause','resume']]];
  var days={day3:3,day7:7,day12:12,day13:13,finish:0};
  function caseName(o){var key=o.key,known={'task:ready':'Ready','task:queued':'Queued','keyword:waiting':'Keyword','review:required:d13':'Review','scenario:submitted':'Scenario','contract_daily:task':'Daily','contract_hold:task':'Hold','contract_keywords:task':'ContractKeyword'};return known[key]?t('Case'+known[key]):key.startsWith('flagship:participant:')?t('CaseParticipant',{n:key.split(':').pop()}):key;}
  function statusName(s){var translated=t('State_'+s);return translated==='qaState_'+s?s:translated;}

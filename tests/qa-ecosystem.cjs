@@ -31,10 +31,10 @@ for(const lang of ['ru','en'])for(const width of [360,390,430]){
  await page.evaluate(()=>QAEcosystem.discover());await page.locator('#qa-ecosystem-open').click();await page.waitForSelector('[data-qa-action=resources]');
  const fits=async()=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&[...document.querySelectorAll('.qa-panel')].every(n=>n.scrollWidth<=n.clientWidth+1)),'No horizontal overflow');
  await fits();await page.screenshot({path:path.join(out,`panel-${lang}-${width}.png`)});
- for(const action of ['resources','incoming','incoming_pro','incoming_closed','partner_d1','report','ready','advance','day3','day7','day12','day13','finish','early_tester','early_owner','keyword_extend','restore_case','refresh_dates','refresh_all','pause','resume']){
+ for(const action of ['resources','incoming','incoming_pro','incoming_closed','partner_d1','report','ready','advance','day3','day7','day12','day13','finish','early_tester','early_owner','keyword_extend','restore_case','refresh_dates','refresh_all','pause','resume','tier']){
   await page.locator('[data-qa-action='+action+']').click();await page.waitForFunction(()=>document.querySelector('[data-qa-action=resources]')?.disabled===false);await fits();
  }
- assert.equal(commands.length,21);assert(commands.every(c=>c.init_data==='signed-test'&&/^[a-f0-9-]{36}$/.test(c.request_key)));
+ assert.equal(commands.length,22);assert(commands.every(c=>c.init_data==='signed-test'&&/^[a-f0-9-]{36}$/.test(c.request_key)));
  assert.deepEqual(commands.filter(c=>c.action==='advance_to').map(c=>c.data.day),[3,7,12,13,0]);
  assert(!commands.some(c=>['disable','reset','seed'].includes(c.action)),'No bulk-delete/reset command');
  assert(commands.some(c=>c.action==='incoming'&&c.key==='pro'));assert(!commands.some(c=>'actor_id' in c||'owner_id' in c));

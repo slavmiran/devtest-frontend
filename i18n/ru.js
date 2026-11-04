@@ -1,6 +1,7 @@
 (function () {
     window.I18NRU = {
             qaReplayHint: "Повтор создаёт новую попытку выбранного участия. Другие проекты и история сохраняются. Даты можно освежать отдельно; скрытие Маркета не останавливает таймеры.",
+            qaAction_tier: "🏅 Смена лиги · VLC",
             qaReachedDay: "Достигнут D{n}.", qaBufferReleased: "Буфер {n} $BUST зачислен тестеру.", qaHistoryPreserved: "Предыдущая попытка сохранена в истории.", qaReceipt: "Техническая квитанция",
             qaAction_day3: "D3 · буфер старта", qaAction_day7: "D7 · неделя", qaAction_day12: "D12 · окно отзыва", qaAction_day13: "D13 · перед финалом", qaAction_finish: "Финальный день трека",
             qaCaseReady: "Моё задание · партнёр уже установил", qaCaseQueued: "Моё задание · очередь", qaCaseKeyword: "Поиск · ожидание владельца", qaCaseReview: "Обязательный отзыв · D13", qaCaseScenario: "Сценарий · отчёт на проверке", qaCaseDaily: "Контракт · выплаты по дням", qaCaseHold: "Контракт · финальный бонус", qaCaseContractKeyword: "Контракт · поиск по ключу", qaCaseParticipant: "Флагман · участник {n}",

@@ -1,6 +1,7 @@
 (function () {
     window.I18NEN = {
             qaReplayHint: "Replay starts a new attempt for the selected participation. Other projects and history are kept. Refresh fixture dates separately; hiding Market projects does not stop timers.",
+            qaAction_tier: "🏅 Tier change · VLC",
             qaReachedDay: "Reached D{n}.", qaBufferReleased: "The tester received the {n} $BUST start buffer.", qaHistoryPreserved: "The previous attempt remains in history.", qaReceipt: "Technical receipt",
             qaAction_day3: "D3 · start buffer", qaAction_day7: "D7 · one week", qaAction_day12: "D12 · review window", qaAction_day13: "D13 · before finish", qaAction_finish: "Final track day",
             qaCaseReady: "My task · partner installed", qaCaseQueued: "My task · queue", qaCaseKeyword: "Search · waiting for owner", qaCaseReview: "Required review · D13", qaCaseScenario: "Scenario · awaiting approval", qaCaseDaily: "Contract · daily payments", qaCaseHold: "Contract · final bonus", qaCaseContractKeyword: "Contract · keyword search", qaCaseParticipant: "Flagship · participant {n}",

@@ -50,7 +50,8 @@ try{for(const language of (process.env.QA_LIVE_LANGS||'ru,en').split(','))for(co
  try{await page.waitForSelector('#project-card-1238',{timeout:60000});}
  catch(err){await page.screenshot({path:path.join(out,`failure-${language}-${width}.png`)});console.error('Runtime errors:',errors,'API:',apiErrors,'Network:',network);console.error('Page state:',(await page.locator('body').innerText()).slice(0,300));throw err;}
  await page.evaluate(()=>document.documentElement.scrollTop=0);await page.screenshot({path:path.join(out,`projects-${language}-${width}.png`)});
- await page.evaluate(()=>switchTab('market'));await page.waitForSelector('.mk-card',{timeout:60000});
+ await page.evaluate(()=>switchTab('market'));await page.waitForSelector('.mk-radar-capsule',{timeout:60000});await page.waitForSelector('.mk-league.is-1 .mk-card',{timeout:60000});
+ assert.equal(await page.locator('.mk-league').count(),5,'All five real Tier shelves are populated');
  await page.screenshot({path:path.join(out,`market-${language}-${width}.png`)});
  await page.evaluate(()=>SmartTopBar.open('settings'));await page.evaluate(()=>QAEcosystem.discover());
  await page.locator('#qa-ecosystem-open').click();await page.waitForSelector('[data-qa-key]');
