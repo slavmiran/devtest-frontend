@@ -3,7 +3,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/moska/.cache/c
 const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/qa-ecosystem-20261104/browser');fs.mkdirSync(out,{recursive:true});
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});
 for(const lang of ['ru','en'])for(const width of [360,390,430]){
- const page=await browser.newPage({viewport:{width,height:860}}),commands=[],errors=[];
+ const page=await browser.newPage({viewport:{width,height:860}}),commands=[],errors=[];let loseStatusAfterWrite=false,failStatusOnce=false;
  page.on('pageerror',e=>errors.push(e.message));
  const state={enabled:true,generation:1,restoration_conflicts:0,objects:[
   {key:'flagship',kind:'app',id:'321',name:'[QA] Firefox',phase:'live'},
@@ -15,7 +15,8 @@ for(const lang of ['ru','en'])for(const width of [360,390,430]){
   if(url.pathname==='/api/qa-ecosystem'){
    const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'content-type'};
    if(route.request().method()==='OPTIONS')return route.fulfill({headers,body:''});
-   if(route.request().method()==='POST'){const body=route.request().postDataJSON();commands.push(body);if(body.action==='pause')state.paused=true;if(body.action==='resume')state.paused=false;return route.fulfill({headers,json:{status:'success',result:body.action==='advance_to'?{day:body.data.day||7,receipt:{buffer_released:body.data.day===3?38:0}}:{ok:true}}});}
+   if(route.request().method()==='POST'){const body=route.request().postDataJSON();commands.push(body);if(loseStatusAfterWrite){loseStatusAfterWrite=false;failStatusOnce=true;}if(body.action==='pause')state.paused=true;if(body.action==='resume')state.paused=false;return route.fulfill({headers,json:{status:'success',result:body.action==='advance_to'?{day:body.data.day||7,receipt:{buffer_released:body.data.day===3?38:0}}:{ok:true}}});}
+   if(failStatusOnce){failStatusOnce=false;return route.fulfill({headers,status:503,json:{code:'qa_status_temporarily_unavailable'}});}
    return route.fulfill({headers,json:{status:'success',result:state}});
   }
   if(url.hostname==='qa.local'){const file=path.resolve(root,'.'+url.pathname);assert(file.startsWith(root+path.sep));return route.fulfill({contentType:({'.js':'application/javascript','.css':'text/css'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});}
@@ -37,6 +38,10 @@ for(const lang of ['ru','en'])for(const width of [360,390,430]){
  assert.equal(commands.length,22);assert(commands.every(c=>c.init_data==='signed-test'&&/^[a-f0-9-]{36}$/.test(c.request_key)));
  assert.deepEqual(commands.filter(c=>c.action==='advance_to').map(c=>c.data.day),[3,7,12,13,0]);
  assert(!commands.some(c=>['disable','reset','seed'].includes(c.action)),'No bulk-delete/reset command');
+ // A committed grant followed by a failed status read must reuse its command UUID.
+ loseStatusAfterWrite=true;
+ for(let i=0;i<2;i++){await page.locator('[data-qa-action=resources]').click();await page.waitForFunction(()=>document.querySelector('[data-qa-action=resources]')?.disabled===false);}
+ assert.equal(commands.at(-1).request_key,commands.at(-2).request_key,'Status failure cannot turn a retry into a second grant');
  assert(commands.some(c=>c.action==='incoming'&&c.key==='pro'));assert(!commands.some(c=>'actor_id' in c||'owner_id' in c));
  await page.keyboard.press('Escape');assert.equal(await page.locator('.lm-sheet-overlay').count(),0);assert.deepEqual(errors,[]);
  await page.close();
