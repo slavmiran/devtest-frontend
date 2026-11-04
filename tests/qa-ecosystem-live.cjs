@@ -49,13 +49,17 @@ try{for(const language of (process.env.QA_LIVE_LANGS||'ru,en').split(','))for(co
  await page.evaluate(()=>switchTab('projects'));
  try{await page.waitForSelector('#project-card-1238',{timeout:60000});}
  catch(err){await page.screenshot({path:path.join(out,`failure-${language}-${width}.png`)});console.error('Runtime errors:',errors,'API:',apiErrors,'Network:',network);console.error('Page state:',(await page.locator('body').innerText()).slice(0,300));throw err;}
+ // The real saved server preference wins over Telegram's initial language.
+ // Switch via the normal UI function without changing that server preference.
+ await page.evaluate(language=>applyLanguage(language,{skipServerSync:true,force:true}),language);
  await page.evaluate(()=>document.documentElement.scrollTop=0);await page.screenshot({path:path.join(out,`projects-${language}-${width}.png`)});
  await page.evaluate(()=>switchTab('market'));await page.waitForSelector('.mk-radar-capsule',{timeout:60000});await page.waitForSelector('.mk-league.is-1 .mk-card',{timeout:60000});
  assert.equal(await page.locator('.mk-league').count(),5,'All five real Tier shelves are populated');
  await page.screenshot({path:path.join(out,`market-${language}-${width}.png`)});
- await page.evaluate(()=>SmartTopBar.open('settings'));await page.evaluate(()=>QAEcosystem.discover());
+ await page.evaluate(language=>{applyLanguage(language,{skipServerSync:true,force:true});SmartTopBar.open('settings');},language);await page.evaluate(()=>QAEcosystem.discover());
  await page.locator('#qa-ecosystem-open').click();await page.waitForSelector('[data-qa-key]');
  assert.equal(await page.locator('[data-qa-key] option').count()>8,true);
+ assert.equal(await page.locator('.lm-sheet h2').last().innerText(),await page.evaluate(language=>(language==='ru'?I18NRU:I18NEN).qaTitle,language),'Actual QA language matches the screenshot locale');
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No document overflow');
  await page.screenshot({path:path.join(out,`qa-${language}-${width}.png`)});
  assert.deepEqual(apiErrors,[],'Native Test GET errors');if(errors.length)console.error('Runtime errors:',errors);assert.deepEqual(errors,[],'Full index runtime');await page.unrouteAll({behavior:'ignoreErrors'});await page.close();
