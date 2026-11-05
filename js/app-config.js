@@ -1308,6 +1308,7 @@ function _parseInitialRouteTarget() {
     );
     var routeKind = '';
     var routeExtraId = 0;
+    var marketFocus = '';
     var candidateValues = [
         startParam,
         params.get('route') || '',
@@ -1347,6 +1348,10 @@ function _parseInitialRouteTarget() {
             feedbackProjectId = Number(editMatch[1] || 0);
             break;
         }
+        var liveOfferMatch=normalized.match(/^liveoffer[_:](\d+)$/);
+        if(liveOfferMatch){routeKind='market_project';feedbackProjectId=Number(liveOfferMatch[1]);marketFocus='offer';break;}
+        var liveContractMatch=normalized.match(/^livecontract[_:](\d+)$/);
+        if(liveContractMatch){routeKind='market_project';feedbackProjectId=Number(liveContractMatch[1]);marketFocus='contract';break;}
         var marketProjectMatch=normalized.match(/^market[_:](\d+)$/);
         if(marketProjectMatch){routeKind='market_project';feedbackProjectId=Number(marketProjectMatch[1]);break;}
         var projectMatch = normalized.match(/^project[_:](\d+)$/);
@@ -1569,7 +1574,7 @@ function _parseInitialRouteTarget() {
             appId: feedbackProjectId > 0 ? feedbackProjectId : null,
         };
     }
-    if(routeKind==='market_project')return {tab:'market',openMarketProject:true,appId:feedbackProjectId};
+    if(routeKind==='market_project')return {tab:'market',openMarketProject:true,appId:feedbackProjectId,marketFocus:marketFocus};
     if (routeKind === 'project') {
         return {
             tab: 'market',
@@ -1786,7 +1791,7 @@ async function _handleInitialRoute() {
         return;
     }
 
-    if(route.openMarketProject&&route.appId&&window.LiveMarket){await LiveMarket.openFromLink(route.appId);return;}
+    if(route.openMarketProject&&route.appId&&window.LiveMarket){await LiveMarket.openFromLink(route.appId,route.marketFocus);return;}
 
     // ── Project route: open market and scroll to project card ──
     if (route.openProject && route.appId) {
