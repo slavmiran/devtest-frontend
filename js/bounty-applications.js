@@ -163,7 +163,8 @@ function syncIncomingApplicationsSection() {
     var bountyPending = (bountyApplications || []).filter(function(item) {
         return !!item && item.status === 'pending';
     }).length;
-    var total = mutualPending + bountyPending;
+    var livePending = window.LiveExchanges && typeof window.LiveExchanges.offerCount === 'function' ? window.LiveExchanges.offerCount() : 0;
+    var total = mutualPending + bountyPending + livePending;
 
     var mutualBootstrapping = (typeof _offersInFlight !== 'undefined' && !!_offersInFlight && typeof _offersLoadedOnce !== 'undefined' && !_offersLoadedOnce)
         || (typeof _offersLoadError !== 'undefined' && !!_offersLoadError && typeof _offersLoadedOnce !== 'undefined' && !_offersLoadedOnce);

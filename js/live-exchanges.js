@@ -122,18 +122,62 @@
         if(pending&&r.deal)html+='<button type="button" class="lx-change-terms" data-lx-action="counter" data-offer="'+Number(r.offer_id)+'"'+(disabled?' disabled':'')+'>'+e(text('change'))+'</button>';
         return html;
     }
-    function card(r){
-        return '<article class="lx-card lx-card-v2" data-lx-id="'+Number(r.offer_id)+'" tabindex="-1">'+header(r)+partnerLine(r)+(r.deal||(r.legs||[]).length?D().comparison(r):'')+statusHtml(r)+details(r)+'<div class="lx-card-actions">'+actions(r)+'</div><p class="lm-error" role="alert" data-lx-error="'+Number(r.offer_id)+'">'+e(actionErrors.get(r.offer_id)||'')+'</p></article>';
+    function card(r, lane){
+        var leg=own(r),ready=lane==='queue'&&leg&&['READY','STARTED'].includes(leg.state);
+        var flag=ready?'<p class="tests-ready-flag">'+e(typeof window.t==='function'?window.t('testsQueueReady',{},window.lang||'ru'):text('ready'))+'</p>':'';
+        return '<article class="lx-card lx-card-v2'+(ready?' is-ready':'')+'" data-lx-id="'+Number(r.offer_id)+'" data-lx-source="exchange" data-tests-lane="'+(lane||'mixed')+'" data-queue-ready="'+(ready?'1':'0')+'" tabindex="-1">'+flag+header(r)+partnerLine(r)+(r.deal||(r.legs||[]).length?D().comparison(r):'')+statusHtml(r)+details(r)+'<div class="lx-card-actions">'+actions(r)+'</div><p class="lm-error" role="alert" data-lx-error="'+Number(r.offer_id)+'">'+e(actionErrors.get(r.offer_id)||'')+'</p></article>';
+    }
+    function flowHosts(){return !!document.getElementById('install-queue-scroll');}
+    function laneOf(r){
+        if(terminal(r))return 'history';
+        if(r.status==='pending')return (r.deal?r.deal.can_accept:owner(r))?'incoming':'outgoing';
+        var l=own(r),p=other(r);
+        if(installed(l)&&installed(p))return 'daily';
+        if(installed(l))return 'partner';
+        return 'queue';
+    }
+    function partnerBannerHtml(appId){
+        var r=rows.find(function(row){var l=own(row);return l&&Number(l.app_id)===Number(appId)&&laneOf(row)==='partner';});
+        if(!r)return '';
+        var v=status(r),p=other(r),overdue=!!(p&&p.dropoff_risk&&p.dropoff_risk.cancel_allowed);
+        return '<aside class="lx-partner-banner" data-lx-id="'+Number(r.offer_id)+'"><strong>'+e(v.title)+'</strong>'+(v.subtitle?'<span>'+e(v.subtitle)+'</span>':'')+(v.leg?'<b data-lx-clock="'+Number(r.offer_id)+'">'+e(timeText(r,v))+'</b>':'')+(overdue?button(r,'cancel',text('cancelFree'),busy.has(r.offer_id)):'')+'</aside>';
+    }
+    function paintPartnerBanners(){if(typeof window.paintLivePartnerBanners==='function')window.paintLivePartnerBanners();}
+    function sortQueue(scroll){
+        if(!scroll)return;
+        Array.from(scroll.children).sort(function(a,b){return Number(b.dataset.queueReady||0)-Number(a.dataset.queueReady||0);}).forEach(function(node){scroll.appendChild(node);});
+    }
+    function renderFlow(){
+        var opened=new Set(),historyOpen=false;
+        [document.getElementById('live-incoming-carousel'),document.getElementById('install-queue-scroll'),document.getElementById('live-exchanges-slot'),document.getElementById('tests-list')].forEach(function(root){
+            if(!root)return;
+            if(root.querySelector('[data-lx-history]')&&root.querySelector('[data-lx-history]').open)historyOpen=true;
+            root.querySelectorAll('.lx-card details[open][data-lx-open]').forEach(function(d){var id=d.closest('[data-lx-id]');if(id)opened.add(id.dataset.lxId+':'+d.dataset.lxOpen);});
+        });
+        var incoming=[],outgoing=[],queue=[],history=[];
+        rows.forEach(function(r){var lane=laneOf(r);if(lane==='incoming')incoming.push(r);else if(lane==='outgoing')outgoing.push(r);else if(lane==='queue')queue.push(r);else if(lane==='history')history.push(r);});
+        var offers=document.getElementById('live-incoming-carousel');
+        if(offers)offers.innerHTML=incoming.concat(outgoing).map(function(r){return card(r,r.status==='pending'&&(r.deal?r.deal.can_accept:owner(r))?'incoming':'outgoing');}).join('');
+        var scroll=document.getElementById('install-queue-scroll');
+        if(scroll){scroll.querySelectorAll('[data-lx-source="exchange"]').forEach(function(node){node.remove();});scroll.insertAdjacentHTML('afterbegin',queue.map(function(r){return card(r,'queue');}).join(''));sortQueue(scroll);}
+        var root=document.getElementById('live-exchanges-slot');
+        if(root)root.innerHTML=(error?'<p class="lm-error" role="alert">'+e(t('lmError'))+'</p>':'')+(history.length?'<details class="lx-history" data-lx-history'+(historyOpen?' open':'')+'><summary>'+e(t('lxHistory'))+' · '+history.length+'</summary>'+history.map(function(r){return card(r,'history');}).join('')+'</details>':'');
+        document.querySelectorAll('.lx-card details[data-lx-open]').forEach(function(d){var id=d.closest('[data-lx-id]');if(id&&opened.has(id.dataset.lxId+':'+d.dataset.lxOpen))d.open=true;});
+        document.querySelectorAll('#tests-queue-section [data-lx-refresh]').forEach(function(button){button.disabled=loading;});
+        paintPartnerBanners();
+        if(typeof window.syncIncomingApplicationsSection==='function')window.syncIncomingApplicationsSection();
+        if(typeof window.applyTestsFilters==='function')window.applyTestsFilters();
     }
     function render(){
         if(actor&&actor!==U.auth()){rows=[];loaded=false;readAt=0;actionErrors.clear();}
+        if(flowHosts())return renderFlow();
         var root=document.getElementById('live-exchanges-slot');if(!root)return;
         var opened=new Set(Array.from(root.querySelectorAll('.lx-card details[open][data-lx-open]')).map(function(d){return d.closest('[data-lx-id]').dataset.lxId+':'+d.dataset.lxOpen;}));
         var historyOpen=root.querySelector('[data-lx-history]')?.open,active=rows.filter(function(r){return !terminal(r)&&!running(r);}),history=rows.filter(terminal);
         root.innerHTML='<section class="lx-section"><header class="lx-head"><h2>'+e(t('lxTitle'))+(active.length?' · '+active.length:'')+'</h2><button type="button" class="lm-icon" data-lx-refresh aria-label="'+e(t('lmRefresh'))+'"'+(loading?' disabled':'')+'>↻</button></header>'+
             (error?'<p class="lm-error" role="alert">'+e(t('lmError'))+'</p>':'')+
-            (active.length?active.map(card).join(''):'<p class="lm-caption" role="status">'+e(t(loading?'lmLoading':'lxNoItems'))+'</p>')+
-            (history.length?'<details data-lx-history'+(historyOpen?' open':'')+'><summary>'+e(t('lxHistory'))+' · '+history.length+'</summary>'+history.map(card).join('')+'</details>':'')+'</section>';
+            (active.length?active.map(function(r){return card(r);}).join(''):'<p class="lm-caption" role="status">'+e(t(loading?'lmLoading':'lxNoItems'))+'</p>')+
+            (history.length?'<details data-lx-history'+(historyOpen?' open':'')+'><summary>'+e(t('lxHistory'))+' · '+history.length+'</summary>'+history.map(function(r){return card(r,'history');}).join('')+'</details>':'')+'</section>';
         root.querySelectorAll('.lx-card details[data-lx-open]').forEach(function(d){if(opened.has(d.closest('[data-lx-id]').dataset.lxId+':'+d.dataset.lxOpen))d.open=true;});
     }
     async function load(force){
@@ -204,7 +248,7 @@
         });
     }
     function mount(){
-        var root=document.getElementById('live-exchanges-slot');if(!root)return;
+        var root=document.getElementById('tab-tests')||document.getElementById('live-exchanges-slot');if(!root)return;
         bind(root);render();load(false);
         if(window.LiveContracts)LiveContracts.mount();
         if(window.LiveScenarioUI)LiveScenarioUI.mount().catch(function(){});
@@ -221,5 +265,5 @@
         if(Date.now()-readAt>30000)load(false);
     },1000);
     document.addEventListener('visibilitychange',function(){if(!document.hidden&&document.querySelector('#tab-tests.active'))load(true);});
-    window.LiveExchanges={legacyReady:function(){return loaded||error||!U.auth();},mount:mount,load:load,detail:detail,managed:function(id){return rows.some(function(r){return r.offer_id===Number(id);});},waitingFor:function(app){return rows.some(function(r){var l=own(r);return l&&Number(l.app_id)===Number(app)&&['SCHEDULED_COOLDOWN','READY'].includes(l.state);});},isLoaded:function(){return loaded;}};
+    window.LiveExchanges={legacyReady:function(){return loaded||error||!U.auth();},mount:mount,load:load,detail:detail,managed:function(id){return rows.some(function(r){return r.offer_id===Number(id);});},waitingFor:function(app){return rows.some(function(r){var l=own(r);return l&&Number(l.app_id)===Number(app)&&!terminal(r)&&r.status!=='pending'&&!installed(l);});},offerCount:function(){return rows.filter(function(r){return r.status==='pending'&&!terminal(r);}).length;},partnerBannerHtml:partnerBannerHtml,isLoaded:function(){return loaded;}};
 })();

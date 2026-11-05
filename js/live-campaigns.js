@@ -106,7 +106,12 @@
         var visible=rows.filter(function(c){return c.definition||c.kind==='closed_bridge'||c.status==='active';});
         var paused=rows.filter(function(c){return !c.definition&&c.kind!=='closed_bridge'&&c.status!=='active';});
         var tier=s.control&&s.control.tier_event;
-        return (tier?'<aside class="lr-tier-event"><span>'+esc(tr('lrTierChanged',{from:tier.from_tier,to:tier.to_tier}))+' · '+tier.score+'/1000'+(tier.from_tier>3&&tier.to_tier<=3?'<small>'+esc(tr('lrTierProUnlocked'))+'</small>':'')+'</span><button type="button" class="lm-action" data-lr-tier-ack="'+tier.id+'" data-lr-tier-app="'+s.id+'">'+esc(tr('lrTierAcknowledge'))+'</button></aside>':'')+'<div class="lc-section-head"><div class="lc-section-heading"><h3>'+esc(tr('lcTitle'))+'</h3>'+projectBudget(s)+'</div><div class="lc-section-actions"><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
+        var promoted=tier&&Number(tier.from_tier)>Number(tier.to_tier);
+        var enteredPro=tier&&Number(tier.from_tier)>3&&Number(tier.to_tier)<=3;
+        var lostPro=tier&&Number(tier.from_tier)<=3&&Number(tier.to_tier)>3;
+        var tierMain=tier?tr(promoted?'lrTierPromoted':'lrTierDemoted',{from:tier.from_tier,to:tier.to_tier,score:tier.score}):'';
+        var tierExtra=enteredPro?tr('lrTierProUnlocked'):lostPro?tr('lrTierProPaused'):'';
+        return (tier?'<aside class="lr-tier-event'+(promoted?' is-up':' is-down')+'"><span>'+esc(tierMain)+(tierExtra?'<small>'+esc(tierExtra)+'</small>':'')+'</span><button type="button" class="lm-action" data-lr-tier-ack="'+tier.id+'" data-lr-tier-app="'+s.id+'">'+esc(tr('lrTierAcknowledge'))+'</button></aside>':'')+'<div class="lc-section-head"><div class="lc-section-heading"><h3>'+esc(tr('lcTitle'))+'</h3>'+projectBudget(s)+'</div><div class="lc-section-actions"><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
             (s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
             '<button type="button" class="lc-action lc-create" data-lc-action="create" aria-label="'+esc(tr('lcCreate'))+'" title="'+esc(tr('lcCreate'))+'">'+plusIcon()+'</button></div></div>'+
             projectBar(s)+

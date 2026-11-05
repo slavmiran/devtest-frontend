@@ -2907,6 +2907,93 @@ window.openControlProofCatchupScreenshot = function(appId) {
     });
 };
 
+var testsFilterMode = 'all';
+try { testsFilterMode = localStorage.getItem('dth.tests.filter') || 'all'; } catch (error) {}
+if (['all', 'today', 'offers', 'contracts', 'done'].indexOf(testsFilterMode) < 0) testsFilterMode = 'all';
+
+window.paintLivePartnerBanners = function() {
+    document.querySelectorAll('[data-partner-slot]').forEach(function(slot) {
+        var html = window.LiveExchanges && typeof window.LiveExchanges.partnerBannerHtml === 'function'
+            ? window.LiveExchanges.partnerBannerHtml(slot.dataset.partnerSlot)
+            : '';
+        if (slot.innerHTML !== html) slot.innerHTML = html;
+    });
+};
+
+window.applyTestsFilters = function() {
+    var mode = testsFilterMode;
+    var tab = document.getElementById('tab-tests');
+    if (tab) tab.dataset.testsFilter = mode;
+    var bar = document.getElementById('tests-filter-bar');
+    if (bar && typeof window.t === 'function') bar.setAttribute('aria-label', window.t('testsFilterLabel', {}, window.lang || (typeof lang !== 'undefined' ? lang : 'ru')));
+    document.querySelectorAll('[data-tests-filter]').forEach(function(button) {
+        var selected = button.dataset.testsFilter === mode;
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    });
+    var offers = document.querySelectorAll('#offers-carousel .offer-card, #bounty-apps-carousel .bounty-app-card, #live-incoming-carousel .lx-card').length;
+    var queue = document.querySelectorAll('#install-queue-scroll > *').length;
+    var ready = document.querySelectorAll('#install-queue-scroll > [data-queue-ready="1"]').length;
+    var today = document.querySelectorAll('#tests-list > .card').length;
+    var guests = document.querySelectorAll('#external-tests-list .card').length;
+    var buffer = document.querySelectorAll('#pending-release-list > .card').length;
+    var done = document.querySelectorAll('#done-list > .card').length;
+    var contracts = document.querySelectorAll('#tests-list > .card[data-contract="1"], #install-queue-scroll > [data-contract="1"], #live-contracts-slot .ct-test').length;
+    var counts = {
+        all: offers + queue + today + guests + buffer + done,
+        today: ready + today,
+        offers: offers + queue,
+        contracts: contracts,
+        done: done + buffer
+    };
+    Object.keys(counts).forEach(function(key) {
+        var node = document.querySelector('[data-tests-count="' + key + '"]');
+        if (node) node.textContent = String(counts[key]);
+    });
+    var queueCount = document.getElementById('install-queue-count');
+    if (queueCount) queueCount.textContent = String(queue);
+    var todayCount = document.getElementById('tests-today-count');
+    if (todayCount) todayCount.textContent = String(today);
+    function show(el, visible) { if (el) el.classList.toggle('is-filter-hidden', !visible); }
+    var queueContract = document.querySelectorAll('#install-queue-scroll > [data-contract="1"]').length;
+    var queueVisible = mode === 'today' ? ready > 0 : mode === 'contracts' ? queueContract > 0 : queue > 0;
+    var history = document.getElementById('live-exchanges-slot');
+    var contractSlot = document.getElementById('live-contracts-slot');
+    show(document.getElementById('incoming-offers-container'), (mode === 'all' || mode === 'offers') && offers > 0);
+    show(document.getElementById('tests-queue-section'), (mode === 'all' || mode === 'offers' || mode === 'today' || mode === 'contracts') && queueVisible);
+    var todayCards = !!document.querySelector('#tests-list > .card');
+    var todayEmpty = !!document.querySelector('#tests-list > .empty-state');
+    show(document.getElementById('tests-today-wrap'), mode === 'all' || (mode === 'today' && (todayCards || todayEmpty)) || (mode === 'contracts' && !!document.querySelector('#tests-list > .card[data-contract="1"]')));
+    show(history, mode === 'all' && !!(history && history.childElementCount));
+    show(contractSlot, (mode === 'all' || mode === 'contracts') && !!(contractSlot && contractSlot.childElementCount));
+    show(document.getElementById('external-tests-section'), mode === 'all' && guests > 0);
+    show(document.getElementById('pending-release-section'), (mode === 'all' || mode === 'done') && buffer > 0);
+    show(document.getElementById('done-section'), (mode === 'all' || mode === 'done') && done > 0);
+    var empty = document.getElementById('tests-filter-empty');
+    var nothing = (mode === 'today' && counts.today === 0) || (mode === 'offers' && counts.offers === 0) || (mode === 'contracts' && counts.contracts === 0) || (mode === 'done' && counts.done === 0);
+    if (!empty && tab) {
+        empty = document.createElement('p');
+        empty.id = 'tests-filter-empty';
+        empty.className = 'tests-filter-empty';
+        var anchor = document.getElementById('tests-today-wrap');
+        if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(empty, anchor);
+    }
+    if (empty) {
+        empty.textContent = typeof window.t === 'function' ? window.t('testsFilterEmpty', {}, window.lang || (typeof lang !== 'undefined' ? lang : 'ru')) : '';
+        empty.hidden = !nothing;
+    }
+};
+
+document.addEventListener('click', function(event) {
+    var button = event.target.closest && event.target.closest('[data-tests-filter]');
+    if (!button || !document.getElementById('tab-tests')) return;
+    testsFilterMode = button.dataset.testsFilter || 'all';
+    try { localStorage.setItem('dth.tests.filter', testsFilterMode); } catch (error) {}
+    window.applyTestsFilters();
+});
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof window.applyTestsFilters === 'function') window.applyTestsFilters();
+});
+
 function renderTests(force) {
     if (window.LiveExchanges) window.LiveExchanges.mount();
     if (!force && !isTabVisible('tests')) return;
@@ -3455,6 +3542,14 @@ function renderTests(force) {
             pendingFrag.appendChild(card);
             pendingCount++;
         } else if (shouldShowInActiveList) {
+            if (test.join_type === 'bounty' || test.live_contract || (test.live_bridge && test.live_bridge.billing === 'live_contract')) card.dataset.contract = '1';
+            if (isExternal) card.dataset.guestControl = '1';
+            if (!isExternal) {
+                cardContent = cardContent.replace(
+                    '<div id="actions-' + test.id + '">',
+                    '<div class="lx-partner-slot" data-partner-slot="' + test.id + '"></div><div id="actions-' + test.id + '">'
+                );
+            }
             card.innerHTML = cardContent;
             activeFrag.appendChild(card);
             activeCount++;
@@ -3504,7 +3599,9 @@ function renderTests(force) {
 
     _updateDoneSectionVisibility(doneCount);
 
-    if (activeCount === 0 && pendingCount === 0 && externalGuestTestsCount === 0) {
+    var todayCountNode = document.getElementById('tests-today-count');
+    if (todayCountNode) todayCountNode.textContent = String(activeCount);
+    if (activeCount === 0 && pendingCount === 0 && externalGuestTestsCount === 0 && !document.querySelector('#install-queue-scroll > *, #live-incoming-carousel .lx-card, #offers-carousel .offer-card')) {
         activeList.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">🎉</div>
@@ -3520,6 +3617,8 @@ function renderTests(force) {
     if (typeof window.updateTestsRefreshUi === 'function') window.updateTestsRefreshUi();
     refreshMyTestsSectionHandoffs();
     if (typeof window.markTestsViewClean === 'function') window.markTestsViewClean();
+    if (typeof window.paintLivePartnerBanners === 'function') window.paintLivePartnerBanners();
+    if (typeof window.applyTestsFilters === 'function') window.applyTestsFilters();
     restoreTestsViewportAnchor(viewportAnchor);
 }
 
