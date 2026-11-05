@@ -34,7 +34,7 @@
  function change(d,f,v){
   var n=clone(d);
   if(['daily','target','paced','pauseHours','rampDays','allowContractsDuringPause'].includes(f))n.volume.paceVersion=2;
-  if(f.indexOf('plan:')===0)LiveManualPlan.change(n.volume,f,v);
+  if(f.indexOf('plan:')===0)LiveManualPlan.change(n.volume,f,v,n.corridor);
   else if(f==='source'&&['link','web','keywords'].includes(v)){n.source=v;n.allowedSources=[v];}
   else if(f==='allowedSource'&&['link','web','keywords'].includes(v)){n.allowedSources=allowed(n).slice();if(n.allowedSources.includes(v)){if(n.allowedSources.length===1)return d;n.allowedSources=n.allowedSources.filter(function(s){return s!==v;});}else n.allowedSources.push(v);if(!n.allowedSources.includes(n.source))n.source=n.allowedSources[0];}
   else if(f==='preferredSource'&&allowed(n).includes(v))n.source=v;
@@ -61,7 +61,9 @@
   }else if(f==='limit_mode'&&['budget','installs'].includes(v))n.volume.limit_mode=v;else if(f==='activity'){n.activity.enabled=!!v;if(!v)n.activity.screenshot=false;}
   else if(f==='screenshot'&&n.activity.enabled)n.activity.screenshot=!!v;
   else if(f==='reviews')n.reviews.enabled=!!v;
-  else if(f==='mode'&&['auto','manual','free'].includes(v)){n.volume.mode=v;n.volume.paced=v!=='free';if(v==='manual'&&!n.volume.manualPlan)n.volume.manualPlan=LiveManualPlan.create(n.volume,n.corridor);}
+  else if(f==='mode'&&['auto','manual','free'].includes(v)){n.volume.mode=v;n.volume.paced=v!=='free';if(v!=='manual'&&!LiveManualPlan.valid(n.volume.manualPlan)){var previous;try{previous=JSON.parse(n.manualPlanSaved||'null');}catch(_){}n.volume.manualPlan=LiveManualPlan.valid(previous)?previous:null;}if(v==='manual'&&!n.volume.manualPlan)n.volume.manualPlan=LiveManualPlan.create(n.volume,n.corridor);}
+  else if(f==='corridorProfile'&&['standard','expanded','conservative'].includes(v))n.volume.corridorProfile=v;
+  else if(f==='contractPauseRule'){n.volume.allowContractsDuringPause=v!=='off';n.volume.contractsDuringPauseLimit=['2','5'].includes(v)?Number(v):null;}
   else if(f==='contractsDuringPauseLimit'&&[0,2,5].includes(v))n.volume.contractsDuringPauseLimit=v||null;
   else if(f==='dailyPlan'){n.volume.mode='manual';n.volume.paced=true;n.volume.manualPlan=LiveManualPlan.create(n.volume,n.corridor);}
   else if(f==='paced'){n.volume.paced=!!v;n.volume.mode=v?'manual':'free';}
@@ -105,7 +107,7 @@
   payload.volume.totalInstalls=total(d);if(window.LiveScenarioEditor&&d.activity.steps)payload.activity.steps=await LiveScenarioEditor.serialize(d.activity,serialize);
   if(d.activity.screenshots){payload.activity.screenshots=[];for(var i=0;i<d.activity.screenshots.length;i++)if(d.activity.screenshots[i])payload.activity.screenshots.push(await serialize('scenario:'+i,d.activity.screenshots[i]));}
   // Project control is saved separately in the same transaction. Legacy volume fields no longer gate intake.
-  payload.volume.paced=false;payload.volume.paceVersion=2;['mode','manualPlan','dailyCampaignCaps','contractsDuringPauseLimit'].forEach(function(k){delete payload.volume[k];});
+  payload.volume.paced=false;payload.volume.paceVersion=2;['mode','manualPlan','dailyCampaignCaps','contractsDuringPauseLimit','corridorProfile'].forEach(function(k){delete payload.volume[k];});
   if(sources.includes('web')&&d.web.screenshot)payload.web.screenshot=await serialize('web',d.web.screenshot);
   if(sources.includes('keywords'))for(var k of d.keywords)payload.keywords.push({keyword:k.keyword,position:k.position,enabled:k.enabled!==false,geo_countries:k.geo_countries||[],is_fallback:!!k.is_fallback,screenshot:k.screenshot?await serialize('keyword:'+k.id,k.screenshot):null});
   return payload;

@@ -13,3 +13,5 @@ const draft={volume:{totalInstalls:30}},control=model.setup(draft,{revision:7,po
 model.change(control,'own',1);const payload=model.payload(draft,control);
 assert.equal(payload.revision,7);assert.equal(payload.own_limit,1);assert.equal(payload.allocations.length,1);assert.equal(payload.allocations[0].campaign_id,3);assert.equal(payload.policy.dailyInstalls,4);assert.equal(draft.volume.totalInstalls,30);
 console.log('Project status, independent target volume and allocation serialization passed.');
+
+model.change(control,"own","cap");assert.equal(control.ownLimit,1);model.change(control,3,4);model.change(control,3,"cap");assert.equal(control.allocations[0].limit,4,"Re-selecting ceiling preserves value");

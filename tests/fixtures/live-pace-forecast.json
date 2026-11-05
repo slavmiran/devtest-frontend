@@ -1,0 +1,320 @@
+{
+  "plan": {
+    "days": 7,
+    "spacing": "burst",
+    "strategy": "ramp",
+    "afterGoal": "auto",
+    "batchSize": 2,
+    "maxInstalls": 14,
+    "minInstalls": 10,
+    "gapMaxMinutes": 90,
+    "gapMinMinutes": 30,
+    "pauseMaxHours": 12,
+    "pauseMinHours": 6,
+    "startInstalls": 12,
+    "targetInstalls": 40
+  },
+  "points": [
+    {
+      "day": 1,
+      "mode": "manual",
+      "value": 12,
+      "target": 12,
+      "corridor": {
+        "B_t": 12,
+        "U_opt": 23,
+        "L_floor": 4
+      },
+      "canonical": {
+        "B_t": 12,
+        "U_opt": 23,
+        "L_floor": 4
+      }
+    },
+    {
+      "day": 2,
+      "mode": "manual",
+      "value": 17,
+      "target": 17,
+      "corridor": {
+        "B_t": 12,
+        "U_opt": 23,
+        "L_floor": 4
+      },
+      "canonical": {
+        "B_t": 12,
+        "U_opt": 23,
+        "L_floor": 4
+      }
+    },
+    {
+      "day": 3,
+      "mode": "manual",
+      "value": 21,
+      "target": 21,
+      "corridor": {
+        "B_t": 13.25,
+        "U_opt": 25,
+        "L_floor": 5
+      },
+      "canonical": {
+        "B_t": 13.25,
+        "U_opt": 25,
+        "L_floor": 5
+      }
+    },
+    {
+      "day": 4,
+      "mode": "manual",
+      "value": 26,
+      "target": 26,
+      "corridor": {
+        "B_t": 15.321428571428571,
+        "U_opt": 28,
+        "L_floor": 6
+      },
+      "canonical": {
+        "B_t": 15.321428571428571,
+        "U_opt": 28,
+        "L_floor": 6
+      }
+    },
+    {
+      "day": 5,
+      "mode": "manual",
+      "value": 31,
+      "target": 31,
+      "corridor": {
+        "B_t": 18.321428571428573,
+        "U_opt": 32,
+        "L_floor": 7
+      },
+      "canonical": {
+        "B_t": 18.321428571428573,
+        "U_opt": 32,
+        "L_floor": 7
+      }
+    },
+    {
+      "day": 6,
+      "mode": "manual",
+      "value": 35,
+      "target": 35,
+      "corridor": {
+        "B_t": 22.071428571428573,
+        "U_opt": 38,
+        "L_floor": 9
+      },
+      "canonical": {
+        "B_t": 22.071428571428573,
+        "U_opt": 38,
+        "L_floor": 9
+      }
+    },
+    {
+      "day": 7,
+      "mode": "manual",
+      "value": 40,
+      "target": 40,
+      "corridor": {
+        "B_t": 26.142857142857142,
+        "U_opt": 44,
+        "L_floor": 10
+      },
+      "canonical": {
+        "B_t": 26.142857142857142,
+        "U_opt": 44,
+        "L_floor": 10
+      }
+    },
+    {
+      "day": 8,
+      "mode": "auto",
+      "value": 29,
+      "target": 29,
+      "corridor": {
+        "B_t": 30.642857142857142,
+        "U_opt": 50,
+        "L_floor": 12
+      },
+      "canonical": {
+        "B_t": 30.642857142857142,
+        "U_opt": 50,
+        "L_floor": 12
+      }
+    },
+    {
+      "day": 9,
+      "mode": "auto",
+      "value": 36,
+      "target": 36,
+      "corridor": {
+        "B_t": 31.392857142857142,
+        "U_opt": 51,
+        "L_floor": 10
+      },
+      "canonical": {
+        "B_t": 31.392857142857142,
+        "U_opt": 51,
+        "L_floor": 10
+      }
+    },
+    {
+      "day": 10,
+      "mode": "auto",
+      "value": 33,
+      "target": 33,
+      "corridor": {
+        "B_t": 33.285714285714285,
+        "U_opt": 54,
+        "L_floor": 11
+      },
+      "canonical": {
+        "B_t": 33.285714285714285,
+        "U_opt": 54,
+        "L_floor": 11
+      }
+    },
+    {
+      "day": 11,
+      "mode": "auto",
+      "value": 33,
+      "target": 33,
+      "corridor": {
+        "B_t": 33.75,
+        "U_opt": 55,
+        "L_floor": 11
+      },
+      "canonical": {
+        "B_t": 33.75,
+        "U_opt": 55,
+        "L_floor": 11
+      }
+    },
+    {
+      "day": 12,
+      "mode": "auto",
+      "value": 33,
+      "target": 33,
+      "corridor": {
+        "B_t": 33.857142857142854,
+        "U_opt": 55,
+        "L_floor": 11
+      },
+      "canonical": {
+        "B_t": 33.857142857142854,
+        "U_opt": 55,
+        "L_floor": 11
+      }
+    },
+    {
+      "day": 13,
+      "mode": "auto",
+      "value": 32,
+      "target": 32,
+      "corridor": {
+        "B_t": 34.142857142857146,
+        "U_opt": 55,
+        "L_floor": 11
+      },
+      "canonical": {
+        "B_t": 34.142857142857146,
+        "U_opt": 55,
+        "L_floor": 11
+      }
+    },
+    {
+      "day": 14,
+      "mode": "auto",
+      "value": 37,
+      "target": 37,
+      "corridor": {
+        "B_t": 33.714285714285715,
+        "U_opt": 55,
+        "L_floor": 11
+      },
+      "canonical": {
+        "B_t": 33.714285714285715,
+        "U_opt": 55,
+        "L_floor": 11
+      }
+    }
+  ],
+  "context": {
+    "as_of": "2026-11-05T09:08:40.990169+00:00",
+    "draws": [
+      "3e7dc4631615d50",
+      "441a28d52881a02",
+      "126f530ea8de42f",
+      "a0e82315eccd720",
+      "ee2e00c24793dff",
+      "f32ffebaec791c8",
+      "4d27da5a5d712cc",
+      "a31864074a3b95d",
+      "1546235d768a8db",
+      "ddb1f4508aef306",
+      "048b42118605e11",
+      "6cc4ffe280994da",
+      "14db2886f1db9ac",
+      "867b5b4dffb3640"
+    ],
+    "config": {
+      "opt_sigma": 1.5,
+      "floor_base": 0.35,
+      "floor_peak": 0.2,
+      "opt_growth": 1.3,
+      "opt_offset": 1.5,
+      "peak_threshold": 6,
+      "floor_yesterday": 0.3,
+      "active_month_weight": 0.5,
+      "recent_min_installs": 2
+    },
+    "history": [
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12
+    ],
+    "started_on": "2026-11-05",
+    "plateau_draws": [
+      "862cf102c60b28d",
+      "5c89361ae5e6df9",
+      "66428f952423854",
+      "9c1b7a0e2995edc",
+      "792337be77b3bb6",
+      "743d4f8756f2278",
+      "abc1080d79d1414",
+      "83a87e3652cca50",
+      "2fa2c16b8f55f0f",
+      "72d271eea0e9e7d",
+      "a83673448efc584",
+      "28b1262926e8b21",
+      "561d0500ddea114",
+      "ead8124f5c0db88"
+    ]
+  }
+}

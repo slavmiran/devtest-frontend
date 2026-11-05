@@ -7,7 +7,7 @@
     function text(k,v){return LiveCampaignWizardView.text(k,v);}
     function syncBack(){if(window.syncTelegramBackButton)window.syncTelegramBackButton();}
     function accessible(s){return session===s && s.actor===actor() && !!project(s.draft.appId);}
-    function fingerprint(d){var copy=JSON.parse(JSON.stringify(d));delete copy.appTitle;delete copy.baseline;delete copy.thermalPhase;delete copy.paceCampaignCapacity;delete copy.paceOwnCapacity;return JSON.stringify(copy);}
+    function fingerprint(d){var copy=JSON.parse(JSON.stringify(d));delete copy.appTitle;delete copy.baseline;delete copy.thermalPhase;delete copy.forecastContext;delete copy.paceCampaignCapacity;delete copy.paceOwnCapacity;return JSON.stringify(copy);}
     function dirty(s){return fingerprint(s.draft)!==s.initial || !!s.context.manualKey || !!s.context.allocationEdited;}
     window.addEventListener('live-campaigns:data',function(event){var s=session;if(!s||!accessible(s)||Number(event.detail.appId)!==Number(s.draft.appId))return;LiveProjectControl.refreshPhase(s.layer,s.draft,event.detail.control);});
     function toast(key){if(window.showToast)window.showToast(text(key));}
@@ -143,7 +143,7 @@
             if(field.indexOf('cap:')===0){LiveProjectControl.change(s.context.projectControl,field.slice(4),value);s.context.allocationEdited=true;}else s.draft=LiveCampaignDraft.change(s.draft,field,value);
             // Keep adjacent +/- buttons current while typing without replacing the input/keyboard.
             var buttons=el.parentElement.querySelectorAll('button');
-            buttons[0].dataset.value=value-1;buttons[0].disabled=value<=min;buttons[1].dataset.value=value+1;buttons[1].disabled=value>=max;
+            buttons[0].dataset.value=Math.max(min,value-Number(el.parentElement.dataset.increment||1));buttons[0].disabled=value<=min;buttons[1].dataset.value=Math.min(max,value+Number(el.parentElement.dataset.increment||1));buttons[1].disabled=value>=max;
         }else if(field==='webQuery'){s.draft=LiveCampaignDraft.change(s.draft,field,el.value);s.webEdited=true;}
         else if(field==='name'||field==='instructions')s.draft=LiveCampaignDraft.change(s.draft,field,el.value);
         else if(field==='position')s.draft=LiveCampaignDraft.keyword(s.draft,el.dataset.keyword,'position',el.value);
@@ -163,7 +163,7 @@
         if(action==='key-fallback'){var row=s.draft.keywords.find(function(k){return k.id===id;});s.draft=LiveCampaignDraft.keyword(s.draft,id,'is_fallback',!row.is_fallback);s.edited=true;render(s,false);return;}
         if(button.dataset.lcwIcon){s.draft.icon=button.dataset.lcwIcon==='none'?null:button.dataset.lcwIcon;s.edited=true;render(s,false);return;}
         if(button.hasAttribute('data-lpc-reset')){if(!s.context.projectControl)return;s.context.projectControl.allocations.forEach(function(a){a.limit=null;});s.context.projectControl.ownLimit=null;s.context.allocationEdited=true;render(s,false);return;}
-        if(button.hasAttribute('data-lpc-unlimited')||button.hasAttribute('data-lpc-cap')){if(!s.context.projectControl)return;LiveProjectControl.change(s.context.projectControl,button.dataset.lpcUnlimited||button.dataset.lpcCap,button.hasAttribute('data-lpc-cap')?1:null);s.context.allocationEdited=true;render(s,false);return;}
+        if(button.hasAttribute('data-lpc-unlimited')||button.hasAttribute('data-lpc-cap')){if(!s.context.projectControl)return;LiveProjectControl.change(s.context.projectControl,button.dataset.lpcUnlimited||button.dataset.lpcCap,button.hasAttribute('data-lpc-cap')?'cap':null);s.context.allocationEdited=true;render(s,false);return;}
         if(action==='review-settings'&&window.ReviewCredits){ReviewCredits.configure({appId:s.draft.appId,value:s.draft.reviews.config||{enabled:s.draft.reviews.enabled,day:Math.min(14,s.draft.reviews.delayDays||7)},retention:s.draft.retention.days,save:async function(c){if(!accessible(s))return false;s.draft.reviews={enabled:c.enabled,delayDays:c.day,prompt:'soft',config:c};s.edited=true;render(s,false);return true;}});return;}
         if(action==='learn'){window.LiveCampaignLearning.open(button.dataset.topic||'pace',button);return;}
         if(action==='geo'){ShowcaseGeo.openPicker({value:s.draft.country,titleKey:'lcGeoTitle',hintKey:'lcGeoPickerHint',anyKey:'lcGeoAny',onChoose:function(code){if(!accessible(s))return;s.draft=LiveCampaignDraft.change(s.draft,'country',code);s.edited=true;render(s,false);var choice=s.layer.querySelector('[data-lcw-action="geo"]');if(choice)choice.focus({preventScroll:true});}});return;}
