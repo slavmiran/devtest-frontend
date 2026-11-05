@@ -4378,6 +4378,12 @@ function _syncProjectTransferModalUi(project) {
         statusEl.classList.add('active');
     }
 
+    var noteEl = document.querySelector('#project-transfer-modal .transfer-modal-note');
+    if (noteEl) {
+        var currentBotUsername = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || (typeof BOT_USERNAME !== 'undefined' ? BOT_USERNAME : '') || 'Android12TestersBot').replace(/^@+/, '');
+        noteEl.textContent = window.t('transferDeliveryNote', { bot_username: currentBotUsername }, lang);
+    }
+
     _renderProjectTransferTargetUser();
 }
 
