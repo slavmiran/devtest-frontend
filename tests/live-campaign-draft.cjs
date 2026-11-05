@@ -1,10 +1,11 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const scope={};scope.window=scope;
-for(const name of ['live-campaign-keywords','live-campaign-pace','live-campaign-draft','live-campaign-traffic'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../js/'+name+'.js'),'utf8'),scope);
+for(const name of ['live-campaign-keywords','live-manual-plan','live-campaign-pace','live-campaign-draft','live-campaign-traffic'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../js/'+name+'.js'),'utf8'),scope);
 const model=scope.LiveCampaignDraft,ideas=scope.LiveCampaignKeywords,traffic=scope.LiveCampaignTraffic;
 const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesthub_live',boundary_available:true,installs:{per_day:10}}};
 (async()=>{
  let d=model.applyStrategy(model.create(project),'aso'),q=model.quote(d);
+ assert.equal(q.installs,Infinity,'Budget-funded volume is unlimited');d=model.change(d,'limit_mode','installs');q=model.quote(d);
  assert.equal(d.country,null);
  const geo=model.change(d,'country','KZ');assert.equal(geo.country,'KZ');assert.equal(model.change(geo,'source','web').country,'KZ');assert.equal(model.change(geo,'country',null).country,null);
  assert.equal((await model.definition(geo,async()=>null)).country,'KZ');assert.equal(Object.hasOwn(await model.definition(d,async()=>null),'country'),false);
@@ -26,17 +27,20 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  d=model.change(d,'webQuery','Family budget Android');assert.equal(model.valid(d,1),true);
  d=model.media(d,'web',{name:'reference.png'});
  const serialized=await model.definition(d,async()=>({name:'reference.png',mime:'image/png',data_base64:'AA=='}));
+ d.volume.dailyCampaignCaps=true;d.volume.contractsDuringPauseLimit=2;const scoped=await model.definition(d,async()=>({name:'reference.png',mime:'image/png',data_base64:'AA=='}));assert.equal('dailyCampaignCaps' in scoped.volume,false);assert.equal('contractsDuringPauseLimit' in scoped.volume,false);
  assert.equal(serialized.keywords.length,0,'Inactive source data never reaches API');assert.equal(serialized.web.screenshot.data_base64,'AA==');
  d=model.change(d,'source','keywords');const keyDefinition=await model.definition(d,async()=>{});
  assert.equal(keyDefinition.web.query,'');assert.equal(keyDefinition.web.screenshot,null);assert.equal(keyDefinition.keywords.some(k=>'installs' in k),false);
  for(const key of [...d.keywords])d=model.keyword(d,key.id,'remove');assert.equal(model.valid(d,4),false);
  const base=traffic.baseline({source:'devtesthub_live',install_velocity:{source_counts:{link:90,browser:5,key:5,unknown:0}}});
- const forecast=traffic.mix(model.applyStrategy(model.create(project),'aso'),base);assert.equal(forecast.total,142);assert.equal(forecast.status,'balanced');
+ const forecast=traffic.mix(model.change(model.applyStrategy(model.create(project),'aso'),'limit_mode','installs'),base);assert.equal(forecast.total,142);assert.equal(forecast.status,'balanced');
  assert.equal(scope.LiveCampaignPace.quota(5,7,1),1);assert.equal(scope.LiveCampaignPace.quota(5,7,7),5);assert.equal(scope.LiveCampaignPace.risk(18),'caution');assert.equal(scope.LiveCampaignPace.risk(24),'caution');assert.equal(scope.LiveCampaignPace.risk(48),'risk');
  const original=model.applyStrategy(model.create(project),'retention');assert.equal(original.retention.days,28);assert.equal(model.change(original,'retention',30).retention.days,30);
  const legacy={name:'Legacy',definition:JSON.parse(JSON.stringify(original)),keywords:[]};delete legacy.definition.volume.paceVersion;legacy.definition.volume.dailyInstalls=3;legacy.definition.volume.acquisitionDays=14;legacy.definition.volume.totalInstalls=1;legacy.definition.retention={days:30,checkpoints:[1,7,14,21,30]};
  const loaded=model.fromCampaign(project,legacy,()=>null);assert.equal(loaded.retention.days,30);assert.equal(loaded.volume.totalInstalls,42);assert.equal(loaded.volume.paceVersion,1);assert.equal(model.change(loaded,'name','Renamed').volume.paceVersion,1);assert.equal(model.change(loaded,'target',53).volume.paceVersion,2);
  const custom=model.create(project);assert.equal(traffic.mix(custom,null).status,'warning');
+ const ramp=model.change(custom,'mode','manual');ramp.volume.manualPlan=Object.assign(scope.LiveManualPlan.create(ramp.volume),{strategy:'ramp',targetInstalls:10,days:10});ramp.manualPlanSaved=JSON.stringify(ramp.volume.manualPlan);ramp.manualRuntime={preview:[6,7,8,9,10,10,10,10,10,10,10,10,10,10]};ramp.volume.manualPlan.gapMaxMinutes=120;assert.equal(model.quote(ramp).dailyCommitment,120,'Spacing-only edit preserves the current server day in the estimate');
+ ramp.paceOwnCapacity=2;assert.equal(model.quote(ramp).dailyCommitment,40,'The edited campaign daily ceiling also caps its estimate');
  assert.equal(traffic.baseline({source:'devtesthub_live',is_demo:true,source_counts:{link:90,browser:5,key:5}}),null);
  const unknown=traffic.baseline({source:'devtesthub_live',source_counts:{link:0,browser:0,key:0,unknown:100}});assert.equal(traffic.mix(custom,unknown).status,'uncertain');
  const keys=ideas.suggest({title:'Family Budget Planner',summary:'Track family budget and travel expenses',description:'<script>evil script()</script> Family budget for everyone.'});
@@ -44,7 +48,7 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  for(const rate of [null,NaN,Infinity,-1,'12']){const empty=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:rate}}});assert.equal(empty.baseline.available,false);assert.equal(model.applyStrategy(empty,'aso').volume.dailyInstalls,1);}
  const monthly=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:0,baseline:{available:true,days:28,per_day:.5}}}});assert.equal(monthly.baseline.available,true);assert.equal(monthly.baseline.perDay,.5);assert.equal(monthly.baseline.days,28);
  const inactive=model.create({...project,live_metrics:{...project.live_metrics,installs:{per_day:0,baseline:{available:false,days:null,per_day:null}}}});assert.equal(inactive.baseline.available,false);
- for(const strategy of ['aso','retention','deep','custom']){const preset=model.applyStrategy(model.create(project),strategy),quote=model.quote(preset);assert.equal(quote.channels.reduce((sum,c)=>sum+c.count,0),quote.installs);assert.ok(preset.retention.checkpoints.length>=2);}
+ for(const strategy of ['aso','retention','deep','custom']){const preset=model.change(model.applyStrategy(model.create(project),strategy),'limit_mode','installs'),quote=model.quote(preset);assert.equal(quote.channels.reduce((sum,c)=>sum+c.count,0),quote.installs);assert.ok(preset.retention.checkpoints.length>=2);}
  const multi=model.change(model.create(project),'allowedSource','web');assert.equal(model.counts(multi).unknown,14);const payload=await model.definition(model.change(multi,'retention',16),async()=>null);assert.deepEqual(JSON.parse(JSON.stringify(payload.allowed_sources)),['link','web']);assert.equal(payload.preferred_track.days,16);assert.deepEqual(Array.from(model.checkpoints(16,3)),[1,6,11,16]);assert.equal(model.change(multi,'minDays',20).retention.days,20);
  console.log('Track model: pool without quotas, paced/fixed volume, KD-only budget, source isolation, forecast and bounds passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

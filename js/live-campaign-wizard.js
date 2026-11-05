@@ -7,7 +7,7 @@
     function text(k,v){return LiveCampaignWizardView.text(k,v);}
     function syncBack(){if(window.syncTelegramBackButton)window.syncTelegramBackButton();}
     function accessible(s){return session===s && s.actor===actor() && !!project(s.draft.appId);}
-    function fingerprint(d){var copy=JSON.parse(JSON.stringify(d));delete copy.appTitle;delete copy.baseline;delete copy.thermalPhase;return JSON.stringify(copy);}
+    function fingerprint(d){var copy=JSON.parse(JSON.stringify(d));delete copy.appTitle;delete copy.baseline;delete copy.thermalPhase;delete copy.paceCampaignCapacity;delete copy.paceOwnCapacity;return JSON.stringify(copy);}
     function dirty(s){return fingerprint(s.draft)!==s.initial || !!s.context.manualKey || !!s.context.allocationEdited;}
     window.addEventListener('live-campaigns:data',function(event){var s=session;if(!s||!accessible(s)||Number(event.detail.appId)!==Number(s.draft.appId))return;LiveProjectControl.refreshPhase(s.layer,s.draft,event.detail.control);});
     function toast(key){if(window.showToast)window.showToast(text(key));}
@@ -51,12 +51,12 @@
     }
     function refresh(s){
         if(!accessible(s)){if(session===s)dispose(s);return;}
+        LiveProjectControl.prepareForecast(s.draft,s.context.projectControl,true);
         shell(s);
         LiveProjectControl.refresh(s.layer,s.draft,s.context.projectControl,true);
         var contractPrice=s.layer.querySelector('[data-ct-price]');if(contractPrice&&window.LiveContracts){var cost=LiveContracts.range(s.draft);contractPrice.textContent=cost.min.toLocaleString(window.lang==='ru'?'ru-RU':'en-US')+(cost.min===cost.max?'':'–'+cost.max.toLocaleString(window.lang==='ru'?'ru-RU':'en-US'))+' $BUST';}
         var displayError=s.layer.querySelector('[data-lpc-display-error]');if(displayError)displayError.textContent=!s.draft.icon&&!s.draft.name.trim()?text('lpcDisplayRequired'):'';
         var balance=s.layer.querySelector('[data-lcw-balance]');if(balance)balance.innerHTML=LiveCampaignSourcesView.balance(s.draft,s.context);
-        var preview=s.layer.querySelector('[data-lcw-pace-preview]');if(preview)preview.innerHTML=LiveCampaignPaceView.preview(s.draft);
         var hud=s.layer.querySelector('[data-lcw-entry-hud]');if(hud)hud.innerHTML=LiveCampaignEntry.hud(s.draft,s.context);
         var validation=s.layer.querySelector('[data-lcw-validation]');
         if(validation)validation.textContent=invalid(s)?text('lcwInvalidCount'):!LiveCampaignDraft.valid(s.draft,1)?text(LiveCampaignDraft.allowed(s.draft).includes('keywords')&&!s.draft.keywords.length?'lcgNeedKey':'lcwQueryRequired'):'';
@@ -67,7 +67,8 @@
         var attrs=['lcwFocus','lcwInput','keyword','lcwStrategy'],identity=attrs.map(function(k){return focused && focused.dataset[k];});
         var start=focused && focused.selectionStart,end=focused && focused.selectionEnd;
         s.context.descriptionOpen=!!body.querySelector('.lcw-description[open]');
-        body.innerHTML=LiveCampaignWizardView.body(s.draft,s.step,s.context)+(s.step===1&&LiveCampaignDraft.allowed(s.draft).includes('keywords')&&s.context.poolAvailable===0?'<aside class="lcp-note"><p>'+window.escapeHTML(text('lgEmptyPool'))+'</p><button type="button" class="meta-chip lg-action" data-live-action="pool" data-live-app="'+s.draft.appId+'">'+window.escapeHTML(text('lgPool'))+'</button></aside>':'');shell(s);
+        var disclosures=Array.from(body.querySelectorAll('[data-lpc-open][open]')).map(function(n){return n.dataset.lpcOpen;});
+        body.innerHTML=LiveCampaignWizardView.body(s.draft,s.step,s.context)+(s.step===1&&LiveCampaignDraft.allowed(s.draft).includes('keywords')&&s.context.poolAvailable===0?'<aside class="lcp-note"><p>'+window.escapeHTML(text('lgEmptyPool'))+'</p><button type="button" class="meta-chip lg-action" data-live-action="pool" data-live-app="'+s.draft.appId+'">'+window.escapeHTML(text('lgPool'))+'</button></aside>':'');disclosures.forEach(function(key){var n=body.querySelector('[data-lpc-open="'+key+'"]');if(n)n.open=true;});shell(s);
         body.classList.toggle('lcw-enter-a',s.step%2===1);body.classList.toggle('lcw-enter-b',s.step%2===0);
         if(changedStep){body.scrollTop=0;var target=s.layer.querySelector('.lcw-heading')||body.querySelector('button');if(target)target.focus({preventScroll:true});}
         else{
@@ -151,6 +152,7 @@
     }
     async function click(event){
         var s=session;if(!s)return;if(!accessible(s)){event.preventDefault();dispose(s);return;}
+        if(LiveProjectControl.toggleDisclosure(event))return;
         if(s.outlineOpen && !event.target.closest('.gtw-header')){s.outlineOpen=false;shell(s);}
         var button=event.target.closest('button');if(!button || button.disabled)return;event.stopPropagation();if(s.confirming||s.saving)return;
         var action=button.dataset.lcwAction,field=button.dataset.lcwField,id=button.dataset.keyword;if(window.LiveScenarioEditor&&LiveScenarioEditor.click(s.draft.activity,button,s.media)){s.edited=true;render(s,false);return;}
@@ -160,6 +162,7 @@
         if(action==='key-geo-remove'){var row=s.draft.keywords.find(function(k){return k.id===id;});s.draft=LiveCampaignDraft.keyword(s.draft,id,'geo_countries',(row.geo_countries||[]).filter(function(code){return code!==button.dataset.country;}));s.edited=true;render(s,false);return;}
         if(action==='key-fallback'){var row=s.draft.keywords.find(function(k){return k.id===id;});s.draft=LiveCampaignDraft.keyword(s.draft,id,'is_fallback',!row.is_fallback);s.edited=true;render(s,false);return;}
         if(button.dataset.lcwIcon){s.draft.icon=button.dataset.lcwIcon==='none'?null:button.dataset.lcwIcon;s.edited=true;render(s,false);return;}
+        if(button.hasAttribute('data-lpc-reset')){if(!s.context.projectControl)return;s.context.projectControl.allocations.forEach(function(a){a.limit=null;});s.context.projectControl.ownLimit=null;s.context.allocationEdited=true;render(s,false);return;}
         if(button.hasAttribute('data-lpc-unlimited')||button.hasAttribute('data-lpc-cap')){if(!s.context.projectControl)return;LiveProjectControl.change(s.context.projectControl,button.dataset.lpcUnlimited||button.dataset.lpcCap,button.hasAttribute('data-lpc-cap')?1:null);s.context.allocationEdited=true;render(s,false);return;}
         if(action==='review-settings'&&window.ReviewCredits){ReviewCredits.configure({appId:s.draft.appId,value:s.draft.reviews.config||{enabled:s.draft.reviews.enabled,day:Math.min(14,s.draft.reviews.delayDays||7)},retention:s.draft.retention.days,save:async function(c){if(!accessible(s))return false;s.draft.reviews={enabled:c.enabled,delayDays:c.day,prompt:'soft',config:c};s.edited=true;render(s,false);return true;}});return;}
         if(action==='learn'){window.LiveCampaignLearning.open(button.dataset.topic||'pace',button);return;}

@@ -61,7 +61,9 @@
   }else if(f==='limit_mode'&&['budget','installs'].includes(v))n.volume.limit_mode=v;else if(f==='activity'){n.activity.enabled=!!v;if(!v)n.activity.screenshot=false;}
   else if(f==='screenshot'&&n.activity.enabled)n.activity.screenshot=!!v;
   else if(f==='reviews')n.reviews.enabled=!!v;
-  else if(f==='mode'&&['auto','manual','free'].includes(v)){n.volume.mode=v;n.volume.paced=v!=='free';}
+  else if(f==='mode'&&['auto','manual','free'].includes(v)){n.volume.mode=v;n.volume.paced=v!=='free';if(v==='manual'&&!n.volume.manualPlan)n.volume.manualPlan=LiveManualPlan.create(n.volume,n.corridor);}
+  else if(f==='contractsDuringPauseLimit'&&[0,2,5].includes(v))n.volume.contractsDuringPauseLimit=v||null;
+  else if(f==='dailyPlan'){n.volume.mode='manual';n.volume.paced=true;n.volume.manualPlan=LiveManualPlan.create(n.volume,n.corridor);}
   else if(f==='paced'){n.volume.paced=!!v;n.volume.mode=v?'manual':'free';}
   else if(f==='pauseHours'&&Number.isInteger(v)&&v>=6&&v<=48)n.volume.pauseHours=v;
   else if(f==='rampDays'&&[0,7,10,14].includes(v))n.volume.rampDays=v;
@@ -89,7 +91,9 @@
  function media(d,key,value){var n=clone(d);if(key.startsWith('step:'))LiveScenarioEditor.set(n.activity,key,value);else if(key==='web')n.web.screenshot=value;else if(key.startsWith('scenario:')){n.activity.screenshots=n.activity.screenshots||[];n.activity.screenshots[Number(key.split(':')[1])]=value;}else{var row=n.keywords.find(function(k){return 'keyword:'+k.id===key;});if(!row)return d;row.screenshot=value;}return n;}
  function quote(d){
   var installs=d.volume.limit_mode==='budget'?Infinity:total(d),r=d.retention,schedule=['count','interval'].includes(r.checkpoint_mode)?checkpoints(r.max_days||r.days,r.checkpoint_count,r.checkpoint_mode==='interval'?r.checkpoint_interval:null):r.checkpoints,unit=d.contracts&&d.contracts.enabled&&window.LiveContracts?LiveContracts.range(d).max:(schedule.length-1)*10,distribution=counts(d),channels=['link','web','keywords','unknown'].map(function(k){return {key:k,count:distribution[k]||0,percent:installs?(distribution[k]||0)*100/installs:0};});
-  return {available:installs>0,installs:installs,checkpointUnit:10,paidCheckpoints:schedule.length-1,perInstall:unit,totalCommitment:installs*unit,dailyCommitment:d.volume.paced?Math.round(unit*(d.volume.mode==='auto'?Math.min(installs,d.corridor&&d.corridor.U_opt||0):d.volume.manualPlan?Math.min(installs,d.manualRuntime&&d.manualPlanSaved===JSON.stringify(d.volume.manualPlan)?d.manualRuntime.quota:LiveManualPlan.quota(d.volume.manualPlan,1)):LiveCampaignPace.daily(d.volume))*100)/100:null,
+  var goal=d.volume.mode==='auto'?Math.min(installs,d.corridor&&d.corridor.U_opt||0):d.volume.manualPlan?Math.min(installs,LiveManualPlan.preview(d).values[0]):LiveCampaignPace.daily(d.volume);
+  if(Number.isFinite(d.paceOwnCapacity))goal=Math.min(goal,d.paceOwnCapacity);
+  return {available:installs>0,installs:installs,checkpointUnit:10,paidCheckpoints:schedule.length-1,perInstall:unit,totalCommitment:installs*unit,dailyCommitment:d.volume.paced?Math.round(unit*goal*100)/100:null,
    acquisitionDays:null,completionDays:null,channels:channels};
  }
  function valid(d,step){return (!window.LiveManualPlan||LiveManualPlan.valid(d.volume.manualPlan))&&!!d.source&&(!allowed(d).includes('web')||!!d.web.query.trim())&&(!allowed(d).includes('keywords')||d.keywords.some(function(k){return k.enabled!==false&&!k.is_fallback;}))&&d.retention.checkpoints.length>=2&&(!d.activity.enabled||!(d.activity.steps||[]).some(function(s){return !s.text.trim();}))&&(step!==4||!!d.icon||!!d.name.trim());}
@@ -101,7 +105,7 @@
   payload.volume.totalInstalls=total(d);if(window.LiveScenarioEditor&&d.activity.steps)payload.activity.steps=await LiveScenarioEditor.serialize(d.activity,serialize);
   if(d.activity.screenshots){payload.activity.screenshots=[];for(var i=0;i<d.activity.screenshots.length;i++)if(d.activity.screenshots[i])payload.activity.screenshots.push(await serialize('scenario:'+i,d.activity.screenshots[i]));}
   // Project control is saved separately in the same transaction. Legacy volume fields no longer gate intake.
-  payload.volume.paced=false;payload.volume.paceVersion=2;delete payload.volume.mode;delete payload.volume.manualPlan;
+  payload.volume.paced=false;payload.volume.paceVersion=2;['mode','manualPlan','dailyCampaignCaps','contractsDuringPauseLimit'].forEach(function(k){delete payload.volume[k];});
   if(sources.includes('web')&&d.web.screenshot)payload.web.screenshot=await serialize('web',d.web.screenshot);
   if(sources.includes('keywords'))for(var k of d.keywords)payload.keywords.push({keyword:k.keyword,position:k.position,enabled:k.enabled!==false,geo_countries:k.geo_countries||[],is_fallback:!!k.is_fallback,screenshot:k.screenshot?await serialize('keyword:'+k.id,k.screenshot):null});
   return payload;
