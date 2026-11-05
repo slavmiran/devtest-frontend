@@ -1343,6 +1343,10 @@ function handleApiError(code, details = {}, options = {}) {
 
     var normalizedCode = String(code || '').trim();
     var message = '';
+    details = (details && typeof details === 'object') ? Object.assign({}, details) : {};
+    if (!details.bot_username) {
+        details.bot_username = String((window.App && window.App.botUsername) || window.__BOT_USERNAME__ || (typeof BOT_USERNAME !== 'undefined' ? BOT_USERNAME : '') || 'Android12TestersBot').replace(/^@+/, '');
+    }
 
     if (normalizedCode === 'network_error') {
         message = window.t('networkError', {}, lang);
