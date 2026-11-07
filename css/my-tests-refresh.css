@@ -147,6 +147,27 @@ html.tests-scrolling #tab-tests .test-card-highlight-pulse {
     margin-bottom: 8px;
 }
 
+.test-report-retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    margin: 0 0 10px;
+    padding: 6px 9px;
+    border: 1px solid rgba(196, 157, 93, 0.22);
+    border-radius: 9px;
+    background: rgba(196, 157, 93, 0.045);
+    color: var(--hint-color, #8e8e93);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: left;
+    cursor: pointer;
+}
+
+.test-report-retry > span { color: #b79a6d; }
+.test-report-retry:focus-visible { outline: 2px solid #b79a6d; outline-offset: 2px; }
+
 .screenshot-proof-upload-pending__status {
     display: flex;
     align-items: center;

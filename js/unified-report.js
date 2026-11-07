@@ -37,7 +37,9 @@
             reviewRetryCheckin: 'Отклонён · новый скриншот зачтёт день',
             reviewRetryCatchup: 'Отклонён · зачтёт день, но не досдачу',
             reviewRetryDone: 'Отклонён · можно отправить новый скриншот',
-            day: 'День {day} · {name}', close: 'Закрыть', edit: 'Разметить изображение',
+            day: 'День {day} · {name}', playStore: '↗ В Google Play',
+            ownerLang: 'Язык владельца:',
+            close: 'Закрыть', edit: 'Разметить изображение',
             done: 'Готово', undo: 'Отменить шаг', redo: 'Вернуть шаг', cancel: 'Отмена', pen: 'Маркер', arrow: 'Стрелка', cover: 'Скрыть',
             thickness: 'Толщина', colorRed: 'Красный', colorGreen: 'Зелёный', colorBlue: 'Синий', colorWhite: 'Белый', colorBlack: 'Чёрный',
             editorTitle: 'Разметка скриншота', editorFailed: 'Не удалось сохранить разметку. Попробуйте ещё раз.',
@@ -90,7 +92,9 @@
             reviewRetryCheckin: 'Rejected · resubmit a screenshot to complete today',
             reviewRetryCatchup: 'Rejected · completes today, not a make-up request',
             reviewRetryDone: 'Rejected · you can upload a new screenshot',
-            day: 'Day {day} · {name}', close: 'Close', edit: 'Annotate image',
+            day: 'Day {day} · {name}', playStore: '↗ Google Play',
+            ownerLang: 'Owner language:',
+            close: 'Close', edit: 'Annotate image',
             done: 'Done', undo: 'Undo', redo: 'Redo', cancel: 'Cancel', pen: 'Marker', arrow: 'Arrow', cover: 'Redact',
             thickness: 'Thickness', colorRed: 'Red', colorGreen: 'Green', colorBlue: 'Blue', colorWhite: 'White', colorBlack: 'Black',
             editorTitle: 'Annotate screenshot', editorFailed: 'Could not save the annotation. Please retry.',
@@ -146,6 +150,55 @@
             buffer: options.submissionMode === 'buffer_catchup' || (typeof isBufferOnlyCatchupSubmission === 'function' && isBufferOnlyCatchupSubmission(test, day)),
             target: !control && requests.length ? requests[0] : null };
     }
+    function countryFlag(code) {
+        var letters = String(code || '').trim().toUpperCase();
+        if (!/^[A-Z]{2}$/.test(letters)) return '';
+        return String.fromCodePoint(127397 + letters.charCodeAt(0), 127397 + letters.charCodeAt(1));
+    }
+    function ownerLanguageCode(test) {
+        var target = String(test && test.target_lang || '').trim().toUpperCase();
+        if (target === 'RU' || target === 'EN') return target;
+        var iface = String(test && test.owner_language || '').trim().toLowerCase();
+        if (iface === 'ru' || iface === 'en') return iface.toUpperCase();
+        return '';
+    }
+    function paintOwnerHint(test) {
+        var hint = el('unified-report-owner-hint');
+        var span = hint && hint.querySelector('span');
+        if (!hint || !span) return;
+        var fullName = String(test.owner_full_name || '').trim();
+        var username = String(test.owner_username || '').replace(/^@+/, '').trim();
+        var name = fullName || (username ? '@' + username : '');
+        var nick = fullName && username ? ' (@' + username + ')' : '';
+        var langCode = ownerLanguageCode(test);
+        var flag = countryFlag(test.owner_country) || (langCode === 'RU' ? '🇷🇺' : (langCode === 'EN' ? '🇬🇧' : ''));
+        var who = [flag, name].filter(Boolean).join(' ');
+        if (who) who += nick;
+        var parts = [];
+        if (who) parts.push(who);
+        if (langCode) parts.push(t('ownerLang') + ' ' + langCode);
+        span.textContent = parts.join(' · ');
+        hint.hidden = !span.textContent;
+    }
+    function syncOwnerHint() {
+        var hint = el('unified-report-owner-hint');
+        var note = el('unified-report-note');
+        if (!hint || hint.hidden) return;
+        var show = !!(note && (document.activeElement === note || String(note.value || '').trim()));
+        hint.classList.toggle('is-visible', show);
+        hint.setAttribute('aria-hidden', show ? 'false' : 'true');
+    }
+    window.openUnifiedReportPlayStore = function () {
+        var url = state() && state().playStoreUrl;
+        if (!url) return;
+        try {
+            if (typeof tg !== 'undefined' && typeof tg.openLink === 'function') {
+                tg.openLink(url);
+                return;
+            }
+        } catch (e) {}
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
     window.getUnifiedReportContext = context;
     window.initUnifiedReport = function (test, options) {
         if (!test) return;
@@ -168,6 +221,13 @@
         el('unified-report-format-label').textContent = t('formatLabel');
         el('unified-report-note').value = s.note;
         el('t-reportModalHint').textContent = t('day', { day: s.expectedDay, name: test.name || '' });
+        s.playStoreUrl = typeof resolveTestPlayStoreUrl === 'function' ? resolveTestPlayStoreUrl(test) : '';
+        var playLink = el('unified-report-play-link');
+        if (playLink) {
+            playLink.hidden = !s.playStoreUrl;
+            playLink.textContent = t('playStore');
+        }
+        paintOwnerHint(test);
         el('t-checkinProofChoose').textContent = t('media');
         el('t-checkinProofLimits').textContent = t('limits');
         if (typeof window.syncCheckinDeveloperAccordion === 'function') {
@@ -213,13 +273,16 @@
         window.setUnifiedReportKind(s.reportKind);
         el('unified-report-note').onfocus = function () {
             if (typeof collapseCheckinDeveloperAccordion === 'function') collapseCheckinDeveloperAccordion('report-developer');
+            syncOwnerHint();
             syncReportViewport();
         };
         el('unified-report-note').onblur = function () {
             this.style.removeProperty('max-height');
             this.style.removeProperty('min-height');
             el('report-modal').classList.remove('is-review-compact');
+            syncOwnerHint();
         };
+        syncOwnerHint();
         syncReportViewport();
         if (!window._reportViewportBound) {
             if (window.visualViewport) {

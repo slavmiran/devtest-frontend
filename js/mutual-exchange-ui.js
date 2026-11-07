@@ -569,6 +569,16 @@
             '</div>';
     }
 
+    function _d1StatusText(leg, progress) {
+        // Missing reciprocal legs have synthetic zero metrics; zero alone is not evidence.
+        if (leg && !String(leg.leg_status || '').trim()) return '';
+        var source = leg ? leg.metrics : progress;
+        var count = source && (leg ? source.checkins : source.checkins_count);
+        if (typeof count !== 'number' && (typeof count !== 'string' || !count.trim())) return '';
+        if (Number(count) !== 0 || source.last_check_date) return '';
+        return _t('mutualBalanceD1Pending');
+    }
+
     function _renderBalanceFromLocal(test, options) {
         options = options || {};
         var person = _resolvePersonForRender(test, options, null);
@@ -654,6 +664,17 @@
                     : (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : (test && test.consecutive_skips || 0))
             ),
             theirCheckins: theirCheckins,
+            testerD1Text: _d1StatusText(
+                localExchangeState ? (localExchangeState.left || {}) : null,
+                options.context === 'projects' ? tester : test
+            ),
+            partnerD1Text: _d1StatusText(
+                localExchangeState ? (localExchangeState.right || {}) : null,
+                options.context !== 'projects' && test && test.partner_progress_status ? {
+                    checkins_count: test.partner_checkins,
+                    last_check_date: test.partner_last_check_date,
+                } : null
+            ),
             partnerConsecutive: options.context === 'projects'
                 ? theirConsec
                 : Number(test && test.partner_consecutive_skips || 0),
@@ -753,6 +774,17 @@
                     : (stats.my_consecutive_skips || (test && typeof calculateConsecutiveSkips === 'function' ? calculateConsecutiveSkips(test) : 0))
             ),
             theirCheckins: Number(testerMetrics ? testerMetrics.checkins : stats.my_checkins || (test && test.checkins_count) || 0),
+            testerD1Text: _d1StatusText(exchangeState ? (exchangeState.left || {}) : null, {
+                checkins_count: stats.my_checkins,
+                last_check_date: stats.my_last_check_date,
+            }),
+            partnerD1Text: _d1StatusText(
+                exchangeState ? (exchangeState.right || {}) : null,
+                stats.partner_progress_status ? {
+                    checkins_count: stats.partner_checkins,
+                    last_check_date: stats.partner_last_active || stats.partner_last_check_date,
+                } : null
+            ),
             partnerConsecutive: Number(
                 exchangeState
                     ? (options.context === 'projects'
@@ -837,6 +869,7 @@
                         _esc(totalText) +
                     '</span>' +
                 '</div>' +
+                (options.d1Text ? '<div class="parity-side-d1-note">' + _esc(options.d1Text) + '</div>' : '') +
             '</div>';
     }
 
@@ -966,6 +999,7 @@
                     debtDone: themDebtDone,
                     partnerDebt: themPartnerDebt,
                     consecutiveSkips: themAtYouConsecutive,
+                    d1Text: isOwnerView ? data.testerD1Text : data.partnerD1Text,
                     doneDate: themDoneDate,
                     breakDate: themBroken ? themDoneDate : null,
                 }) +
@@ -974,6 +1008,7 @@
                     debtActive: youDebtActive,
                     debtDone: youSideDone,
                     consecutiveSkips: youAtThemConsecutive,
+                    d1Text: isOwnerView ? data.partnerD1Text : data.testerD1Text,
                     doneDate: youDoneDate,
                     breakDate: youBroken ? youDoneDate : null,
                 }) +
