@@ -1474,6 +1474,7 @@ function _buildOptimisticMyTestFromFeedItem(feedItem, options) {
         rewards_summary: _emptyTestRewardsSummary(),
         play_feedback_submitted_pending: false,
         owner_language: null,
+        owner_country: '',
         isTestedToday: false,
         isGrantAvailableTomorrow: false,
         isReadyToClaim: false,
@@ -1832,6 +1833,7 @@ function _mapTestsFromApi(data) {
                 return !!app.play_feedback_submitted;
             })(),
             owner_language: app.owner_language || null,
+            owner_country: app.owner_country || '',
             isTestedToday: isTestedToday,
             isGrantAvailableTomorrow: isGrantAvailableTomorrow,
             isReadyToClaim: isReadyToClaim,

@@ -7,12 +7,21 @@
     var LEFT_STATUSES = ['abandoned', 'justified_exit', 'dropped', 'kicked_by_owner', 'canceled_neutral'];
     var CONTROL_DAYS = [1, 4, 7, 10, 14];
     var SECTION_ORDER = ['both', 'attention', 'control', 'rhythm'];
+    var pendingMemory = {};
     var state = {
         appId: 0,
         filter: 'risk',
         recipients: [],
         sending: false,
         generation: 0,
+        view: 'select',
+        delivery: null,
+        pending: null,
+        checking: false,
+        pollTimer: null,
+        request: null,
+        pollUntil: 0,
+        errorCode: '',
     };
 
     function text(key, fallback, params) {
@@ -27,7 +36,9 @@
         return out;
     }
     function esc(value) {
-        return window.escapeHTML ? window.escapeHTML(String(value == null ? '' : value)) : String(value == null ? '' : value);
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+        });
     }
     function projects() {
         return typeof myProjects !== 'undefined' && Array.isArray(myProjects) ? myProjects : [];
@@ -491,7 +502,12 @@
             var raw = localStorage.getItem('pc_smart_ping_last_' + safeId);
             if (raw) {
                 var parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object' && parseSentAt(parsed.sentAt)) cached = parsed;
+                if (parsed && typeof parsed === 'object' && parseSentAt(parsed.sentAt)) {
+                    // Older clients cached selected IDs as if already sent.
+                    // Keep their cooldown timestamp, never their delivery claim.
+                    cached = parsed.completed === true && Number.isSafeInteger(parsed.deliveryId)
+                        ? parsed : { sentAt: parsed.sentAt, count: 0, testerIds: [] };
+                }
             }
         } catch (_) {}
         var project = projectById(safeId);
@@ -521,10 +537,8 @@
         if (!ping || !ping.sentAt) return false;
         var sentMs = parseSentAt(ping.sentAt);
         if (!sentMs || Date.now() - sentMs > COOLDOWN_MS) return false;
-        if (Array.isArray(ping.testerIds) && ping.testerIds.length > 0) {
-            return ping.testerIds.indexOf(tId) !== -1;
-        }
-        return true;
+        // A cooldown/queue receipt does not prove delivery to any tester.
+        return Array.isArray(ping.testerIds) && ping.testerIds.map(Number).indexOf(tId) !== -1;
     }
 
     function getTesterPingTime(appId, testerId) {
@@ -591,7 +605,7 @@
             }
             var wait = cooldownRemaining(project);
             var footer = node.querySelector('.smart-ping-sheet__send');
-            if (footer && !state.sending) {
+            if (footer && !state.sending && state.view === 'select') {
                 var next = footerState(project);
                 footer.disabled = next.disabled;
                 footer.textContent = next.label;
@@ -612,13 +626,18 @@
         return document.getElementById('smart-ping-modal');
     }
     function close(force) {
-        if (state.sending && !force) return;
+        state.generation += 1;
+        clearTimeout(state.pollTimer);
+        if (state.request) state.request.abort();
+        state.request = null;
+        state.checking = false;
         stopCountdownTimer();
         var node = overlay();
         if (document.body) document.body.style.overflow = '';
-        if (!node) return;
-        node.classList.remove('active');
-        if (node.parentNode) node.parentNode.removeChild(node);
+        if (node) {
+            node.classList.remove('active');
+            if (node.parentNode) node.parentNode.removeChild(node);
+        }
         state.appId = 0;
         state.sending = false;
     }
@@ -717,6 +736,10 @@
         var node = overlay();
         var project = projectById(state.appId);
         if (!node || !project) return;
+        if (state.view !== 'select') {
+            renderDelivery(node);
+            return;
+        }
         var body = node.querySelector('.smart-ping-sheet__body');
         var footer = node.querySelector('.smart-ping-sheet__send');
         var balanceEl = node.querySelector('.smart-ping-sheet__balance');
@@ -820,6 +843,29 @@
     }
     function bind(node) {
         node.addEventListener('click', function (event) {
+            var action = event.target.closest && event.target.closest('[data-smart-ping-action]');
+            if (action) {
+                event.preventDefault();
+                var command = action.getAttribute('data-smart-ping-action');
+                if (command === 'close') close();
+                if (command === 'check' && !state.checking) {
+                    state.pollUntil = Date.now() + 150000;
+                    checkDelivery(context());
+                }
+                if (command === 'back' && !state.checking && (state.view === 'rejected' || state.view === 'not-found')) {
+                    // Explicitly abandon only a rejected request or an attempt
+                    // absent from a successful latest lookup. Never auto-repost.
+                    clearTimeout(state.pollTimer);
+                    savePending(context(), null);
+                    state.delivery = null;
+                    state.view = 'select';
+                    state.sending = false;
+                    node.querySelector('.smart-ping-sheet__filters').hidden = false;
+                    render();
+                }
+                if (command === 'manual') manualReminder(Number(action.getAttribute('data-tester-id')));
+                return;
+            }
             var catchupReview = event.target && event.target.closest && event.target.closest('[data-smart-ping-catchup-review]');
             if (catchupReview) {
                 event.preventDefault();
@@ -828,7 +874,6 @@
                 return;
             }
             if (event.target === node) {
-                if (state.sending) return;
                 close();
             }
         });
@@ -840,6 +885,7 @@
         node.querySelectorAll('[data-smart-ping-filter]').forEach(function (btn) {
             btn.addEventListener('click', function (event) {
                 event.preventDefault();
+                if (state.view !== 'select') return;
                 applyFilter(btn.getAttribute('data-smart-ping-filter'));
                 render();
             });
@@ -848,6 +894,7 @@
             var input = event.target;
             if (!input || !input.matches || !input.matches('[data-smart-ping-tester]')) return;
             if (input.disabled) return;
+            if (state.view !== 'select') return;
             var testerId = Number(input.getAttribute('data-smart-ping-tester') || 0);
             state.recipients.forEach(function (row) {
                 if (row.testerId === testerId) row.checked = !!input.checked;
@@ -858,115 +905,333 @@
         var send = node.querySelector('.smart-ping-sheet__send');
         if (send) send.addEventListener('click', function (event) {
             event.preventDefault();
-            submit();
+            if (state.view === 'select') submit();
+            else close();
         });
         bindSwipe(node);
+    }
+    // POST reserves funds once. Only authenticated GET receipts establish
+    // delivery/refunds. Persist the in-flight receipt separately from last ping;
+    // closing/reloading never starts another paid request or a client refund.
+    function actorId() {
+        return Number((typeof userId !== 'undefined' && userId) || (window.App && window.App.userId)
+            || (window.tg && window.tg.initDataUnsafe && window.tg.initDataUnsafe.user && window.tg.initDataUnsafe.user.id) || 0);
+    }
+    function context() {
+        return { generation: state.generation, appId: state.appId, actor: actorId() };
+    }
+    function isCurrent(ctx) {
+        return ctx.generation === state.generation && ctx.appId === state.appId && ctx.actor === actorId();
+    }
+    function pendingKey(ctx) { return 'pc_smart_ping_pending_' + ctx.actor + '_' + ctx.appId; }
+    function savePending(ctx, value) {
+        if (isCurrent(ctx)) state.pending = value;
+        if (!(ctx.actor > 0)) return;
+        if (value) pendingMemory[pendingKey(ctx)] = value;
+        else delete pendingMemory[pendingKey(ctx)];
+        try {
+            if (value) localStorage.setItem(pendingKey(ctx), JSON.stringify(value));
+            else localStorage.removeItem(pendingKey(ctx));
+        } catch (_) {}
+    }
+    function readPending(ctx) {
+        var value = pendingMemory[pendingKey(ctx)] || null;
+        try {
+            value = JSON.parse(localStorage.getItem(pendingKey(ctx)) || 'null') || value;
+        } catch (_) {}
+        if (value && Number.isFinite(value.startedAt) && Array.isArray(value.recipients)
+            && (value.deliveryId === null || Number.isSafeInteger(value.deliveryId) && value.deliveryId > 0)) return value;
+        return null;
+    }
+    function updateBalance(amount) {
+        if (amount != null && Number.isFinite(Number(amount)) && typeof visibilityStats !== 'undefined' && visibilityStats) {
+            visibilityStats.balance_bust = Number(amount);
+        }
+    }
+    function apiBase() {
+        return (typeof API_BASE !== 'undefined' && API_BASE) || (window.App && window.App.API_BASE) || '/api';
+    }
+    async function requestJson(url, options, ctx) {
+        var controller = new AbortController();
+        if (isCurrent(ctx)) state.request = controller;
+        var timeout = setTimeout(function () { controller.abort(); }, 15000);
+        try {
+            var response = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+            var payload = await response.json().catch(function () { return null; });
+            return { response: response, payload: payload };
+        } finally {
+            clearTimeout(timeout);
+            if (state.request === controller) state.request = null;
+        }
+    }
+    function reminderContext(row) {
+        var reasons = row.reasons || [];
+        var missed = reasons.find(function (reason) { return reason.code === 'missed_control'; });
+        var reason = missed ? 'missed_control' : row.controlDay > 0 ? 'control' :
+            ['not_opened', 'debt', 'skips'].find(function (code) { return reasons.some(function (item) { return item.code === code; }); }) || 'regular';
+        var extra = { skips: skipsCount(row.tester) };
+        var day = Number(missed && missed.missedDay || row.controlDay || 0);
+        if (day > 0) extra.day = day;
+        return { testerId: row.testerId, name: handleOf(row.tester), reason: reason,
+            extra: extra };
+    }
+    function recipientInfo(testerId) {
+        var saved = (state.pending && state.pending.recipients || []).find(function (row) { return Number(row.testerId) === testerId; });
+        if (saved) return saved;
+        var row = state.recipients.find(function (item) { return item.testerId === testerId; });
+        if (row) return reminderContext(row);
+        var project = projectById(state.appId);
+        var tester = (project && project.testers || []).find(function (item) { return testerIdOf(item) === testerId; });
+        return { testerId: testerId, name: handleOf(tester || { tester_id: testerId }), reason: 'regular', extra: {} };
+    }
+    function manualReminder(testerId) {
+        if (state.view !== 'completed' || typeof window.pcRemindTester !== 'function') return;
+        var result = state.delivery.results.find(function (item) { return item.tester_id === testerId; });
+        if (!result || delivered(result)) return;
+        // The legacy preview helper has a send fallback when its markup is
+        // absent. Do not enter that fallback from the delivery receipt.
+        if (!document.getElementById('bell-remind-overlay')) {
+            if (typeof window.showToast === 'function') window.showToast(text('smartPingManualUnavailable'));
+            return;
+        }
+        var info = recipientInfo(testerId);
+        var appId = state.appId;
+        close();
+        // This existing function opens the preview; the user chooses whether
+        // and how to send. Never invoke a Telegram send API from this sheet.
+        window.pcRemindTester(appId, testerId, info.reason, info.extra);
+    }
+    function delivered(row) { return row.status === 'sent' || row.status === 'catchup'; }
+    function checkedDelivery(raw, expectedId) {
+        if (!raw || !Number.isSafeInteger(raw.id) || raw.id <= 0 || (expectedId && raw.id !== expectedId)
+            || ['queued', 'completed'].indexOf(raw.state) === -1 || !parseSentAt(raw.sent_at)
+            || !Number.isInteger(raw.requested_count) || raw.requested_count < 0
+            || !Number.isFinite(raw.total_cost) || raw.total_cost < 0) throw new Error('invalid_receipt');
+        if (raw.state === 'completed') {
+            if (!Number.isInteger(raw.sent_count) || raw.sent_count < 0 || raw.sent_count > raw.requested_count
+                || !Number.isFinite(raw.charged_cost) || raw.charged_cost < 0
+                || !Number.isFinite(raw.refunded_cost) || raw.refunded_cost < 0
+                || !Array.isArray(raw.results)) throw new Error('invalid_receipt');
+            var seen = {};
+            if (raw.results.some(function (row) {
+                if (!row || !Number.isSafeInteger(row.tester_id) || row.tester_id <= 0 || seen[row.tester_id]) return true;
+                seen[row.tester_id] = true;
+                return false;
+            }) || raw.results.length !== raw.requested_count
+                || raw.results.filter(delivered).length !== raw.sent_count
+                || Math.abs(raw.charged_cost + raw.refunded_cost - raw.total_cost) > 0.01) throw new Error('invalid_receipt');
+        }
+        return raw;
+    }
+    function statusExplanation(status) {
+        var keys = {
+            sent: 'smartPingResultSent', catchup: 'smartPingResultCatchup', unavailable: 'smartPingResultUnavailable',
+            failed: 'smartPingResultFailed', uncertain: 'smartPingResultUncertain',
+            rate_limited: 'smartPingResultRateLimited', not_attempted: 'smartPingResultNotAttempted',
+        };
+        return text(keys[status] || 'smartPingResultUnknown');
+    }
+    function actionButton(command, label, testerId) {
+        return '<button type="button" class="smart-ping-result__action" data-smart-ping-action="' + command + '"' +
+            (testerId ? ' data-tester-id="' + testerId + '"' : '') + '>' + esc(label) + '</button>';
+    }
+    function metric(label, value, tone) {
+        return '<div class="smart-ping-result__metric' + (tone ? ' is-' + tone : '') + '"><strong>' + esc(value) +
+            '</strong><span>' + esc(text(label)) + '</span></div>';
+    }
+    function renderDelivery(node) {
+        node.querySelector('.smart-ping-sheet__filters').hidden = true;
+        var last = node.querySelector('.smart-ping-sheet__last-status');
+        if (last) last.hidden = true;
+        var balanceEl = node.querySelector('.smart-ping-sheet__balance');
+        balanceEl.textContent = text('smartPingBalance', '', { balance: formatBust(balance()) });
+        var complete = state.view === 'completed';
+        var partial = complete && state.delivery.sent_count < state.delivery.requested_count;
+        var busy = state.view === 'submitting' || state.checking || state.view === 'queued';
+        var title = text(complete ? 'smartPingResultTitle' : state.view === 'rejected' ? 'smartPingFailed' : busy ? 'smartPingProcessingTitle'
+            : state.view === 'not-found' ? 'smartPingAttemptNotFoundTitle' : 'smartPingStatusUnknownTitle');
+        var description = text(complete ? 'smartPingResultHint' : state.view === 'rejected' ? rejectionKey(state.errorCode) : busy ? 'smartPingProcessingHint'
+            : state.view === 'not-found' ? 'smartPingAttemptNotFoundHint' : 'smartPingStatusUnknownHint');
+        var html = '<div class="smart-ping-result" data-state="' + state.view + '">' +
+            '<div class="smart-ping-result__intro" role="status"><span class="smart-ping-result__symbol' +
+            (busy ? ' is-processing' : complete && !partial ? ' is-complete' : ' is-warning') + '" aria-hidden="true">' +
+            (busy ? '<span class="smart-ping-spinner"></span>' : complete && !partial ? '✓' : '!') + '</span>' +
+            '<h4 tabindex="-1">' + esc(title) + '</h4><p>' + esc(description) + '</p></div>';
+        if (complete) {
+            var receipt = state.delivery;
+            html += '<div class="smart-ping-result__metrics">' + metric('smartPingResultDelivered', receipt.sent_count, 'sent') +
+                metric('smartPingResultUndelivered', receipt.requested_count - receipt.sent_count, 'muted') + '</div>' +
+                '<dl class="smart-ping-result__money"><div><dt>' + esc(text('smartPingResultCharged')) + '</dt><dd>' +
+                esc(formatBust(receipt.charged_cost)) + ' $BUST</dd></div><div><dt>' + esc(text('smartPingResultRefunded')) +
+                '</dt><dd>' + esc(formatBust(receipt.refunded_cost)) + ' $BUST</dd></div></dl>';
+            var failures = receipt.results.filter(function (item) { return !delivered(item); });
+            html += '<h5>' + esc(text(failures.length ? 'smartPingResultNeedsAttention' : 'smartPingResultAllDelivered')) + '</h5>';
+            html += '<div class="smart-ping-result__recipients">' + receipt.results.slice().sort(function (a, b) {
+                return Number(delivered(a)) - Number(delivered(b));
+            }).map(function (item) {
+                var success = delivered(item);
+                return '<article class="smart-ping-result__recipient' + (success ? ' is-sent' : '') + '" data-result-tester="' + item.tester_id +
+                    '"><div class="smart-ping-result__recipient-head"><strong>' + esc(recipientInfo(item.tester_id).name) + '</strong><span aria-hidden="true">' +
+                    (success ? '✓' : '·') + '</span></div><p>' + esc(statusExplanation(item.status)) + '</p>' +
+                    (!success && typeof window.pcRemindTester === 'function' ? actionButton('manual', text('smartPingManualReminder'), item.tester_id) : '') + '</article>';
+            }).join('') + '</div>';
+        } else if (state.view !== 'rejected') {
+            var reserved = state.delivery ? state.delivery.total_cost : state.pending && state.pending.totalCost;
+            html += '<div class="smart-ping-result__reserve">' + esc(text(state.delivery ? 'smartPingReserved' : 'smartPingRequestedReserve', '', {
+                cost: formatBust(reserved),
+            })) + '</div>';
+        }
+        if (!state.checking && (state.view === 'status-error' || state.view === 'unknown' || state.view === 'not-found')) html += actionButton('check', text('smartPingCheckStatus'));
+        if (!state.checking && (state.view === 'rejected' || state.view === 'not-found')) html += actionButton('back', text('smartPingBackToSelection'));
+        html += '</div>';
+        var body = node.querySelector('.smart-ping-sheet__body');
+        body.innerHTML = html;
+        var footer = node.querySelector('.smart-ping-sheet__send');
+        footer.disabled = false;
+        footer.classList.remove('is-loading', 'is-success');
+        footer.textContent = text(complete || state.view === 'rejected' ? 'smartPingClose' : 'smartPingCloseAndCheckLater');
+    }
+    function rejectionKey(code) {
+        return { insufficient_bust_balance: 'smartPingRejectBalance', smart_ping_cooldown: 'smartPingRejectCooldown',
+            forbidden: 'smartPingRejectAccess', not_app_owner: 'smartPingRejectAccess',
+            no_recipients: 'smartPingRejectRecipients', smart_ping_no_recipients: 'smartPingRejectRecipients' }[code] || 'smartPingRejectGeneric';
+    }
+    function acceptDelivery(raw, ctx) {
+        var pending = state.pending;
+        var receipt = checkedDelivery(raw, pending && pending.deliveryId);
+        state.delivery = receipt;
+        updateBalance(receipt.balance_bust);
+        if (pending) {
+            pending.deliveryId = receipt.id;
+            savePending(ctx, pending);
+        }
+        if (receipt.state === 'completed') {
+            var ids = receipt.results.filter(delivered).map(function (row) { return row.tester_id; });
+            setLastPing(ctx.appId, { sentAt: receipt.sent_at, count: ids.length, testerIds: ids, completed: true, deliveryId: receipt.id });
+            var project = projectById(ctx.appId);
+            if (project) project.smart_ping_sent_at = receipt.sent_at;
+            // Keep names/reason context in memory for the result, but remove
+            // the persistent pending marker only after a verified completion.
+            savePending(ctx, null);
+            state.pending = pending;
+            state.sending = false;
+            state.view = 'completed';
+            sync(ctx.appId);
+            if (window.ProjectToday && typeof window.ProjectToday.invalidate === 'function') window.ProjectToday.invalidate(ctx.appId);
+        } else {
+            state.view = 'queued';
+        }
+    }
+    async function checkDelivery(ctx) {
+        if (!isCurrent(ctx) || state.checking || !state.pending) return;
+        clearTimeout(state.pollTimer);
+        state.checking = true;
+        render();
+        try {
+            var pending = state.pending;
+            var id = pending.deliveryId;
+            var result = await requestJson(apiBase() + '/project/' + ctx.appId + '/smart-ping/' + (id || 'latest') +
+                '?init_data=' + encodeURIComponent(initData()), { method: 'GET', cache: 'no-store' }, ctx);
+            if (!isCurrent(ctx)) return;
+            if (!result.response.ok || !result.payload || result.payload.status !== 'success') throw new Error('status_unavailable');
+            var receipt = result.payload.delivery;
+            if (!id) {
+                // Recover a lost POST reply only when latest belongs to this
+                // attempt. Never attach an older cooldown receipt to a new send.
+                if (receipt === null) {
+                    state.view = 'not-found';
+                    return;
+                }
+                receipt = checkedDelivery(receipt);
+                var sentMs = parseSentAt(receipt.sent_at);
+                if (sentMs < pending.startedAt - 5000) {
+                    state.view = 'not-found';
+                    return;
+                }
+                var recipientIds = pending.recipients.map(function (item) { return Number(item.testerId); });
+                if (sentMs > pending.startedAt + 120000
+                    || receipt.requested_count !== recipientIds.length
+                    || Array.isArray(receipt.results) && receipt.results.some(function (item) { return recipientIds.indexOf(Number(item.tester_id)) === -1; })) {
+                    state.view = 'unknown';
+                    return;
+                }
+            }
+            acceptDelivery(receipt, ctx);
+            if (state.view === 'queued') {
+                if (Date.now() < state.pollUntil) state.pollTimer = setTimeout(function () { checkDelivery(ctx); }, 2500);
+                else state.view = 'status-error';
+            }
+        } catch (_) {
+            if (isCurrent(ctx)) state.view = 'status-error';
+        } finally {
+            if (isCurrent(ctx)) {
+                state.checking = false;
+                render();
+            }
+        }
     }
     async function submit() {
         var project = projectById(state.appId);
         var picked = selected();
-        var next = footerState(project);
-        if (!project || next.disabled || state.sending || !picked.length) return;
-        var submissionGeneration = state.generation;
-        var submittedAppId = state.appId;
+        if (!project || footerState(project).disabled || state.view !== 'select' || state.sending || !picked.length) return;
+        var ctx = context();
+        var pending = { deliveryId: null, startedAt: Date.now(), totalCost: picked.length * COST, recipients: picked.map(reminderContext) };
+        savePending(ctx, pending);
         state.sending = true;
+        state.view = 'submitting';
+        state.pollUntil = Date.now() + 150000;
+        stopCountdownTimer();
         render();
-        var node = overlay();
-        var footer = node && node.querySelector('.smart-ping-sheet__send');
         try {
-            var apiBase = (typeof API_BASE !== 'undefined' && API_BASE) || (window.App && window.App.API_BASE) || '/api';
-            var response = await fetch(apiBase + '/project/smart-ping', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    init_data: initData(),
-                    project_id: Number(project.id || project.app_id),
-                    tester_ids: picked.map(function (row) { return row.testerId; }),
-                }),
-            });
-            var payload = await response.json().catch(function () { return {}; });
-            if (!response.ok || payload.status !== 'success') {
-                var code = String(payload.code || payload.error || '');
-                if (code === 'insufficient_bust_balance') {
-                    if (visibilityStats && payload.details && payload.details.balance_bust != null) {
-                        visibilityStats.balance_bust = Number(payload.details.balance_bust);
+            var result = await requestJson(apiBase() + '/project/smart-ping', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ init_data: initData(), project_id: ctx.appId,
+                    tester_ids: picked.map(function (row) { return row.testerId; }) }),
+            }, ctx);
+            if (!isCurrent(ctx)) return;
+            var payload = result.payload;
+            if (!result.response.ok || !payload || payload.status !== 'success') {
+                // Only an explicit application rejection is safe to retry.
+                // HTTP 5xx, broken JSON and lost responses may follow a debit.
+                if (result.response.status < 500 && payload && payload.status === 'error') {
+                    state.errorCode = String(payload.code || payload.error || '');
+                    updateBalance(payload.details && payload.details.balance_bust);
+                    if (state.errorCode === 'smart_ping_cooldown' && payload.details && payload.details.sent_at) {
+                        project.smart_ping_sent_at = payload.details.sent_at;
                     }
+                    savePending(ctx, null);
+                    state.sending = false;
+                    state.view = 'rejected';
+                    render();
+                    return;
                 }
-                if (code === 'smart_ping_cooldown' && payload.details && payload.details.sent_at) {
-                    project.smart_ping_sent_at = payload.details.sent_at;
-                    setLastPing(submittedAppId, {
-                        sentAt: payload.details.sent_at,
-                        count: 0,
-                        testerIds: [],
-                    });
-                }
-                throw new Error(code || 'smart_ping_failed');
+                throw new Error('post_result_unknown');
             }
-            if (visibilityStats && payload.balance_bust != null) {
-                visibilityStats.balance_bust = Number(payload.balance_bust);
+            updateBalance(payload.balance_bust);
+            if (Number.isSafeInteger(payload.delivery_id) && payload.delivery_id > 0) {
+                pending.deliveryId = payload.delivery_id;
+                savePending(ctx, pending);
+                state.delivery = Number.isFinite(payload.total_cost) && payload.total_cost >= 0 ? { total_cost: payload.total_cost } : null;
+                if (typeof window.pcApplySmartPingCatchups === 'function') window.pcApplySmartPingCatchups(ctx.appId, payload.catchup_requests || []);
             }
-            var sentAt = payload.sent_at || new Date().toISOString();
-            var chargedCount = Number(payload.charged_count || picked.length);
-            var catchupCount = Array.isArray(payload.catchup_requests) ? payload.catchup_requests.length : 0;
-            var queuedSummary = text('smartPingQueuedCount', 'Пинг поставлен в очередь: {count}', { count: chargedCount }) +
-                (catchupCount > 0 ? ' · ' + text('smartPingCatchupCreatedCount', 'Дозапросов создано: {count}', { count: catchupCount }) : '');
-            var pingedTesterIds = Array.isArray(payload.tester_ids) && payload.tester_ids.length > 0
-                ? payload.tester_ids.map(Number)
-                : picked.map(function (row) { return row.testerId; });
-
-            project.smart_ping_sent_at = sentAt;
-            if (typeof window.pcApplySmartPingCatchups === 'function') {
-                window.pcApplySmartPingCatchups(submittedAppId, payload.catchup_requests || []);
-            }
-            setLastPing(submittedAppId, {
-                sentAt: sentAt,
-                count: chargedCount,
-                testerIds: pingedTesterIds,
-            });
-
-            if (window.tg && window.tg.HapticFeedback) {
-                try {
-                    window.tg.HapticFeedback.notificationOccurred('success');
-                } catch (_) {}
-            }
-
-            if (footer) {
-                footer.classList.remove('is-loading');
-                footer.classList.add('is-success');
-                footer.textContent = '✓ ' + queuedSummary;
-            }
-
-            setTimeout(function () {
-                if (state.generation !== submissionGeneration) return;
-                state.sending = false;
-                if (window.ProjectToday) {
-                    if (typeof window.ProjectToday.invalidate === 'function') window.ProjectToday.invalidate(submittedAppId);
-                    if (typeof window.ProjectToday.refresh === 'function') window.ProjectToday.refresh(submittedAppId);
-                }
-                if (typeof showToast === 'function') {
-                    showToast(queuedSummary);
-                }
-                close();
-                sync(submittedAppId);
-            }, 700);
+            state.view = 'queued';
         } catch (_) {
-            if (state.generation !== submissionGeneration) return;
-            state.sending = false;
-            render();
-            if (typeof showToast === 'function') showToast(text('smartPingFailed', 'Не удалось отправить Smart Ping'));
+            if (!isCurrent(ctx)) return;
+            state.view = 'unknown';
         }
+        if (isCurrent(ctx)) checkDelivery(ctx);
     }
     function open(appId) {
         var project = projectById(appId);
         if (!project) return;
-        // Programmatic or very fast repeated opens can arrive while the
-        // success state of the previous sheet is still visible. Replace that
-        // sheet atomically and invalidate its delayed close callback.
         close(true);
-        state.generation += 1;
         state.appId = Number(project.id || project.app_id);
         state.filter = 'risk';
         state.sending = false;
+        state.view = 'select';
+        state.delivery = null;
+        state.pending = readPending(context());
+        if (state.pending) state.view = 'queued';
         state.recipients = collectRecipients(project);
         applyFilter('risk');
         var html = '<div id="smart-ping-modal" class="modal-overlay smart-ping-overlay active" role="presentation">' +
@@ -975,6 +1240,7 @@
                 '<header class="smart-ping-sheet__head">' +
                     '<h3 id="smart-ping-title">' + esc(text('smartPingTitle', '⚡ Smart Ping')) + '</h3>' +
                     '<p class="smart-ping-sheet__balance"></p>' +
+                    '<button type="button" class="smart-ping-sheet__close" data-smart-ping-action="close" aria-label="' + esc(text('smartPingClose')) + '">×</button>' +
                 '</header>' +
                 '<div class="smart-ping-sheet__filters" role="group">' +
                     '<button type="button" class="is-active" data-smart-ping-filter="risk">' + esc(text('smartPingFilterRisk', 'Группа риска')) + '</button>' +
@@ -992,7 +1258,10 @@
         var node = overlay();
         bind(node);
         render();
-        if (cooldownRemaining(project) > 0) {
+        if (state.pending) {
+            state.pollUntil = Date.now() + 150000;
+            checkDelivery(context());
+        } else if (cooldownRemaining(project) > 0) {
             startCountdownTimer();
         }
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
