@@ -2165,6 +2165,7 @@ input::placeholder,
     color: var(--text-color);
     line-height: 1.35;
     flex: 1;
+    white-space: pre-line;
 }
 
 .event-text a {

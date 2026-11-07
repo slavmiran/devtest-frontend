@@ -31,11 +31,31 @@ function _proofDraftKey(progressId, mode) {
         + ':' + Number(test && test.run_iteration || 1);
 }
 
+// A reply/draft belongs to one account, participation and displayed testing day.
+// In particular, a completed upload from yesterday must not finish today's card.
+function _isCheckinProofContextCurrent(job, test) {
+    test = test || _checkinProofTest(job.appId);
+    if (!test || (job.actor && String(userId) !== String(job.actor))
+        || Number(test.progress_id) !== Number(job.progressId)
+        || (job.expectedRun && Number(test.run_iteration || 1) !== Number(job.expectedRun))
+        || (job.viewDate && job.viewDate !== getLocalDate())
+        || (job.expectedStart && String(test.start_date || '').slice(0, 10) !== job.expectedStart)) return false;
+    var day = typeof getResolvedTestingDay === 'function' ? getResolvedTestingDay(test) : Number(test.testing_days || 0);
+    return !job.expectedDay || Number(day) === Number(job.expectedDay);
+}
+
+function _releaseCheckinProofJob(job) {
+    var pending = _checkinProofPendingAppIds[Number(job.appId)];
+    // An old account/day can finish while a new upload for this app is running.
+    if (pending === job || pending === true) delete _checkinProofPendingAppIds[Number(job.appId)];
+}
+
 function restoreCheckinProofRetryDraft() {
     var state = _checkinProofUploadState;
     var key = _proofDraftKey(state.progressId, state.submissionMode);
     var draft = _checkinProofRetryDrafts.get(key);
-    if (!draft || draft.appId !== state.appId || draft.catchupRequested !== state.catchupRequested) return false;
+    if (!draft || draft.appId !== state.appId || draft.catchupRequested !== state.catchupRequested
+        || !_isCheckinProofContextCurrent(draft)) return false;
     state.files = draft.files.slice();
     state.idempotencyKey = draft.idempotencyKey;
     state.fingerprints = draft.fingerprints ? draft.fingerprints.slice() : state.files.map(_checkinProofMetadataFingerprint);
@@ -376,6 +396,7 @@ function _syncCheckinProofControls() {
 
 function _resetCheckinProofSelection() {
     _revokeCheckinProofPreviews();
+    _checkinProofUploadState.viewDate = getLocalDate();
     _checkinProofUploadState.files = [];
     _checkinProofUploadState.fingerprints = [];
     _checkinProofUploadState.invalidFingerprints = [];
@@ -429,7 +450,31 @@ function _setCheckinProofBackgroundCard(appId, isPending) {
 }
 
 function isScreenshotProofUploadPending(appId) {
-    return !!_checkinProofPendingAppIds[Number(appId || 0)];
+    var pending = _checkinProofPendingAppIds[Number(appId || 0)];
+    return !!pending && (pending === true || _isCheckinProofContextCurrent(pending));
+}
+
+function getCheckinProofRetryDraft(test) {
+    if (!test || isScreenshotProofUploadPending(test.id)) return null;
+    var modes = ['standard', 'buffer_catchup'];
+    for (var i = 0; i < modes.length; i += 1) {
+        var draft = _checkinProofRetryDrafts.get(_proofDraftKey(test.progress_id, modes[i]));
+        if (!draft || Number(draft.appId) !== Number(test.id) || !_isCheckinProofContextCurrent(draft, test)) continue;
+        // A later server refresh can confirm a daily screenshot whose reply was lost.
+        if (test.status === 'done' && modes[i] === 'standard'
+            && !draft.catchupRequested && (!draft.reportKind || draft.reportKind === 'screenshot')) continue;
+        return draft;
+    }
+    return null;
+}
+
+function retryCheckinProofUpload(appId) {
+    var draft = getCheckinProofRetryDraft(_checkinProofTest(appId));
+    if (!draft) return false;
+    return openCheckinProofUploadModal(appId, {
+        submissionMode: draft.submissionMode,
+        catchupRequested: draft.catchupRequested,
+    });
 }
 
 function chooseCheckinProofFile(source) {
@@ -737,6 +782,15 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
             try { window.recomputeLocalTestState(test); } catch (error) {}
         }
     }
+    // Apply the confirmed state now, before animations, rewards or a slow refresh.
+    if (typeof renderTests === 'function') renderTests(true);
+    if (typeof setTestsCache === 'function' && typeof myTests !== 'undefined') {
+        setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
+    }
+    setTimeout(function() {
+        if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
+        if (typeof loadProjects === 'function') loadProjects(true).catch(function() {});
+    }, 250);
     if (wasFirstCheckin && !checkin.already_checked_today && typeof markDefaultGroupJoined === 'function') {
         markDefaultGroupJoined({ silent: true, rerender: false });
     }
@@ -745,20 +799,7 @@ function _applyScreenshotCheckinResult(appId, result, screenshotCount) {
     if (typeof setFirstDayScreenshotVisible === 'function') setFirstDayScreenshotVisible(appId, false);
     if (typeof setTimerReadyForConfirm === 'function') setTimerReadyForConfirm(appId, false, false, '');
     if (typeof clearActiveTimerForApp === 'function') clearActiveTimerForApp(appId);
-    var card = document.getElementById('test-card-' + appId);
-    var renderAfter = function() {
-        if (typeof setTestsCache === 'function' && typeof myTests !== 'undefined') {
-            setTestsCache({ tests: myTests, incoming_offers: incomingOffers, ts: Date.now() });
-        }
-        if (typeof renderTests === 'function') renderTests(true);
-        if (typeof refreshOpenModals === 'function') refreshOpenModals();
-    };
-    if (card && typeof animateTestCardOut === 'function') animateTestCardOut(card).then(renderAfter);
-    else renderAfter();
-    setTimeout(function() {
-        if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
-        if (typeof loadProjects === 'function') loadProjects(true).catch(function() {});
-    }, 250);
+    if (typeof refreshOpenModals === 'function') refreshOpenModals();
 }
 
 function _applyBufferCatchupProofResult(appId, result) {
@@ -848,8 +889,10 @@ async function _postCheckinProofScreenshot(url, form, onProgress) {
 
 async function _runCheckinProofUploadJob(job) {
     var confirmedResult = null;
+    var confirmsDailyCheckin = false;
     var draftKey = job.draftKey || _proofDraftKey(job.progressId, job.submissionMode);
     try {
+        if (!_isCheckinProofContextCurrent(job)) { _releaseCheckinProofJob(job); return; }
         var openToken = typeof _getCheckinOpenToken === 'function' ? _getCheckinOpenToken(job.appId) : '';
         if (!openToken && typeof _requestCheckinOpenToken === 'function') {
             try {
@@ -857,6 +900,7 @@ async function _runCheckinProofUploadJob(job) {
                 if (tokenPayload && tokenPayload.token) openToken = String(tokenPayload.token);
             } catch (error) {}
         }
+        if (!_isCheckinProofContextCurrent(job)) { _releaseCheckinProofJob(job); return; }
         var form = new FormData();
         form.append('init_data', job.initData || (typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : String((tg && tg.initData) || '')));
         form.append('open_token', String(openToken || ''));
@@ -873,6 +917,7 @@ async function _runCheckinProofUploadJob(job) {
             form.append('files', file, file.name || ('checkin-proof-' + (index + 1)));
         });
         var sent = await _postCheckinProofScreenshot(API_BASE + '/testing/' + job.progressId + '/checkin-proof/report', form, function(percent) {
+            if (!_isCheckinProofContextCurrent(job)) return;
             var card = document.getElementById('test-card-' + job.appId);
             var label = card && card.querySelector('.screenshot-proof-upload-pending__status > span:last-child');
             if (!label && card) label = card.querySelector('.test-screenshot-proof-upload-status');
@@ -881,12 +926,21 @@ async function _runCheckinProofUploadJob(job) {
         });
         var response = sent.response;
         var result = sent.result;
+        if (!_isCheckinProofContextCurrent(job)) {
+            _releaseCheckinProofJob(job);
+            if (typeof renderTests === 'function') renderTests(true);
+            return;
+        }
+        var bufferOnly = job.submissionMode === 'buffer_catchup' || result && (result.buffer_catchup_only === true || result.catchup_only === true);
         if (!response.ok || !result || result.status !== 'success' || !result.proof || (result.proof.state !== 'attached' && !result.report_only)) {
             var code = result && result.code;
             if (code === 'checkin_already_proved') {
                 _checkinProofRetryDrafts.delete(draftKey);
                 _clearCheckinProofKey(job.progressId);
-                _setCheckinProofBackgroundCard(job.appId, false);
+                confirmedResult = { checkin: { already_checked_today: true } };
+                confirmsDailyCheckin = !bufferOnly;
+                if (confirmsDailyCheckin) _applyScreenshotCheckinResult(job.appId, confirmedResult, 0);
+                else _setCheckinProofBackgroundCard(job.appId, false);
                 if (typeof showToast === 'function') showToast(window.t('checkinProofAlreadyReceived', {}, lang));
                 setTimeout(function() { if (typeof loadTasks === 'function') loadTasks(true).catch(function() {}); }, 150);
                 return;
@@ -900,35 +954,36 @@ async function _runCheckinProofUploadJob(job) {
         confirmedResult = result;
         _checkinProofRetryDrafts.delete(draftKey);
         _clearCheckinProofKey(job.progressId);
-        var currentTest = _checkinProofTest(job.appId);
-        if ((job.actor && String(userId) !== job.actor)
-            || (currentTest && (Number(currentTest.progress_id) !== Number(job.progressId)
-                || (job.expectedRun && Number(currentTest.run_iteration || 1) !== Number(job.expectedRun))))) {
-            delete _checkinProofPendingAppIds[Number(job.appId)];
-            return;
-        }
-        if (result.report_only) {
-            _setCheckinProofBackgroundCard(job.appId, false);
-            if (typeof showToast === 'function') showToast(typeof lang !== 'undefined' && lang === 'ru' ? 'Отчёт отправлен разработчику' : 'Report sent to the developer');
-        } else if (result.buffer_catchup_only === true || result.catchup_only === true || job.submissionMode === 'buffer_catchup') {
+        confirmsDailyCheckin = !bufferOnly && (!result.report_only || !!(result.checkin && result.checkin.already_checked_today));
+        if (bufferOnly) {
             _applyBufferCatchupProofResult(job.appId, result);
+        } else if (result.report_only) {
+            if (confirmsDailyCheckin) {
+                _applyScreenshotCheckinResult(job.appId, result, 0);
+            } else _setCheckinProofBackgroundCard(job.appId, false);
+            if (typeof showToast === 'function') showToast(typeof lang !== 'undefined' && lang === 'ru' ? 'Отчёт отправлен разработчику' : 'Report sent to the developer');
         } else {
             _applyScreenshotCheckinResult(job.appId, result, job.files ? job.files.filter(function(file) { return file.type.indexOf('image/') === 0; }).length : 0);
         }
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     } catch (error) {
+        if (!_isCheckinProofContextCurrent(job)) {
+            _releaseCheckinProofJob(job);
+            if (typeof renderTests === 'function') renderTests(true);
+            return;
+        }
         if (confirmedResult) {
             // The server has confirmed attachment. A local rendering/haptics
             // error must not tell the tester to select and send the files again.
             console.error('Screenshot proof saved; local UI update failed:', error);
-            delete _checkinProofPendingAppIds[Number(job.appId || 0)];
+            _releaseCheckinProofJob(job);
             var savedTest = _checkinProofTest(job.appId);
-            if (savedTest && job.submissionMode !== 'buffer_catchup' && !confirmedResult.buffer_catchup_only
-                && !confirmedResult.catchup_only && !confirmedResult.report_only) {
+            if (savedTest && confirmsDailyCheckin) {
                 savedTest.status = 'done';
                 savedTest.last_check_date = (confirmedResult.checkin || {}).last_check_date || savedTest.last_check_date;
                 if (typeof rememberConfirmedTestCheckin === 'function') rememberConfirmedTestCheckin(savedTest);
             }
+            try { if (typeof renderTests === 'function') renderTests(true); } catch (uiError) {}
             if (typeof showToast === 'function') showToast(window.t('checkinProofSavedRefreshing', {}, lang));
             setTimeout(function() { if (typeof loadTasks === 'function') loadTasks(true).catch(function() {}); }, 150);
             return;
@@ -989,10 +1044,10 @@ function submitCheckinProofScreenshot() {
     if (window.DeployStatus) Promise.resolve().then(function() {
         return window.DeployStatus.refresh();
     }).catch(function() {});
-    _setCheckinProofBackgroundCard(appId, true);
-    _checkinProofUploadQueue.push({
+    var job = {
         appId: appId,
         actor: String(userId),
+        viewDate: _checkinProofUploadState.viewDate || getLocalDate(),
         initData: typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : String((tg && tg.initData) || ''),
         progressId: progressId,
         files: _checkinProofUploadState.files.slice(0, CHECKIN_PROOF_MAX_FILES),
@@ -1007,7 +1062,10 @@ function submitCheckinProofScreenshot() {
         expectedStart: _checkinProofUploadState.expectedStart,
         catchupRequestId: _checkinProofUploadState.catchupRequestId,
         draftKey: _proofDraftKey(progressId, _checkinProofUploadState.submissionMode),
-    });
+    };
+    _checkinProofPendingAppIds[appId] = job;
+    if (typeof renderTests === 'function') renderTests(true);
+    _checkinProofUploadQueue.push(job);
     closeCheckinProofUploadModal();
     _drainCheckinProofUploadQueue();
 }
@@ -1022,3 +1080,5 @@ window.handleCheckinProofFileSelected = handleCheckinProofFileSelected;
 window.removeCheckinProofFile = removeCheckinProofFile;
 window.submitCheckinProofScreenshot = submitCheckinProofScreenshot;
 window.isScreenshotProofUploadPending = isScreenshotProofUploadPending;
+window.getCheckinProofRetryDraft = getCheckinProofRetryDraft;
+window.retryCheckinProofUpload = retryCheckinProofUpload;

@@ -507,3 +507,59 @@
     color: #c8e1ff;
 }
 
+/* Delivery receipt: amounts and statuses come only from the server. */
+.smart-ping-sheet { box-sizing: border-box; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+.smart-ping-sheet [hidden] { display: none !important; }
+.smart-ping-sheet__head { flex-wrap: wrap; position: relative; padding-right: 32px; }
+.smart-ping-sheet__balance { white-space: normal; }
+.smart-ping-sheet__close {
+    position: absolute; top: -7px; right: -7px; width: 36px; height: 36px;
+    border: 0; border-radius: 10px; background: transparent; color: #9aabc2;
+    font: inherit; font-size: 25px; cursor: pointer;
+}
+.smart-ping-result { padding: 4px 0 2px; overflow-wrap: anywhere; }
+.smart-ping-result__intro { text-align: center; padding: 8px 10px 16px; }
+.smart-ping-result__symbol {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; margin-bottom: 10px; border-radius: 14px;
+    background: rgba(88, 166, 255, .10); color: #79c0ff; font-size: 23px;
+}
+.smart-ping-result__symbol .smart-ping-spinner { margin: 0; }
+.smart-ping-result__symbol.is-complete { background: rgba(63, 185, 80, .10); color: #6bce8a; }
+.smart-ping-result__symbol.is-warning { background: rgba(224, 177, 89, .10); color: #dfbc7a; }
+.smart-ping-result h4 { margin: 0 0 8px; font-size: 19px; line-height: 1.3; color: #e7eef8; }
+.smart-ping-result p { margin: 0; color: #a4b3c7; font-size: 12px; line-height: 1.55; }
+.smart-ping-result__metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.smart-ping-result__metric {
+    display: grid; gap: 4px; padding: 12px; text-align: center;
+    border: 1px solid rgba(174, 195, 226, .13); border-radius: 12px; background: rgba(174, 195, 226, .04);
+}
+.smart-ping-result__metric strong { font-size: 27px; font-weight: 750; line-height: 1.2; }
+.smart-ping-result__metric span { color: #a4b3c7; font-size: 11px; }
+.smart-ping-result__metric.is-sent strong { color: #6bce8a; }
+.smart-ping-result__metric.is-muted strong { color: #dfbc7a; }
+.smart-ping-result__money { margin: 12px 0 18px; padding: 11px 12px; border-radius: 10px; background: rgba(5, 13, 23, .3); }
+.smart-ping-result__money > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.smart-ping-result__money dt { color: #a4b3c7; font-size: 12px; }
+.smart-ping-result__money dd { margin: 0; color: #e7eef8; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.smart-ping-result__money > div:last-child dd { color: #6bce8a; }
+.smart-ping-result h5 { margin: 0 0 9px; font-size: 13px; line-height: 1.45; color: #c1cee0; }
+.smart-ping-result__recipients { display: grid; gap: 8px; }
+.smart-ping-result__recipient { padding: 12px; border: 1px solid rgba(224, 177, 89, .18); border-radius: 11px; background: rgba(224, 177, 89, .035); }
+.smart-ping-result__recipient.is-sent { border-color: rgba(174, 195, 226, .12); background: rgba(174, 195, 226, .025); }
+.smart-ping-result__recipient-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px; font-size: 13px; }
+.smart-ping-result__recipient-head strong { min-width: 0; }
+.smart-ping-result__recipient-head span { color: #dfbc7a; flex-shrink: 0; }
+.smart-ping-result__recipient.is-sent .smart-ping-result__recipient-head span { color: #6bce8a; }
+.smart-ping-result__action {
+    appearance: none; display: block; width: 100%; box-sizing: border-box; min-height: 40px;
+    padding: 9px 12px; margin-top: 10px; border: 1px solid rgba(88, 166, 255, .25);
+    border-radius: 9px; background: rgba(88, 166, 255, .07); color: #a5d6ff;
+    font: inherit; font-size: 12px; font-weight: 600; line-height: 1.4; cursor: pointer;
+}
+.smart-ping-result__reserve { margin: 0 0 12px; padding: 12px; border: 1px solid rgba(88, 166, 255, .18); border-radius: 10px; color: #a5d6ff; font-size: 12px; text-align: center; line-height: 1.5; }
+.smart-ping-sheet__foot { flex-shrink: 0; }
+.smart-ping-sheet__send { white-space: normal; line-height: 1.4; }
+.smart-ping-result__action:focus-visible, .smart-ping-sheet__close:focus-visible { outline: 2px solid #79c0ff; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .smart-ping-result .smart-ping-spinner { animation: none; } }
+

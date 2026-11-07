@@ -42,18 +42,25 @@
         return String(model || '').trim().toLowerCase() + '::' + (major ? major[0] : 'all');
     }
 
+    function emptyResultsSeenState() {
+        return { seen_tuples: [], seen_countries: [], seen_reports: [] };
+    }
+
     function getProjectResultsSeenState(appId) {
-        if (!appId) return { seen_tuples: [], seen_countries: [] };
+        if (!appId) return emptyResultsSeenState();
         try {
             var raw = localStorage.getItem(_getSeenStorageKey(appId));
-            if (!raw) return { seen_tuples: [], seen_countries: [] };
+            if (!raw) return emptyResultsSeenState();
             var parsed = JSON.parse(raw);
             return {
                 seen_tuples: Array.isArray(parsed.seen_tuples) ? parsed.seen_tuples : [],
-                seen_countries: Array.isArray(parsed.seen_countries) ? parsed.seen_countries : []
+                seen_countries: Array.isArray(parsed.seen_countries) ? parsed.seen_countries : [],
+                seen_reports: Array.isArray(parsed.seen_reports)
+                    ? parsed.seen_reports.map(Number).filter(function (id) { return id > 0; })
+                    : []
             };
         } catch (e) {
-            return { seen_tuples: [], seen_countries: [] };
+            return emptyResultsSeenState();
         }
     }
 
@@ -62,7 +69,10 @@
         try {
             localStorage.setItem(_getSeenStorageKey(appId), JSON.stringify({
                 seen_tuples: Array.isArray(state.seen_tuples) ? state.seen_tuples : [],
-                seen_countries: Array.isArray(state.seen_countries) ? state.seen_countries : []
+                seen_countries: Array.isArray(state.seen_countries) ? state.seen_countries : [],
+                seen_reports: Array.isArray(state.seen_reports)
+                    ? state.seen_reports.map(Number).filter(function (id) { return id > 0; })
+                    : []
             }));
         } catch (e) {}
     }
@@ -191,8 +201,20 @@
         var newBugs = Number(project.bugs_new_count != null ? project.bugs_new_count : (summary.bugs_new_count || 0));
         var newIdeas = Number(project.ideas_new_count != null ? project.ideas_new_count : (summary.ideas_new_count || 0));
         var newReviews = Number(project.reviews_new_count != null ? project.reviews_new_count : (summary.reviews_new_count || 0));
+        var seenReports = {};
+        seen.seen_reports.forEach(function (id) { seenReports[Number(id)] = true; });
+        function unseenReportCount(list) {
+            var count = 0;
+            (Array.isArray(list) ? list : []).forEach(function (report) {
+                var id = Number(report && report.id || 0);
+                if (id > 0 && !seenReports[id]) count++;
+            });
+            return count;
+        }
+        var newText = unseenReportCount(summary.text_reports);
+        var newVideo = unseenReportCount(summary.video_reports);
 
-        var totalNew = unseenCoverageCount + unseenCountriesCount + newBugs + newIdeas + newReviews;
+        var totalNew = unseenCoverageCount + unseenCountriesCount + newBugs + newIdeas + newReviews + newText + newVideo;
 
         return {
             newCoverage: unseenCoverageCount,
@@ -200,8 +222,48 @@
             newBugs: newBugs,
             newIdeas: newIdeas,
             newReviews: newReviews,
+            newText: newText,
+            newVideo: newVideo,
             hasNew: totalNew > 0
         };
+    }
+
+    function resultsReports(summary, kind) {
+        var list = kind === 'video' ? summary.video_reports : summary.text_reports;
+        return Array.isArray(list) ? list.filter(function (report) { return Number(report && report.id || 0) > 0; }) : [];
+    }
+
+    function chooseResultsReport(appId, reports) {
+        var seen = {};
+        getProjectResultsSeenState(appId).seen_reports.forEach(function (id) { seen[Number(id)] = true; });
+        var unseen = reports.filter(function (report) { return !seen[Number(report.id)]; });
+        if (unseen.length) return unseen[0];
+        return reports.length ? reports[reports.length - 1] : null;
+    }
+
+    function markResultsReportSeen(appId, proofId) {
+        var id = Number(proofId || 0);
+        if (!appId || id <= 0) return;
+        var current = getProjectResultsSeenState(appId);
+        if (current.seen_reports.indexOf(id) >= 0) return;
+        current.seen_reports.push(id);
+        saveProjectResultsSeenState(appId, current);
+        refreshProjectResultsCard(appId);
+    }
+
+    function openProjectResultsReport(appId, proofId, imageCount, testerId, kind) {
+        var id = Number(proofId || 0);
+        var filter = kind === 'video' ? 'video' : 'text';
+        if (id > 0 && typeof window.openCheckinProofOverview === 'function') {
+            markResultsReportSeen(appId, id);
+            window.openCheckinProofOverview(id, {
+                appId: Number(appId || 0),
+                imageCount: Math.max(1, Number(imageCount || 1)),
+                testerId: Number(testerId || 0)
+            });
+            return;
+        }
+        openProjectCoverage(appId, 'models', { modelFilter: filter });
     }
 
     // ── Pluralization and Format Helpers ──
@@ -256,6 +318,12 @@
         var newBugs = Number(unseen.newBugs || 0);
         var newIdeas = Number(unseen.newIdeas || 0);
         var newReviews = Number(unseen.newReviews || 0);
+        var textReports = resultsReports(summary, 'text');
+        var videoReports = resultsReports(summary, 'video');
+        var newText = Number(unseen.newText || 0);
+        var newVideo = Number(unseen.newVideo || 0);
+        var textReport = chooseResultsReport(appId, textReports);
+        var videoReport = chooseResultsReport(appId, videoReports);
 
         var totalWord = window.t('pcResultsTotalShort', {}, lang) || (lang === 'ru' ? 'всего' : 'total');
         var resultsTitle = lang === 'ru' ? 'Результаты тестирования' : 'Testing results';
@@ -345,12 +413,39 @@
                 detail: '',
                 title: window.t('pcResultsChipReviewsTitle', {}, lang) || 'Отзывы Google Play',
                 action: 'openProjectResultsFeedback(' + appId + ', \'google_play\', 0, ' + (newReviews > 0) + ');'
+            },
+            {
+                key: 'text',
+                type: 'text',
+                iconSvg: '<svg class="pc-results-tile__glyph" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M8 13h8M8 17h5"></path></svg>',
+                label: window.t('pcResultsText', {}, lang) || (lang === 'ru' ? 'Текст' : 'Text'),
+                newCount: newText,
+                totalCount: textReports.length,
+                detail: '',
+                title: window.t('pcResultsChipTextTitle', {}, lang) || (lang === 'ru' ? 'Отчёты с текстом' : 'Reports with text'),
+                action: textReport
+                    ? ('openProjectResultsReport(' + appId + ', ' + Number(textReport.id) + ', ' + Number(textReport.image_count || 1) + ', ' + Number(textReport.tester_id || 0) + ', \'text\');')
+                    : ('openProjectCoverage(' + appId + ', \'models\', { modelFilter: \'text\' });')
+            },
+            {
+                key: 'video',
+                type: 'video',
+                iconSvg: '<svg class="pc-results-tile__glyph" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m10 9 6 3-6 3z"></path></svg>',
+                label: window.t('pcResultsVideo', {}, lang) || (lang === 'ru' ? 'Видео' : 'Video'),
+                newCount: newVideo,
+                totalCount: videoReports.length,
+                detail: '',
+                title: window.t('pcResultsChipVideoTitle', {}, lang) || (lang === 'ru' ? 'Отчёты с видео' : 'Reports with video'),
+                action: videoReport
+                    ? ('openProjectResultsReport(' + appId + ', ' + Number(videoReport.id) + ', ' + Number(videoReport.image_count || 1) + ', ' + Number(videoReport.tester_id || 0) + ', \'video\');')
+                    : ('openProjectCoverage(' + appId + ', \'models\', { modelFilter: \'video\' });')
             }
         ];
 
         var visibleIndicators = indicators.filter(function (ind) {
             return Number(ind.newCount || 0) > 0 || Number(ind.totalCount || 0) > 0;
         });
+        var resultsOverflow = visibleIndicators.length > 4;
         var tilesHtml = visibleIndicators.map(function (ind) {
             var hasNew = ind.newCount > 0;
             var isZero = !hasNew && ind.totalCount === 0;
@@ -389,7 +484,7 @@
                         '<svg class="pc-results-header__chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
                     '</span>' +
                 '</div>' +
-                '<div class="pc-results-grid' + (visibleIndicators.length ? '' : ' is-empty') + '" style="--pc-result-count:' + Math.max(1, visibleIndicators.length) + '">' +
+                '<div class="pc-results-grid' + (visibleIndicators.length ? '' : ' is-empty') + (resultsOverflow ? ' is-overflow has-more' : '') + '" style="--pc-result-count:' + Math.max(1, visibleIndicators.length) + '"' + (resultsOverflow ? ' onscroll="pcSyncResultsStripMask(this)"' : '') + '>' +
                     (tilesHtml || '<button type="button" class="pc-results-grid__empty" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
                         '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
                         '<span aria-hidden="true">→</span></button>') +
@@ -415,6 +510,8 @@
             bugs: '<path d="M9 7V5.5a3 3 0 0 1 6 0V7M8 4 6.5 2.5M16 4l1.5-1.5M6 10H3M21 10h-3M6 15H3M21 15h-3"/><rect x="6" y="7" width="12" height="13" rx="6"/><path d="M12 8v11"/>',
             ideas: '<path d="M9 18h6"/><path d="M10 21.2h4"/><path d="M15.09 14c.18-1 .65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8a6 6 0 0 0-12 0c0 1.3.5 2.5 1.5 3.5.76.76 1.23 1.5 1.41 2.5"/>',
             reviews: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/>',
+            text: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/>',
+            video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 6 3-6 3z"/>',
         };
         return '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[key] || paths.models) + '</svg>';
     }
@@ -443,7 +540,9 @@
             { key: 'countries', count: countriesCount, newCount: unseen.newCountries, label: window.t('pcResultsCountries', {}, lang) },
             { key: 'bugs', count: Number(project.bugs_total_count || summary.bugs_total_count || project.bugs_count || summary.bugs_count || 0), newCount: unseen.newBugs, label: window.t('pcResultsBugs', {}, lang) },
             { key: 'ideas', count: Number(project.ideas_total_count || summary.ideas_total_count || project.ideas_count || summary.ideas_count || 0), newCount: unseen.newIdeas, label: window.t('pcResultsIdea', {}, lang) },
-            { key: 'reviews', count: Number(project.reviews_total_count || summary.reviews_total_count || project.reviews_count || summary.reviews_count || 0), newCount: unseen.newReviews, label: window.t('pcResultsReviews', {}, lang) }
+            { key: 'reviews', count: Number(project.reviews_total_count || summary.reviews_total_count || project.reviews_count || summary.reviews_count || 0), newCount: unseen.newReviews, label: window.t('pcResultsReviews', {}, lang) },
+            { key: 'text', count: resultsReports(summary, 'text').length, newCount: unseen.newText, label: window.t('pcResultsText', {}, lang) || (lang === 'ru' ? 'Текст' : 'Text') },
+            { key: 'video', count: resultsReports(summary, 'video').length, newCount: unseen.newVideo, label: window.t('pcResultsVideo', {}, lang) || (lang === 'ru' ? 'Видео' : 'Video') }
         ];
 
         // Collapsed mode: if no новинки, do NOT display the block at all.
@@ -662,6 +761,10 @@
             _activeCoverageCountries.clear();
             _isCountryFilterExpanded = false;
             _activeCoverageAndroid = 0;
+        }
+        if (options && options.modelFilter) {
+            _activeCoverageModelFilter = String(options.modelFilter);
+            window._activeCoverageModelFilter = _activeCoverageModelFilter;
         }
         _activeCoverageAppId = targetAppId;
         if (typeof window !== 'undefined') {
@@ -1180,6 +1283,11 @@
                     return coverageSeriesDefectIndices(_activeCoverageAppId, s).length > 0;
                 });
             });
+        } else if (_activeCoverageModelFilter === 'text' || _activeCoverageModelFilter === 'video') {
+            var reportFlag = _activeCoverageModelFilter === 'video' ? 'has_video' : 'has_text';
+            filteredModels = models.filter(function (m) {
+                return (m.screenshots || []).some(function (shot) { return shot && shot[reportFlag]; });
+            });
         }
 
         if (_activeCoverageCountries.size || _activeCoverageAndroid) {
@@ -1205,6 +1313,22 @@
                             ? 'Дефектов интерфейса пока не отмечено. Вы можете пометить скриншот дефектом в режиме полноэкранного просмотра кнопкой [⚠️ Дефект].'
                             : 'No UI defects reported yet. You can flag a screenshot as a defect in fullscreen view using the [⚠️ Defect] button.')) +
                     '</div>' +
+                '</div>'
+            );
+        }
+
+        if ((_activeCoverageModelFilter === 'text' || _activeCoverageModelFilter === 'video') && filteredModels.length === 0) {
+            var reportEmptyTitle = _activeCoverageModelFilter === 'video'
+                ? (window.t('coverageNoVideoTitle', {}, lang) || (lang === 'ru' ? 'Видео пока нет' : 'No videos yet'))
+                : (window.t('coverageNoTextTitle', {}, lang) || (lang === 'ru' ? 'Текстовых отчётов пока нет' : 'No text reports yet'));
+            var reportEmptyDesc = _activeCoverageModelFilter === 'video'
+                ? (window.t('coverageNoVideoEmpty', {}, lang) || (lang === 'ru' ? 'Здесь появятся обычные чекины с видео.' : 'Ordinary check-ins with a video will appear here.'))
+                : (window.t('coverageNoTextEmpty', {}, lang) || (lang === 'ru' ? 'Здесь появятся обычные чекины с комментарием.' : 'Ordinary check-ins with a comment will appear here.'));
+            return (
+                '<div class="coverage-defects-empty">' +
+                    '<div class="coverage-defects-empty__icon">' + (_activeCoverageModelFilter === 'video' ? '🎬' : '📝') + '</div>' +
+                    '<div class="coverage-defects-empty__title">' + window.escapeHTML(reportEmptyTitle) + '</div>' +
+                    '<div class="coverage-defects-empty__desc">' + window.escapeHTML(reportEmptyDesc) + '</div>' +
                 '</div>'
             );
         }
@@ -1273,6 +1397,8 @@
                     if (_activeCoverageModelFilter === 'defects' && !isDefect) {
                         return '';
                     }
+                    if (_activeCoverageModelFilter === 'text' && !s.has_text) return '';
+                    if (_activeCoverageModelFilter === 'video' && !s.has_video) return '';
 
                     var tObj = (m.testers || []).find(function (t) { return Number(t.tester_id || 0) === Number(s.tester_id || 0); }) || ((m.testers || []).length === 1 ? m.testers[0] : {});
                     var rawAv = s.android_version || tObj.android_version || '';
@@ -1572,6 +1698,18 @@
             : '';
         var defectCount = getProjectDefectsCount(_activeCoverageAppId, data);
         var archiveCount = Number(data.archived_count || (data.archived_screenshots || []).length || 0);
+        function coverageFlagCount(flag) {
+            var ids = {};
+            aggregatedModels.forEach(function (model) {
+                (model.screenshots || []).forEach(function (shot) {
+                    var proofId = Number(shot && shot.id || 0);
+                    if (proofId > 0 && shot[flag]) ids[proofId] = true;
+                });
+            });
+            return Object.keys(ids).length;
+        }
+        var textReportCount = coverageFlagCount('has_text');
+        var videoReportCount = coverageFlagCount('has_video');
         var hasUnseenModels = aggregatedModels.some(function (m) { return m.is_new; });
         var filterPillsHtml = (
             '<div class="coverage-status-filter-bar">' +
@@ -1585,6 +1723,14 @@
                     '<button type="button" class="coverage-filter-pill coverage-filter-pill--defects ' + (_activeCoverageModelFilter === 'defects' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'defects\')">' +
                         '⚠️ ' + window.escapeHTML(window.t('coverageFilterDefects', {}, lang) || (lang === 'ru' ? 'С дефектами' : 'With defects')) +
                         ' <span class="coverage-filter-pill__count">(' + defectCount + ')</span>' +
+                    '</button>' +
+                    '<button type="button" class="coverage-filter-pill coverage-filter-pill--text ' + (_activeCoverageModelFilter === 'text' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'text\')">' +
+                        '📝 ' + window.escapeHTML(window.t('coverageFilterText', {}, lang) || (lang === 'ru' ? 'С текстом' : 'With text')) +
+                        ' <span class="coverage-filter-pill__count">(' + textReportCount + ')</span>' +
+                    '</button>' +
+                    '<button type="button" class="coverage-filter-pill coverage-filter-pill--video ' + (_activeCoverageModelFilter === 'video' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'video\')">' +
+                        '🎬 ' + window.escapeHTML(window.t('coverageFilterVideo', {}, lang) || (lang === 'ru' ? 'Видео' : 'Video')) +
+                        ' <span class="coverage-filter-pill__count">(' + videoReportCount + ')</span>' +
                     '</button>' +
                     '<button type="button" class="coverage-filter-pill coverage-filter-pill--archive ' + (_activeCoverageModelFilter === 'archive' ? 'is-active' : '') + '" onclick="selectCoverageModelFilter(\'archive\')">' +
                         '📦 ' + window.escapeHTML(window.t('coverageFilterArchive', {}, lang) || (lang === 'ru' ? 'Архив' : 'Archive')) + ' <span class="coverage-filter-pill__count">(' + archiveCount + ')</span>' +
@@ -3185,6 +3331,11 @@
     window.openProjectCoverage = openProjectCoverage;
     window.closeProjectCoverageModal = closeProjectCoverageModal;
     window.openProjectResultsFeedback = openProjectResultsFeedback;
+    window.openProjectResultsReport = openProjectResultsReport;
+    window.pcSyncResultsStripMask = function (strip) {
+        if (!strip || !strip.classList.contains('is-overflow')) return;
+        strip.classList.toggle('has-more', strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 8);
+    };
     window.openCoverageFeedbackViewer = openCoverageFeedbackViewer;
     window.processCoverageViewerFeedback = processCoverageViewerFeedback;
     window.retryCoverageScreenshot = retryCoverageScreenshot;
