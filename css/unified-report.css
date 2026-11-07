@@ -153,6 +153,5 @@
 @media (prefers-reduced-motion: reduce) { #report-modal.is-proof-upload .modal-content, .unified-report-formats button, .unified-report-owner-hint { transition: none !important; } .unified-report-info > div { animation: none !important; } }
 .checkin-proof-preview-shell { grid-template-rows: auto auto minmax(0,1fr); }
 .checkin-proof-preview-header { grid-row: 1; }
-.checkin-proof-preview-note { grid-row: 2; padding: 12px 18px; max-height: 120px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #d4deeb; background: #111a27; font-size: 13px; line-height: 1.5; }
 .checkin-proof-preview-body { grid-row: 3; }
 .proof-video-open { position: absolute; z-index: 2; inset: 25% 10%; margin: auto; height: fit-content; min-height: 52px; padding: 16px; color: #fff; background: #182435ed; border: 1px solid #34485f; border-radius: 16px; cursor: pointer; }

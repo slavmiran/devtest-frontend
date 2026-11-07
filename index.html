@@ -36,8 +36,8 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261107-report-ping-d1-v1"></script>
-    <script src="./i18n/en.js?v=20261107-report-ping-d1-v1"></script>
+    <script src="./i18n/ru.js?v=20261107-comm-viewer-v1"></script>
+    <script src="./i18n/en.js?v=20261107-comm-viewer-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
@@ -61,7 +61,7 @@
     <script src="./js/app-actions.js?v=20261102-offer-authority-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20261107-report-ping-d1-v1"></script>
     <script src="./js/unified-report.js?v=20261107-play-owner-hint-v1"></script>
-    <link rel="stylesheet" href="./css/unified-report.css?v=20261107-play-owner-hint-v1">
+    <link rel="stylesheet" href="./css/unified-report.css?v=20261107-comm-viewer-v1">
     <script src="./js/testing-control.js?v=20261031-content-match-v1"></script>
     <script src="./js/project-activity-rows.js?v=20260912-workspace-v1"></script>
     <script src="./js/project-activity-attention.js?v=20261019-activity-context-v1"></script>
@@ -78,7 +78,7 @@
     <script src="./js/guaranteed-test-wizard.js?v=20261023-private-entry-v1"></script>
     <script src="./js/private-order-ui.js?v=20261023-private-onboarding-v1"></script>
     <link rel="stylesheet" href="./css/private-order-ui.css?v=20261023-private-onboarding-v1">
-    <script src="./js/project-results.js?v=20261107-text-video-v1"></script>
+    <script src="./js/project-results.js?v=20261107-comm-viewer-v1"></script>
     <script src="./app.js?v=20261018-tests-reminder-v1"></script>
     <link rel="stylesheet" href="./css/tokens.css?v=20260706-phase1">
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
@@ -87,7 +87,7 @@
     <link rel="stylesheet" href="./css/reliability-modal.css?v=20260914-page-no-grabber-v1">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261031-content-match-v1">
-    <link rel="stylesheet" href="./css/testing-control.css?v=20261031-content-match-v1">
+    <link rel="stylesheet" href="./css/testing-control.css?v=20261107-comm-viewer-v1">
     <link rel="stylesheet" href="./css/wizard.css?v=20261023-restart-buttons-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20261107-report-ping-d1-v1">
@@ -121,7 +121,7 @@
     <link rel="stylesheet" href="./css/project-activity-history.css?v=20261022-v1">
     <link rel="stylesheet" href="./css/project-parameters.css?v=20260920-smart-ping-v1">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20261107-report-ping-d1-v1">
-    <link rel="stylesheet" href="./css/project-results.css?v=20261107-text-video-v1">
+    <link rel="stylesheet" href="./css/project-results.css?v=20261107-comm-viewer-v1">
 </head>
 <body>
 
@@ -2961,10 +2961,13 @@
                 </div>
                 </div>
                 <div class="coverage-screenshot-actions">
+                    <button type="button" id="coverage-screenshot-series-btn" class="coverage-screenshot-series-btn" hidden onclick="openCoverageViewerSeries(event)"></button>
                     <button type="button" id="coverage-screenshot-archive-btn" class="coverage-screenshot-archive-btn" onclick="toggleCurrentCoverageArchive(event)"></button>
                     <button type="button" id="coverage-screenshot-defect-btn" class="coverage-screenshot-defect-btn" onclick="toggleCurrentCoverageDefect(event)">
                         ⚠️ <span></span>
                     </button>
+                    <button type="button" id="coverage-screenshot-topic-btn" class="coverage-screenshot-topic-btn" hidden onclick="openCoverageViewerOriginal(event)"></button>
+                    <button type="button" id="coverage-screenshot-reward-btn" class="coverage-screenshot-reward-btn" hidden onclick="rewardCoverageViewerTester(event)"></button>
                     <span id="coverage-screenshot-counter" class="coverage-screenshot-counter" style="display:none;"></span>
                 </div>
             </div>
@@ -2976,6 +2979,9 @@
                     <div id="coverage-screenshot-spinner" class="coverage-screenshot-spinner" style="display:none;"></div>
                 </div>
                 <button type="button" id="coverage-screenshot-next" class="coverage-screenshot-nav coverage-screenshot-nav--next" onclick="stepCoverageScreenshot(1)" aria-label="Next" style="display:none;">›</button>
+                <span id="coverage-screenshot-resolution" class="coverage-viewer-resolution" hidden></span>
+                <button type="button" id="coverage-screenshot-video-btn" class="coverage-viewer-video-btn" hidden onclick="openCoverageViewerOriginal(event)"></button>
+                <div id="coverage-screenshot-feedback" class="coverage-viewer-feedback" hidden></div>
                 <div id="coverage-screenshot-dots" class="coverage-screenshot-dots" style="display:none;"></div>
             </div>
         </div>
