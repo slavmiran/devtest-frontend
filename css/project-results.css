@@ -1227,7 +1227,14 @@
     flex: 0 0 100%; flex-wrap: wrap; overflow-x: visible;
 }
 .coverage-cockpit-countries.is-expanded .coverage-country-sep { display: none; }
-.coverage-cockpit-countries .coverage-country-expand { position: static; flex-shrink: 0; box-shadow: none; }
+.coverage-cockpit-countries .coverage-country-expand {
+    position: static;
+    flex-shrink: 0;
+    box-shadow: none;
+}
+.coverage-cockpit-countries .coverage-country-expand[hidden] {
+    display: none;
+}
 .coverage-country-pill {
     display: inline-flex;
     align-items: center;
@@ -1302,9 +1309,12 @@
     gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
-    padding-right: 38px;
+    padding-right: 0;
     transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     max-height: calc(var(--brand-filter-rows, 1) * 28px + (var(--brand-filter-rows, 1) - 1) * 6px + 4px);
+}
+.coverage-brand-filter-wrapper.has-expand .coverage-brand-filter-track {
+    padding-right: 38px;
 }
 .coverage-brand-filter-track::-webkit-scrollbar {
     display: none;
@@ -1346,6 +1356,7 @@
     bottom: 0;
     width: 28px;
     height: 28px;
+    padding: 0;
     border-radius: 7px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: #181d27;
@@ -1356,7 +1367,7 @@
     cursor: pointer;
     z-index: 2;
     box-shadow: -8px 0 10px #14171f;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, color 0.15s ease;
 }
 .brand-filter-expand-btn:active {
     transform: scale(0.94);
@@ -1366,6 +1377,19 @@
     background: rgba(56, 189, 248, 0.16);
     border-color: rgba(56, 189, 248, 0.35);
     color: #38bdf8;
+}
+.brand-filter-expand-btn[hidden] {
+    display: none;
+}
+.coverage-expand-chevron {
+    display: block;
+    width: 16px;
+    height: 16px;
+    transition: transform 0.18s ease;
+    transform-origin: center;
+}
+.brand-filter-expand-btn.is-expanded .coverage-expand-chevron {
+    transform: rotate(180deg);
 }
 
 /* Modal Scrollable Body */
@@ -1607,7 +1631,21 @@
 .pc-model-card__footer-copy small span { display: inline-flex; align-items: center; gap: 4px; }
 .pc-model-card__footer-copy small svg { width: 13px; height: 13px; }
 .pc-model-card__meta-sep { opacity: .4; }
-.pc-model-card__footer-chevron { position: absolute; right: 10px; top: 12px; width: 16px; height: 16px; color: #8799ad; }
+.pc-model-card__footer-chevron {
+    position: absolute;
+    right: 10px;
+    top: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: #8799ad;
+}
+.pc-model-card__footer-chevron .coverage-expand-chevron {
+    width: 16px;
+    height: 16px;
+}
 .pc-model-card__findings { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .pc-model-card__finding,
 .pc-model-card__new { display: inline-flex; align-items: center; gap: 3px; padding: 3px 5px; border-radius: 5px; background: rgba(255,255,255,.04); font-size: 10px; font-weight: 650; line-height: 1.1; white-space: nowrap; }
@@ -1918,15 +1956,22 @@
 }
 
 .coverage-model-card__chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 18px;
     height: 18px;
-    opacity: 0.5;
-    transition: transform 0.2s ease;
+    opacity: 0.55;
+    color: #98a9bc;
 }
-.coverage-model-card.is-expanded .coverage-model-card__chevron,
-.coverage-device-card.is-expanded .coverage-model-card__chevron {
+.coverage-model-card__chevron .coverage-expand-chevron {
+    width: 16px;
+    height: 16px;
+}
+.coverage-model-card.is-expanded .coverage-model-card__chevron .coverage-expand-chevron,
+.coverage-device-card.is-expanded .coverage-model-card__chevron .coverage-expand-chevron {
     transform: rotate(180deg);
-    opacity: 0.9;
+    opacity: 0.95;
 }
 
 /* Accordion Expanded Details */

@@ -17,6 +17,11 @@
         return '<svg class="coverage-ui-icon' + (className ? ' ' + className : '') + '" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[kind] || paths.image) + '</svg>';
     }
 
+    /** Shared expand/collapse chevron (rotates via .is-expanded on the button). */
+    function coverageExpandToggleIcon() {
+        return '<svg class="coverage-expand-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
+    }
+
     function _getLang() {
         if (typeof window !== 'undefined') {
             if (window.currentLang) return window.currentLang;
@@ -1098,12 +1103,16 @@
             var cWord = lang === 'ru'
                 ? formatPluralRu(cCount, 'страна', 'страны', 'стран')
                 : (cCount === 1 ? 'country' : 'countries');
+            // Only offer expand when there is more than one country; overflow sync may still hide it.
+            var countryExpandHtml = countries.length > 1
+                ? ('<button type="button" class="brand-filter-expand-btn coverage-country-expand' + (_isCountryFilterExpanded ? ' is-expanded' : '') + '" aria-expanded="' + (_isCountryFilterExpanded ? 'true' : 'false') + '" aria-label="' + window.escapeHTML(window.t(_isCountryFilterExpanded ? 'coverageCountriesCollapse' : 'coverageCountriesExpand', {}, lang)) + '" onclick="toggleCoverageCountryFilter()">' + coverageExpandToggleIcon() + '</button>')
+                : '';
 
             countriesLineHtml = (
                 '<div class="coverage-cockpit-countries' + (_isCountryFilterExpanded ? ' is-expanded' : '') + '">' +
                     '<div class="coverage-cockpit-countries__list">' + countryPills + '</div>' +
                     '<span class="coverage-cockpit-countries__badge">🌐 ' + cCount + ' ' + window.escapeHTML(cWord) + '</span>' +
-                    '<button type="button" class="brand-filter-expand-btn coverage-country-expand" aria-expanded="' + _isCountryFilterExpanded + '" aria-label="' + window.escapeHTML(window.t(_isCountryFilterExpanded ? 'coverageCountriesCollapse' : 'coverageCountriesExpand', {}, lang)) + '" onclick="toggleCoverageCountryFilter()">' + (_isCountryFilterExpanded ? '−' : '+') + '</button>' +
+                    countryExpandHtml +
                 '</div>' +
                 (hasNewCountries ? '<div class="coverage-countries-help">' + window.escapeHTML(window.t('coverageCountrySeenHint', {}, lang)) + '<button type="button" class="coverage-mark-all-seen" onclick="markCoverageCountryViewed()">' + window.escapeHTML(window.t('coverageCountriesMarkAll', {}, lang)) + '</button></div>' : '')
             );
@@ -1168,15 +1177,14 @@
         });
 
         var expandBtnHtml = '';
+        // "All brands" + one brand = nothing useful to expand; hide the control.
         if (totalChips > 2) {
             var expandTitle = _isBrandFilterExpanded
                 ? (window.t('coverageBrandFilterCollapse', {}, lang) || 'Свернуть фильтр брендов')
                 : (window.t('coverageBrandFilterExpand', {}, lang) || 'Развернуть фильтр брендов');
             expandBtnHtml = (
-                '<button type="button" class="brand-filter-expand-btn ' + (_isBrandFilterExpanded ? 'is-expanded' : '') + '" onclick="toggleCoverageBrandFilter()" title="' + window.escapeHTML(expandTitle) + '" aria-label="' + window.escapeHTML(expandTitle) + '">' +
-                    (_isBrandFilterExpanded
-                        ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>'
-                        : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>') +
+                '<button type="button" class="brand-filter-expand-btn' + (_isBrandFilterExpanded ? ' is-expanded' : '') + '" onclick="toggleCoverageBrandFilter()" title="' + window.escapeHTML(expandTitle) + '" aria-label="' + window.escapeHTML(expandTitle) + '" aria-expanded="' + (_isBrandFilterExpanded ? 'true' : 'false') + '">' +
+                    coverageExpandToggleIcon() +
                 '</button>'
             );
         }
@@ -1192,7 +1200,7 @@
                     '</span>' +
                     '<span class="coverage-brands-panel__count">' + brandNames.length + '</span>' +
                 '</div>' +
-                '<div class="coverage-brand-filter-wrapper ' + (_isBrandFilterExpanded ? 'is-expanded' : '') + '" id="coverage-brand-filter-wrapper">' +
+                '<div class="coverage-brand-filter-wrapper' + (_isBrandFilterExpanded ? ' is-expanded' : '') + (expandBtnHtml ? ' has-expand' : '') + '" id="coverage-brand-filter-wrapper">' +
                     '<div class="coverage-brand-filter-track" style="--brand-filter-rows: ' + currentRows + ';">' +
                         allChips.join('') +
                     '</div>' +
@@ -1200,6 +1208,43 @@
                 '</div>' +
             '</div>'
         );
+    }
+
+    /** Hide expand controls when the strip already fits / has nothing to reveal. */
+    function syncCoverageExpandControls() {
+        var countryRow = document.querySelector('.coverage-cockpit-countries');
+        if (countryRow) {
+            var countryList = countryRow.querySelector('.coverage-cockpit-countries__list');
+            var countryBtn = countryRow.querySelector('.coverage-country-expand');
+            if (countryList && countryBtn) {
+                if (_isCountryFilterExpanded) {
+                    countryBtn.hidden = false;
+                    countryRow.classList.add('has-expand');
+                } else {
+                    // clientWidth can be 0 while the distribution <details> is closed — treat as unknown, keep for now.
+                    var countryNeedsExpand = countryList.clientWidth <= 0
+                        ? true
+                        : (countryList.scrollWidth > countryList.clientWidth + 2);
+                    countryBtn.hidden = !countryNeedsExpand;
+                    countryRow.classList.toggle('has-expand', countryNeedsExpand);
+                }
+            } else {
+                countryRow.classList.remove('has-expand');
+            }
+        }
+
+        var brandWrapper = document.getElementById('coverage-brand-filter-wrapper');
+        if (brandWrapper) {
+            var brandBtn = brandWrapper.querySelector('.brand-filter-expand-btn');
+            var chipCount = brandWrapper.querySelectorAll('.coverage-brand-chip').length;
+            if (!brandBtn || chipCount <= 2) {
+                if (brandBtn) brandBtn.hidden = true;
+                brandWrapper.classList.remove('has-expand');
+            } else {
+                brandBtn.hidden = false;
+                brandWrapper.classList.add('has-expand');
+            }
+        }
     }
 
     function selectCoverageBrand(brand) {
@@ -1243,10 +1288,15 @@
         if (track) track.style.setProperty('--brand-filter-rows', rows);
         if (btn) {
             btn.classList.toggle('is-expanded', _isBrandFilterExpanded);
-            btn.innerHTML = _isBrandFilterExpanded
-                ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>'
-                : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
+            btn.setAttribute('aria-expanded', _isBrandFilterExpanded ? 'true' : 'false');
+            var lang = _getLang();
+            var expandTitle = _isBrandFilterExpanded
+                ? (window.t('coverageBrandFilterCollapse', {}, lang) || 'Свернуть фильтр брендов')
+                : (window.t('coverageBrandFilterExpand', {}, lang) || 'Развернуть фильтр брендов');
+            btn.setAttribute('title', expandTitle);
+            btn.setAttribute('aria-label', expandTitle);
         }
+        syncCoverageExpandControls();
     }
 
     // ── Aggregated Device Cards (Стопки моделей) ──
@@ -1634,7 +1684,7 @@
                         '<span class="pc-model-card__footer-copy"><strong class="notranslate">' + window.escapeHTML(m.model_name) + '</strong><small><span>' + coverageUiIcon('user') + tCount + ' ' + window.escapeHTML(testerLabel) + '</span><span>' + androidIconSvg('pc-model-card__meta-android') + 'Android ' + window.escapeHTML(androidText) + '</span></small>' +
                             (findingsHtml ? '<span class="pc-model-card__findings">' + findingsHtml + '</span>' : '') +
                         '</span>' +
-                        coverageUiIcon('down', 'pc-model-card__footer-chevron') +
+                        '<span class="pc-model-card__footer-chevron" aria-hidden="true">' + coverageExpandToggleIcon() + '</span>' +
                     '</button>' +
                     '<button type="button" class="pc-model-card__screen"' + (!hasCover ? ' disabled' : '') + ' onclick="' + screenAction + '" aria-label="' + window.escapeHTML(window.t(hasCover ? 'coverageViewScreenshotsAria' : 'coverageViewDeviceAria', { model: m.model_name }, lang) || ((lang === 'ru' ? 'Открыть: ' : 'Open: ') + m.model_name)) + '">' +
                         '<span class="pc-model-card__preview">' + coverHtml + '</span>' +
@@ -1654,7 +1704,7 @@
                         '<div class="coverage-device-card__head-right">' +
                             (m.screenshots_count > 0 ? '<span class="coverage-model-evidence" title="' + window.escapeHTML(window.t('coverageEvidenceTitle', {}, lang) || (lang === 'ru' ? 'Скриншоты интерфейса' : 'Interface screenshots')) + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 15-3.2-3.2a1.7 1.7 0 0 0-2.4 0L7 19"/></svg><strong>' + m.screenshots_count + '</strong></span>' : '') +
                             '<div class="coverage-model-feedback-badges">' + fbBadges.join('') + '</div>' +
-                            '<svg class="coverage-model-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+                            '<span class="coverage-model-card__chevron" aria-hidden="true">' + coverageExpandToggleIcon() + '</span>' +
                         '</div>' +
                     '</button>' +
                     galleryHtml +
@@ -1871,6 +1921,9 @@
         bindCoverageScrollHeader(container);
         hydrateCoverageThumbnails(container);
         bindCoverageCountryVisibility(container);
+        (window.requestAnimationFrame || function (cb) { setTimeout(cb, 16); })(function () {
+            syncCoverageExpandControls();
+        });
     }
 
     function bindCoverageCountryVisibility(container) {
@@ -1896,7 +1949,10 @@
                 _coverageCountryObserver.observe(pill);
             });
         }
-        details.addEventListener('toggle', observeVisibleCountries);
+        details.addEventListener('toggle', function () {
+            observeVisibleCountries();
+            (window.requestAnimationFrame || function (cb) { setTimeout(cb, 16); })(syncCoverageExpandControls);
+        });
         observeVisibleCountries();
     }
 
