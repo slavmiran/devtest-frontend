@@ -267,8 +267,10 @@
     var id=Number(test.id||test.app_id),user=esc(String(test.owner_username||'').replace(/[^A-Za-z0-9_]/g,''));
     if(day>14)return '<p class="lc-note">'+esc(tr('lcComplete'))+'</p><button type="button" class="btn" onclick="openCheckinOptionsModal('+id+',\''+user+'\')">📎 '+esc(tr('checkinOptionsTitle'))+'</button>';
     var offer=typeof getScreenshotBoostOffer==='function'?getScreenshotBoostOffer(test,day):null;
-    var clip=typeof getScreenshotBoostPaperclipContent==='function'&&typeof myTests!=='undefined'?getScreenshotBoostPaperclipContent(id):'📎';
-    return '<div class="action-row"><div class="split-btn-group" style="width:100%"><button id="btn-confirm-'+id+'" class="btn btn-success split-btn-main" onclick="confirmStart('+id+', {})">'+esc(tr('lcConfirm'))+'</button><button class="btn btn-success split-btn-options'+(offer?' has-screenshot-boost':'')+'" onclick="openCheckinOptionsModal('+id+',\''+user+'\')" aria-label="'+esc(tr('checkinOptionsTitle'))+'">'+clip+'</button></div></div>';
+    var clip=typeof getScreenshotBoostPaperclipContent==='function'&&typeof myTests!=='undefined'?getScreenshotBoostPaperclipContent(id):'';
+    var pkg=String(test.package||test.package_name||test.external_package_name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var openLabel=esc(typeof window.t==='function'?window.t('openBtn',{},window.lang||'ru'):'Open');
+    return '<div class="action-row extension-checkin-row'+(offer?' extension-boost-confirm-row':'')+'"><button type="button" class="btn btn-secondary checkin-open-btn extension-open-btn" onclick="openProtectionBoostApp('+id+', \''+pkg+'\')" aria-label="'+openLabel+'"><span class="extension-open-btn__icon" aria-hidden="true"></span></button><div class="split-btn-group" style="width:100%;flex:1"><button id="btn-confirm-'+id+'" class="btn btn-success split-btn-main" onclick="confirmStart('+id+', {})">'+esc(tr('lcConfirm'))+'</button><button class="btn btn-success split-btn-options'+(offer?' has-screenshot-boost':'')+'" onclick="openCheckinOptionsModal('+id+',\''+user+'\')" title="'+esc(tr('checkinOptionsTitle'))+'" aria-label="'+esc(tr('checkinOptionsTitle'))+'">'+clip+'</button></div></div>';
  }
  function reports(test){var values=test.live_bridge&&test.live_bridge.additional_reports||[];return values.length?'<details class="lc-report-tasks"><summary>'+esc(tr('lcReportsTask'))+'</summary><ul>'+values.map(function(v){return '<li>'+esc(v)+'</li>';}).join('')+'</ul></details>':'';}
 

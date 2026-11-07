@@ -1497,7 +1497,7 @@
             testerCheckinHintBoth: "Reward: {bust} $BUST & +{karma} Karma",
             testerCheckinHintKarma: "Reward: +{karma} ☯️ Karma",
             testerCheckinHintBust: "Reward: {bust} $BUST",
-            appInstalledBtnLabel: "✅ App Installed",
+            appInstalledBtnLabel: "App Installed",
             ppcTopupSuccessToast: "🛡 Reward pool topped up!",
             ppcStateASafeTitle: "✅ Protection not required",
             ppcStateASafeText: "The gap is fully covered by the free Safety Buffer.",

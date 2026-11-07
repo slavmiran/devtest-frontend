@@ -1504,7 +1504,7 @@
             testerCheckinHintBoth: "Награда: {bust} $BUST и +{karma} Кармы",
             testerCheckinHintKarma: "Награда: +{karma} ☯️ Кармы",
             testerCheckinHintBust: "Награда: {bust} $BUST",
-            appInstalledBtnLabel: "✅ Приложение установлено",
+            appInstalledBtnLabel: "Приложение установлено",
             ppcTopupSuccessToast: "🛡 Пул наград пополнен!",
             ppcStateASafeTitle: "✅ Защита не требуется",
             ppcStateASafeText: "Разрыв полностью покрывается бесплатным Буфером безопасности.",

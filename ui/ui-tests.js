@@ -3370,7 +3370,8 @@ function renderTests(force) {
         } else if (test.status === 'daily' || test.status === 'opened') {
             const testingDay = userTestingDay || 999;
             if(test.live_bridge && window.LiveCampaigns && !isIssueBlocked && !isFeedbackCheckinPending && !window.LiveCampaigns.isControl(test,testingDay)){
-                actionsHtml=window.LiveCampaigns.normalActions(test,testingDay)+window.LiveCampaigns.reports(test);
+                const liveHintHtml = renderCheckinRewardHint(test, testingDay, lang);
+                actionsHtml=window.LiveCampaigns.normalActions(test,testingDay)+window.LiveCampaigns.reports(test)+liveHintHtml;
             } else if (testingDay >= 15) {
                 const hintHtml = renderCheckinRewardHint(test, testingDay, lang);
                 const extensionBoostOffer = getScreenshotBoostOffer(test, testingDay);
@@ -3383,7 +3384,7 @@ function renderTests(force) {
                         </button>
                         <div class="split-btn-group${isFeedbackCheckinPending ? ' is-feedback-pending' : ''}" style="width: 100%; flex: 1;">
                             <button id="btn-confirm-${test.id}" class="btn ${isFeedbackCheckinPending ? '' : 'btn-success split-btn-main'}" style="${isFeedbackCheckinPending ? 'flex: 1; width: 100%; ' + feedbackPendingBtnStyle : ''}" ${isFeedbackCheckinPending ? 'disabled data-feedback-pending="1"' : `onclick="confirmStart(${test.id})"`}>
-                                ${isFeedbackCheckinPending ? feedbackPendingBtnInner : window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || '✅ App Installed')}
+                                ${isFeedbackCheckinPending ? feedbackPendingBtnInner : window.escapeHTML(window.t('appInstalledBtnLabel', {}, lang) || 'App Installed')}
                             </button>
                             ${isFeedbackCheckinPending ? '' : `<button class="btn btn-success split-btn-options${extensionBoostOffer ? ' has-screenshot-boost' : ''}${hasOpenControlProofCatchup(test) ? ' has-catchup-proof' : ''}" onclick="openCheckinOptionsModal(${test.id}, '${safeOwnerUsername}')" title="${window.escapeHTML(window.t('checkinOptionsTitle', {}, lang) + (hasOpenControlProofCatchup(test) ? ' · ' + window.t('checkinOptionsCatchupAria', {}, lang) : ''))}">
                                 ${getScreenshotBoostPaperclipContent(test.id)}
