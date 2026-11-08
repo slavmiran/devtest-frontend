@@ -625,11 +625,11 @@
 .pc-results-grid.is-row .pc-results-tile {
     flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
+    justify-content: center;
+    gap: 10px;
     min-height: 0;
-    padding: 8px 10px;
-    text-align: left;
+    padding: 8px 12px;
+    text-align: center;
 }
 
 .pc-results-grid.is-row .pc-results-tile__icon-wrap {
@@ -639,16 +639,19 @@
 
 .pc-results-grid.is-row .pc-results-tile__copy {
     display: flex;
+    flex: 0 1 auto;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     min-width: 0;
+    max-width: 100%;
     gap: 1px;
 }
 
 .pc-results-grid.is-row .pc-results-tile__main {
     display: flex;
     align-items: baseline;
+    justify-content: center;
     gap: 5px;
     min-width: 0;
     max-width: 100%;
