@@ -27,7 +27,8 @@
         'gtw-license-guide-overlay',
         'gtw-license-modal-overlay',
         'gtw-crypto-exit-overlay',
-        'gtw-start-gate-overlay'
+        'gtw-start-gate-overlay',
+        'feedback-image-overlay'
     ];
 
     function getTelegramWebApp() {
@@ -150,6 +151,7 @@
         if (id === 'live-analytics-modal') return callGlobal('closeLiveMetricsAnalytics');
         if (id === 'live-history-modal') return callGlobal('closeLiveHistoryImport');
         if (id === 'coverage-screenshot-modal') return callGlobal('closeCoverageScreenshotModal');
+        if (id === 'feedback-image-overlay') return callGlobal('closeFeedbackImageSlider');
         if (id.indexOf('guaranteed-test-wizard-') === 0 || id.indexOf('gtw-') === 0) {
             var wizardBack = window.handleGuaranteedTestWizardBack;
             return typeof wizardBack === 'function' && wizardBack() === true;

@@ -5901,9 +5901,13 @@ function feedbackSliderGoTo(i) {
 }
 
 function _feedbackSliderKeyHandler(e) {
+    if (!document.getElementById('feedback-image-overlay')) return;
+    if (e.key !== 'Escape' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    e.stopPropagation();
     if (e.key === 'Escape') closeFeedbackImageSlider();
     else if (e.key === 'ArrowLeft') feedbackSliderStep(-1);
-    else if (e.key === 'ArrowRight') feedbackSliderStep(1);
+    else feedbackSliderStep(1);
 }
 
 function closeFeedbackImageSlider() {
@@ -5912,7 +5916,8 @@ function closeFeedbackImageSlider() {
         overlay.classList.add('is-closing');
         setTimeout(function() { if (overlay.parentNode) overlay.remove(); }, 160);
     }
-    document.removeEventListener('keydown', _feedbackSliderKeyHandler);
+    document.removeEventListener('keydown', _feedbackSliderKeyHandler, true);
+    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
     _feedbackSliderImages = [];
     _feedbackSliderIndex = 0;
     _feedbackSliderCaption = '';
@@ -5977,8 +5982,9 @@ function renderFeedbackImageSlider() {
         attachFeedbackImageZoom(stage, img, total);
     }
 
-    document.removeEventListener('keydown', _feedbackSliderKeyHandler);
-    document.addEventListener('keydown', _feedbackSliderKeyHandler);
+    document.removeEventListener('keydown', _feedbackSliderKeyHandler, true);
+    document.addEventListener('keydown', _feedbackSliderKeyHandler, true);
+    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
 }
 
 /**
@@ -10915,13 +10921,17 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
         if (readOnly && !reasonHtml) {
             reasonHtml = `<span class="project-select-reason">${window.escapeHTML(window.t('projectSelectExchangeAvailable', {}, lang))}</span>`;
         }
+        if (isDisabled && reasonHtml) {
+            reasonHtml = `<button type="button" class="meta-chip" onclick="event.preventDefault();event.stopPropagation();var n=this.nextElementSibling;if(n)n.hidden=!n.hidden;">${window.escapeHTML(window.t('mkWhy', {}, lang))}</button>` + reasonHtml.replace('class="project-select-reason"', 'class="project-select-reason" hidden');
+        }
 
         const clickHandler = isDisabled
             ? 'event.preventDefault(); event.stopPropagation();'
             : `window._selectProjectForOffer(${p.id}); event.stopPropagation();`;
 
-        const openTag = readOnly ? '<div class="project-select-item project-select-info">'
-            : `<button class="project-select-item${disabledClass}${linkedClass}" ${isDisabled ? 'disabled aria-disabled="true"' : ''} onclick="${clickHandler}">`;
+        const blocked = readOnly || isDisabled;
+        const openTag = blocked ? `<div class="project-select-item project-select-info${disabledClass}${linkedClass}" ${isDisabled ? 'aria-disabled="true"' : ''}>`
+            : `<button class="project-select-item${linkedClass}" onclick="${clickHandler}">`;
         return `${openTag}
             <span class="project-select-icon">${renderIcon(p.name || '', p.icon_url)}</span>
             <span class="project-select-text">
@@ -10930,7 +10940,7 @@ function showProjectSelectModal(projects, targetAppId, targetOwnerId, options) {
                 ${reasonHtml}
             </span>
             ${badgeHtml}
-        ${readOnly ? '</div>' : '</button>'}`;
+        ${blocked ? '</div>' : '</button>'}`;
     }).join('') : `<div class="details-block"><div style="font-size:13px; color: var(--hint-color);">${window.escapeHTML(window.t('offerNoProjects', {}, lang))}</div></div>`;
     window._selectProjectForOffer = async function(proposerAppId) {
         if (readOnly) return;
