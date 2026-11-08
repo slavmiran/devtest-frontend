@@ -617,6 +617,56 @@
     font-size: 8px;
 }
 
+.pc-results-tile__copy,
+.pc-results-tile__main {
+    display: contents;
+}
+
+.pc-results-grid.is-row .pc-results-tile {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 0;
+    padding: 8px 10px;
+    text-align: left;
+}
+
+.pc-results-grid.is-row .pc-results-tile__icon-wrap {
+    margin-bottom: 0;
+    flex: 0 0 auto;
+}
+
+.pc-results-grid.is-row .pc-results-tile__copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: 0;
+    gap: 1px;
+}
+
+.pc-results-grid.is-row .pc-results-tile__main {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.pc-results-grid.is-row .pc-results-tile__label,
+.pc-results-grid.is-row .pc-results-tile__sub {
+    margin-top: 0;
+}
+
+.pc-results-grid.is-row .pc-results-tile__sub {
+    min-height: 0;
+}
+
+.pc-results-grid.is-row .pc-results-tile__sub[aria-hidden="true"] {
+    display: none;
+}
+
 .pc-results-tile--models .pc-results-tile__icon-wrap,
 .pc-results-tile--countries .pc-results-tile__icon-wrap,
 .pc-results-tile--bugs .pc-results-tile__icon-wrap,
@@ -834,6 +884,10 @@
     .pc-results-tile {
         min-height: 73px;
         padding-inline: 1px;
+    }
+    .pc-results-grid.is-row .pc-results-tile {
+        min-height: 0;
+        padding: 7px 8px;
     }
     .pc-results-tile__label {
         font-size: 8.8px;
