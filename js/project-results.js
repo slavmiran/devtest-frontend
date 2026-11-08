@@ -22,6 +22,38 @@
         return '<svg class="coverage-expand-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
     }
 
+    function resolveCoverageTester(appId, testerId, shot, tester) {
+        tester = tester || {};
+        shot = shot || {};
+        var username = String(tester.username || shot.tester_username || '').replace(/^@+/g, '').trim();
+        var fullName = String(tester.full_name || tester.name || '').trim();
+        var shotName = String(shot.tester_name || '').trim();
+        if (!username && /^@?[A-Za-z0-9_]{5,32}$/.test(shotName)) username = shotName.replace(/^@/, '');
+        else if (shotName && !/^Tester\s*#\d+$/i.test(shotName) && !/^\d{5,}$/.test(shotName) && !fullName) fullName = shotName;
+        var roster = [];
+        if (typeof window.myProjects !== 'undefined' && Array.isArray(window.myProjects)) roster = window.myProjects;
+        if ((!username || !fullName) && testerId > 0 && roster.length) {
+            for (var i = 0; i < roster.length; i++) {
+                var project = roster[i];
+                if (Number(project && (project.app_id || project.id) || 0) !== Number(appId)) continue;
+                var testers = project.testers || [];
+                for (var j = 0; j < testers.length; j++) {
+                    var row = testers[j] || {};
+                    if (Number(row.tester_id || row.id || row.user_id || 0) !== Number(testerId)) continue;
+                    if (!username) username = String(row.username || '').replace(/^@+/g, '').trim();
+                    if (!fullName) fullName = String(row.full_name || row.name || row.first_name || '').trim();
+                    break;
+                }
+                break;
+            }
+        }
+        var display = '';
+        if (fullName && username && fullName.replace(/^@/, '') !== username) display = fullName;
+        else if (username) display = '@' + username;
+        else display = fullName;
+        return { testerName: display, testerUsername: username, testerFullName: fullName };
+    }
+
     function _getLang() {
         if (typeof window !== 'undefined') {
             if (window.currentLang) return window.currentLang;
@@ -256,24 +288,18 @@
         refreshProjectResultsCard(appId);
     }
 
-    function openProjectResultsReport(appId, proofId, imageCount, testerId, kind) {
+    function openProjectResultsReport(appId, proofId, imageCount, testerId, kind, onlyUnseen) {
         var id = Number(proofId || 0);
         var filter = kind === 'video' ? 'video' : 'text';
         if (id > 0) {
-            markResultsReportSeen(appId, id);
-            if (Number(imageCount || 1) > 1 && typeof window.openCheckinProofOverview === 'function') {
-                window.openCheckinProofOverview(id, {
-                    appId: Number(appId || 0),
-                    imageCount: Math.max(1, Number(imageCount || 1)),
-                    testerId: Number(testerId || 0)
-                });
-                return;
-            }
+            // Open the viewer in this turn. Seen-state refresh happens after the
+            // slide is on screen, so the tile count does not drop before the gallery.
             openContinuousCoverageGallery(appId, {
                 initialProofId: id,
                 initialMediaIndex: 0,
                 onlyText: filter === 'text',
-                onlyVideo: filter === 'video'
+                onlyVideo: filter === 'video',
+                onlyUnseenReports: !!onlyUnseen
             });
             return;
         }
@@ -421,13 +447,13 @@
                 key: 'text',
                 type: 'text',
                 iconSvg: '<svg class="pc-results-tile__glyph" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M8 13h8M8 17h5"></path></svg>',
-                label: window.t('pcResultsText', {}, lang) || (lang === 'ru' ? 'Коммен.' : 'Comm.'),
+                label: window.t('pcResultsText', {}, lang) || (lang === 'ru' ? 'Коммент.' : 'Comment'),
                 newCount: newText,
                 totalCount: textReports.length,
                 detail: '',
                 title: window.t('pcResultsChipTextTitle', {}, lang) || (lang === 'ru' ? 'Отчёты с комментарием' : 'Reports with comments'),
                 action: textReport
-                    ? ('openProjectResultsReport(' + appId + ', ' + Number(textReport.id) + ', ' + Number(textReport.image_count || 1) + ', ' + Number(textReport.tester_id || 0) + ', \'text\');')
+                    ? ('openProjectResultsReport(' + appId + ', ' + Number(textReport.id) + ', ' + Number(textReport.image_count || 1) + ', ' + Number(textReport.tester_id || 0) + ', \'text\', ' + (newText > 0) + ');')
                     : ('openProjectCoverage(' + appId + ', \'models\', { modelFilter: \'text\' });')
             },
             {
@@ -440,7 +466,7 @@
                 detail: '',
                 title: window.t('pcResultsChipVideoTitle', {}, lang) || (lang === 'ru' ? 'Отчёты с видео' : 'Reports with video'),
                 action: videoReport
-                    ? ('openProjectResultsReport(' + appId + ', ' + Number(videoReport.id) + ', ' + Number(videoReport.image_count || 1) + ', ' + Number(videoReport.tester_id || 0) + ', \'video\');')
+                    ? ('openProjectResultsReport(' + appId + ', ' + Number(videoReport.id) + ', ' + Number(videoReport.image_count || 1) + ', ' + Number(videoReport.tester_id || 0) + ', \'video\', ' + (newVideo > 0) + ');')
                     : ('openProjectCoverage(' + appId + ', \'models\', { modelFilter: \'video\' });')
             },
             {
@@ -470,6 +496,7 @@
         var newTileCount = visibleIndicators.filter(function (ind) { return Number(ind.newCount || 0) > 0; }).length;
         var hasGroupSplit = newTileCount > 0 && newTileCount < visibleIndicators.length;
         var resultsOverflow = visibleIndicators.length > 4;
+        var resultsRow = visibleIndicators.length > 0 && visibleIndicators.length <= 3;
         var tilesHtml = visibleIndicators.map(function (ind, index) {
             var hasNew = ind.newCount > 0;
             var isZero = !hasNew && ind.totalCount === 0;
@@ -491,9 +518,13 @@
                     'title="' + window.escapeHTML(ind.title) + '" ' +
                     'aria-label="' + window.escapeHTML(ind.title + ': ' + valText) + '">' +
                     '<span class="pc-results-tile__icon-wrap">' + ind.iconSvg + '</span>' +
-                    '<span class="' + valClass + '">' + window.escapeHTML(valText) + '</span>' +
-                    '<span class="pc-results-tile__label">' + window.escapeHTML(ind.label) + '</span>' +
-                    subHtml +
+                    '<span class="pc-results-tile__copy">' +
+                        '<span class="pc-results-tile__main">' +
+                            '<span class="' + valClass + '">' + window.escapeHTML(valText) + '</span>' +
+                            '<span class="pc-results-tile__label">' + window.escapeHTML(ind.label) + '</span>' +
+                        '</span>' +
+                        subHtml +
+                    '</span>' +
                 '</button>'
             );
         }).join('');
@@ -509,7 +540,7 @@
                         '<svg class="pc-results-header__chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
                     '</span>' +
                 '</div>' +
-                '<div class="pc-results-grid' + (visibleIndicators.length ? '' : ' is-empty') + (resultsOverflow ? ' is-overflow has-more' : '') + '" style="--pc-result-count:' + Math.max(1, visibleIndicators.length) + '"' + (resultsOverflow ? ' onscroll="pcSyncResultsStripMask(this)"' : '') + '>' +
+                '<div class="pc-results-grid' + (visibleIndicators.length ? '' : ' is-empty') + (resultsRow ? ' is-row' : '') + (resultsOverflow ? ' is-overflow has-more' : '') + '" style="--pc-result-count:' + Math.max(1, visibleIndicators.length) + '"' + (resultsOverflow ? ' onscroll="pcSyncResultsStripMask(this)"' : '') + '>' +
                     (tilesHtml || '<button type="button" class="pc-results-grid__empty" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
                         '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
                         '<span aria-hidden="true">→</span></button>') +
@@ -565,7 +596,7 @@
             { key: 'bugs', count: Number(project.bugs_total_count || summary.bugs_total_count || project.bugs_count || summary.bugs_count || 0), newCount: unseen.newBugs, label: window.t('pcResultsBugs', {}, lang) },
             { key: 'ideas', count: Number(project.ideas_total_count || summary.ideas_total_count || project.ideas_count || summary.ideas_count || 0), newCount: unseen.newIdeas, label: window.t('pcResultsIdea', {}, lang) },
             { key: 'reviews', count: Number(project.reviews_total_count || summary.reviews_total_count || project.reviews_count || summary.reviews_count || 0), newCount: unseen.newReviews, label: window.t('pcResultsReviews', {}, lang) },
-            { key: 'text', count: resultsReports(summary, 'text').length, newCount: unseen.newText, label: window.t('pcResultsText', {}, lang) || (lang === 'ru' ? 'Коммен.' : 'Comm.') },
+            { key: 'text', count: resultsReports(summary, 'text').length, newCount: unseen.newText, label: window.t('pcResultsText', {}, lang) || (lang === 'ru' ? 'Коммент.' : 'Comment') },
             { key: 'video', count: resultsReports(summary, 'video').length, newCount: unseen.newVideo, label: window.t('pcResultsVideo', {}, lang) || (lang === 'ru' ? 'Видео' : 'Video') },
             { key: 'countries', count: countriesCount, newCount: unseen.newCountries, label: window.t('pcResultsCountries', {}, lang) }
         ];
@@ -2210,13 +2241,27 @@
         day: 0,
         modelName: '',
         testerName: '',
-        hasBug: false
+        hasBug: false,
+        seriesStrip: false,
+        openToken: 0
     };
 
-    function _coverageViewerAuthorHtml(item, author) {
+    function _coverageViewerAuthorHtml(item) {
+        item = item || {};
         var username = String(item.testerUsername || '').replace(/^@/, '');
-        if (!/^[A-Za-z0-9_]{5,32}$/.test(username)) return window.escapeHTML(author);
-        return '<button type="button" class="coverage-screenshot-tester-link notranslate" onclick="openCoverageTesterChat(event)" aria-label="Open chat with @' + window.escapeHTML(username) + '">@' + window.escapeHTML(username) + '</button>';
+        var fullName = String(item.testerFullName || '').trim();
+        if (fullName && username && fullName.replace(/^@/, '') === username) fullName = '';
+        var html = [];
+        if (fullName) html.push('<span class="coverage-screenshot-tester-name notranslate">' + window.escapeHTML(fullName) + '</span>');
+        if (/^[A-Za-z0-9_]{5,32}$/.test(username)) {
+            html.push('<button type="button" class="coverage-screenshot-tester-link notranslate" onclick="openCoverageTesterChat(event)" aria-label="Open chat with @' + window.escapeHTML(username) + '">@' + window.escapeHTML(username) + '</button>');
+        } else if (!html.length) {
+            var fallback = String(item.testerName || '').trim();
+            if (fallback && !/^Tester\s*#/i.test(fallback) && !/^ID[:\s]/i.test(fallback)) {
+                html.push('<span class="notranslate">' + window.escapeHTML(fallback) + '</span>');
+            }
+        }
+        return html.join(' ');
     }
 
     function openCoverageTesterChat(event) {
@@ -2359,19 +2404,22 @@
         if (event && event.stopPropagation) event.stopPropagation();
         var s = _coverageViewerState;
         var cur = ((s.items || s.images || [])[s.currentIndex]) || {};
-        var proofId = Number(cur.proofId || s.proofId || 0);
-        if (proofId <= 0 || typeof window.openCheckinProofOverview !== 'function') return;
-        var count = Math.max(1, Number(cur.photosInStack || cur.totalPhotos || 1));
-        var appId = Number(cur.appId || s.appId || _activeCoverageAppId || 0);
-        var testerId = Number(cur.testerId || 0);
-        closeCoverageScreenshotModal();
-        window.openCheckinProofOverview(proofId, {
-            appId: appId,
-            testerId: testerId,
-            imageCount: count,
-            modelName: cur.modelName || s.modelName || '',
-            title: cur.deviceTitle || cur.modelName || s.modelName || ''
-        });
+        if (Number(cur.photosInStack || 0) < 2) return;
+        s.seriesStrip = !s.seriesStrip;
+        _renderCoverageViewerRails();
+    }
+
+    function jumpCoverageScreenshot(index) {
+        var s = _coverageViewerState;
+        var list = (s.items && s.items.length) ? s.items : (s.images || []);
+        var next = Number(index);
+        if (!s.isOpen || next < 0 || next >= list.length) return;
+        if (next === s.currentIndex) {
+            _renderCoverageViewerRails();
+            return;
+        }
+        s.currentIndex = next;
+        _renderCoverageViewerCurrentSlide();
     }
 
     function openCoverageViewerOriginal(event) {
@@ -2687,10 +2735,14 @@
             titleEl.textContent = cur.deviceTitle || cur.modelName || s.modelName || (cur.day ? 'D' + cur.day : (window.t('coverageScreenshotDefaultTitle', {}, lang) || (lang === 'ru' ? 'Скриншот' : 'Screenshot')));
         }
 
-        // Subtitle:
-        // Progress: Устройство {X} из {Y} · фото {A}/{B}
         if (subtitleEl) {
-            if (cur.totalDevices && cur.totalDevices > 1) {
+            var subParts = [];
+            if (Number(cur.totalReports || 0) > 1) {
+                subParts.push((lang === 'ru' ? 'Отчёт ' : 'Report ') + (cur.reportIndex || 1) + '/' + cur.totalReports);
+                if (Number(cur.photosInStack || 1) > 1) {
+                    subParts.push((lang === 'ru' ? 'фото ' : 'photo ') + (cur.photoInStack || 1) + '/' + cur.photosInStack);
+                }
+            } else if (cur.totalDevices && cur.totalDevices > 1) {
                 var progressText = window.t('coverageGalleryProgress', {
                     deviceIndex: cur.deviceIndex || 1,
                     totalDevices: cur.totalDevices || 1,
@@ -2706,19 +2758,8 @@
                         ? ('Устройство ' + (cur.deviceIndex || 1) + ' из ' + (cur.totalDevices || 1) + ' · фото ' + (cur.photoIndex || (s.currentIndex + 1)) + '/' + (cur.totalPhotos || list.length))
                         : ('Device ' + (cur.deviceIndex || 1) + ' of ' + (cur.totalDevices || 1) + ' · photo ' + (cur.photoIndex || (s.currentIndex + 1)) + '/' + (cur.totalPhotos || list.length)));
                 }
-                var subParts = [progressText];
-                var author = cur.testerName || s.testerName;
-                if (author) subParts.push(_coverageViewerAuthorHtml(cur, author));
-                if (cur.hasBug || s.hasBug || cur.proofType === 'bug') {
-                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + window.escapeHTML(window.t('coverageBadgeBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug')) + '</span>');
-                } else if (cur.hasIdea || s.hasIdea || cur.proofType === 'idea') {
-                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + window.escapeHTML(window.t('coverageBadgeIdea', {}, lang) || (lang === 'ru' ? 'Идея' : 'Idea')) + '</span>');
-                } else if (cur.proofType === 'play_review' || cur.proofType === 'review') {
-                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + window.escapeHTML(window.t('coverageBadgeReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review')) + '</span>');
-                }
-                subtitleEl.innerHTML = subParts.join(' · ');
+                subParts.push(progressText);
             } else {
-                var subParts = [];
                 var totalOnDev = cur.totalPhotos || list.length;
                 if (cur.totalStacks > 1) {
                     var seriesText = window.t('coverageGallerySeries', {
@@ -2743,17 +2784,17 @@
                 } else if (cur.day || s.day) {
                     subParts.push('D' + (cur.day || s.day));
                 }
-                var author = cur.testerName || s.testerName;
-                if (author) subParts.push(_coverageViewerAuthorHtml(cur, author));
-                if (cur.hasBug || s.hasBug || cur.proofType === 'bug') {
-                    subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + window.escapeHTML(window.t('coverageBadgeBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug')) + '</span>');
-                } else if (cur.hasIdea || s.hasIdea || cur.proofType === 'idea') {
-                    subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + window.escapeHTML(window.t('coverageBadgeIdea', {}, lang) || (lang === 'ru' ? 'Идея' : 'Idea')) + '</span>');
-                } else if (cur.proofType === 'play_review' || cur.proofType === 'review') {
-                    subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + window.escapeHTML(window.t('coverageBadgeReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review')) + '</span>');
-                }
-                subtitleEl.innerHTML = subParts.join(' · ');
             }
+            var authorHtml = _coverageViewerAuthorHtml(cur);
+            if (authorHtml) subParts.push(authorHtml);
+            if (cur.hasBug || s.hasBug || cur.proofType === 'bug') {
+                subParts.push('<span style="color:#f87171;font-weight:700;">🐞 ' + window.escapeHTML(window.t('coverageBadgeBug', {}, lang) || (lang === 'ru' ? 'Баг' : 'Bug')) + '</span>');
+            } else if (cur.hasIdea || s.hasIdea || cur.proofType === 'idea') {
+                subParts.push('<span style="color:#fbbf24;font-weight:700;">💡 ' + window.escapeHTML(window.t('coverageBadgeIdea', {}, lang) || (lang === 'ru' ? 'Идея' : 'Idea')) + '</span>');
+            } else if (cur.proofType === 'play_review' || cur.proofType === 'review') {
+                subParts.push('<span style="color:#c084fc;font-weight:700;">★ ' + window.escapeHTML(window.t('coverageBadgeReview', {}, lang) || (lang === 'ru' ? 'Отзыв' : 'Review')) + '</span>');
+            }
+            subtitleEl.innerHTML = subParts.join(' · ');
         }
 
         // Counter
@@ -2765,7 +2806,14 @@
         // Defect status
         var curAppId = cur.appId || s.appId || _activeCoverageAppId;
         var proofId = cur.proofId != null ? Number(cur.proofId) : Number(s.proofId || 0);
-        if (proofId > 0) markResultsReportSeen(curAppId, proofId);
+        if (proofId > 0) {
+            var seenAppId = curAppId;
+            var seenProofId = proofId;
+            (window.requestAnimationFrame || function (cb) { setTimeout(cb, 16); })(function () {
+                if (!_coverageViewerState.isOpen) return;
+                markResultsReportSeen(seenAppId, seenProofId);
+            });
+        }
         var feedbackId = Number(cur.feedbackId || 0);
         var mediaIndex = cur.mediaIndex != null ? cur.mediaIndex : 0;
         var hasDefect = isScreenshotDefect(curAppId, proofId > 0 ? proofId : 'feedback-' + feedbackId, mediaIndex);
@@ -2776,9 +2824,11 @@
         var videoBtn = document.getElementById('coverage-screenshot-video-btn');
         if (seriesBtn) {
             var stackCount = Number(cur.photosInStack || 0);
-            seriesBtn.hidden = !(proofId > 0 && stackCount > 1 && typeof window.openCheckinProofOverview === 'function');
+            seriesBtn.hidden = !(proofId > 0 && stackCount > 1);
             seriesBtn.textContent = '▦ ' + stackCount;
             seriesBtn.title = window.t('pcProofOverviewTitle', {}, lang) || (lang === 'ru' ? 'Все скриншоты' : 'All screenshots');
+            seriesBtn.classList.toggle('is-active', !!s.seriesStrip && stackCount > 1);
+            seriesBtn.setAttribute('aria-expanded', s.seriesStrip && stackCount > 1 ? 'true' : 'false');
         }
         if (topicBtn) {
             topicBtn.hidden = !(proofId > 0 && typeof window.openCheckinProofOriginal === 'function');
@@ -2863,9 +2913,11 @@
             }
         }
 
-        // Dots (render only if <= 10 items)
+        // Dots (render only if <= 10 items). A report rail replaces them.
         if (dotsEl) {
-            if (list.length > 1 && list.length <= 10) {
+            if (Number(cur.totalReports || 0) > 1) {
+                dotsEl.style.display = 'none';
+            } else if (list.length > 1 && list.length <= 10) {
                 dotsEl.style.display = 'flex';
                 var dotsHtml = '';
                 for (var d = 0; d < list.length; d++) {
@@ -2938,6 +2990,92 @@
                     if (list[index]) _resolveCoverageSlide(list[index]).catch(function () {});
                 });
             }
+        }
+        _renderCoverageViewerRails();
+    }
+
+    function _paintCoverageRailThumb(img) {
+        var proofId = Number(img.getAttribute('data-proof-id') || 0);
+        var mediaIndex = Number(img.getAttribute('data-media-index') || 0);
+        if (proofId <= 0 || typeof window.loadCheckinProofPreviewThumbnail !== 'function') return;
+        window.loadCheckinProofPreviewThumbnail(proofId, mediaIndex).then(function (src) {
+            if (src && img.isConnected) img.src = src;
+        }).catch(function () {});
+    }
+
+    function _renderCoverageViewerRails() {
+        var stage = document.getElementById('coverage-screenshot-stage');
+        if (stage && !document.getElementById('coverage-screenshot-report-rail')) {
+            stage.insertAdjacentHTML('beforeend', '<div id="coverage-screenshot-report-rail" class="coverage-viewer-report-rail" hidden></div>');
+        }
+        if (stage && !document.getElementById('coverage-screenshot-series-strip')) {
+            stage.insertAdjacentHTML('beforeend', '<div id="coverage-screenshot-series-strip" class="coverage-viewer-series" hidden></div>');
+        }
+        var reportHost = document.getElementById('coverage-screenshot-report-rail');
+        var seriesHost = document.getElementById('coverage-screenshot-series-strip');
+        var s = _coverageViewerState;
+        var list = (s.items && s.items.length) ? s.items : (s.images || []);
+        var cur = list[s.currentIndex] || {};
+        var reports = [];
+        var seenReports = {};
+        list.forEach(function (item, index) {
+            if (!item || Number(item.totalReports || 0) < 2) return;
+            var key = String(item.reportKey || item.proofId || index);
+            if (seenReports[key]) return;
+            seenReports[key] = true;
+            reports.push({ index: index, item: item, key: key });
+        });
+        if (reportHost) {
+            if (reports.length < 2) {
+                reportHost.hidden = true;
+                reportHost.innerHTML = '';
+            } else {
+                var currentKey = String(cur.reportKey || cur.proofId || '');
+                reportHost.hidden = false;
+                reportHost.innerHTML = reports.map(function (rep) {
+                    var count = Number(rep.item.photosInStack || 1);
+                    return '<button type="button" class="coverage-viewer-report' + (rep.key === currentKey ? ' is-active' : '') + '" onclick="jumpCoverageScreenshot(' + rep.index + ')">' +
+                        '<img alt="" data-proof-id="' + Number(rep.item.proofId || 0) + '" data-media-index="' + Number(rep.item.mediaIndex || 0) + '">' +
+                        (count > 1 ? '<span class="coverage-viewer-report__count">' + count + '</span>' : '') +
+                        '<span class="coverage-viewer-report__n">' + window.escapeHTML(String(rep.item.reportIndex || '')) + '</span>' +
+                    '</button>';
+                }).join('');
+                reportHost.querySelectorAll('img').forEach(_paintCoverageRailThumb);
+                var activeReport = reportHost.querySelector('.is-active');
+                if (activeReport && typeof activeReport.scrollIntoView === 'function') {
+                    activeReport.scrollIntoView({ inline: 'center', block: 'nearest' });
+                }
+            }
+        }
+        var proofId = Number(cur.proofId || 0);
+        var frames = [];
+        if (s.seriesStrip && proofId > 0 && Number(cur.photosInStack || 0) > 1) {
+            list.forEach(function (item, index) {
+                if (Number(item && item.proofId || 0) === proofId) frames.push({ index: index, item: item });
+            });
+        }
+        if (seriesHost) {
+            if (frames.length < 2) {
+                seriesHost.hidden = true;
+                seriesHost.innerHTML = '';
+            } else {
+                seriesHost.hidden = false;
+                seriesHost.innerHTML = frames.map(function (frame) {
+                    return '<button type="button" class="coverage-viewer-series__item' + (frame.index === s.currentIndex ? ' is-active' : '') + '" onclick="jumpCoverageScreenshot(' + frame.index + ')">' +
+                        '<img alt="" data-proof-id="' + proofId + '" data-media-index="' + Number(frame.item.mediaIndex || 0) + '">' +
+                        '<span>' + window.escapeHTML(String(frame.item.photoInStack || '')) + '</span>' +
+                    '</button>';
+                }).join('');
+                seriesHost.querySelectorAll('img').forEach(_paintCoverageRailThumb);
+                var activeFrame = seriesHost.querySelector('.is-active');
+                if (activeFrame && typeof activeFrame.scrollIntoView === 'function') {
+                    activeFrame.scrollIntoView({ inline: 'center', block: 'nearest' });
+                }
+            }
+        }
+        if (stage) {
+            stage.classList.toggle('has-report-rail', !!(reportHost && !reportHost.hidden));
+            stage.classList.toggle('has-series-strip', !!(seriesHost && !seriesHost.hidden));
         }
     }
 
@@ -3169,8 +3307,35 @@
         if (safeAppId <= 0) return;
 
         function launchViewerWithData(covData) {
-            if (!covData) return;
+            if (_coverageViewerState.openToken !== openToken) return;
+            if (!covData) {
+                closeCoverageScreenshotModal();
+                openProjectCoverage(safeAppId, 'models');
+                return;
+            }
             tagCoverageNewModels(safeAppId, covData);
+            var seenReportIds = {};
+            if (options.onlyUnseenReports) {
+                getProjectResultsSeenState(safeAppId).seen_reports.forEach(function (id) { seenReportIds[Number(id)] = true; });
+            }
+            function resultsQueueShot(shot) {
+                if (!shot) return false;
+                var pid = Number(shot.id || 0);
+                var isInitial = !!(options.initialProofId && pid === Number(options.initialProofId));
+                var flagged = options.onlyVideo ? !!shot.has_video : !!shot.has_text;
+                if (!flagged && !isInitial) return false;
+                if (options.onlyUnseenReports && seenReportIds[pid] && !isInitial) return false;
+                return true;
+            }
+            if (options.onlyUnseenReports && (options.onlyText || options.onlyVideo)) {
+                var hasQueued = false;
+                (Array.isArray(covData.models) ? covData.models : []).forEach(function (model) {
+                    (model.screenshots || []).forEach(function (shot) {
+                        if (resultsQueueShot(shot)) hasQueued = true;
+                    });
+                });
+                if (!hasQueued) options.onlyUnseenReports = false;
+            }
 
             var flatItems = [];
             if (options.archive) {
@@ -3225,11 +3390,8 @@
                     });
                 });
             } else if (options.onlyText || options.onlyVideo) {
-                var wantFlag = options.onlyVideo ? 'has_video' : 'has_text';
                 aggregated = aggregated.filter(function (m) {
-                    return (m.screenshots || []).some(function (s) {
-                        return (options.initialProofId && Number(s.id) === Number(options.initialProofId)) || !!(s && s[wantFlag]);
-                    });
+                    return (m.screenshots || []).some(resultsQueueShot);
                 });
             } else if (options.onlyFeedback) {
                 aggregated = aggregated.filter(function (m) {
@@ -3247,6 +3409,7 @@
             });
 
             if (modelsWithScreenshots.length === 0) {
+                closeCoverageScreenshotModal();
                 openProjectCoverage(safeAppId, 'models', { focusNewModel: !!options.onlyNew });
                 return;
             }
@@ -3269,10 +3432,9 @@
 
                 var devScreenshots = (m.screenshots || []).filter(function (s) {
                     if (!s) return false;
+                    if (options.onlyText || options.onlyVideo) return resultsQueueShot(s);
                     if (options.initialProofId && Number(s.id) === Number(options.initialProofId)) return true;
                     if (options.initialFeedbackId && Number(s.feedback_id) === Number(options.initialFeedbackId)) return true;
-                    if (options.onlyText) return !!s.has_text;
-                    if (options.onlyVideo) return !!s.has_video;
                     if (options.onlyFeedback) return !!(s.has_bug || s.has_idea || s.proof_type === 'bug' || s.proof_type === 'idea');
                     return true;
                 });
@@ -3289,6 +3451,7 @@
                     var imgCount = Number(s.image_count || (s.media_items && s.media_items.length) || 1);
                     var mediaItems = Array.isArray(s.media_items) ? s.media_items : [];
                     var tester = (m.testers || []).find(function (t) { return Number(t.tester_id || 0) === Number(s.tester_id || 0); }) || {};
+                    var person = resolveCoverageTester(safeAppId, Number(s.tester_id || tester.tester_id || 0), s, tester);
                     var feedback = (m.feedback_items || []).find(function (fb) { return Number(fb.id) === Number(s.feedback_id || 0) || (Number(fb.proof_id) > 0 && Number(fb.proof_id) === proofId); }) || {};
                     var screenshotVersion = s.android_version || tester.android_version || rawAv;
                     var screenshotTitle = devTitle.replace(/ · Android .*$/, '');
@@ -3321,8 +3484,9 @@
                             photosInStack: imgCount,
                             overallIndex: flatItems.length,
                             testerId: Number(s.tester_id || tester.tester_id || 0),
-                            testerName: s.tester_name || tester.full_name || tester.username || '',
-                            testerUsername: tester.username || s.tester_username || (/^@[A-Za-z0-9_]{5,32}$/.test(String(s.tester_name || '')) ? s.tester_name : ''),
+                            testerName: person.testerName,
+                            testerUsername: person.testerUsername,
+                            testerFullName: person.testerFullName,
                             day: s.day || 0,
                             note: String(s.note || ''),
                             hasVideo: !!s.has_video,
@@ -3343,7 +3507,23 @@
             });
             }
 
+            if ((options.onlyText || options.onlyVideo) && flatItems.length) {
+                var reportOrder = [];
+                var reportPos = {};
+                flatItems.forEach(function (item) {
+                    var key = String(item.proofId || 0);
+                    if (reportPos[key] == null) {
+                        reportPos[key] = reportOrder.length;
+                        reportOrder.push(key);
+                    }
+                    item.reportKey = key;
+                    item.reportIndex = reportPos[key] + 1;
+                });
+                flatItems.forEach(function (item) { item.totalReports = reportOrder.length; });
+            }
+
             if (flatItems.length === 0) {
+                closeCoverageScreenshotModal();
                 openProjectCoverage(safeAppId, 'models');
                 return;
             }
@@ -3362,6 +3542,7 @@
 
             _coverageViewerState.isOpen = true;
             _coverageViewerState.isContinuous = true;
+            _coverageViewerState.seriesStrip = false;
             _coverageViewerState.isArchiveViewer = !!options.archive;
             _coverageViewerState.scope = covData.scope || 'current';
             _coverageViewerState.appId = safeAppId;
@@ -3384,6 +3565,10 @@
             // Mark the displayed model only after its image has actually loaded.
         }
 
+        var openToken = (_coverageViewerState.openToken || 0) + 1;
+        _coverageViewerState.openToken = openToken;
+        showCoverageViewerShell();
+
         var viewerScope = options.scope || (Number(_activeCoverageAppId) === safeAppId ? _activeCoverageScope : 'current') || 'current';
         var cacheKey = String(safeAppId) + ':' + String(viewerScope);
         var cached = _coverageMemoryCache && _coverageMemoryCache[cacheKey];
@@ -3396,9 +3581,43 @@
                 _coverageMemoryCache[cacheKey] = { data: data, timestamp: Date.now() };
                 launchViewerWithData(data);
             }).catch(function () {
+                if (_coverageViewerState.openToken !== openToken) return;
+                closeCoverageScreenshotModal();
                 openProjectCoverage(safeAppId, 'models');
             });
         }
+    }
+
+    function showCoverageViewerShell() {
+        _coverageViewerState.isOpen = true;
+        _coverageViewerState.seriesStrip = false;
+        _coverageViewerState.items = [];
+        _coverageViewerState.images = [];
+        _ensureCoverageScreenshotModal();
+        var lang = _getLang();
+        var title = document.getElementById('coverage-screenshot-title');
+        var subtitle = document.getElementById('coverage-screenshot-subtitle');
+        var img = document.getElementById('coverage-screenshot-img');
+        var spinner = document.getElementById('coverage-screenshot-spinner');
+        if (title) title.textContent = lang === 'ru' ? 'Загрузка…' : 'Loading…';
+        if (subtitle) subtitle.textContent = '';
+        if (img) {
+            img.removeAttribute('src');
+            img.style.opacity = '0';
+        }
+        if (spinner) spinner.style.display = 'block';
+        ['coverage-screenshot-prev', 'coverage-screenshot-next', 'coverage-screenshot-dots', 'coverage-screenshot-series-btn'].forEach(function (id) {
+            var node = document.getElementById(id);
+            if (!node) return;
+            if (node.hidden !== undefined && id === 'coverage-screenshot-series-btn') node.hidden = true;
+            else node.style.display = 'none';
+        });
+        var modal = document.getElementById('coverage-screenshot-modal');
+        if (modal) {
+            modal.classList.add('active');
+            if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
+        }
+        _renderCoverageViewerRails();
     }
 
     function closeCoverageScreenshotModal(event) {
@@ -3407,11 +3626,14 @@
         if (modal) modal.classList.remove('active');
         var wasContinuous = _coverageViewerState.isContinuous;
         var curAppId = _coverageViewerState.appId || _activeCoverageAppId;
+        _coverageViewerState.openToken = (_coverageViewerState.openToken || 0) + 1;
         _coverageViewerState.isOpen = false;
         _coverageViewerState.isContinuous = false;
         _coverageViewerState.isArchiveViewer = false;
+        _coverageViewerState.seriesStrip = false;
         _coverageViewerState.items = [];
         _coverageViewerState.images = [];
+        _renderCoverageViewerRails();
         var imgEl = document.getElementById('coverage-screenshot-img');
         if (imgEl) {
             resetCoverageScreenshotZoom();
@@ -3596,6 +3818,7 @@
     window.openCoverageFeedbackViewer = openCoverageFeedbackViewer;
     window.processCoverageViewerFeedback = processCoverageViewerFeedback;
     window.openCoverageViewerSeries = openCoverageViewerSeries;
+    window.jumpCoverageScreenshot = jumpCoverageScreenshot;
     window.openCoverageViewerOriginal = openCoverageViewerOriginal;
     window.rewardCoverageViewerTester = rewardCoverageViewerTester;
     window.retryCoverageScreenshot = retryCoverageScreenshot;

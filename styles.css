@@ -297,7 +297,8 @@ button.pc-subtitle-chip--reviews:active {
 
 .btn:active { opacity: 0.7; }
 
-.btn.is-processing {
+.btn.is-processing,
+.ppc-submit-btn.is-processing {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -307,7 +308,8 @@ button.pc-subtitle-chip--reviews:active {
     opacity: 1 !important;
 }
 
-.btn.is-processing .btn-spinner {
+.btn.is-processing .btn-spinner,
+.ppc-submit-btn.is-processing .btn-spinner {
     display: inline-block;
     width: 15px;
     height: 15px;
@@ -331,6 +333,11 @@ button.pc-subtitle-chip--reviews:active {
 
 @keyframes btnProcessingSpin {
     to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-claim-grant.is-processing .btn-spinner,
+    .ppc-submit-btn.is-processing .btn-spinner { animation: none; }
 }
 
 .btn-primary { background-color: var(--button-color); color: var(--button-text-color); }

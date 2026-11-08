@@ -764,11 +764,42 @@ function _expandProjectCardWhenReady(projectId, attemptsLeft) {
     return false;
 }
 
+function adminFastConfirmKey() {
+    var actor = window.currentUser;
+    return actor && actor.is_admin && Number(actor.user_id) > 0 && Number(actor.user_id) === Number(userId)
+        ? 'devtest_admin_fast_confirm_' + actor.user_id : '';
+}
+
+function adminFastConfirmEnabled() {
+    var key = adminFastConfirmKey();
+    try { return !!key && localStorage.getItem(key) === '1'; }
+    catch (_) { return false; }
+}
+
+function setAdminFastConfirm(enabled) {
+    var key = adminFastConfirmKey();
+    if (!key) return;
+    try { localStorage.setItem(key, enabled ? '1' : '0'); }
+    catch (_) {
+        document.getElementById('admin-fast-confirm').checked = false;
+        handleApiError('network_error');
+    }
+}
+
+function syncAdminSettingsPanel() {
+    var panel = document.getElementById('admin-settings-panel');
+    if (!panel) return;
+    panel.hidden = !adminFastConfirmKey();
+    document.getElementById('admin-fast-confirm').checked = adminFastConfirmEnabled();
+    if (panel.hidden) panel.open = false;
+}
+
 function toggleSystemMenu() {
     const menu = document.getElementById('system-drop-menu');
     if (menu) {
         const willOpen = !menu.classList.contains('active');
         menu.classList.toggle('active');
+        if (willOpen) syncAdminSettingsPanel();
         if (willOpen && typeof window.populateSettingsEmail === 'function') {
             window.populateSettingsEmail();
         }
@@ -2584,9 +2615,10 @@ async function _requestCheckinOpenToken(appId) {
     var identity = { date: getLocalDate(), progress: Number(test && test.progress_id || 0),
         run: Number(test && test.run_iteration || 1), actor: String(userId) };
     var cached = _getReusableCheckinOpenMeta(appId);
-    if (cached) return { required: true, token: cached.token, progress_id: cached.progressId,
+    var fastConfirm = adminFastConfirmEnabled();
+    if (cached && (!fastConfirm || cached.fastConfirm || _checkinTokenNow(cached) >= cached.readyAtMs)) return { required: true, token: cached.token, progress_id: cached.progressId,
         ready_at_ms: cached.readyAtMs, expires_at_ms: cached.expiresAtMs, server_now_ms: _checkinTokenNow(cached) };
-    var requestKey = [identity.actor, appId, identity.progress, identity.run, identity.date].join(':');
+    var requestKey = [identity.actor, appId, identity.progress, identity.run, identity.date, fastConfirm].join(':');
     if (_checkinOpenTokenRequests.has(requestKey)) return _checkinOpenTokenRequests.get(requestKey);
     var pending = (async function() {
     var response = await fetch(API_BASE + '/checkin/open', {
@@ -2595,6 +2627,7 @@ async function _requestCheckinOpenToken(appId) {
         body: JSON.stringify(withInitData({
             app_id: Number(appId) || 0,
             progress_id: Number(test && test.progress_id || 0) || 0,
+            fast_confirm: fastConfirm,
         })),
     });
     var result = null;
@@ -2626,6 +2659,7 @@ async function _requestCheckinOpenToken(appId) {
         receivedAtMs: Date.now(),
         actorUserId: identity.actor,
         runIteration: identity.run,
+        fastConfirm: fastConfirm && Number(result.ready_at_ms) === Number(result.server_now_ms),
     };
     if (_timerReadyState[key]) {
         var ready = _timerReadyState[key];
@@ -2956,6 +2990,12 @@ async function _startTimerAsync(id, pkg, isScreenshotDay = false, ownerUsername 
         if (openPayload.required === false) {
             setTimerReadyForConfirm(id, true, isScreenshotDay, resolvedOwnerUsername);
             _setTimerButtonReady(id, !!isScreenshotDay, resolvedOwnerUsername);
+            return;
+        }
+        if (activeTimerAppId === id && adminFastConfirmEnabled() && openPayload.token
+            && Number(openPayload.ready_at_ms) > 0 && Number(openPayload.ready_at_ms) <= Number(openPayload.server_now_ms)) {
+            _timerEndTimestamp = Date.now();
+            _syncActiveTimerState();
             return;
         }
         var serverWaitMs = Math.max(
@@ -5791,13 +5831,28 @@ function handleClaimGrantClick(progressId, appId) {
     claimGrant(progressId, appId);
 }
 
+var _grantClaimBatch = null;
+
 async function claimGrant(progressId, appId) {
+    const actionKey = 'claim_grant_' + Number(progressId);
+    if (_pendingActions.has(actionKey)) return;
+    _pendingActions.add(actionKey);
+    const batch = _grantClaimBatch || (_grantClaimBatch = {
+        pending: 0, started: 0, claimed: 0, amount: 0, failed: 0, activeApps: new Set(),
+    });
+    batch.pending++;
+    batch.started++;
     if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-    const btn = document.getElementById(`btn-claim-${appId}`);
+    const buttonId = `btn-claim-${appId}`;
+    const btn = document.getElementById(buttonId);
     if (btn) {
         btn.disabled = true;
-        btn.style.opacity = '0.5';
+        btn.classList.add('is-processing');
+        btn.setAttribute('aria-busy', 'true');
+        btn.textContent = window.t('claimGrantProcessing', {}, lang);
+        btn.insertAdjacentHTML('afterbegin', '<span class="btn-spinner" aria-hidden="true"></span>');
     }
+    let claimed = false;
     try {
         const response = await fetch(`${API_BASE}/testing/${progressId}/claim_grant`, {
             method: 'POST',
@@ -5806,13 +5861,15 @@ async function claimGrant(progressId, appId) {
         });
         const result = await response.json();
         if (!response.ok || result.status !== 'success') {
-            if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
             handleApiError(getBackendErrorCode(result), result.details || {});
             return;
         }
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        claimed = true;
         const amount = Number(result.amount || 0);
-        const test = myTests.find(t => t.id === appId);
+        batch.claimed++;
+        batch.amount += amount;
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        const test = myTests.find(t => Number(t.id) === Number(appId));
         if (test) {
             test.grant_claimed = true;
             test.isReadyToClaim = false;
@@ -5820,35 +5877,65 @@ async function claimGrant(progressId, appId) {
             test.isEarlyFinish = false;
         }
         const isActive = test && test.app_status === 'active';
-        if (isActive) {
-            showToast(window.t('claimGrantOvertimeToast', { amount: amount.toFixed(1) }));
-        } else {
-            showToast(window.t('claimGrantToast', { amount: amount.toFixed(1) }));
+        if (isActive) batch.activeApps.add(appId);
+        if (batch.started === 1) {
+            showToast(window.t(isActive ? 'claimGrantOvertimeToast' : 'claimGrantToast', { amount: amount.toFixed(1) }, lang));
+        }
+        const liveButton = document.getElementById(buttonId);
+        if (liveButton) {
+            liveButton.classList.remove('is-processing');
+            liveButton.classList.add('is-claimed');
+            liveButton.setAttribute('aria-busy', 'false');
+            liveButton.textContent = window.t('claimGrantReceived', { amount: amount.toFixed(1) }, lang);
+        }
+        if (!isActive) {
             myTests = (myTests || []).filter(function(item) {
                 return Number(item.id) !== Number(appId);
             });
         }
         persistTestsCacheSnapshot();
         const grantCard = document.getElementById('test-card-' + appId) || document.getElementById('external-test-card-' + appId);
-        if (!isActive && grantCard && grantCard.parentNode) {
+        const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!isActive && grantCard && grantCard.parentNode && !reducedMotion) {
             await animateTestCardOut(grantCard);
         }
-        if (window.renderTests) window.renderTests(true);
-        if (isActive) {
-            const actions = document.getElementById('actions-' + appId);
-            if (actions && typeof actions.animate === 'function'
-                && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-                actions.animate([
-                    { opacity: 0.4, transform: 'translateY(4px)' },
-                    { opacity: 1, transform: 'translateY(0)' },
-                ], { duration: 260, easing: 'ease-out' });
-            }
-        }
-        loadProjects(true);
     } catch (error) {
         console.error('Claim grant error:', error);
-        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-        handleApiError('network_error');
+        if (!claimed) handleApiError('network_error');
+    } finally {
+        _pendingActions.delete(actionKey);
+        if (!claimed) {
+            batch.failed++;
+            const liveButton = document.getElementById(buttonId);
+            if (liveButton && liveButton.classList.contains('is-processing')) {
+                liveButton.disabled = false;
+                liveButton.classList.remove('is-processing');
+                liveButton.setAttribute('aria-busy', 'false');
+                liveButton.textContent = '🎁 ' + window.t('claimGrantBtn', {}, lang);
+            }
+        }
+        if (--batch.pending === 0) {
+            _grantClaimBatch = null;
+            if (batch.started > 1 && batch.claimed) {
+                const summary = window.t('claimGrantBatchToast', { count: batch.claimed, amount: batch.amount.toFixed(1) }, lang);
+                const failures = batch.failed ? '\n' + window.t('claimGrantBatchFailed', { count: batch.failed }, lang) : '';
+                showToast(summary + failures);
+            }
+            if (batch.claimed) {
+                if (window.renderTests) window.renderTests(true);
+                if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+                    batch.activeApps.forEach(function(id) {
+                        const actions = document.getElementById('actions-' + id);
+                        if (!actions || typeof actions.animate !== 'function') return;
+                        actions.animate([
+                            { opacity: 0.65, transform: 'translateY(4px) scale(.98)', filter: 'brightness(1.3)' },
+                            { opacity: 1, transform: 'translateY(0) scale(1)', filter: 'brightness(1)' },
+                        ], { duration: 300, easing: 'ease-out' });
+                    });
+                }
+                loadProjects(true);
+            }
+        }
     }
 }
 
