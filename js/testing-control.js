@@ -1295,6 +1295,24 @@
             if (!person.username) person.username = String(matchedFallback.username || '').replace(/^@+/, '').trim();
             if (person.testerId <= 0) person.testerId = Number(matchedFallback.testerId || 0);
         }
+        if ((!person.fullName && !person.username) && person.testerId > 0) {
+            var appId = Number((matchedFallback && matchedFallback.appId) || state.appId || 0);
+            var projects = [];
+            if (typeof myProjects !== 'undefined' && Array.isArray(myProjects)) projects = projects.concat(myProjects);
+            if (typeof window !== 'undefined' && Array.isArray(window.myProjects)) projects = projects.concat(window.myProjects);
+            for (var i = 0; i < projects.length && !person.fullName && !person.username; i++) {
+                var project = projects[i] || {};
+                if (appId > 0 && Number(project.app_id || project.id || 0) !== appId) continue;
+                var testers = project.testers || [];
+                for (var j = 0; j < testers.length; j++) {
+                    var row = testers[j] || {};
+                    if (Number(row.tester_id || row.id || row.user_id || 0) !== person.testerId) continue;
+                    person.fullName = String(row.full_name || row.name || row.first_name || '').trim();
+                    person.username = String(row.username || '').replace(/^@+/, '').trim();
+                    break;
+                }
+            }
+        }
         return person;
     }
 

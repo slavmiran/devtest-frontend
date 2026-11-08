@@ -3295,9 +3295,10 @@ function renderTests(force) {
                 ? Math.max(0, (String(test.daily_timeline || '').substring(0, 14).match(/[03]/g) || []).length)
                 : Math.max(0, Number(test.skips_count || 0));
             const grantMissedClass = grantSkipsCount > 3 ? ' btn-missed-grant' : '';
+            const grantBusy = _pendingActions.has('claim_grant_' + Number(test.progress_id));
             actionsHtml = `
-                <button id="btn-claim-${test.id}" class="btn btn-claim-grant${grantMissedClass}" style="width: 100%; margin-bottom: ${secondaryActions ? 12 : 0}px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" onclick="handleClaimGrantClick(${test.progress_id}, ${test.id})">
-                    🎁 ${window.t('claimGrantBtn')} ${window.ReviewCredits ? ReviewCredits.grant(test) : ''}
+                <button id="btn-claim-${test.id}" class="btn btn-claim-grant${grantMissedClass}${grantBusy ? ' is-processing' : ''}" style="width: 100%; margin-bottom: ${secondaryActions ? 12 : 0}px; font-size: 16px; font-weight: 600; padding: 14px 16px; gap: 8px;" ${grantBusy ? 'disabled aria-busy="true"' : ''} onclick="handleClaimGrantClick(${test.progress_id}, ${test.id})">
+                    ${grantBusy ? '<span class="btn-spinner" aria-hidden="true"></span>' + window.t('claimGrantProcessing') : '🎁 ' + window.t('claimGrantBtn')} ${!grantBusy && window.ReviewCredits ? ReviewCredits.grant(test) : ''}
                 </button>
                 ${secondaryActions ? `<div class="action-row" style="gap: 8px;">${secondaryActions}</div>` : ''}
             `;

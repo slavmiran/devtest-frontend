@@ -2814,9 +2814,8 @@ async function saveProjectSync() {
     }
 
     _pendingActions.add(actionKey);
-    if (saveBtn) {
-        saveBtn.disabled = true;
-    }
+    var saveLabel = saveBtn ? saveBtn.textContent : '';
+    if (saveBtn) paintProjectSyncButton(saveBtn, true, saveLabel);
 
     try {
         var localProjectBeforeSync = (myProjects || []).find(function(item) {
@@ -2987,6 +2986,7 @@ async function saveProjectSync() {
         loadProjects(true).catch(function() {});
 
         _runBestEffortUiStep('Project sync close view', function() {
+            if (Number(_syncProjectId) !== syncProjectId) return;
             if (typeof closeProtectionCenter === 'function') {
                 closeProtectionCenter();
             } else if (typeof closeSyncModal === 'function') {
@@ -2995,7 +2995,10 @@ async function saveProjectSync() {
         });
     } finally {
         _pendingActions.delete(actionKey);
-        if (saveBtn) {
+        if (Number(_syncProjectId) === syncProjectId && document.getElementById('ppc-submit-btn')) {
+            _ppcUpdateCalculations();
+        } else if (saveBtn && saveBtn.isConnected) {
+            paintProjectSyncButton(saveBtn, false, saveLabel);
             saveBtn.disabled = false;
         }
     }

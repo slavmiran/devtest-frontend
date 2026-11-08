@@ -78,5 +78,22 @@ const mature = () => ({ token: 'original-signed-token', readyAtMs: now - 1, expi
     release({ ok: true, json: async () => ({ status: 'success', token: 'yesterday', progress_id: 300 }) });
     assert.equal(await late, null);
     assert.equal(c._checkinOpenTokenState['30'], undefined);
-    console.log('Timer retry: no second 15s countdown, signed token reuse, reload, concurrent/late Open, server-clock offset, day/run/actor/participation/expiry guards passed');
+
+    c.currentUser = { user_id: 88, is_admin: true };
+    c.setAdminFastConfirm(true);
+    c.document.getElementById = () => ({ disabled: true });
+    let finished = false;
+    c._syncActiveTimerState = () => { finished = c.activeTimerAppId === 30 && c._timerEndTimestamp === now; };
+    c.fetch = async (_url, options) => {
+        assert.equal(JSON.parse(options.body).fast_confirm, true);
+        return { ok: true, json: async () => ({ status: 'success', required: true, token: 'admin-signed-token',
+            ready_at_ms: now, progress_id: 300, server_now_ms: now }) };
+    };
+    await c._startTimerAsync(30, 'app.package', true, 'owner');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(finished, true, 'Only the ready server token completes the admin countdown immediately');
+    assert.equal(c._getCheckinOpenToken(30), 'admin-signed-token');
+    c.setAdminFastConfirm(false);
+    assert.equal(c.adminFastConfirmEnabled(), false);
+    console.log('Timer retry, token scoping and administrator fast confirmation passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

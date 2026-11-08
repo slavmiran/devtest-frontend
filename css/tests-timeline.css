@@ -546,6 +546,13 @@
 
 .btn-claim-grant:active { opacity: 0.7; }
 
+.btn-claim-grant.is-claimed:disabled {
+    opacity: 1;
+    color: #123019;
+    background: linear-gradient(135deg, #a7ee9c, #66cf8b);
+    box-shadow: 0 0 14px rgba(102, 207, 139, .25);
+}
+
 .btn-claim-grant.btn-missed-grant {
     background: var(--bg-surface-muted);
     color: var(--hint-color);

@@ -662,7 +662,7 @@
             };
         }
         return {
-            disabled: false,
+            disabled: state.checking,
             label: text('smartPingSend', '⚡ Отправить напоминания • {cost} $BUST', { cost: formatBust(cost) }),
         };
     }
@@ -771,36 +771,24 @@
             }
         }
         var lastPing = getLastPing(state.appId);
-        var foot = node.querySelector('.smart-ping-sheet__foot');
         var lastStatusEl = node.querySelector('.smart-ping-sheet__last-status');
-        if (lastPing && lastPing.sentAt) {
-            var pingDate = new Date(parseSentAt(lastPing.sentAt));
-            var now = new Date();
+        var sentMs = parseSentAt(lastPing && lastPing.sentAt);
+        var now = new Date();
+        lastStatusEl.hidden = !sentMs || sentMs > now.getTime() + 60000;
+        lastStatusEl.setAttribute('aria-busy', String(state.checking));
+        if (!lastStatusEl.hidden) {
+            var pingDate = new Date(sentMs);
             var isToday = pingDate.toDateString() === now.toDateString();
-            if (parseSentAt(lastPing.sentAt) && pingDate.getTime() <= Date.now() + 60000) {
-                var yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
-                var dateStr = isToday ? text('smartPingToday', 'сегодня')
-                    : pingDate.toDateString() === yesterday.toDateString() ? text('smartPingYesterday', 'вчера')
-                    : pingDate.toLocaleDateString((typeof lang !== 'undefined' && lang === 'ru') ? 'ru-RU' : 'en-GB');
-                var timeStr = getTesterPingTime(state.appId, 0) || pingDate.toLocaleTimeString((typeof lang !== 'undefined' && lang === 'ru') ? 'ru-RU' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-                var count = Number(lastPing.count || (Array.isArray(lastPing.testerIds) ? lastPing.testerIds.length : 0));
-                var statusText = count > 0
-                    ? text('smartPingLastDate', '⚡ Последний пинг: {date} в {time} (доставлено: {count})', { date: dateStr, time: timeStr, count: count })
-                    : text('smartPingLastDateNoCount', '⚡ Последний пинг: {date} в {time}', { date: dateStr, time: timeStr });
-                if (!lastStatusEl && foot) {
-                    lastStatusEl = document.createElement('div');
-                    lastStatusEl.className = 'smart-ping-sheet__last-status';
-                    foot.insertBefore(lastStatusEl, foot.firstChild);
-                }
-                if (lastStatusEl) {
-                    lastStatusEl.textContent = statusText;
-                    lastStatusEl.hidden = false;
-                }
-            } else if (lastStatusEl) {
-                lastStatusEl.hidden = true;
-            }
-        } else if (lastStatusEl) {
-            lastStatusEl.hidden = true;
+            var yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            var dateStr = isToday ? text('smartPingToday', 'сегодня')
+                : pingDate.toDateString() === yesterday.toDateString() ? text('smartPingYesterday', 'вчера')
+                : pingDate.toLocaleDateString((typeof lang !== 'undefined' && lang === 'ru') ? 'ru-RU' : 'en-GB');
+            var params = { date: dateStr, time: getTesterPingTime(state.appId, 0), count: Number(lastPing.count || 0) };
+            var label = lastPing.completed
+                ? text('smartPingLastDate', '⚡ Последний пинг: {date} в {time} (отправлено: {count})', params)
+                : text('smartPingLastDateNoCount', '⚡ Последний пинг: {date} в {time}', params);
+            lastStatusEl.firstElementChild.textContent = state.checking ? text('smartPingLastResultLoading') : label;
         }
     }
     function bindSwipe(node) {
@@ -848,6 +836,7 @@
                 event.preventDefault();
                 var command = action.getAttribute('data-smart-ping-action');
                 if (command === 'close') close();
+                if (command === 'last-result') openLastResult(context());
                 if (command === 'check' && !state.checking) {
                     state.pollUntil = Date.now() + 150000;
                     checkDelivery(context());
@@ -962,6 +951,43 @@
         } finally {
             clearTimeout(timeout);
             if (state.request === controller) state.request = null;
+        }
+    }
+    async function fetchDelivery(ctx, id) {
+        var result = await requestJson(apiBase() + '/project/' + ctx.appId + '/smart-ping/' + (id || 'latest') +
+            '?init_data=' + encodeURIComponent(initData()), { method: 'GET', cache: 'no-store' }, ctx);
+        if (!result.response.ok || !result.payload || result.payload.status !== 'success') throw new Error('status_unavailable');
+        return result.payload.delivery;
+    }
+    async function openLastResult(ctx) {
+        var last = getLastPing(ctx.appId);
+        if (!last || state.view !== 'select' || state.checking) return;
+        state.checking = true;
+        render();
+        var notice = '';
+        try {
+            var raw = await fetchDelivery(ctx);
+            if (!isCurrent(ctx)) return;
+            var receipt = raw === null ? null : checkedDelivery(raw);
+            if (!receipt || parseSentAt(receipt.sent_at) < parseSentAt(last.sentAt)) {
+                notice = 'smartPingLastResultMissing';
+            } else if (receipt.state === 'queued') {
+                notice = 'smartPingLastResultQueued';
+            } else {
+                stopCountdownTimer();
+                state.delivery = receipt;
+                state.view = 'completed';
+            }
+        } catch (_) {
+            notice = 'smartPingLastResultError';
+        } finally {
+            if (isCurrent(ctx)) {
+                state.checking = false;
+                render();
+                if (notice && typeof window.showToast === 'function') window.showToast(text(notice));
+                var heading = overlay() && overlay().querySelector('.smart-ping-result h4');
+                if (heading && state.view === 'completed') heading.focus();
+            }
         }
     }
     function reminderContext(row) {
@@ -1130,11 +1156,8 @@
         try {
             var pending = state.pending;
             var id = pending.deliveryId;
-            var result = await requestJson(apiBase() + '/project/' + ctx.appId + '/smart-ping/' + (id || 'latest') +
-                '?init_data=' + encodeURIComponent(initData()), { method: 'GET', cache: 'no-store' }, ctx);
+            var receipt = await fetchDelivery(ctx, id);
             if (!isCurrent(ctx)) return;
-            if (!result.response.ok || !result.payload || result.payload.status !== 'success') throw new Error('status_unavailable');
-            var receipt = result.payload.delivery;
             if (!id) {
                 // Recover a lost POST reply only when latest belongs to this
                 // attempt. Never attach an older cooldown receipt to a new send.
@@ -1249,6 +1272,9 @@
                 '</div>' +
                 '<div class="smart-ping-sheet__body"></div>' +
                 '<footer class="smart-ping-sheet__foot">' +
+                    '<button type="button" class="smart-ping-sheet__last-status" data-smart-ping-action="last-result" hidden>' +
+                        '<span></span><span aria-hidden="true">›</span>' +
+                    '</button>' +
                     '<button type="button" class="smart-ping-sheet__send"></button>' +
                 '</footer>' +
             '</section>' +

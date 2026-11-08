@@ -423,16 +423,24 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
+    width: 100%;
+    min-height: 32px;
     margin-bottom: 8px;
     padding: 6px 10px;
     border-radius: 8px;
     background: rgba(88, 166, 255, 0.08);
     border: 1px solid rgba(88, 166, 255, 0.18);
     color: #a5d6ff;
+    font: inherit;
     font-size: 11px;
     font-weight: 600;
     text-align: center;
+    cursor: pointer;
 }
+.smart-ping-sheet__last-status:hover,
+.smart-ping-sheet__last-status:active { background: rgba(88, 166, 255, 0.16); }
+.smart-ping-sheet__last-status:focus-visible { outline: 2px solid #a5d6ff; outline-offset: 2px; }
+.smart-ping-sheet__last-status[aria-busy="true"] { cursor: progress; }
 
 .smart-ping-row__notified-chip {
     display: inline-flex;
