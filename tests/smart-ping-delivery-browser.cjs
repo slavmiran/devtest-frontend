@@ -92,6 +92,7 @@ const root = path.resolve(__dirname, '..');
 
             await page.locator('.smart-ping-sheet__send').click();
             await state('queued').waitFor();
+            assert.equal(await state('queued').locator('h4').innerText(), language === 'ru' ? 'Рассылаем уведомления' : 'Sending notifications');
             await page.waitForFunction(() => JSON.parse(localStorage.getItem('pc_smart_ping_pending_42_1')).deliveryId === 700);
             assert.equal((await pending()).deliveryId, 700);
             assert.deepEqual(await notified(), [false,false,false,false,false,false,false], 'Queue is not notified');
@@ -120,6 +121,8 @@ const root = path.resolve(__dirname, '..');
             assert.equal(await page.evaluate(() => visibilityStats.balance_bust), 980);
             assert.deepEqual(await page.locator('.smart-ping-result__metric strong').allTextContents(), ['2','5']);
             assert.deepEqual(await page.locator('.smart-ping-result__money dd').allTextContents(), ['20.0 $BUST','50.0 $BUST']);
+            assert.equal(await page.locator('[data-result-tester="101"] p').innerText(), language === 'ru' ? 'Уведомление отправлено.' : 'Notification sent.');
+            assert.match(await page.locator('[data-result-tester="102"] p').innerText(), language === 'ru' ? /Дозапрос.*создан/ : /follow-up report request was created/);
             assert.equal(await page.locator('[data-smart-ping-action="manual"]').count(), 5);
             assert.match(await page.locator('[data-result-tester="103"]').innerText(), /<img src=x/);
             assert.equal(await page.locator('.smart-ping-result img, .smart-ping-result script').count(), 0);
@@ -148,12 +151,36 @@ const root = path.resolve(__dirname, '..');
             assert.equal(await page.locator('.smart-ping-row__notified-chip').count(), 2);
             await close();
 
+            // A reopened sheet can load results using only the project timestamp.
+            await page.evaluate(() => localStorage.removeItem('pc_smart_ping_last_1'));
+            latest = receipt();
+            await open(1);
+            const lastResult = page.getByRole('button', { name: language === 'ru' ? /Последний пинг/ : /Last ping/ });
+            getMode = 'html';
+            await lastResult.click();
+            await page.waitForFunction(() => toasts.some(value => value.includes(lang === 'ru' ? 'Не удалось загрузить итоги' : 'Could not load the results')));
+            assert.equal(await lastResult.isVisible(), true);
+            getMode = 'completed';
+            await lastResult.press('Enter');
+            await state('completed').waitFor();
+            assert.equal(reads.at(-1), '/api/project/1/smart-ping/latest');
+            assert.deepEqual(await page.locator('.smart-ping-result__money dd').allTextContents(), ['20.0 $BUST','50.0 $BUST']);
+            assert.equal(await pending(), null, 'Opening past results does not start an attempt');
+            assert.equal(writes.length, 1, 'Opening past results does not send again');
+            await page.locator('.smart-ping-sheet__send').click();
+
             // No exact success IDs in old history must not mark everybody.
             await page.evaluate(() => {
                 SmartPing.setLastPing(2, { sentAt: new Date().toISOString(), count: 7, testerIds: [101,102,103,104,105,106,107] });
                 window.oldHistoryNotified = SmartPing.isTesterPinged(2, 101);
             });
             assert.equal(await page.evaluate(() => oldHistoryNotified), false);
+            await open(2);
+            await lastResult.click();
+            await page.waitForFunction(() => toasts.some(value => value.includes(lang === 'ru' ? 'Подробный отчёт' : 'Detailed results are unavailable')));
+            assert.equal(await state('completed').count(), 0, 'An older receipt does not replace the latest timestamp');
+            assert.equal(writes.length, 1);
+            await close();
 
             // Lost POST: accept only a timestamp matching this attempt; recover
             // by GET latest and then settle without sending again.

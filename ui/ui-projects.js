@@ -2898,7 +2898,8 @@ function _ppcUpdateCalculations() {
         }
     }
     if (submitBtn) {
-        submitBtn.disabled = insufficient;
+        const busy = _pendingActions.has('project_sync_' + Number(_syncProjectId));
+        submitBtn.disabled = insufficient || busy;
         let btnText = '';
         if (totalCost === 0) {
             btnText = window.t('ppcSyncFreeBtn', {}, lang) || '🛡 Synchronize';
@@ -2907,7 +2908,17 @@ function _ppcUpdateCalculations() {
         } else {
             btnText = window.t('ppcSyncBtn', {}, lang) || '🛡 Synchronize & Pay';
         }
-        submitBtn.textContent = btnText;
+        paintProjectSyncButton(submitBtn, busy, btnText);
+    }
+}
+
+function paintProjectSyncButton(button, busy, label) {
+    button.classList.toggle('is-processing', busy);
+    button.setAttribute('aria-busy', String(busy));
+    button.textContent = busy ? window.t('ppcSyncProcessing', {}, lang) : label;
+    if (busy) {
+        button.disabled = true;
+        button.insertAdjacentHTML('afterbegin', '<span class="btn-spinner" aria-hidden="true"></span>');
     }
 }
 

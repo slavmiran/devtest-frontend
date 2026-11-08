@@ -1819,6 +1819,7 @@ async function syncTelegramProfile() {
             window.App.appealStatus = result.appeal_status || 'none';
             window.App.appealText = result.appeal_text || '';
         }
+        if (typeof syncAdminSettingsPanel === 'function') syncAdminSettingsPanel();
 
         return {
             ok: true,

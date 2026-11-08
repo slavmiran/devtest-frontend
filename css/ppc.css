@@ -652,6 +652,11 @@
 }
 .ppc-submit-btn:not(:disabled):active { transform: scale(0.98); }
 
+.ppc-submit-btn.is-processing:disabled {
+    color: var(--text-color);
+    cursor: wait;
+}
+
 .ppc-submit-btn:disabled {
     background: var(--border-subtle);
     color: rgba(255, 255, 255, 0.3);

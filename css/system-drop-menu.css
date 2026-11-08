@@ -272,6 +272,18 @@
     border: 1px solid var(--border-strong);
 }
 
+.system-admin-panel {
+    width: 100%;
+    color: var(--text-color);
+    font-size: 13px;
+    text-align: left;
+}
+.system-admin-panel summary {
+    padding: 8px 0;
+    cursor: pointer;
+}
+.system-admin-panel label { cursor: pointer; }
+
 .system-setting-row[hidden] {
     display: none !important;
 }
