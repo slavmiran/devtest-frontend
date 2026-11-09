@@ -173,11 +173,11 @@
         if(action==='outline'){s.outlineOpen=!s.outlineOpen;shell(s);return;}
         if(action==='estimate'){s.estimateOpen=!s.estimateOpen;shell(s);return;}
         if(action==='step'){
-            var step=Number(button.dataset.step);if(step>unlocked(s) || step<1 || step>4 || invalid(s) && step>1)return;
+            var step=Number(button.dataset.step);if(step>unlocked(s) || step<1 || step>3 || invalid(s) && step>1)return;
             s.step=step;s.outlineOpen=false;render(s,true);return;
         }
         if(action==='next'){
-            if(s.step<4 && !invalid(s) && LiveCampaignDraft.valid(s.draft,s.step)){s.step++;s.unlocked=Math.max(s.unlocked,s.step);s.outlineOpen=false;render(s,true);}return;
+            if(s.step<3 && !invalid(s) && LiveCampaignDraft.valid(s.draft,s.step)){s.step++;s.unlocked=Math.max(s.unlocked,s.step);s.outlineOpen=false;render(s,true);}return;
         }
         if(action==='entry'){if(s.editing)return;s.step=0;s.outlineOpen=false;render(s,true);return;}
         if(action==='manual'){s.step=1;s.unlocked=Math.max(1,s.unlocked);render(s,true);return;}
@@ -228,7 +228,9 @@
             var response=await fetch(url,{method:s.editing?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
             var data=await response.json();if(!accessible(s))return;
             if(!response.ok||data.status!=='success')throw new Error(data.code||'save_failed');
-            var appId=s.draft.appId,campaignId=data.campaign.id,edited=!!s.editing;dispose(s);window.dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:appId,campaignId:campaignId,reveal:true}}));toast(edited?'lceSaved':status==='paused'?'lcgCreatedPaused':'lcgCreated');
+            var appId=s.draft.appId,campaignId=data.campaign.id,edited=!!s.editing,wantPriority=!!s.draft.routePriority;
+            if(wantPriority&&window.LiveMarketUI){try{await LiveMarketUI.api('/live-campaigns/'+campaignId+'/priority','PATCH',{enabled:true});}catch(_){}}
+            dispose(s);window.dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:appId,campaignId:campaignId,reveal:true}}));toast(edited?'lceSaved':status==='paused'?'lcgCreatedPaused':'lcgCreated');
         }catch(error){if(accessible(s)){var code={active_campaign_limit:'lcgLimitReached',invalid_campaign_image:'lcwInvalidImage',campaign_conflict:'lceConflict',campaign_source_locked:'lceSourceLocked',campaign_volume_below_confirmed:'lceVolumeLow',last_active_keyword:'lcgLastKey'}[error.message]||'lcgSaveFailed';s.context.saveError=text(code);toast(code);if(error.message==='active_campaign_limit'&&!s.editing){s.quickStatus='paused';s.createAttempt=null;}readData(s,'campaigns');}}
         finally{if(accessible(s)){s.saving=false;s.context.saving=false;render(s,false);}}
     }
@@ -247,7 +249,7 @@
         layer.innerHTML='<section class="lcw-page" role="dialog" aria-modal="true" aria-labelledby="lcw-title"><header class="gtw-header"><button type="button" class="gtw-back-btn" data-lcw-action="back" aria-label="'+text('lcwBack')+'">‹</button><div class="lcw-header-center"></div><div class="lcw-header-actions"><button type="button" class="gtw-forward-btn lcw-learn-btn" data-lcw-action="learn" data-topic="spikes" aria-haspopup="dialog" aria-label="'+text('lcpLearn')+'" title="'+text('lcpLearn')+'"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16M12 5C9 3 5 3 2 4v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-3-1-7-1-10 1Z"/></svg></button><button type="button" class="gtw-forward-btn" data-lcw-action="close" aria-label="'+text('lcwClose')+'">×</button></div></header><main class="lcw-scroll gtw-body"></main><footer class="lcw-footer"></footer></section>';
         function asset(assetId){return assetId?{assetId:assetId,name:text('lcwReference'),url:String(window.API_BASE||'/api').replace(/\/$/,'')+'/apps/'+Number(id)+'/campaigns/'+Number(campaign.id)+'/assets/'+Number(assetId)+'?init_data='+encodeURIComponent(signed)}:null;}
         var draft=campaign?LiveCampaignDraft.fromCampaign(p,campaign,asset):LiveCampaignDraft.create(p);
-        session={draft:draft,editing:campaign||null,step:campaign?1:0,unlocked:campaign?4:1,actor:signed,layer:layer,initial:fingerprint(draft),edited:false,webEdited:!!campaign,confirming:false,outlineOpen:false,estimateOpen:false,
+        session={draft:draft,editing:campaign||null,step:campaign?1:0,unlocked:campaign?3:1,actor:signed,layer:layer,initial:fingerprint(draft),edited:false,webEdited:!!campaign,confirming:false,outlineOpen:false,estimateOpen:false,
             context:{editing:!!campaign,confirmedInstalls:campaign?campaign.confirmed_installs:0,sourceLocked:false,metrics:p.live_metrics||{},market:p.play_store_raw || null,sourceBaseline:LiveCampaignTraffic.baseline(p.live_analytics_snapshot) || LiveCampaignTraffic.baseline(p.live_metrics),asoOpen:false,manualKey:''},
             readers:[],media:LiveCampaignWizardMedia.create(),focus:event && event.target && event.target.closest('button') || document.activeElement,overflow:document.body.style.overflow};
         document.body.style.overflow='hidden';document.body.appendChild(layer);

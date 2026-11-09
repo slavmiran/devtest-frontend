@@ -2,8 +2,10 @@
 (function () {
     'use strict';
     var ru = {
-        lcwTitle:'Новая кампания', lcwStep:'Шаг {n} из 4', lcwNext:'Продолжить →', lcwBack:'Назад', lcwClose:'Закрыть мастер', lcwLaunch:'Запустить кампанию',
-        lcwStep1:'Источник трафика', lcwStep2:'Удержание и КД', lcwStep3:'Сценарий и отзывы', lcwStep4:'Темп и объём',
+        lcwTitle:'Новая кампания', lcwStep:'Шаг {n} из 3', lcwNext:'Продолжить →', lcwBack:'Назад', lcwClose:'Закрыть мастер', lcwLaunch:'Запустить кампанию',
+        lcwStep1:'Источник трафика', lcwStep2:'Удержание и КД', lcwStep3:'Сценарий, отзыв и объём', lcwStep4:'Темп и объём',
+        lcwPaceNote:'Общий суточный темп приёма участников регулируется единой настройкой «Контроль темпа» на карточке проекта.',
+        lcwPriorityRoute:'⭐ Сделать приоритетным маршрутом',
         lcwIntro:'Задайте направление. Пресет заполнит следующие шаги — настройки можно изменить.',
         lcwBaseline:'Фоновый темп платформы', lcwBaselineValue:'{n} установок / день', lcwBaselineHint:'Среднее за 7 дней внутри DevTestHub; это не органический трафик Google Play.',
         lcwNoBaseline:'Пока нет данных о фоне', lcwColdStart:'Стартуем с 1 установки в день. Процентный прирост без фоновых данных не рассчитывается.',
@@ -26,8 +28,10 @@
         lcwReviewLater:'Задержка: 7 дней · мягкий запрос', lcwSelect:'Выбрать {name}', lcwDecrease:'Уменьшить: {name}', lcwIncrease:'Увеличить: {name}'
     };
     var en = {
-        lcwTitle:'New campaign', lcwStep:'Step {n} of 4', lcwNext:'Continue →', lcwBack:'Back', lcwClose:'Close wizard', lcwLaunch:'Launch campaign',
-        lcwStep1:'Traffic source', lcwStep2:'Retention & checkpoints', lcwStep3:'Scenario & reviews', lcwStep4:'Pace & volume',
+        lcwTitle:'New campaign', lcwStep:'Step {n} of 3', lcwNext:'Continue →', lcwBack:'Back', lcwClose:'Close wizard', lcwLaunch:'Launch campaign',
+        lcwStep1:'Traffic source', lcwStep2:'Retention & checkpoints', lcwStep3:'Scenario, review & volume', lcwStep4:'Pace & volume',
+        lcwPaceNote:'The shared daily intake pace is the single “Pace control” setting on the project card.',
+        lcwPriorityRoute:'⭐ Make this the priority route',
         lcwIntro:'Choose a direction. The preset fills the next steps; you can adjust it later.',
         lcwBaseline:'Platform baseline', lcwBaselineValue:'{n} installs / day', lcwBaselineHint:'7-day average within DevTestHub, separate from Google Play organic traffic.',
         lcwNoBaseline:'No baseline data yet', lcwColdStart:'Start with 1 install per day. Percentage growth needs baseline data.',

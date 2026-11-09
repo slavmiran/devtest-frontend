@@ -5,9 +5,11 @@ const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/mark
 function decorate(row){return {...row,package_name:'com.example.notes',icon_url:'https://cdn.fixture/icon.svg',
  passport:{title:row.name,category:'Productivity',content_type:'app',app_size_text:'24 MB',description:'Plan notes. <script>Never execute</script>',rating:4.6,ratings:120,
  screenshots_preview:['https://cdn.fixture/screen.svg']},owner_public:{username:'developer',reliability_index:94,karma:26.9,contribution_score:57,bugs_count:3,ideas_count:2,play_reviews_count:4,five_screens_count:5,text_reports_count:6,video_reports_count:7},owner_activity:{status:'online',hours_ago:2}};}
+function retryShot(proto){const orig=proto.screenshot;proto.screenshot=async function(opts){let last;for(let i=0;i<5;i++){try{return await orig.call(this,opts);}catch(error){last=error;await new Promise(resolve=>setTimeout(resolve,300*(i+1)));}}throw last;};}
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
  for(const lang of ['ru','en'])for(const width of [360,390,430]){
   const page=await browser.newPage({viewport:{width,height:844}}),errors=[],queries=[],feedReads=[];
+  if(lang==='ru'&&width===360){retryShot(Object.getPrototypeOf(page));retryShot(Object.getPrototypeOf(page.locator('body')));}
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(lang=>{window.Telegram={WebApp:{initDataUnsafe:{user:{id:880,language_code:lang}},themeParams:{},colorScheme:'dark',expand(){},ready(){},onEvent(){},offEvent(){},BackButton:{show(){},hide(){},onClick(fn){window.tgBack=fn;},offClick(){}}}};},lang);
   await page.route('**/*',route=>{
@@ -54,6 +56,13 @@ function decorate(row){return {...row,package_name:'com.example.notes',icon_url:
   assert.equal(await page.locator('#showcase-active-tests').evaluate(n=>n.parentElement.id),'tab-market');
   const floor1Shelves=await page.locator('.mk-floor1 > [data-mk-shelf]').evaluateAll(nodes=>nodes.map(n=>n.dataset.mkShelf));
   assert.deepEqual(floor1Shelves,['returns','recommended','contracts','guests']);
+  assert.equal(await page.locator('.mk-title').count(),0);
+  assert.equal(await page.locator('.mk-floor1').evaluate(n=>getComputedStyle(n).borderTopWidth),'0px');
+  await page.locator('[data-mk-shelf=guests]').scrollIntoViewIfNeeded();
+  const guestHeights=await page.locator('.mk-guest-card').evaluateAll(nodes=>nodes.map(n=>Math.round(n.getBoundingClientRect().height)));
+  assert(guestHeights.length>0&&new Set(guestHeights).size===1&&guestHeights[0]>=140&&guestHeights[0]<=180,'Guest cards share one fixed height');
+  const chipWrap=await page.locator('.mk-sections button').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).whiteSpace));
+  assert(chipWrap.every(v=>v==='nowrap'));
   await page.locator('[data-mk-guide]').click();await page.waitForSelector('.lm-sheet .mk-guide-jump');await page.keyboard.press('Escape');
   const pillBox=await page.locator('.mk-own-pills button').first().boundingBox();assert(pillBox.height<=36,'Project pills stay compact');
   assert.equal(await page.locator('[data-mk-shelf=recommended] .mk-page').first().locator('.mk-card').count(),4);
@@ -71,10 +80,11 @@ function decorate(row){return {...row,package_name:'com.example.notes',icon_url:
   await page.locator('.mk-radar-symbol').click();
   await page.locator('[data-mk-shelf="3"] .mk-card').first().click();await page.waitForSelector('.lm-sheet .mk-passport');
   assert.equal(await page.locator('.mk-gallery img').count(),1);assert.equal(await page.locator('.mk-contribution>div span').count(),6);
-  assert(await page.locator('.lm-sheet .lr-task-card').count()>0);assert.doesNotMatch(await page.locator('.lm-sheet').innerText(),/①|②|③|④|⑤|Все страны кампании|All campaign countries/);
-  await page.locator('.lm-sheet .lm-task').first().screenshot({path:path.join(out,`task-card-${lang}-${width}.png`)});
+  assert(await page.locator('.lm-sheet .mk-route-builder').count()>0);assert.doesNotMatch(await page.locator('.lm-sheet').innerText(),/①|②|③|④|⑤|Все страны кампании|All campaign countries|не рейтинг Google Play|not a Google Play ranking/);
+  await page.locator('.lm-sheet .mk-route-builder').first().screenshot({path:path.join(out,`task-card-${lang}-${width}.png`)});
   await page.locator('.mk-contribution>summary').click();await fits();await page.screenshot({path:path.join(out,`about-${lang}-${width}.png`)});
   await page.locator('.mk-shot').click();await page.waitForSelector('#feedback-image-overlay .fb-slider-image');assert.equal(await page.locator('.lm-sheet').count(),1);
+  assert(Number((await page.locator('#feedback-image-overlay').evaluate(n=>getComputedStyle(n).zIndex))||0)>=25000);
   await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.getElementById('feedback-image-overlay'));assert.equal(await page.locator('.lm-sheet').count(),1,'Closing a screenshot returns to the open About sheet');
   await page.keyboard.press('Escape');assert.equal(await page.locator('.lm-sheet').count(),0);
   await page.locator('[data-mk-shelf=sandbox] .mk-card').first().click();assert(await page.locator('.lm-sheet .market-card').count()>0,'Original Closed interaction card reused');await page.keyboard.press('Escape');

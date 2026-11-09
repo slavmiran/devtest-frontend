@@ -5,10 +5,12 @@ const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/mark
 function decorate(row){return {...row,package_name:'com.example.notes',icon_url:'https://cdn.fixture/icon.svg',
  passport:{title:row.name,category:'Productivity',content_type:'app',app_size_text:'24 MB',description:'Plan notes. <script>Never execute</script>',rating:4.6,ratings:120,
  screenshots_preview:['https://cdn.fixture/screen.svg']},owner_public:{username:'developer',reliability_index:94,karma:26.9,contribution_score:57,bugs_count:3,ideas_count:2,play_reviews_count:4,five_screens_count:5,text_reports_count:6,video_reports_count:7},owner_activity:{status:'online',hours_ago:2}};}
+function retryShot(proto){const orig=proto.screenshot;proto.screenshot=async function(opts){let last;for(let i=0;i<5;i++){try{return await orig.call(this,opts);}catch(error){last=error;await new Promise(resolve=>setTimeout(resolve,300*(i+1)));}}throw last;};}
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
  for(const lang of ['ru','en'])for(const width of [360,390,430]){
   let verification='preview',codeChecks=0;const request={id:'9c544c17-edec-4507-97fd-a260e499872b',package_name:'com.example.owned',state:verification,developer:'Studio Notes',email_masked:'d***r@example.com',token:'DTH-123456',passport:{title:'Verified Notes',category:'Productivity',icon_url:'https://cdn.fixture/icon.svg',description:'Full passport preview'}};
   const page=await browser.newPage({viewport:{width,height:844}}),errors=[],queries=[],feedReads=[];
+  if(lang==='ru'&&width===360){retryShot(Object.getPrototypeOf(page));retryShot(Object.getPrototypeOf(page.locator('body')));}
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(lang=>{window.Telegram={WebApp:{initDataUnsafe:{user:{id:880,language_code:lang}},themeParams:{},colorScheme:'dark',expand(){},ready(){},onEvent(){},offEvent(){},BackButton:{show(){},hide(){},onClick(fn){window.tgBack=fn;},offClick(){}}}};},lang);
   await page.route('**/*',route=>{

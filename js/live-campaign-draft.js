@@ -9,7 +9,7 @@
    web:{query:title.slice(0,200),screenshot:null},keywords:[],nextKeywordId:1,
    retention:{days:14,min_days:14,max_days:14,checkpoint_mode:'count',checkpoint_count:2,checkpoints:[1,8,14]},activity:{enabled:false,screenshot:false,instructions:''},
    reviews:{enabled:false,delayDays:7,prompt:'soft'},contracts:{enabled:false,limit:10,daily_rate_bust:10,kd_rate_bust:10,source_bonus_bust:{link:0,web:20,keywords:40},scenario_bonus_bust:30,required_review_bonus_bust:70,payout_mode:'daily'},
-   volume:{limit_mode:'budget',paced:true,dailyInstalls:1,acquisitionDays:14,totalInstalls:14,paceVersion:2,pauseHours:24,rampDays:0,allowContractsDuringPause:true}};
+   volume:{limit_mode:'budget',paced:true,dailyInstalls:1,acquisitionDays:14,totalInstalls:14,paceVersion:2,pauseHours:24,rampDays:0,allowContractsDuringPause:true},routePriority:false};
  }
  function total(d){return d.volume.totalInstalls;}
  function allowed(d){return d.allowedSources||[d.source];}
@@ -61,6 +61,7 @@
   }else if(f==='limit_mode'&&['budget','installs'].includes(v))n.volume.limit_mode=v;else if(f==='activity'){n.activity.enabled=!!v;if(!v)n.activity.screenshot=false;}
   else if(f==='screenshot'&&n.activity.enabled)n.activity.screenshot=!!v;
   else if(f==='reviews')n.reviews.enabled=!!v;
+  else if(f==='routePriority')n.routePriority=!!v;
   else if(f==='mode'&&['auto','manual','free'].includes(v)){n.volume.mode=v;n.volume.paced=v!=='free';if(v!=='manual'&&!LiveManualPlan.valid(n.volume.manualPlan)){var previous;try{previous=JSON.parse(n.manualPlanSaved||'null');}catch(_){}n.volume.manualPlan=LiveManualPlan.valid(previous)?previous:null;}if(v==='manual'&&!n.volume.manualPlan)n.volume.manualPlan=LiveManualPlan.create(n.volume,n.corridor);}
   else if(f==='corridorProfile'&&['standard','expanded','conservative'].includes(v))n.volume.corridorProfile=v;
   else if(f==='contractPauseRule'){n.volume.allowContractsDuringPause=v!=='off';n.volume.contractsDuringPauseLimit=['2','5'].includes(v)?Number(v):null;}
@@ -98,7 +99,7 @@
   return {available:installs>0,installs:installs,checkpointUnit:10,paidCheckpoints:schedule.length-1,perInstall:unit,totalCommitment:installs*unit,dailyCommitment:d.volume.paced?Math.round(unit*goal*100)/100:null,
    acquisitionDays:null,completionDays:null,channels:channels};
  }
- function valid(d,step){return (!window.LiveManualPlan||LiveManualPlan.valid(d.volume.manualPlan))&&!!d.source&&(!allowed(d).includes('web')||!!d.web.query.trim())&&(!allowed(d).includes('keywords')||d.keywords.some(function(k){return k.enabled!==false&&!k.is_fallback;}))&&d.retention.checkpoints.length>=2&&(!d.activity.enabled||!(d.activity.steps||[]).some(function(s){return !s.text.trim();}))&&(step!==4||!!d.icon||!!d.name.trim());}
+ function valid(d,step){return (!window.LiveManualPlan||LiveManualPlan.valid(d.volume.manualPlan))&&!!d.source&&(!allowed(d).includes('web')||!!d.web.query.trim())&&(!allowed(d).includes('keywords')||d.keywords.some(function(k){return k.enabled!==false&&!k.is_fallback;}))&&d.retention.checkpoints.length>=2&&(!d.activity.enabled||!(d.activity.steps||[]).some(function(s){return !s.text.trim();}))&&(step<3||!!d.icon||!!d.name.trim());}
  async function definition(d,serialize){
   var sources=allowed(d),payload={name:d.name,icon:d.icon===null?null:d.icon||'rocket',template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:clone(d.reviews),volume:clone(d.volume),web:{query:sources.includes('web')?d.web.query:'',screenshot:null},keywords:[]};
   if(d.allowedSources){payload.allowed_sources=sources.slice();if(!d.contracts||!d.contracts.enabled)payload.preferred_track={source:d.source,days:d.retention.days};}
@@ -115,6 +116,7 @@
  function fromCampaign(p,c,asset){
   var d=create(p),saved=clone(c.definition);['name','icon','template','source','retention','activity','reviews'].forEach(function(k){if(saved[k]!=null)d[k]=saved[k];});
   if(saved.icon===null)d.icon=null;
+  d.routePriority=c.route_priority===true;
   d.parentCampaignId=c.parent_campaign_id||null;
   if(window.LiveScenarioEditor)LiveScenarioEditor.load(d.activity,asset);d.activity.screenshots=(saved.activity.screenshots||[]).map(function(img){return asset(img.asset_id);});
   d.country=saved.country||null;if(saved.contracts)d.contracts=Object.assign(d.contracts,saved.contracts);

@@ -943,7 +943,7 @@ function renderFeedCard(item, kind) {
                 : 'google_group')
     ));
     const accessIssueChip = hasAccessIssue
-        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
+        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🚨 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
         : '';
     const blockedByMe = !!item.blocked_by_me;
     const blockedByOwner = !!item.blocked_by_owner;
@@ -5923,68 +5923,86 @@ function closeFeedbackImageSlider() {
     _feedbackSliderCaption = '';
 }
 
-function renderFeedbackImageSlider() {
-    var existing = document.getElementById('feedback-image-overlay');
-    if (existing) existing.remove();
-    if (_feedbackSliderImages.length === 0) return;
-
-    var overlay = document.createElement('div');
-    overlay.id = 'feedback-image-overlay';
-    overlay.className = 'feedback-image-overlay';
-    overlay.onclick = function(e) { if (e.target === overlay || e.target.classList.contains('fb-slider-stage')) closeFeedbackImageSlider(); };
-
+function preloadFeedbackSlides() {
     var total = _feedbackSliderImages.length;
-    var currentUrl = feedbackResolveMediaUrl(_feedbackSliderImages[_feedbackSliderIndex]);
-    var unavailable = window.escapeHTML(window.t('projectFeedbackImageUnavailable', {}, lang));
+    if (!total) return;
+    [-1, 0, 1].forEach(function(delta) {
+        var image = new Image();
+        image.src = feedbackResolveMediaUrl(_feedbackSliderImages[(_feedbackSliderIndex + delta + total) % total]);
+    });
+}
 
-    var counterHtml = total > 1
-        ? '<span class="fb-slider-counter">' + (_feedbackSliderIndex + 1) + ' / ' + total + '</span>'
-        : '<span></span>';
-
-    var arrowsHtml = '';
-    if (total > 1) {
-        arrowsHtml =
-            '<button class="fb-slider-arrow fb-slider-arrow--prev" aria-label="Previous" onclick="event.stopPropagation(); feedbackSliderStep(-1);">&#8249;</button>' +
-            '<button class="fb-slider-arrow fb-slider-arrow--next" aria-label="Next" onclick="event.stopPropagation(); feedbackSliderStep(1);">&#8250;</button>';
-    }
-
-    var captionHtml = _feedbackSliderCaption
-        ? '<div class="fb-slider-caption">' + escapeHtmlWithBreaks(_feedbackSliderCaption) + '</div>'
-        : '';
-
-    var dotsHtml = '';
-    if (total > 1) {
-        dotsHtml = '<div class="fb-slider-dots">' + _feedbackSliderImages.map(function(_, i) {
-            return '<span class="fb-slider-dot' + (i === _feedbackSliderIndex ? ' active' : '') + '" onclick="event.stopPropagation(); feedbackSliderGoTo(' + i + ');"></span>';
-        }).join('') + '</div>';
-    }
-
-    overlay.innerHTML =
-        '<div class="fb-slider-topbar">' +
-            counterHtml +
-            '<button class="fb-slider-close" aria-label="Close" onclick="event.stopPropagation(); closeFeedbackImageSlider();">&times;</button>' +
-        '</div>' +
-        '<div class="fb-slider-stage is-media-loading">' +
-            arrowsHtml +
-            "<img class='fb-slider-image' src='" + window.escapeHTML(currentUrl) + "' alt='Screenshot' onclick='event.stopPropagation();' onload='feedbackOnImageLoad(this)' onerror='feedbackOnImageError(this)'>" +
-            '<div class="fb-slider-fallback" style="display:none;"><span class="fb-slider-fallback-icon">🖼️</span><span>' + unavailable + '</span></div>' +
-        '</div>' +
-        '<div class="fb-slider-bottom">' +
-            captionHtml +
-            dotsHtml +
-        '</div>';
-
-    document.body.appendChild(overlay);
-
-    var stage = overlay.querySelector('.fb-slider-stage');
+function paintFeedbackSlide(overlay, animate) {
+    var total = _feedbackSliderImages.length;
+    var url = feedbackResolveMediaUrl(_feedbackSliderImages[_feedbackSliderIndex]);
     var img = overlay.querySelector('.fb-slider-image');
-    if (stage && img) {
-        attachFeedbackImageZoom(stage, img, total);
+    var counter = overlay.querySelector('.fb-slider-counter');
+    var dots = overlay.querySelector('.fb-slider-dots');
+    if (counter) counter.textContent = total > 1 ? ((_feedbackSliderIndex + 1) + ' / ' + total) : '';
+    if (dots) {
+        dots.innerHTML = total > 1 ? _feedbackSliderImages.map(function(_, i) {
+            return '<span class="fb-slider-dot' + (i === _feedbackSliderIndex ? ' active' : '') + '" onclick="event.stopPropagation(); feedbackSliderGoTo(' + i + ');"></span>';
+        }).join('') : '';
     }
+    overlay.querySelectorAll('.fb-slider-arrow').forEach(function(arrow) { arrow.hidden = total < 2; });
+    preloadFeedbackSlides();
+    function show() {
+        if (img._fbReset) img._fbReset();
+        img.style.transition = 'none';
+        img.style.opacity = animate ? '0' : '1';
+        img.style.transform = animate ? 'translate(0,0) scale(0.985)' : '';
+        if (img.getAttribute('src') !== url) img.src = url;
+        if (!animate) return;
+        requestAnimationFrame(function() {
+            img.style.transition = 'opacity 180ms ease, transform 180ms ease';
+            img.style.opacity = '1';
+            img.style.transform = 'translate(0,0) scale(1)';
+        });
+    }
+    if (!animate) { show(); return; }
+    var preload = new Image();
+    preload.onload = show;
+    preload.onerror = show;
+    preload.src = url;
+}
 
-    document.removeEventListener('keydown', _feedbackSliderKeyHandler, true);
-    document.addEventListener('keydown', _feedbackSliderKeyHandler, true);
-    if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
+function renderFeedbackImageSlider() {
+    if (_feedbackSliderImages.length === 0) return;
+    var overlay = document.getElementById('feedback-image-overlay');
+    var created = !overlay;
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'feedback-image-overlay';
+        overlay.className = 'feedback-image-overlay';
+        overlay.style.zIndex = '25000';
+        var unavailable = window.escapeHTML(window.t('projectFeedbackImageUnavailable', {}, lang));
+        var captionHtml = _feedbackSliderCaption
+            ? '<div class="fb-slider-caption">' + escapeHtmlWithBreaks(_feedbackSliderCaption) + '</div>'
+            : '';
+        overlay.innerHTML =
+            '<div class="fb-slider-topbar">' +
+                '<span class="fb-slider-counter"></span>' +
+                '<button class="fb-slider-close" aria-label="Close" onclick="event.stopPropagation(); closeFeedbackImageSlider();">&times;</button>' +
+            '</div>' +
+            '<div class="fb-slider-stage">' +
+                '<button class="fb-slider-arrow fb-slider-arrow--prev" aria-label="Previous" onclick="event.stopPropagation(); feedbackSliderStep(-1);">&#8249;</button>' +
+                '<button class="fb-slider-arrow fb-slider-arrow--next" aria-label="Next" onclick="event.stopPropagation(); feedbackSliderStep(1);">&#8250;</button>' +
+                "<img class='fb-slider-image' alt='Screenshot' onclick='event.stopPropagation();' onload='feedbackOnImageLoad(this)' onerror='feedbackOnImageError(this)'>" +
+                '<div class="fb-slider-fallback" style="display:none;"><span class="fb-slider-fallback-icon">🖼️</span><span>' + unavailable + '</span></div>' +
+            '</div>' +
+            '<div class="fb-slider-bottom">' + captionHtml + '<div class="fb-slider-dots"></div></div>';
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay || e.target.classList.contains('fb-slider-stage')) closeFeedbackImageSlider();
+        });
+        document.body.appendChild(overlay);
+        var stage = overlay.querySelector('.fb-slider-stage');
+        var img = overlay.querySelector('.fb-slider-image');
+        if (stage && img) attachFeedbackImageZoom(stage, img, _feedbackSliderImages.length);
+        document.removeEventListener('keydown', _feedbackSliderKeyHandler, true);
+        document.addEventListener('keydown', _feedbackSliderKeyHandler, true);
+        if (typeof window.syncTelegramBackButton === 'function') window.syncTelegramBackButton();
+    }
+    paintFeedbackSlide(overlay, !created);
 }
 
 /**
@@ -6097,6 +6115,7 @@ function attachFeedbackImageZoom(stage, img, total) {
     }
     stage.addEventListener('pointerup', endPointer);
     stage.addEventListener('pointercancel', endPointer);
+    img._fbReset = reset;
 }
 
 function openFeedbackTopicLink(telegramMessageId, username) {
