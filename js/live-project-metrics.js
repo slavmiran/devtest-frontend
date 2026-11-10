@@ -123,27 +123,53 @@
             '<div class="live-keywords" tabindex="0">' + chips + '</div>' +
         '</div>';
         var paceNote=window.LiveHistoryImport&&installs?window.LiveHistoryImport.pace(installs):'';
-        return quick+(window.LiveTopic?LiveTopic.buttons(id):'')+'<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
+        var section='<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
             resultBlock(id, metrics) +
             '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs, paceNote) + '</div>' +
             '<div class="live-metrics-health">' + health + '</div>' + aso +
-            '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>'+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
+            '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>';
+        if(quick)section='<details class="lm-fold"><summary><span>'+esc(window.t('lmMetricsFold',{},window.lang))+'</span></summary>'+section+'</details>';
+        return quick+(window.LiveTopic?LiveTopic.buttons(id):'')+section+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
     }
     function remember(id, metrics) {
         if(window.LiveMarket)LiveMarket.prefetch();
         cache.set(id, metrics);
-        (window.myProjects || []).concat(window.archivedProjects || []).forEach(function (project) {
-            if (Number(project.id || project.app_id) === id) {
-                project.live_metrics = metrics;
-                if (window.LiveProjectControl) LiveProjectControl.updateStatus(project, project.live_pace, project.live_campaign_rows);
-            }
-        });
+        var matches = (window.myProjects || []).concat(window.archivedProjects || []).filter(function (project) { return Number(project.id || project.app_id) === id; });
+        matches.forEach(function (project) { project.live_metrics = metrics; });
+        var owner = matches.find(function (project) { return project.live_campaign_rows || project.live_pace; }) || matches.find(function (project) { return (window.myProjects || []).indexOf(project) >= 0; }) || matches[0];
+        if (owner && window.LiveProjectControl) LiveProjectControl.updateStatus(owner, owner.live_pace, owner.live_campaign_rows);
     }
     function update(id, metrics, failure) {
         if (metrics) remember(id, metrics);
-        document.querySelectorAll('.live-metrics-slot[data-app-id="' + id + '"]').forEach(function (slot) { slot.innerHTML = render({ id: id }, failure); });
+        document.querySelectorAll('.live-metrics-slot[data-app-id="' + id + '"]').forEach(function (slot) {
+            var open = !!slot.querySelector('.lm-fold[open]');
+            slot.innerHTML = render({ id: id }, failure);
+            if (open) { var fold = slot.querySelector('.lm-fold'); if (fold) fold.open = true; }
+        });
     }
     function endpoint(id, suffix) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + id + '/' + suffix; }
+    var healthLoads = new Set();
+    function ensureHealth(id) {
+        if (healthLoads.has(id)) return;
+        var current = cache.get(id);
+        if (!current || current.health_score != null) return;
+        healthLoads.add(id);
+        current.health_pending = true;
+        update(id, current);
+        (async function () {
+            try {
+                var response = await fetch(endpoint(id, 'live-metrics/analytics') + '?init_data=' + encodeURIComponent(window.getTelegramInitDataRaw()), { cache: 'no-store' });
+                var payload = await response.json();
+                var score = payload && payload.analytics && payload.analytics.health_score;
+                if (response.ok && payload.analytics && payload.analytics.source === 'devtesthub_live') {
+                    var fresh = cache.get(id) || current;
+                    update(id, Object.assign({}, fresh, { health_score: score, health_delta: payload.analytics.health_delta, health_pending: false }));
+                } else if (cache.get(id)) update(id, Object.assign({}, cache.get(id), { health_pending: false }));
+            } catch (_) {
+                if (cache.get(id)) update(id, Object.assign({}, cache.get(id), { health_pending: false }));
+            } finally { healthLoads.delete(id); }
+        })();
+    }
     function load(id) {
         if (requests.has(id)) return requests.get(id);
         var revision = revisions.get(id) || 0;
@@ -218,9 +244,12 @@
         var tier = project.live_tier_event || project.live_project_control && project.live_project_control.tier_event;
         var promoted = tier && Number(tier.from_tier) > Number(tier.to_tier);
         var position = '<button type="button" class="lm-result-tile" data-lm-position="' + id + '"><span class="lm-result-kicker">' + esc(window.t('mkPosTitle', {}, window.lang)) + '</span><strong>' + (place.rank != null && place.tier != null ? esc(window.t('mkPosPlace', { rank: place.rank, tier: place.tier }, window.lang)) : esc(window.t('mkPosEmpty', {}, window.lang))) + '</strong><small>' + (place.score != null ? esc(window.t('mkPosScore', { score: place.score }, window.lang)) : '') + '</small>' + moveLabel(place.rankDelta, place.scoreDelta) + '</button>';
-        var healthScore = metrics && metrics.health_score, healthDelta = metrics && metrics.health_delta;
+        var healthScore = metrics && metrics.health_score, healthDelta = metrics && metrics.health_delta, healthKnown = healthScore != null && healthScore !== '';
+        var healthWait = !!(metrics && metrics.health_pending && !healthKnown);
         var healthMove = healthDelta == null ? '<b class="lm-delta is-flat">' + esc(window.t('mkPosUnknown', {}, window.lang)) + '</b>' : !Number(healthDelta) ? '<b class="lm-delta is-flat">' + esc(window.t('mkPosFlat', {}, window.lang)) + '</b>' : '<b class="lm-delta ' + (healthDelta > 0 ? 'is-up' : 'is-down') + '">' + esc(window.t(healthDelta > 0 ? 'mkHealthUp' : 'mkHealthDown', { delta: Math.abs(healthDelta) }, window.lang)) + '</b>';
-        var pulse = '<button type="button" class="lm-result-tile" data-lm-health="' + id + '"><span class="lm-result-kicker">' + esc(window.t('mkHealthTitle', {}, window.lang)) + '</span><strong>' + (healthScore == null ? '—' : esc(window.t('mkHealthScore', { score: healthScore }, window.lang))) + '</strong>' + (healthScore == null ? '<small>' + esc(window.t('mkHealthEmpty', {}, window.lang)) + '</small>' : '') + healthMove + '</button>';
+        var healthValue = healthWait ? '<i class="lm-health-skel" aria-hidden="true"></i>' : healthKnown ? esc(window.t('mkHealthScore', { score: healthScore }, window.lang)) : '—';
+        var healthHint = !healthKnown && !healthWait && !(metrics && metrics.installs && Number(metrics.installs.total) > 0) ? '<small>' + esc(window.t('mkHealthEmpty', {}, window.lang)) + '</small>' : '';
+        var pulse = '<button type="button" class="lm-result-tile" data-lm-health="' + id + '"><span class="lm-result-kicker">' + esc(window.t('mkHealthTitle', {}, window.lang)) + '</span><strong>' + healthValue + '</strong>' + healthHint + healthMove + '</button>';
         var tierLine = tier ? '<div class="lm-tier-line' + (promoted ? ' is-up' : ' is-down') + '"><span>' + esc(window.t(promoted ? 'lrTierPromoted' : 'lrTierDemoted', { from: tier.from_tier, to: tier.to_tier, score: tier.score }, window.lang)) + '</span><button type="button" data-lr-tier-ack="' + tier.id + '" data-lr-tier-app="' + id + '">' + esc(window.t('mkTierDismiss', {}, window.lang)) + '</button></div>' : '';
         var lost = metrics && metrics.early_exit_impact && Number(metrics.early_exit_impact.points_lost) || 0;
         var early = lost > 0 ? '<button type="button" class="lm-early-chip" data-lm-early="' + id + '">' + esc(window.t('mkEarlyChip', { n: lost }, window.lang)) + '</button><div class="lm-early-body" data-lm-early-body="' + id + '" hidden><button type="button" data-lm-early-close aria-label="✕">✕</button><p>' + esc(window.t('mkEarlyBody', { n: lost }, window.lang)) + '</p></div>' : '';
@@ -252,9 +281,17 @@
         explain: function(event) { if(event)event.stopPropagation();var control=event&&event.currentTarget;var hint=control&&control.dataset.liveHint;if(hint&&window.showToast)window.showToast(hint,10000); },
         render: render,
         repaint: function(id){update(Number(id),cache.get(Number(id)));},
+        applyPulse: function (id, score, delta) {
+            id = Number(id);
+            var current = cache.get(id) || (owner(id).live_metrics);
+            if (!current || current.source !== 'devtesthub_live') return;
+            var next = Object.assign({}, current, { health_score: score, health_pending: false });
+            if (delta != null) next.health_delta = delta;
+            update(id, next);
+        },
         mount: function (card, project) {
             var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
-            if (metrics && metrics.source === 'devtesthub_live') { remember(id, metrics); return; }
+            if (metrics && metrics.source === 'devtesthub_live') { remember(id, metrics); if (metrics.health_score == null) ensureHealth(id); return; }
             load(id);
         },
         reload: function (id, event) { if (event) event.stopPropagation(); load(id); },

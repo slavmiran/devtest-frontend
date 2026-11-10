@@ -217,7 +217,7 @@
             var payload=await response.json(),data=payload.analytics;
             if([401,403,404].includes(response.status)&&current===state&&state.controller===controller){cache.delete(state.cacheKey);state.data=null;state.errorAccess=true;}
             if(!response.ok||!data||data.source!=='devtesthub_live'||data.is_demo!==false||!data.install_velocity||!data.retention||!data.reviews_health||!data.update_freshness||!Array.isArray(data.components)) throw new Error('unavailable');
-            if(current===state&&state.controller===controller){state.data=data;cache.set(state.cacheKey,data);}
+            if(current===state&&state.controller===controller){state.data=data;cache.set(state.cacheKey,data);if(window.LiveProjectMetrics&&LiveProjectMetrics.applyPulse)LiveProjectMetrics.applyPulse(state.id,data.health_score,data.health_delta);}
         } catch(err){if(err.name!=='AbortError'&&current===state&&state.controller===controller)state.error=true;}
         finally{if(current===state&&state.controller===controller){state.loading=false;render();}}
     }
