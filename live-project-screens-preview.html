@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Live Project Add - 5 Screens Preview</title>
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/live-market.css">
+  <link rel="stylesheet" href="./css/market-storefront.css">
+  <style>
+    :root {
+      --bg-app: #0b101b;
+      --bg-surface-1: #151d2a;
+      --bg-surface-2: #101622;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --border-subtle: rgba(255, 255, 255, 0.12);
+      --accent-primary: #438aed;
+      --accent-primary-border: #438aed66;
+    }
+    body {
+      background: var(--bg-app);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .preview-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .screen-card {
+      background: var(--bg-surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .screen-label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent-primary);
+      background: rgba(67, 138, 237, 0.12);
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    .sheet-mock {
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      background: var(--bg-surface-1);
+      padding: 16px;
+    }
+    .sheet-mock-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .sheet-mock-header h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 650;
+    }
+    .sheet-close-mock {
+      font-size: 20px;
+      line-height: 1;
+      color: var(--text-secondary);
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-container">
+    <!-- SCREEN 1 -->
+    <div class="screen-card">
+      <span class="screen-label">Экран 1 · Стартовое окно «Продвижение в Google Play»</span>
+      <div class="sheet-mock">
+        <div class="sheet-mock-header">
+          <h2>Продвижение в Google Play</h2>
+          <button class="sheet-close-mock">×</button>
+        </div>
+        <p class="la-subtitle">Укажите ссылку на приложение в Google Play или его package name — система автоматически загрузит иконку, описание и паспорт проекта.</p>
+        <div class="la-field-row">
+          <span class="la-field-label">Ссылка или package name</span>
+          <a class="la-link-subtle" href="https://play.google.com/store/apps" target="_blank" rel="noopener noreferrer">Открыть Google Play ↗</a>
+        </div>
+        <div class="la-input-wrap">
+          <input class="la-input" value="https://play.google.com/store/apps/details?id=com.swiftnova.work" placeholder="com.example.app">
+          <button type="button" class="la-paste-chip">Вставить</button>
+        </div>
+        <button type="button" class="lm-action lm-action-primary">Загрузить паспорт приложения</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 2 -->
+    <div class="screen-card">
+      <span class="screen-label">Экран 2 · Превью паспорта «Это ваше приложение?»</span>
+      <div class="sheet-mock">
+        <div class="sheet-mock-header">
+          <h2>Это ваше приложение?</h2>
+          <button class="sheet-close-mock">×</button>
+        </div>
+        <div class="la-passport-heading">
+          <img class="la-passport-icon" src="https://lh3.googleusercontent.com/d/mock-icon" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\' viewBox=\'0 0 64 64\'><rect width=\'64\' height=\'64\' rx=\'14\' fill=\'%232563eb\'/><text x=\'50%25\' y=\'55%25\' font-size=\'28\' font-weight=\'bold\' fill=\'white\' text-anchor=\'middle\' dominant-baseline=\'middle\'>SN</text></svg>'" alt="">
+          <div class="la-passport-info">
+            <strong class="la-passport-title">SwiftNova Tracker & Tasks</strong>
+            <span class="la-passport-meta">SwiftNova Ltd. · Работа</span>
+          </div>
+        </div>
+        <div class="la-desc-box">
+          <p class="la-desc-text is-clamped">Удобный трекер задач и рабочего времени для распределённых команд и индивидуальных разработчиков. Включает синхронизацию с облаком, учёт рабочего графика и экспорт отчётов в один клик.</p>
+          <button type="button" class="la-desc-toggle">Показать полностью ▾</button>
+        </div>
+        <button type="button" class="lm-action lm-action-primary">Да, подтвердить владение</button>
+        <button type="button" class="lm-action">Нет, это не моё приложение</button>
+        <div class="la-ghost-actions">
+          <button type="button" class="lm-action lm-action-ghost">Ввести другую ссылку или пакет</button>
+          <button type="button" class="lm-action lm-action-ghost">Сообщить о проблеме</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3 -->
+    <div class="screen-card">
+      <span class="screen-label">Экран 3 · Ввод кода и альтернативная проверка токена</span>
+      <div class="sheet-mock">
+        <div class="sheet-mock-header">
+          <h2>Это ваше приложение?</h2>
+          <button class="sheet-close-mock">×</button>
+        </div>
+        <p>На почту разработчика <strong>sw***a@gmail.com</strong> отправлен 6-значный код подтверждения.</p>
+        <button type="button" class="lm-action">Отправить код повторно</button>
+        <div class="la-otp-grid">
+          <input type="text" class="la-otp-cell" value="8" readonly>
+          <input type="text" class="la-otp-cell" value="3" readonly>
+          <input type="text" class="la-otp-cell" value="9" readonly>
+          <input type="text" class="la-otp-cell" value="" placeholder="·">
+          <input type="text" class="la-otp-cell" value="" placeholder="·">
+          <input type="text" class="la-otp-cell" value="" placeholder="·">
+        </div>
+        <div class="la-otp-meta">
+          <span class="la-otp-timer">⏳ <b>14:48</b></span>
+          <span style="font-size:11px; color:var(--text-secondary);">Осталось попыток: 5</span>
+        </div>
+        <button type="button" class="lm-action lm-action-primary">Подтвердить код</button>
+
+        <details class="la-alternative" open>
+          <summary>Альтернативный способ: токен в описании ▾</summary>
+          <div class="la-alt-body">
+            <p>Добавьте проверочный токен в краткое или полное описание приложения в Google Play Console. После публикации обновления вы можете проверить токен самостоятельно или отправить на проверку.</p>
+            <div class="la-token-box">
+              <code class="la-token-value">DTH-9K2M-X74Q</code>
+              <button type="button" class="la-token-copy" title="Копировать">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+            <button type="button" class="lm-action lm-action-primary">🔍 Проверить токен сейчас</button>
+            <button type="button" class="lm-action lm-action-ghost">Отправить на проверку</button>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- SCREEN 4 -->
+    <div class="screen-card">
+      <span class="screen-label">Экран 4 · Экран подтверждения после отправки на проверку</span>
+      <div class="sheet-mock">
+        <div class="sheet-mock-header">
+          <h2>Заявка на рассмотрении</h2>
+          <button class="sheet-close-mock">×</button>
+        </div>
+        <div class="la-pending-view">
+          <div class="la-pending-icon">⏳</div>
+          <h3 class="la-pending-heading">Заявка отправлена на рассмотрение</h3>
+          <p class="la-pending-desc">Мы проверяем наличие токена в описании вашего приложения в Google Play. Как только токен будет подтверждён, проект автоматически перейдёт в управление и появится в разделе «Мои проекты».</p>
+          <button type="button" class="lm-action lm-action-primary">Понятно</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 5 -->
+    <div class="screen-card">
+      <span class="screen-label">Экран 5 · Карточка рассматриваемого проекта в «Моих проектах»</span>
+      <article class="la-pending-card">
+        <div class="la-pending-card-head">
+          <img class="la-pending-card-icon" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><rect width='48' height='48' rx='12' fill='%232563eb'/><text x='50%25' y='55%25' font-size='20' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle'>SN</text></svg>" alt="">
+          <div class="la-pending-card-meta">
+            <strong class="la-pending-card-title">SwiftNova Tracker & Tasks</strong>
+            <span class="la-pending-badge">⏳ На рассмотрении</span>
+          </div>
+        </div>
+        <p class="la-pending-card-desc">Проверяется наличие проверочного токена в описании приложения. Вы можете проверить токен самостоятельно или дождаться автоматической проверки.</p>
+        <div class="la-pending-card-actions">
+          <button type="button" class="lm-action lm-action-primary la-card-check-btn">🔍 Проверить токен сейчас</button>
+          <a class="la-card-link" href="https://play.google.com/store/apps/details?id=com.swiftnova.work" target="_blank" rel="noopener noreferrer">Google Play ↗</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</body>
+</html>
