@@ -114,6 +114,21 @@
         }
         return CONTROL_DAYS.indexOf(Number(day || 0)) !== -1;
     }
+    function hasCompletedTestingCycle(tester, row) {
+        var day = testerDay(tester, row);
+        // Past day 14 the standard cycle no longer needs a daily mark.
+        if (day > 14) return true;
+        var timeline = (row && row.timeline) || (tester && tester.timeline) || [];
+        for (var i = 0; i < timeline.length; i += 1) {
+            var entry = timeline[i] || {};
+            if (Number(entry.day || 0) !== 14) continue;
+            var state = String(entry.state || '').trim().toLowerCase();
+            if (state === 'checked' || state === 'checked_overtime' || state === 'external_checked') {
+                return true;
+            }
+        }
+        return false;
+    }
     function skipsCount(tester) {
         if (typeof calculateConsecutiveSkips === 'function') {
             return Math.max(0, Number(calculateConsecutiveSkips(tester) || 0));
@@ -476,6 +491,7 @@
             if (testerId <= 0 || used[testerId] || hasLeft(null, tester)) return;
             if (isNeverOpened(tester, [])) return;
             if (isControlDay(testerDay(tester))) return;
+            if (hasCompletedTestingCycle(tester, null)) return;
             var assessment = assessmentOf(null, tester, project);
             var signals = signalScore(assessment);
             if (signals < 1) return;
@@ -723,7 +739,7 @@
         if (section === 'both') return text('smartPingSectionBoth', '⚡ Внимание + Отчёт');
         if (section === 'attention') return text('smartPingSectionAttention', '⚠️ Зона внимания (Вкладка «Внимание»)');
         if (section === 'control') return text('smartPingSectionControl', '📸 Контрольные отчёты (Вкладка «Отчёт»)');
-        return text('smartPingSectionRhythm', '📉 Сбился ритм (Обычные дни)');
+        return text('smartPingSectionRhythm', '📌 Напомнить сегодня (Обычные дни)');
     }
     function sectionHtml(section, rows) {
         if (!rows.length) return '';
