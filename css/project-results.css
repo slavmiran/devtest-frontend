@@ -674,6 +674,22 @@
     display: none;
 }
 
+.pc-results-grid.is-trio .pc-results-tile {
+    gap: 7px;
+    padding: 7px 6px;
+}
+
+.pc-results-grid.is-trio .pc-results-tile__main {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+
+.pc-results-grid.is-trio .pc-results-tile__label {
+    overflow: visible;
+    text-overflow: clip;
+}
+
 .pc-results-tile--models .pc-results-tile__icon-wrap,
 .pc-results-tile--countries .pc-results-tile__icon-wrap,
 .pc-results-tile--bugs .pc-results-tile__icon-wrap,

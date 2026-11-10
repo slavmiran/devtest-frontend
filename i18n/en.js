@@ -4325,7 +4325,7 @@
             smartPingSectionBoth: "⚡ Attention + Reports",
             smartPingSectionAttention: "⚠️ Attention zone (Attention tab)",
             smartPingSectionControl: "📸 Control reports (Reports tab)",
-            smartPingSectionRhythm: "📉 Off rhythm (Regular days)",
+            smartPingSectionRhythm: "📌 Remind today (Regular days)",
             smartPingRiskBadge: "Risk",
             smartPingReasonDebt: "Debt {count}d",
             smartPingReasonInvite: "Direct invite · {count}",

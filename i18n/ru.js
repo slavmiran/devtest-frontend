@@ -4339,7 +4339,7 @@
             smartPingSectionBoth: "⚡ Внимание + Отчёты",
             smartPingSectionAttention: "⚠️ Зона внимания (Вкладка «Внимание»)",
             smartPingSectionControl: "📸 Контрольные отчёты (Вкладка «Отчёты»)",
-            smartPingSectionRhythm: "📉 Сбился ритм (Обычные дни)",
+            smartPingSectionRhythm: "📌 Напомнить сегодня (Обычные дни)",
             smartPingRiskBadge: "Риск",
             smartPingReasonDebt: "Долг {count}д",
             smartPingReasonInvite: "Прямой инвайт · {count}",

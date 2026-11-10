@@ -507,6 +507,7 @@
         var hasGroupSplit = newTileCount > 0 && newTileCount < visibleIndicators.length;
         var resultsOverflow = visibleIndicators.length > 4;
         var resultsRow = visibleIndicators.length > 0 && visibleIndicators.length <= 3;
+        var resultsTrio = visibleIndicators.length === 3;
         var tilesHtml = visibleIndicators.map(function (ind, index) {
             var hasNew = ind.newCount > 0;
             var isZero = !hasNew && ind.totalCount === 0;
@@ -550,7 +551,7 @@
                         '<svg class="pc-results-header__chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
                     '</span>' +
                 '</div>' +
-                '<div class="pc-results-grid' + (visibleIndicators.length ? '' : ' is-empty') + (resultsRow ? ' is-row' : '') + (resultsOverflow ? ' is-overflow has-more' : '') + '" style="--pc-result-count:' + Math.max(1, visibleIndicators.length) + '"' + (resultsOverflow ? ' onscroll="pcSyncResultsStripMask(this)"' : '') + '>' +
+                '<div class="pc-results-grid' + (visibleIndicators.length ? '' : ' is-empty') + (resultsRow ? ' is-row' : '') + (resultsTrio ? ' is-trio' : '') + (resultsOverflow ? ' is-overflow has-more' : '') + '" style="--pc-result-count:' + Math.max(1, visibleIndicators.length) + '"' + (resultsOverflow ? ' onscroll="pcSyncResultsStripMask(this)"' : '') + '>' +
                     (tilesHtml || '<button type="button" class="pc-results-grid__empty" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
                         '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
                         '<span aria-hidden="true">→</span></button>') +
