@@ -30,18 +30,24 @@
   var node=root.querySelector('[data-lpc-thermal-phase]');if(node&&window.LiveMarketUI){var expanded=node.querySelector('details[open]');node.innerHTML=LiveCampaignPaceView.thermal(d);if(expanded&&node.querySelector('details'))node.querySelector('details').open=true;}var preview=root.querySelector('[data-lcw-pace-preview]');if(preview)preview.innerHTML=LiveCampaignPaceView.preview(d);
  }
  window.addEventListener('live-campaigns:data',function(event){var s=session;if(!s||Number(event.detail.appId)!==Number(s.adapter.appId)||!s.adapter.get())return;refreshPhase(s.layer,s.draft,event.detail.control);});
+ function paceSignals(p){return p&&p.live_metrics&&p.live_metrics.pace_signals||p&&p.live_project_control&&p.live_project_control.thermal_phase&&p.live_project_control.thermal_phase.pace_signals||null;}
  function status(p,pace,rows){
-  if(!rows)return {key:'lpcStatusLoading',tone:'neutral'};
+  var source=pace||p&&p.live_pace,completed=paceSignals(p);
+  if(source&&Date.parse(source.pause_until)>Date.now())return {key:'lpcStatusPaused',tone:'paused',vars:{time:new Date(source.pause_until).toLocaleTimeString(window.lang==='ru'?'ru-RU':'en-US',{hour:'2-digit',minute:'2-digit'})}};
+  if(completed&&completed.below_floor)return {key:'lpcPaceShort',tone:'warning',vars:{count:completed.deficit_installs||0}};
+  if(!rows){
+   if(p&&p.is_accepting_new_testers===false)return {key:'lpcStatusClosed',tone:'neutral'};
+   if(source&&source.paced)return {key:'lpcStatusOpen',tone:'active',vars:{used:source.admitted||0,total:source.quota}};
+   if(source)return {key:'lpcStatusFree',tone:'active'};
+   return {skeleton:true,tone:'neutral'};
+  }
   var active=rows.some(function(c){return c.status==='active'||c.contracts&&c.contracts.enabled;});
   if(!active)return {key:'lpcStatusIdle',tone:'neutral'};
-  if(pace&&Date.parse(pace.pause_until)>Date.now())return {key:'lpcStatusPaused',tone:'paused',vars:{time:new Date(pace.pause_until).toLocaleTimeString(window.lang==='ru'?'ru-RU':'en-US',{hour:'2-digit',minute:'2-digit'})}};
-  if(pace&&pace.accepting===false||!pace&&p.is_accepting_new_testers===false)return {key:'lpcStatusClosed',tone:'neutral'};
-  var completed=p.live_metrics&&p.live_metrics.pace_signals||p.live_project_control&&p.live_project_control.thermal_phase&&p.live_project_control.thermal_phase.pace_signals;
-  if(completed&&completed.below_floor)return {key:'lpsBelow',tone:'warning',vars:{n:completed.below_floor_days,count:completed.deficit_installs}};
-  if(pace&&pace.paced)return {key:'lpcStatusOpen',tone:'active',vars:{used:pace.admitted||0,total:pace.quota}};
+  if(source&&source.accepting===false||!source&&p.is_accepting_new_testers===false)return {key:'lpcStatusClosed',tone:'neutral'};
+  if(source&&source.paced)return {key:'lpcStatusOpen',tone:'active',vars:{used:source.admitted||0,total:source.quota}};
   return {key:'lpcStatusFree',tone:'active'};
  }
- function statusHTML(p){var s=status(p,p.live_pace,p.live_campaign_rows);return '<span class="live-project-status is-'+s.tone+'" data-live-project-status="'+Number(p.id||p.app_id)+'">'+e(t(s.key,s.vars))+'</span>';}
+ function statusHTML(p){var s=status(p,p.live_pace,p.live_campaign_rows);if(s.skeleton)return '<span class="live-project-status is-skeleton" data-live-project-status="'+Number(p.id||p.app_id)+'" aria-busy="true"></span>';return '<span class="live-project-status is-'+s.tone+'" data-live-project-status="'+Number(p.id||p.app_id)+'">'+e(t(s.key,s.vars))+'</span>';}
  function updateStatus(p,pace,rows){p.live_pace=pace;p.live_campaign_rows=rows;document.querySelectorAll('[data-live-project-status="'+Number(p.id||p.app_id)+'"]').forEach(function(n){n.outerHTML=statusHTML(p);});}
  function close(){if(!session)return;if(session.busy)return;var s=session;session=null;s.layer.remove();document.body.style.overflow=s.overflow;if(s.focus&&s.focus.isConnected)s.focus.focus({preventScroll:true});if(window.syncTelegramBackButton)window.syncTelegramBackButton();}
  function open(adapter,trigger,mode){

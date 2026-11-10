@@ -30,8 +30,24 @@ function resolvePipelineProjectPhase(project) {
     return 'testing';
 }
 
+function moderationUnread(project) {
+    if (!project || resolvePipelineProjectPhase(project) !== 'moderation') return false;
+    if (Number(project.feedback_new_count || 0) > 0) return true;
+    if (Number(project.bugs_new_count || 0) + Number(project.ideas_new_count || 0) + Number(project.reviews_new_count || 0) > 0) return true;
+    var summary = project.results_summary || {};
+    if (Number(summary.bugs_new_count || 0) + Number(summary.ideas_new_count || 0) + Number(summary.reviews_new_count || 0) > 0) return true;
+    if (window.ProjectResults && ProjectResults.getUnseenCounts) {
+        try {
+            var unseen = ProjectResults.getUnseenCounts(project);
+            if (unseen && (unseen.newBugs || unseen.newIdeas || unseen.newReviews || unseen.newText || unseen.newVideo)) return true;
+        } catch (e) {}
+    }
+    return false;
+}
+
 function getProjectPipelineAlertType(project) {
     if (!project) return null;
+    if (moderationUnread(project)) return 'feedback';
     var pendingIssueTesters = (Array.isArray(project.testers) ? project.testers : []).filter(function(tester) {
         return !!tester.issue_reported_at && !tester.issue_fixed_at;
     });

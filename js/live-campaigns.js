@@ -80,11 +80,7 @@
         if(!d.enabled&&!d.limit&&!s.contractSetup.has(c.id))return '';
         return (!d.enabled?'<small class="lc-note">'+esc(tr('lcpContractOffHint'))+'</small>':'')+'<details class="lc-contract-settings lc-campaign__section" data-contract-details="'+c.id+'"'+(s.contractSetup.has(c.id)?' open':'')+'><summary>'+esc(tr('lcpContractSummary',{used:d.hired,limit:d.limit||12,rate:d.reward}))+'<small class="lc-note">'+esc(tr('lcpContractBudget',{n:d.unassigned_budget}))+'</small></summary>'+ProjectContractPricing.build(c.id,d,c.wallet_balance)+button('contract-save',tr('lcpContractSave'),c,busy,'btn btn-primary')+(!d.enabled&&d.unassigned_budget>0?button('contract-withdraw',tr('lcpContractWithdraw'),c,busy,'lc-link'):'')+'</details>';
     }
-    function paceNotice(s){
-        var p=s.pace;if(!p)return '';var until=Date.parse(p.pause_until||'');
-        if(until>Date.now())return '<div class="lcp-project-notice">⏸ '+esc(tr('lcpPaused',{date:new Date(until).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}))+'</div>';
-        return '';
-    }
+    function paceNotice(){return '';}
     function campaign(c,s) {
         var allocation=s.control&&(s.control.allocations||[]).find(function(a){return a.campaign_id===c.id;});c=Object.assign({},c,{cycle_used:allocation&&allocation.used||0,project_paced:!!(s.control&&s.control.policy.paced&&s.control.policy.mode!=='auto'),project_reviews:s.control&&s.control.parameters.request_reviews});
         if(c.definition)return LiveCampaignGrowthCard.build(c,s.pending.has(c.id)||s.pending.has(-1));
@@ -94,7 +90,7 @@
             '</strong><small class="lc-note">' + esc(tr('lcBadge')) + '</small></div>' +
             (c.kind==='closed_bridge'?contract(c,s,true):LiveCampaignControls.toggle('toggle-status',tr(c.status==='active'?'lcActive':'lcOff'),c,busy,c.status==='active'))+'</header>'+LiveCampaignGrowthCard.summary(c,'D14 · '+tr('lpcCheckpointCount',{n:c.control_days.length-1})+' · '+tr('lcOccupied',{used:amount(c.free_occupied),total:c.total_slots})+(LiveCampaignGrowthCard.capTag(c)?' · '+LiveCampaignGrowthCard.capTag(c):''))+
             '<div class="lc-card-expanded">'+contract(c,s,false)+
-            '<div class="lc-campaign__section"><div class="lc-slot-line"><span>'+esc(tr('lcSlots'))+'</span><strong>'+
+            '<div class="lc-campaign__section"><div class="lc-slot-line"><span>'+esc(tr('lcSlots'))+'</span><strong data-slot-total="'+Number(c.total_slots)+'">'+
             esc(tr('lcOccupied',{used:amount(c.free_occupied),total:c.total_slots}))+'</strong></div>'+
             '<small class="lc-note">'+esc(tr('lcFreeHint'))+'</small>'+
             (c.next_slot ? button('buy','+ '+tr('lcBuy',{n:c.next_slot,price:amount(c.next_slot_price)}),c,busy,'lc-buy') : '<small class="lc-note">'+esc(tr('lcMaxSlots'))+'</small>')+
@@ -105,13 +101,7 @@
         var rows=s.rows || [], active=rows.filter(function(c){return (c.status==='active'||c.contracts_enabled)&&c.kind!=='closed_bridge';});var capacity=s.capacity||{limit:3};
         var visible=rows.filter(function(c){return c.definition||c.kind==='closed_bridge'||c.status==='active';});
         var paused=rows.filter(function(c){return !c.definition&&c.kind!=='closed_bridge'&&c.status!=='active';});
-        var tier=s.control&&s.control.tier_event;
-        var promoted=tier&&Number(tier.from_tier)>Number(tier.to_tier);
-        var enteredPro=tier&&Number(tier.from_tier)>3&&Number(tier.to_tier)<=3;
-        var lostPro=tier&&Number(tier.from_tier)<=3&&Number(tier.to_tier)>3;
-        var tierMain=tier?tr(promoted?'lrTierPromoted':'lrTierDemoted',{from:tier.from_tier,to:tier.to_tier,score:tier.score}):'';
-        var tierExtra=enteredPro?tr('lrTierProUnlocked'):lostPro?tr('lrTierProPaused'):'';
-        return (tier?'<aside class="lr-tier-event'+(promoted?' is-up':' is-down')+'"><span>'+esc(tierMain)+(tierExtra?'<small>'+esc(tierExtra)+'</small>':'')+'</span><button type="button" class="lm-action" data-lr-tier-ack="'+tier.id+'" data-lr-tier-app="'+s.id+'">'+esc(tr('lrTierAcknowledge'))+'</button></aside>':'')+'<div class="lc-section-head"><div class="lc-section-heading"><h3>'+esc(tr('lcTitle'))+'</h3>'+projectBudget(s)+'</div><div class="lc-section-actions"><small>'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
+        return '<div class="lc-section-head"><div class="lc-section-heading"><h3>'+esc(tr('lcTitle'))+'</h3>'+projectBudget(s)+'</div><div class="lc-section-actions"><small data-lc-capacity data-slot-total="'+Number(capacity.limit)+'">'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '—')+'</small>'+
             (s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
             '<button type="button" class="lc-action lc-create" data-lc-action="create" aria-label="'+esc(tr('lcCreate'))+'" title="'+esc(tr('lcCreate'))+'">'+plusIcon()+'</button></div></div>'+
             projectBar(s)+
@@ -128,7 +118,9 @@
     }
     function projectBar(s){
         if(!s.control)return '';var c=s.control,v=c.policy||{},p=s.pace||{};
-        return '<div class="lc-project-controls"><button type="button" class="lpc-pace-bar" data-lc-action="project-pace"'+(s.pending.has(-1)?' disabled':'')+'><span><strong>'+esc(tr(v.mode==='auto'?'lpcAuto':v.manualPlan&&v.paced?'lpSummary':v.paced?'lpcPaceSummary':'lcpFree',{n:v.manualPlan?p.quota:v.dailyInstalls,h:v.pauseHours,r:v.rampDays}))+'</strong>'+(v.paced?'<small>'+esc(tr('lpcCycleProgress',{used:p.admitted||0,total:p.quota||v.dailyInstalls}))+'</small>':'')+'</span>'+LiveCampaignGrowthCard.chevron+'</button>'+(window.LiveAdmission?'<button type="button" class="lpc-pace-bar" data-lc-action="project-admission"><span><strong>'+esc(tr('lmAdmission'))+'</strong><small>'+esc(tr(c.admission_mode==='instant_install'?'lmInstantMode':'lmRequestOnly'))+'</small></span>'+LiveCampaignGrowthCard.chevron+'</button>':'')+(window.LiveQueueUI?'<button type="button" class="lm-action" data-lq-owner-queue="'+s.id+'">⌛ '+esc(tr('lqQueueBar',{n:c.queue_count||0,temp:c.thermal_phase&&c.thermal_phase.temperature!=null?Math.round(c.thermal_phase.temperature):'—'}))+'</button>':'')+(c.keyword_assist_count?'<button type="button" class="lm-action" data-lr-assist="'+s.id+'">'+esc(tr('lrAssistTitle'))+' · '+c.keyword_assist_count+'</button>':'')+(window.LiveRetentionUI?LiveRetentionUI.alerts(c):'')+paceNotice(s)+'</div>';
+        var signals=project(s).live_metrics&&project(s).live_metrics.pace_signals,paused=!!(p.pause_until&&Date.parse(p.pause_until)>Date.now());
+        var pace=window.LivePaceSignals?LivePaceSignals.inline(signals,paused):{badge:'',panel:''};
+        return '<div class="lc-project-controls"><button type="button" class="lpc-pace-bar" data-lc-action="project-pace"'+(s.pending.has(-1)?' disabled':'')+'><span><strong>'+esc(tr(v.mode==='auto'?'lpcAuto':v.manualPlan&&v.paced?'lpSummary':v.paced?'lpcPaceSummary':'lcpFree',{n:v.manualPlan?p.quota:v.dailyInstalls,h:v.pauseHours,r:v.rampDays}))+'</strong>'+(v.paced?'<small>'+esc(tr('lpcCycleProgress',{used:p.admitted||0,total:p.quota||v.dailyInstalls}))+'</small>':'')+pace.badge+'</span>'+LiveCampaignGrowthCard.chevron+'</button>'+pace.panel+(window.LiveAdmission?'<button type="button" class="lpc-pace-bar" data-lc-action="project-admission"><span><strong>'+esc(tr('lmAdmission'))+'</strong><small>'+esc(tr(c.admission_mode==='instant_install'?'lmInstantMode':'lmRequestOnly'))+'</small></span>'+LiveCampaignGrowthCard.chevron+'</button>':'')+(window.LiveQueueUI?'<button type="button" class="lm-action" data-lq-owner-queue="'+s.id+'">⌛ '+esc(tr('lqQueueBar',{n:c.queue_count||0,temp:c.thermal_phase&&c.thermal_phase.temperature!=null?Math.round(c.thermal_phase.temperature):'—'}))+'</button>':'')+(c.keyword_assist_count?'<button type="button" class="lm-action" data-lr-assist="'+s.id+'">'+esc(tr('lrAssistTitle'))+' · '+c.keyword_assist_count+'</button>':'')+(window.LiveRetentionUI?LiveRetentionUI.alerts(c):'')+'</div>';
     }
     function build(p) { var s=state(p.id||p.app_id);s.project=p;return '<section class="lc-section" data-live-campaigns="'+s.id+'">'+content(s)+'</section>'; }
     function controlSelector(node){return node&&node.dataset.lcAction&&node.dataset.campaign?'[data-campaign-id="'+Number(node.dataset.campaign)+'"] [data-lc-action="'+node.dataset.lcAction+'"]'+(node.dataset.keyword?'[data-keyword="'+Number(node.dataset.keyword)+'"]':''):null;}
@@ -158,13 +150,13 @@
         try {
             var data=await parse(await fetch(endpoint(s.id)+'?init_data='+encodeURIComponent(s.actor),{cache:'no-store',signal:controller.signal}));
             if(seq!==s.seq||s.actor!==actor())return;
-            s.control=data.project_control||null;s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;project(s).live_project_control=s.control;project(s).live_campaign_pace=s.pace;LiveProjectControl.updateStatus(project(s),s.pace,s.rows);s.error=false;s.loaded=true;s.readAt=Date.now();
+            s.control=data.project_control||null;s.pace=data.pace||null;s.rows=data.campaigns;s.capacity=data.capacity||s.capacity;s.hud=data.hud||null;project(s).live_campaign_hud=s.hud;project(s).live_project_control=s.control;project(s).live_campaign_pace=s.pace;project(s).live_tier_event=s.control&&s.control.tier_event||null;LiveProjectControl.updateStatus(project(s),s.pace,s.rows);if(window.LiveProjectMetrics&&LiveProjectMetrics.repaint)LiveProjectMetrics.repaint(s.id);s.error=false;s.loaded=true;s.readAt=Date.now();
             window.dispatchEvent(new CustomEvent('live-campaigns:data',{detail:{appId:s.id,control:s.control}}));
             clearTimeout(s.paceTimer);if(s.pace&&(s.pace.pause_until||s.pace.policies&&s.pace.policies.length))queueRead(s,Math.max(1000,Math.min(60000,Date.parse(s.pace.pause_until||'')-Date.now()||60000)));
         } catch(error) {
             if(error.name==='AbortError'||seq!==s.seq)return;
             s.error=true;if([401,403,404].includes(error.status)){s.rows=null;s.control=null;s.loaded=false;}
-        } finally {if(s.controller===controller)s.controller=null;if(seq===s.seq)repaint(s,true);}
+        } finally {if(s.controller===controller)s.controller=null;if(seq===s.seq){repaint(s,true);if(s.slotGlow){var glow=s.slotGlow;s.slotGlow=null;celebrate(s,glow.selector,glow.previous);}}}
     }
     async function mutate(s,c,path,method,data,financial) {
         if(s.pending.has(c.id)||s.actor!==actor())return false;
@@ -180,7 +172,7 @@
             if(typeof visibilityStats!=='undefined'&&visibilityStats&&Number.isFinite(response.campaign.wallet_balance))visibilityStats.balance_bust=response.campaign.wallet_balance;
             window.dispatchEvent(new CustomEvent('live-campaigns:changed',{detail:{appId:s.id,campaignId:c.id}}));return true;
         } catch(error) {
-            toastCode(error.message);if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
+            s.slotGlow=null;toastCode(error.message);if([401,403,404].includes(error.status)){s.rows=null;s.loaded=false;}
             if(error.status===409){s.pending.delete(c.id);await read(s);}return false;
         } finally {s.pending.delete(c.id);repaint(s);if(returnFocus&&document.activeElement===document.body){var next=document.querySelector('[data-live-campaigns="'+s.id+'"] '+returnFocus);if(next&&!next.disabled)next.focus({preventScroll:true});}if(s.rows)queueRead(s,100);}
     }
@@ -198,12 +190,16 @@
     }
     async function buyActive(s){
         if(s.pending.has(0)||s.confirmingSlot||s.actor!==actor())return;var limit=s.capacity?s.capacity.limit:3,price=(limit-1)*1000;
-        s.confirmingSlot=true;var accepted=await confirmBuy(tr('lcgBuyConfirm',{slot:limit+1,price:price}));s.confirmingSlot=false;
+        s.confirmingSlot=true;var accepted=await confirmSlot({current:limit,cost:price,balance:walletBalance(s)});s.confirmingSlot=false;
         if(!accepted||s.actor!==actor())return;
         var key='active-slot:'+limit,request=s.requests.get(key);if(!request){request=uuid();s.requests.set(key,request);}s.pending.add(0);repaint(s);
+        s.slotGlow={selector:'[data-lc-capacity]',previous:limit};
         try{var data=await parse(await fetch(endpoint(s.id,'/active-slot'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({init_data:s.actor,request_key:request,expected_slot:limit+1,expected_price:price})}));if(s.actor!==actor())return;s.capacity=Object.assign({},s.capacity,data.capacity);s.requests.delete(key);if(typeof visibilityStats!=='undefined'&&visibilityStats)visibilityStats.balance_bust=data.capacity.wallet_balance;}
-        catch(error){toastCode(error.message);}finally{s.pending.delete(0);await read(s);}
+        catch(error){s.slotGlow=null;toastCode(error.message);}finally{s.pending.delete(0);await read(s);}
     }
+    function walletBalance(s){if(typeof visibilityStats!=='undefined'&&visibilityStats&&visibilityStats.balance_bust!=null)return visibilityStats.balance_bust;return s.control&&s.control.wallet_balance!=null?s.control.wallet_balance:'—';}
+    function confirmSlot(opts){return new Promise(function(resolve){var layer=document.createElement('div');layer.className='modal-overlay project-instructions-overlay active';layer.id='lc-slot-sheet';var current=Number(opts.current)||0,next=current+1,cost=amount(opts.cost),balance=opts.balance==null?'—':amount(opts.balance);layer.innerHTML='<section class="project-instructions-sheet lc-slot-sheet" role="dialog" aria-modal="true"><div class="project-instructions-sheet__handle"></div><header class="project-instructions-sheet__head"><h3>'+esc(tr('lcSlotTitle'))+'</h3></header><p class="lc-slot-change">'+esc(tr('lcSlotCapacity',{current:current,next:next}))+'</p><p class="lc-note">'+esc(tr('lcSlotBody'))+'</p><p class="lc-slot-price"><strong>'+esc(tr('lcSlotCost',{cost:cost}))+'</strong><span>'+esc(tr('lcSlotBalance',{balance:balance}))+'</span></p><div class="lc-slot-actions"><button type="button" class="meta-chip" data-slot-cancel>'+esc(tr('lcSlotCancel'))+'</button><button type="button" class="btn btn-primary" data-slot-buy>'+esc(tr('lcSlotBuy',{cost:cost}))+'</button></div></section>';function close(value){layer.remove();document.body.style.overflow='';resolve(value);}document.body.style.overflow='hidden';document.body.appendChild(layer);layer.addEventListener('click',function(event){if(event.target===layer||event.target.closest('[data-slot-cancel]'))close(false);if(event.target.closest('[data-slot-buy]'))close(true);});});}
+    function celebrate(s,selector,previous){var root=document.querySelector('[data-live-campaigns="'+s.id+'"]');var node=root&&root.querySelector(selector);if(!node)return;var total=Number(node.dataset.slotTotal),parts=node.textContent.split('/');if(parts.length>1&&Number.isFinite(previous)){var nextText=parts[parts.length-1];parts[parts.length-1]=nextText.replace(String(total),String(previous));node.textContent=parts.join('/');requestAnimationFrame(function(){parts[parts.length-1]=nextText;node.textContent=parts.join('/');});}node.classList.add('is-slot-flash');var badge=document.createElement('span');badge.className='lc-slot-plus';badge.textContent=tr('lcSlotPlus');node.parentElement.appendChild(badge);var haptic=window.Telegram&&Telegram.WebApp&&Telegram.WebApp.HapticFeedback;if(haptic&&haptic.notificationOccurred)haptic.notificationOccurred('success');setTimeout(function(){badge.remove();node.classList.remove('is-slot-flash');},1600);}
     async function confirmBuy(message) { return new Promise(function(resolve){if(window.tg&&window.tg.showConfirm)window.tg.showConfirm(message,resolve);else resolve(window.confirm(message));}); }
     function mount(card,p) {
         if(p.phase!=='live')return;
@@ -215,6 +211,8 @@
         panel.onfocusout=function(){if(s.keyboardAction)setTimeout(function(){if(!panel.contains(document.activeElement)){s.keyboardAction=false;if(s.repaintAfterKey){s.repaintAfterKey=false;repaint(s,true);}}},0);};
         panel.oninput=function(event){var editor=event.target.closest('.lc-contract-editor');if(editor)ProjectContractPricing.update(editor);};
         panel.onclick=async function(event) {
+            var paceToggle=event.target.closest('[data-lps-toggle]');
+            if(paceToggle){event.preventDefault();event.stopPropagation();var bar=paceToggle.closest('.lpc-pace-bar'),body=bar&&bar.parentElement.querySelector('[data-lps-detail]');if(body)body.hidden=!body.hidden;return;}
             var summary=event.target.closest('summary');
             if(summary&&summary.parentElement.tagName==='DETAILS'){event.preventDefault();event.stopPropagation();summary.parentElement.open=!summary.parentElement.open;return;}
             if(event.target.closest('.lc-switch'))event.stopPropagation();
@@ -246,7 +244,7 @@
                 var ok=await mutate(s,c,'contracts','PATCH',{revision:c.revision,enabled:enabled,limit:terms.limit,reward:terms.reward},true);if(ok){s.contractSetup.delete(c.id);var details=panel.querySelector('[data-contract-details="'+c.id+'"]');if(details)details.open=false;}return;
             }
             if(action==='status')return window.LiveCampaignWallet.openStatus({get:function(){return current(s,c.id);},change:function(value){var row=current(s,c.id);return row&&mutate(s,row,row.definition?'growth-status':'status','PATCH',{revision:row.revision,status:value});}},control);
-            if(action==='buy'){if(await confirmBuy(tr('lcBuyConfirm',{price:amount(c.next_slot_price)})))return mutate(s,c,'buy-slot','POST',{expected_slot:c.next_slot,expected_price:c.next_slot_price},true);return;}
+            if(action==='buy'){var before=c.total_slots;if(!(await confirmSlot({current:before,cost:c.next_slot_price,balance:walletBalance(s)})))return;s.slotGlow={selector:'.lc-slot-line strong',previous:before};if(!(await mutate(s,c,'buy-slot','POST',{expected_slot:c.next_slot,expected_price:c.next_slot_price},true)))s.slotGlow=null;return;}
             if(action==='day') {
                 var day=Number(control.dataset.day);if(day===1||![4,7,10,14].includes(day))return;
                 var days=new Set(c.control_days);

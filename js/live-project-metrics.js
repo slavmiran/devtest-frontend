@@ -123,18 +123,20 @@
             '<div class="live-keywords" tabindex="0">' + chips + '</div>' +
         '</div>';
         var paceNote=window.LiveHistoryImport&&installs?window.LiveHistoryImport.pace(installs):'';
-        var impact=metrics&&metrics.early_exit_impact;var impactHtml=impact&&impact.points_lost?'<button type="button" class="lm-action"'+hintAttrs(window.t('mkEarlyLossHint',{},window.lang))+'>'+esc(window.t('mkEarlyLoss',{n:impact.points_lost},window.lang))+'</button>':'';
-        return impactHtml+quick+(window.LivePaceSignals&&metrics?LivePaceSignals.html(metrics.pace_signals,id,true):'')+(window.LiveTopic?LiveTopic.buttons(id):'')+'<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
+        return quick+(window.LiveTopic?LiveTopic.buttons(id):'')+'<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
+            resultBlock(id, metrics) +
             '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs, paceNote) + '</div>' +
             '<div class="live-metrics-health">' + health + '</div>' + aso +
-            '<button type="button" data-market-radar="' + id + '">' + esc(window.LiveMarket?LiveMarket.radarLabel(id):window.t('mkRadarOpen',{},window.lang)) + '</button>' +
             '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>'+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
     }
     function remember(id, metrics) {
         if(window.LiveMarket)LiveMarket.prefetch();
         cache.set(id, metrics);
         (window.myProjects || []).concat(window.archivedProjects || []).forEach(function (project) {
-            if (Number(project.id || project.app_id) === id) project.live_metrics = metrics;
+            if (Number(project.id || project.app_id) === id) {
+                project.live_metrics = metrics;
+                if (window.LiveProjectControl) LiveProjectControl.updateStatus(project, project.live_pace, project.live_campaign_rows);
+            }
         });
     }
     function update(id, metrics, failure) {
@@ -152,6 +154,15 @@
                 var data = await response.json();
                 if (!response.ok || !data.metrics || data.metrics.source !== 'devtesthub_live') throw new Error('unavailable');
                 if (revision === (revisions.get(id) || 0)) update(id, data.metrics);
+                try {
+                    var analyticsResponse = await fetch(endpoint(id, 'live-metrics/analytics') + '?init_data=' + encodeURIComponent(window.getTelegramInitDataRaw()), { cache: 'no-store' });
+                    var analyticsPayload = await analyticsResponse.json();
+                    if (analyticsResponse.ok && analyticsPayload.analytics && revision === (revisions.get(id) || 0)) {
+                        data.metrics.health_score = analyticsPayload.analytics.health_score;
+                        data.metrics.health_delta = analyticsPayload.analytics.health_delta;
+                        update(id, data.metrics);
+                    }
+                } catch (_) {}
             } catch (_) { if (revision === (revisions.get(id) || 0)) update(id, null, true); }
             finally { requests.delete(id); }
         })();
@@ -182,6 +193,61 @@
         };
         dialog.querySelector('input').focus();
     }
+    function owner(id) {
+        return (window.myProjects || []).concat(window.archivedProjects || []).find(function (project) { return Number(project.id || project.app_id) === Number(id); }) || {};
+    }
+    function placeOf(id) {
+        var project = owner(id), radar = window.LiveMarket && LiveMarket.cardPosition && LiveMarket.cardPosition(id), stored = project.live_market_score || {};
+        return {
+            rank: radar && radar.rank != null ? radar.rank : stored.rank,
+            tier: radar && radar.tier != null ? radar.tier : stored.tier,
+            score: radar && radar.score != null ? radar.score : (stored.market_score != null ? stored.market_score : stored.score),
+            rankDelta: radar && radar.rankDelta != null ? radar.rankDelta : stored.rank_delta,
+            scoreDelta: radar && radar.scoreDelta != null ? radar.scoreDelta : stored.score_delta
+        };
+    }
+    function moveLabel(places, points) {
+        if (places == null && points == null) return '<b class="lm-delta is-flat">' + esc(window.t('mkPosUnknown', {}, window.lang)) + '</b>';
+        var shift = Number(places) || 0, score = Number(points) || 0;
+        if (!shift && !score) return '<b class="lm-delta is-flat">' + esc(window.t('mkPosFlat', {}, window.lang)) + '</b>';
+        var up = shift > 0 || (!shift && score > 0);
+        return '<b class="lm-delta ' + (up ? 'is-up' : 'is-down') + '">' + esc(window.t(up ? 'mkPosUp' : 'mkPosDown', { places: Math.abs(shift), points: Math.abs(score) }, window.lang)) + '</b>';
+    }
+    function resultBlock(id, metrics) {
+        var place = placeOf(id), project = owner(id);
+        var tier = project.live_tier_event || project.live_project_control && project.live_project_control.tier_event;
+        var promoted = tier && Number(tier.from_tier) > Number(tier.to_tier);
+        var position = '<button type="button" class="lm-result-tile" data-lm-position="' + id + '"><span class="lm-result-kicker">' + esc(window.t('mkPosTitle', {}, window.lang)) + '</span><strong>' + (place.rank != null && place.tier != null ? esc(window.t('mkPosPlace', { rank: place.rank, tier: place.tier }, window.lang)) : esc(window.t('mkPosEmpty', {}, window.lang))) + '</strong><small>' + (place.score != null ? esc(window.t('mkPosScore', { score: place.score }, window.lang)) : '') + '</small>' + moveLabel(place.rankDelta, place.scoreDelta) + '</button>';
+        var healthScore = metrics && metrics.health_score, healthDelta = metrics && metrics.health_delta;
+        var healthMove = healthDelta == null ? '<b class="lm-delta is-flat">' + esc(window.t('mkPosUnknown', {}, window.lang)) + '</b>' : !Number(healthDelta) ? '<b class="lm-delta is-flat">' + esc(window.t('mkPosFlat', {}, window.lang)) + '</b>' : '<b class="lm-delta ' + (healthDelta > 0 ? 'is-up' : 'is-down') + '">' + esc(window.t(healthDelta > 0 ? 'mkHealthUp' : 'mkHealthDown', { delta: Math.abs(healthDelta) }, window.lang)) + '</b>';
+        var pulse = '<button type="button" class="lm-result-tile" data-lm-health="' + id + '"><span class="lm-result-kicker">' + esc(window.t('mkHealthTitle', {}, window.lang)) + '</span><strong>' + (healthScore == null ? '—' : esc(window.t('mkHealthScore', { score: healthScore }, window.lang))) + '</strong>' + (healthScore == null ? '<small>' + esc(window.t('mkHealthEmpty', {}, window.lang)) + '</small>' : '') + healthMove + '</button>';
+        var tierLine = tier ? '<div class="lm-tier-line' + (promoted ? ' is-up' : ' is-down') + '"><span>' + esc(window.t(promoted ? 'lrTierPromoted' : 'lrTierDemoted', { from: tier.from_tier, to: tier.to_tier, score: tier.score }, window.lang)) + '</span><button type="button" data-lr-tier-ack="' + tier.id + '" data-lr-tier-app="' + id + '">' + esc(window.t('mkTierDismiss', {}, window.lang)) + '</button></div>' : '';
+        var lost = metrics && metrics.early_exit_impact && Number(metrics.early_exit_impact.points_lost) || 0;
+        var early = lost > 0 ? '<button type="button" class="lm-early-chip" data-lm-early="' + id + '">' + esc(window.t('mkEarlyChip', { n: lost }, window.lang)) + '</button><div class="lm-early-body" data-lm-early-body="' + id + '" hidden><button type="button" data-lm-early-close aria-label="✕">✕</button><p>' + esc(window.t('mkEarlyBody', { n: lost }, window.lang)) + '</p></div>' : '';
+        return '<div class="lm-result">' + position + pulse + tierLine + early + '</div>';
+    }
+    function openPosition(id) {
+        var previous = document.getElementById('lm-position-sheet'); if (previous) previous.remove();
+        var place = placeOf(id);
+        var moved = place.rankDelta == null && place.scoreDelta == null ? window.t('mkPosNoCut', {}, window.lang) : window.t('mkPosMoved', { places: place.rankDelta || 0, points: place.scoreDelta || 0 }, window.lang);
+        var layer = document.createElement('div'); layer.id = 'lm-position-sheet'; layer.className = 'modal-overlay project-instructions-overlay active';
+        layer.innerHTML = '<section class="project-instructions-sheet lm-position-sheet" role="dialog" aria-modal="true"><div class="project-instructions-sheet__handle"></div><header class="project-instructions-sheet__head"><h3>' + esc(window.t('mkPosTitle', {}, window.lang)) + '</h3><button type="button" class="meta-chip" data-lm-close>✕</button></header><p>' + esc(window.t('mkPosSheet', {}, window.lang)) + '</p><p>' + esc(moved) + '</p><button type="button" class="btn btn-primary" data-lm-radar-go>' + esc(window.t('mkPosOpen', {}, window.lang)) + '</button></section>';
+        document.body.appendChild(layer);
+        layer.onclick = function (event) {
+            if (event.target === layer || event.target.closest('[data-lm-close]')) layer.remove();
+            if (event.target.closest('[data-lm-radar-go]')) { layer.remove(); if (window.LiveMarket && LiveMarket.openRadar) LiveMarket.openRadar(id); else if (window.switchTab) window.switchTab('market'); }
+        };
+    }
+    document.addEventListener('click', function (event) {
+        var early = event.target.closest('[data-lm-early]');
+        if (early) { event.stopPropagation(); var body = early.parentElement.querySelector('[data-lm-early-body="' + early.dataset.lmEarly + '"]'); if (body) body.hidden = !body.hidden; return; }
+        var close = event.target.closest('[data-lm-early-close]');
+        if (close) { event.stopPropagation(); var box = close.closest('.lm-early-body'); if (box) box.hidden = true; return; }
+        var health = event.target.closest('[data-lm-health]');
+        if (health && window.LiveProjectMetrics) { LiveProjectMetrics.details(health.dataset.lmHealth, event); return; }
+        var position = event.target.closest('[data-lm-position]');
+        if (position) { event.stopPropagation(); openPosition(Number(position.dataset.lmPosition)); }
+    });
     window.LiveProjectMetrics = {
         explain: function(event) { if(event)event.stopPropagation();var control=event&&event.currentTarget;var hint=control&&control.dataset.liveHint;if(hint&&window.showToast)window.showToast(hint,10000); },
         render: render,
