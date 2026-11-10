@@ -47,7 +47,7 @@
  function syncOpen(){if(!bar)return;var open=openNow(),blocked=childrenOpen();backdrop.hidden=!open;menu.setAttribute('aria-hidden',String(!open||blocked));menu.inert=!open||blocked;document.body.classList.toggle('smart-hud-open',open);bar.querySelectorAll('[data-hud-open]').forEach(function(b){b.setAttribute('aria-expanded',String(open&&logicalTab(b.dataset.hudOpen)===tab));});if(window.syncTelegramBackButton)syncTelegramBackButton();}
  function silenced(key){return Date.now()<quietUntil&&(quietKey==='*'||!key||quietKey===key);}
  function silence(key){quietUntil=Date.now()+700;quietKey=key||'*';}
- function open(next,trigger){var key=logicalTab(next||'profile');if(silenced(key))return;if(!init())return;focus=trigger||document.activeElement;lastTrigger=key;setTab(key);menu.classList.add('active');refresh();syncOpen();['populateSettingsEmail','populateDeviceInfoSettings'].forEach(function(name){if(typeof window[name]==='function')window[name]();});if(window.refreshHomeScreenStatus)refreshHomeScreenStatus({force:true});if(window.tg&&tg.HapticFeedback)tg.HapticFeedback.selectionChanged();}
+ function open(next,trigger){var key=logicalTab(next||'profile');if(silenced(key))return;if(!init())return;focus=trigger||document.activeElement;lastTrigger=key;setTab(key);menu.classList.add('active');refresh();if(key==='profile'&&window.ProfileReputation)ProfileReputation.markBustSeen();syncOpen();['populateSettingsEmail','populateDeviceInfoSettings'].forEach(function(name){if(typeof window[name]==='function')window[name]();});if(window.refreshHomeScreenStatus)refreshHomeScreenStatus({force:true});if(window.tg&&tg.HapticFeedback)tg.HapticFeedback.selectionChanged();}
  function close(restore,key){if(!menu)return;silence(key||tab);menu.classList.remove('active');syncOpen();if(restore!==false&&focus&&focus.isConnected&&focus!==document.activeElement)try{focus.focus({preventScroll:true});}catch(_){}}
  function toggle(next,trigger){var key=logicalTab(next||'settings');if(silenced(key))return;if(openNow()&&tab===key){close(false,key);return;}open(next||'settings',trigger);}
  function finite(value){return value!=null&&value!==''&&Number.isFinite(Number(value))?Number(value):null;}
@@ -60,8 +60,8 @@
   var rate=finite(s.acceptance_rate_pct);if(rate==null)rate=finite(sent.acceptance_rate_pct);
   return {
    closed:t('hudClosedSummary',{tests:number(s.completed_tests||0),grants:number(s.grant_tests_count||0),active:number(s.my_active_tests||0)}),
-   quality:t('hudQualityLine',{points:number(points),rate:rate==null?'—':number(rate)+'%'}),
-   feedback:t('hudFeedbackSent',{bugs:number(values.bugs_count||0),ideas:number(values.ideas_count||0),reviews:number(values.play_reviews_count||0)})
+   quality:t('hudQualityLine',{rate:rate==null?'—':number(rate)+'%',bugs:number(values.bugs_count||0),ideas:number(values.ideas_count||0),reviews:number(values.play_reviews_count||0)}),
+   feedback:''
   };
  }
  function projects(){return typeof myProjects!=='undefined'&&Array.isArray(myProjects)?myProjects:[];}

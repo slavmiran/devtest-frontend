@@ -596,6 +596,8 @@ function renderReliabilityAlphaModal() {
         grantsSectionHtml = `
             <section class="ri-surface">
               <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
+              <p class="ri-grant-sub">${window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang))}</p>
+              <button type="button" class="wallet-link" data-rep-open="wallet">${window.escapeHTML(window.t('reliabilityOpenWallet', {}, lang))}</button>
               <div class="ri-grants-tiles">
                 ${grants.map(function(g, idx) {
                   var activeClass = idx === window._activeGrantIndex ? 'active' : '';
@@ -638,6 +640,8 @@ function renderReliabilityAlphaModal() {
         grantsSectionHtml = `
             <section class="ri-surface">
               <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
+              <p class="ri-grant-sub">${window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang))}</p>
+              <button type="button" class="wallet-link" data-rep-open="wallet">${window.escapeHTML(window.t('reliabilityOpenWallet', {}, lang))}</button>
               <div class="ri-empty-hint">${window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang))}</div>
             </section>
         `;
@@ -699,7 +703,8 @@ function renderReliabilityAlphaModal() {
                 ['⭐', 'is-reviews', 'influenceReviewsTitle', 'influenceReviewsText'],
                 ['🎁', 'is-welcome', 'influenceWelcomeTitle', 'influenceWelcomeText']
               ].map(function(item) {
-                return '<div class="ri-influence-card"><div class="ri-influence-header"><div class="ri-influence-icon ' + item[1] + '">' + item[0] + '</div><div class="ri-influence-title">' + window.escapeHTML(window.t(item[2], {}, lang)) + '</div></div><div class="ri-influence-text">' + window.escapeHTML(window.t(item[3], {}, lang)) + '</div></div>';
+                var now = window.ProfileReputation && ProfileReputation.reliabilityNow ? ProfileReputation.reliabilityNow(item[1]) : '';
+                return '<div class="ri-influence-card"><div class="ri-influence-header"><div class="ri-influence-icon ' + item[1] + '">' + item[0] + '</div><div class="ri-influence-title">' + window.escapeHTML(window.t(item[2], {}, lang)) + '</div></div><div class="ri-influence-text">' + window.escapeHTML(window.t(item[3], {}, lang)) + '</div>' + (now ? '<div class="ri-influence-now">' + window.escapeHTML(now) + '</div>' : '') + '</div>';
               }).join('')}
             </div>
           </div>
@@ -6557,7 +6562,7 @@ function renderKarmaHowList() {
             title: label('karmaHowDevTitle', '🤝 От Разработчиков'),
             rows: [
                 { label: label('karmaHowThanks', 'Спасибо'), note: label('karmaHowThanksNote', '2 в первую неделю, ещё 2 со второй'), value: '+1.5' },
-                { label: label('karmaHowSpecial', 'Особый вклад'), note: label('karmaHowSpecialNote', '1 в первую неделю, ещё 1 со второй'), value: '+3.0' },
+                { label: label('karmaHowSpecial', 'Особая благодарность от авторов'), note: label('karmaHowSpecialNote', '1 в первую неделю, ещё 1 со второй'), value: '+3.0' },
                 { label: label('karmaHowOvertimeReward', 'Овертайм-награда (одному тестеру)'), value: '+2.0' },
                 { label: label('karmaHowPlayReviewReward', 'Награда за отзыв в Google Play'), value: '+1.5 / +3.0' },
             ],
@@ -6621,6 +6626,7 @@ async function showKarmaInfo() {
     breakdownEl.innerHTML = '';
     breakdownSection.style.display = 'none';
     renderKarmaHowList();
+    if (window.ProfileReputation) ProfileReputation.paintKarmaInfluence();
 
     let result = {
         status: 'error',
@@ -7587,6 +7593,9 @@ async function showContributionInfo(options) {
         if (typeof window.hideTgDeeplinkLoader === 'function') {
             window.hideTgDeeplinkLoader('contribution');
         }
+        window._contributionCurrentCache = _contributionCurrentCache;
+        window._contributionHistoryCache = _contributionHistoryCache;
+        if (window.ProfileReputation) ProfileReputation.paintContributionDash();
     }
 }
 
@@ -7969,13 +7978,13 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
                         <span class="karma-dist-pool-val">${pools.thanksAvailable} из ${pools.thanksMax} доступно</span>
                     </div>
                     <div class="karma-dist-pool-item">
-                        <span class="karma-dist-pool-title">❤️‍🔥 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особый вклад')} (+3.0)</span>
+                        <span class="karma-dist-pool-title">❤️‍🔥 ${window.escapeHTML(window.t('karmaSelectBug', {}, lang) || 'Особая благодарность от авторов')} (+3.0)</span>
                         <span class="karma-dist-pool-val">${pools.specialAvailable} из ${pools.specialMax} доступно</span>
                     </div>
                 </div>
                 <div class="karma-dist-rules-list">
-                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek1', {}, lang) || '1-я неделя: 2 Спасибо (+1.5) и 1 Особый вклад (+3.0)')}</div>
-                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek2', {}, lang) || 'Со 2-й недели: ещё 2 Спасибо и 1 Особый вклад (всего 4 и 2)')}</div>
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek1', {}, lang) || '1-я неделя: 2 Спасибо (+1.5) и 1 Особая благодарность от авторов (+3.0)')}</div>
+                    <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesWeek2', {}, lang) || 'Со 2-й недели: ещё 2 Спасибо и 1 Особая благодарность от авторов (всего 4 и 2)')}</div>
                     <div class="karma-dist-limit-item">• ${window.escapeHTML(window.t('karmaDistRulesBoth', {}, lang) || 'Один тестер может получить оба типа наград')}</div>
                 </div>
             </div>

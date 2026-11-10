@@ -3359,6 +3359,7 @@ function renderEarnBustDynamic() {
 
 async function openEarnBustModal() {
     document.getElementById('earn-bust-modal').classList.add('active');
+    if (window.ProfileReputation) ProfileReputation.mountWallet();
     try {
         const initQ = 'init_data=' + encodeURIComponent(getTelegramInitDataRaw());
         const response = await fetch(`${API_BASE}/referral-stats/${userId}?${initQ}`);
@@ -3388,7 +3389,9 @@ async function openEarnBustModal() {
         if (typeof syncDeviceProfileUi === 'function') {
             syncDeviceProfileUi();
         }
+        window._walletEntries = Array.isArray(data.wallet_entries) ? data.wallet_entries : [];
         renderEarnBustDynamic();
+        if (window.ProfileReputation) ProfileReputation.mountWallet();
     } catch (error) {
         console.error('Failed to load referral stats:', error);
     }

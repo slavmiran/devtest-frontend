@@ -1395,7 +1395,7 @@ function buildDeveloperProfileWidget() {
             profileSummary ? profileSummary.closed : formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
         const qualityLine = profileSummary ? window.escapeHTML(profileSummary.quality) : '';
-        const feedbackLine = profileSummary ? window.escapeHTML(profileSummary.feedback) : '';
+        const sprintView = window.ProfileReputation ? ProfileReputation.sprintCardHtml() : null;
         const deltaChip = function (kind) {
             const deltas = (visibilityStats && visibilityStats.deltas_7d) || {};
             const raw = deltas[kind];
@@ -1426,9 +1426,9 @@ function buildDeveloperProfileWidget() {
                         </div>
                         <div class="developer-widget-stats-line">${achievementsLine}</div>
                         ${qualityLine ? `<div class="developer-widget-quality-line">${qualityLine}</div>` : ''}
-                        ${feedbackLine ? `<div class="developer-widget-feedback-line">${feedbackLine}</div>` : ''}
                     </div>
                 </div>
+                ${window.ProfileReputation ? ProfileReputation.profileStripHtml() : ''}
                 <div class="metrics-grid">
                     <button type="button" class="metric-card metric-card-clickable ${metricClass}" onclick="showReliabilityInfo()">
                         <div class="metric-card-top">
@@ -1452,7 +1452,7 @@ function buildDeveloperProfileWidget() {
                     <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
                         <div class="metric-card-top">
                             <span class="metric-label">${window.t('metricBalanceBust', {}, lang) || 'Баланс'} $BUST</span>
-                            ${deltaChip('bust')}
+                            ${window.ProfileReputation ? ProfileReputation.bustBadgeHtml() : ''}
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-bust-body">
@@ -1462,13 +1462,12 @@ function buildDeveloperProfileWidget() {
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-neutral metric-card-sprint" onclick="showContributionInfo()">
                         <div class="metric-card-top">
-                            <span class="metric-label">${window.t('metricSprintPositionLabel', {}, lang) || (lang === 'ru' ? 'Позиция в Спринте' : 'Sprint position')}</span>
-                            ${deltaChip('sprint_rank')}
+                            <span class="metric-label">${window.t('profileSprintCardLabel', {}, lang) || (lang === 'ru' ? 'Вклад и Спринт' : 'Contribution and Sprint')}</span>
+                            ${sprintView ? sprintView.badge : ''}
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-sprint-body">
-                            <div class="metric-value metric-value--sprint">${window.escapeHTML(contributionPrimary)}</div>
-                            ${contributionTimer ? `<div class="metric-sprint-timer">${window.escapeHTML(contributionTimer)}</div>` : ''}
+                            ${sprintView ? sprintView.body : `<div class="metric-value">${window.escapeHTML(contributionPrimary)}</div>`}
                         </div>
                     </button>
                 </div>
@@ -1515,22 +1514,8 @@ function buildDeveloperProfileWidget() {
                     };
                     visibilityStats.contribution_score = Number(me.contribution_score || 0);
                 }
-                const sprintCard = document.querySelector('#hud-profile .metric-card-sprint .metric-sprint-body') || container.querySelector('.metric-card-sprint .metric-sprint-body');
-                if (sprintCard && sprintCard.isConnected) {
-                    const updatedSeason = (visibilityStats && visibilityStats.contribution_season) || {};
-                    const updatedRank = Number(updatedSeason.rank || 0);
-                    const updatedEndsAt = Date.parse(String(updatedSeason.ends_at || ''));
-                    const updatedTimer = Number.isFinite(updatedEndsAt)
-                        ? (window.t('metricSprintDaysLeft', {
-                            days: Math.max(0, Math.floor((updatedEndsAt - Date.now()) / 86400000)),
-                        }, lang) || '')
-                        : '';
-                    sprintCard.innerHTML =
-                        '<div class="metric-value metric-value--sprint">' +
-                            window.escapeHTML(updatedRank > 0 ? ('#' + Math.round(updatedRank)) : '—') +
-                        '</div>' +
-                        (updatedTimer ? '<div class="metric-sprint-timer">' + window.escapeHTML(updatedTimer) + '</div>' : '');
-                }
+                const sprintCard = document.querySelector('#hud-profile .metric-card-sprint') || container.querySelector('.metric-card-sprint');
+                if (sprintCard && window.ProfileReputation) ProfileReputation.fillSprintCard(sprintCard);
                 if (window.SmartTopBar) SmartTopBar.refresh();
             }).catch(function() { /* ignore */ });
         }

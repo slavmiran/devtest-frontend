@@ -1,0 +1,59 @@
+.rep-influence-wrap,.contrib-influence,.karma-influence{margin:10px 0 4px}
+.rep-influence>summary,.contrib-influence>summary,.karma-rules>summary{cursor:pointer;font-weight:700;font-size:13px;list-style:none}
+.rep-influence>summary::-webkit-details-marker,.contrib-influence>summary::-webkit-details-marker{display:none}
+.rep-influence>summary::after{content:" ▾"}
+.rep-influence[open]>summary::after{content:" ▴"}
+.rep-influence[open] ~ .rep-chip-row{display:none}
+.rep-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#hud-profile .metric-label{min-width:0;flex:1 1 auto}
+#hud-profile .metric-delta,#hud-profile .metric-chevron{flex:0 0 auto}
+#hud-profile .metric-sprint-timer{white-space:normal;overflow:visible;text-overflow:unset}
+.rep-chip,.rep-row{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:inherit;border-radius:999px;padding:6px 10px;font-size:12px;text-align:left}
+.rep-table{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.rep-row{border-radius:12px;display:flex;justify-content:space-between;gap:8px;width:100%}
+.rep-row strong{font-weight:650;text-align:right}
+.wallet-hero{display:flex;align-items:baseline;gap:8px;margin:8px 0}
+.wallet-hero strong{font-size:32px;font-weight:800;letter-spacing:-.03em}
+.wallet-tabs,.wallet-filters{display:flex;gap:6px;margin:8px 0 12px}
+.wallet-tabs button,.wallet-filters button,.wallet-pack,.wallet-copy,.wallet-link{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:inherit;border-radius:12px}
+.wallet-tabs button,.wallet-filters button{flex:1;padding:8px 6px;font-weight:700}
+.wallet-tabs button.is-on,.wallet-filters button.is-on,.wallet-pack.is-on{background:rgba(80,160,255,.18);border-color:rgba(80,160,255,.45)}
+.wallet-pack-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wallet-pack{padding:12px;display:flex;flex-direction:column;align-items:flex-start;min-height:92px;position:relative}
+.wallet-pack strong{font-size:20px}
+.wallet-pack em{font-style:normal;font-size:10px;padding:2px 6px;border-radius:999px;background:#2f6fed;color:#fff;margin-bottom:6px}
+.wallet-pack em.is-value{background:#0f9f6e}
+.wallet-custom{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px}
+.wallet-custom input{border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,.12);background:transparent;color:inherit}
+.wallet-note{font-size:12px;opacity:.75;line-height:1.4;margin:8px 0}
+.wallet-pay{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}
+.wallet-desk{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.wallet-copy,.wallet-link{padding:10px;text-align:left;width:100%;margin-top:6px}
+.wallet-ledger{display:flex;flex-direction:column;gap:8px}
+.wallet-tx{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.wallet-tx b,.wallet-tx small{display:block}
+.wallet-tx small{opacity:.65;font-size:11px}
+.wallet-tx .is-in{color:#3dd68c;font-weight:750}
+.wallet-tx .is-out{color:#e5b567;font-weight:750}
+.wallet-reserve details{border-radius:12px;padding:8px 10px;background:rgba(255,255,255,.04)}
+.wallet-reserve-row{width:100%;display:flex;justify-content:space-between;gap:8px;background:transparent;color:inherit;border:0;padding:8px 0;text-align:left}
+.wallet-reserve-row small{display:block;opacity:.65}
+.contrib-dash-hero strong{font-size:28px;display:block}
+.contrib-prices{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.contrib-prices div,.contrib-cards article{border-radius:12px;padding:8px;background:rgba(255,255,255,.04)}
+.contrib-prices div{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.contrib-prices b{font-weight:650;min-width:0}
+.contrib-prices span{font-weight:800;font-variant-numeric:tabular-nums}
+.contrib-cards{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.contrib-cards p,.karma-influence-title{font-size:12px;opacity:.8}
+.karma-influence{margin:8px 0 12px}
+.ri-influence-now,.ri-grant-sub{display:block;margin-top:6px;font-size:12px;font-weight:700}
+.report-note-hint{margin:6px 0 0;font-size:12px;line-height:1.35;color:#e5b567}
+.rv-mult-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.rv-mult-chips button{border-radius:999px;border:1px solid rgba(255,255,255,.12);background:transparent;color:inherit;padding:4px 8px;font-size:12px}
+@media (max-width:360px){
+  .wallet-hero strong{font-size:26px}
+  .wallet-pack strong{font-size:18px}
+  .contrib-prices{gap:4px}
+  .contrib-prices div{padding:6px}
+}

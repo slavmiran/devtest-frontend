@@ -3513,4 +3513,10 @@
     window.resumeGuaranteedTestWizardFromDraft = resumeGuaranteedTestWizardFromDraft;
     window.persistGuaranteedTestWizardDraft = persistGuaranteedTestWizardDraft;
     window.gtwWizardState = wizardState;
+    window.DevTestPaymentDesk = {
+        paypalEmail: PAYPAL_EMAIL,
+        paypalPayUrl: PAYPAL_PAY_URL,
+        support: TELEGRAM_SUPPORT,
+        exchanges: CRYPTO_EXCHANGES
+    };
 })();
