@@ -3,18 +3,18 @@
     'use strict';
 
     var PACKS = [
-        { id: 'start', amount: 500 },
-        { id: 'growth', amount: 1500, badge: 'popular' },
-        { id: 'pro', amount: 3500, badge: 'value' },
-        { id: 'max', amount: 8000 }
+        { id: 'start', amount: 500, usd: 5 },
+        { id: 'growth', amount: 1500, usd: 12, badge: 'popular' },
+        { id: 'pro', amount: 3500, usd: 25, badge: 'value' },
+        { id: 'max', amount: 8000, usd: 50 }
     ];
     var NOTE_MIN = 14;
     var selectedPack = 1500;
     var customMode = false;
     var walletTab = 'earn';
+    var walletPayMethod = 'crypto';
     var historyFilter = 'all';
-    var influenceOpen = false;
-    var sprintOpen = false;
+    var contribInfOpen = false;
 
     function lang() { return window.lang || 'ru'; }
     function t(key, vars, fallback) {
@@ -82,11 +82,8 @@
         var base = newbie || index == null ? 24 : index <= 0 ? 7 : index < 40 ? 12 : index < 65 ? 18 : index < 85 ? 24 : 32;
         var karmaMod = karma < 0 ? (newbie ? 0 : -Math.floor(Math.abs(karma) / 3)) : (karma > 0 ? Math.min(6, Math.floor(karma / 7)) : 0);
         var contribMod = score >= 100 ? 6 : score >= 50 ? 4 : score >= 10 ? 2 : 0;
-        var nextContrib = score < 10 ? 10 : score < 50 ? 50 : score < 100 ? 100 : null;
-        var nextContribBonus = score < 10 ? 2 : score < 50 ? 4 : score < 100 ? 6 : 0;
         var slots = Math.max(0, Math.min(50, base + karmaMod + contribMod));
         var grantBonus = karma > 0 ? Math.min(200, Math.round(karma * 5 * 10) / 10) : 0;
-        var grantCapLeft = Math.max(0, Math.round((200 - grantBonus) * 10) / 10);
         var wallet = window.ReviewCredits && ReviewCredits.get ? ReviewCredits.get() : null;
         var mult = wallet && wallet.multiplier ? wallet.multiplier : null;
         var trust = mult ? Number(mult.reliability) : (karma < 0 || (index != null && index < 50) ? 0.7 : (index != null && index >= 80 ? 1.2 : (index != null && index >= 65 ? 1.1 : 1)));
@@ -100,81 +97,13 @@
         return {
             karma: karma, index: index, newbie: newbie, status: status || 'newbie', score: score,
             base: base, karmaMod: karmaMod, contribMod: contribMod, slots: slots, grantBonus: grantBonus,
-            grantCapLeft: grantCapLeft, trust: trust, sprintM: sprintM, totalM: totalM, season: season,
-            priority: priority, autoOpen: autoOpen, welcome: welcome, counts: c, rate: rate,
-            nextContrib: nextContrib, nextContribBonus: nextContribBonus
+            trust: trust, sprintM: sprintM, totalM: totalM, season: season,
+            priority: priority, autoOpen: autoOpen, welcome: welcome, counts: c, rate: rate
         };
     }
 
-    function toneClass(kind) {
-        return kind === 'limit' ? 'is-limit' : (kind === 'locked' ? 'is-locked' : 'is-bonus');
-    }
-    function effect(kind, text) {
-        return { kind: kind, text: text };
-    }
-
-    function influenceModel(m) {
-        var karma = [];
-        var reliability = [];
-        var contrib = [];
-        if (m.grantBonus > 0) karma.push(effect('bonus', t('profileRowGrant', { n: formatAmount(m.grantBonus) }, 'Грант +' + formatAmount(m.grantBonus) + ' $BUST из 200')));
-        else karma.push(effect('locked', t('profileLockedGrant', {}, 'Грант: бонус откроется с кармой > 0')));
-        if (m.karma > 0) karma.push(effect('bonus', t('profileRowMarket', { n: formatScore(m.karma) }, 'Витрина Маркета +' + formatScore(m.karma))));
-        else if (m.karma < 0) karma.push(effect('limit', t('profileMarketPenalty', {}, 'Витрина без бонуса при отрицательной карме')));
-        if (m.karmaMod > 0) karma.push(effect('bonus', t('profileRowKarmaSlots', { n: '+' + m.karmaMod }, 'Слоты рассылки +' + m.karmaMod)));
-        else if (m.karmaMod < 0) karma.push(effect('limit', t('profileRowKarmaSlots', { n: String(m.karmaMod) }, 'Слоты рассылки ' + m.karmaMod)));
-        if (m.karma < 0) karma.push(effect('limit', t('profileRowTrustBad', { n: formatScore(m.trust) }, 'Квоты отзывов замедлены ×' + formatScore(m.trust))));
-        else karma.push(effect('bonus', t('profileRowTrustOk', {}, 'Квоты отзывов без штрафа кармы')));
-
-        if (m.trust !== 1 && m.karma >= 0) {
-            if (m.trust > 1) reliability.push(effect('bonus', t('profileRowTrust', { n: formatScore(m.trust) }, 'Квоты отзывов ×' + formatScore(m.trust))));
-            else reliability.push(effect('limit', t('profileRowTrust', { n: formatScore(m.trust) }, 'Квоты отзывов ×' + formatScore(m.trust))));
-        } else if (m.karma >= 0 && m.trust === 1) {
-            reliability.push(effect('locked', t('profileLockedTrust', {}, 'Квоты отзывов: базовый ×1.0 · от 65% будет ×1.1')));
-        }
-        reliability.push(effect('bonus', t('profileRowSlots', { n: m.slots }, 'Бесплатные слоты рассылки: ' + m.slots)));
-        if (m.autoOpen) reliability.push(effect('bonus', t('profileRowAutoOn', {}, 'Авто-приём открыт')));
-        else if (!m.newbie) reliability.push(effect('limit', t('profileChipAutoOff', {}, 'Авто-приём закрыт (<65%)')));
-        else reliability.push(effect('locked', t('profileLockedAuto', {}, 'Авто-приём откроется с индексом ≥ 65%')));
-        reliability.push(effect(m.priority ? 'bonus' : 'limit', m.priority ? t('profileRowPoolOn', {}, 'Приоритетный пул рассылки') : t('profileRowPoolOff', {}, 'Базовый пул рассылки')));
-        reliability.push(effect('bonus', t('profileRowWelcome', { n: m.welcome }, 'Старт Live +' + m.welcome + ' ⭐')));
-
-        if (m.sprintM > 1) contrib.push(effect('bonus', t('profileRowSprint', { n: formatScore(m.sprintM) }, 'Ускоритель квоты отзывов ×' + formatScore(m.sprintM))));
-        else contrib.push(effect('locked', t('profileLockedSprint', {}, 'Ускоритель квоты отзывов ×1 · Топ прошлого спринта даёт до ×2')));
-        if (m.contribMod > 0) contrib.push(effect('bonus', t('profileRowContribSlots', { n: m.contribMod }, 'Слоты за вклад +' + m.contribMod)));
-        else if (m.nextContrib != null) contrib.push(effect('locked', t('profileLockedContrib', { n: m.nextContrib, bonus: m.nextContribBonus }, 'Слоты за вклад: ещё до ' + m.nextContrib + ' ⚡ → +' + m.nextContribBonus)));
-        contrib.push(effect('bonus', t('profileRowMarketFilter', {}, 'Фильтр Маркета учитывает вклад')));
-
-        return { karma: karma, reliability: reliability, contrib: contrib };
-    }
-
-    function countTone(list, kind) {
-        return list.filter(function (item) { return item.kind === kind; }).length;
-    }
-
     function profileStripHtml() {
-        var m = model();
-        var groups = influenceModel(m);
-        var bonus = countTone(groups.karma, 'bonus') + countTone(groups.reliability, 'bonus') + countTone(groups.contrib, 'bonus');
-        var limit = countTone(groups.karma, 'limit') + countTone(groups.reliability, 'limit') + countTone(groups.contrib, 'limit');
-        var summary = t('profileInfluenceTitle', {}, '⚡ Влияния профиля');
-        if (bonus || limit) {
-            summary += ' · ' + t('profileInfluenceSummary', { bonus: bonus, limit: limit }, bonus + ' бонуса · ' + limit + ' ограничений');
-        }
-        function groupHtml(key, title, openKind, rows) {
-            return '<section class="rep-group">' +
-                '<button type="button" class="rep-group-head" data-rep-open="' + openKind + '"><span>' + esc(title) + '</span><span class="rep-group-go">›</span></button>' +
-                '<ul class="rep-group-list">' + rows.map(function (row) {
-                    return '<li class="' + toneClass(row.kind) + '">' + esc(row.text) + '</li>';
-                }).join('') + '</ul></section>';
-        }
-        return '<details class="rep-influence"' + (influenceOpen ? ' open' : '') + '>' +
-            '<summary>' + esc(summary) + '</summary>' +
-            '<div class="rep-groups">' +
-            groupHtml('karma', t('metricKarmaSub', {}, '☯️ Карма · Доверие'), 'karma', groups.karma) +
-            groupHtml('reliability', t('metricReliabilitySub', {}, '🛡 Надёжность · Дисциплина'), 'reliability', groups.reliability) +
-            groupHtml('contribution', t('metricContributionSub', {}, '⚡ Вклад · Польза'), 'contribution', groups.contrib) +
-            '</div></details>';
+        return '';
     }
 
     function sprintCardHtml() {
@@ -213,27 +142,28 @@
         if (body) body.innerHTML = view.body;
     }
 
-    function metricSubtitle(kind) {
-        if (kind === 'reliability') return t('metricReliabilitySub', {}, 'Дисциплина чекинов и удержания');
-        if (kind === 'karma') return t('metricKarmaSub', {}, 'Репутация и благодарность сообщества');
-        if (kind === 'contribution') return t('metricContributionSub', {}, 'Подтверждённая польза и качество отчётов');
-        return '';
-    }
-    function metricCardSubHtml(kind) {
-        return '<div class="metric-subline">' + esc(metricSubtitle(kind)) + '</div>';
-    }
-
     function reliabilityNow(tone) {
         var m = model();
         if (tone === 'is-showcase') {
-            return t('reliabilityNowStatus', { status: t('reliabilityDashStatus_' + m.status, {}, m.status) }, 'Сейчас: ' + m.status);
+            if (m.newbie) return lang() === 'ru' ? 'Новичок (нет штрафов)' : 'Newbie (no limits)';
+            return m.autoOpen
+                ? (lang() === 'ru' ? 'Авто-приём открыт (≥65%)' : 'Auto-accept open (≥65%)')
+                : (lang() === 'ru' ? 'Авто-приём закрыт (<65%)' : 'Auto-accept closed (<65%)');
         }
         if (tone === 'is-mail') {
-            return m.priority ? t('profileRowPoolOn', {}, 'Приоритетный пул') : t('profileRowPoolOff', {}, 'Базовый пул');
+            return m.priority
+                ? (lang() === 'ru' ? 'Приоритетная очередь' : 'Priority queue')
+                : (lang() === 'ru' ? 'Обычная очередь' : 'Standard queue');
         }
-        if (tone === 'is-slots') return t('reliabilityNowSlots', { n: m.slots }, 'Сейчас у вас: ' + m.slots + ' слотов');
-        if (tone === 'is-reviews') return t('reliabilityNowTrust', { n: formatScore(m.trust) }, 'Квоты отзывов ×' + formatScore(m.trust));
-        if (tone === 'is-welcome') return t('profileRowWelcome', { n: m.welcome }, 'Сейчас: +' + m.welcome + ' ⭐');
+        if (tone === 'is-slots') {
+            return lang() === 'ru' ? ('Доступно: ' + m.slots + ' мест') : ('Available: ' + m.slots + ' seats');
+        }
+        if (tone === 'is-reviews') {
+            return lang() === 'ru' ? ('Скорость ×' + formatScore(m.trust)) : ('Speed ×' + formatScore(m.trust));
+        }
+        if (tone === 'is-welcome') {
+            return '+' + m.welcome + ' ⭐ Live';
+        }
         return '';
     }
 
@@ -248,7 +178,8 @@
         if (kind === 'wallet' && typeof window.openEarnBustModal === 'function') return window.openEarnBustModal();
         if (kind === 'grants' && typeof window.openGrantsHistorySheet === 'function') return window.openGrantsHistorySheet();
         if (kind === 'guests') {
-            if (typeof window.switchTab === 'function') window.switchTab('projects');
+            if (typeof window.triggerGuestShowcaseNavigation === 'function') return window.triggerGuestShowcaseNavigation();
+            if (typeof window.switchTab === 'function') window.switchTab('market');
             return;
         }
         if (kind === 'market') {
@@ -306,11 +237,24 @@
         return selectedPack;
     }
 
+    function packUsd(bustAmount) {
+        var amt = Number(bustAmount || 0);
+        if (!(amt > 0)) return 0;
+        var preset = PACKS.find(function (p) { return p.amount === amt; });
+        if (preset) return preset.usd;
+        return Math.max(1, Math.round(amt * 0.008));
+    }
+
     function renderTopup() {
         var host = document.getElementById('wallet-panel-topup');
         if (!host) return;
         var amount = packAmount();
         var valid = amount >= 100 && amount <= 20000;
+        var usd = valid ? packUsd(amount) : 0;
+        var desk = window.DevTestPaymentDesk || {};
+        var methodsHtml = (typeof desk.renderMethodsHtml === 'function')
+            ? desk.renderMethodsHtml(usd || 12, walletPayMethod)
+            : '';
         host.innerHTML =
             '<div class="wallet-pack-grid">' + PACKS.map(function (pack) {
                 var on = !customMode && selectedPack === pack.amount;
@@ -318,31 +262,12 @@
                     ? '<em>' + esc(t('walletPackPopular', {}, 'Популярный')) + '</em>'
                     : (pack.badge === 'value' ? '<em class="is-value">' + esc(t('walletPackValue', {}, 'Выгодно')) + '</em>' : '');
                 return '<button type="button" class="wallet-pack' + (on ? ' is-on' : '') + '" data-wallet-pack="' + pack.amount + '">' +
-                    badge + '<strong>' + esc(formatAmount(pack.amount)) + '</strong><span>$BUST</span><small>' +
-                    esc(t('walletPack' + pack.id, {}, pack.id)) + '</small></button>';
+                    '<div class="wallet-pack-top"><strong>' + esc(formatAmount(pack.amount)) + ' <span>$BUST</span></strong>' + badge + '</div>' +
+                    '<div class="wallet-pack-bottom"><small>' + esc(t('walletPack' + pack.id, {}, pack.id)) + '</small><b class="wallet-pack-usd">$' + pack.usd + '</b></div></button>';
             }).join('') + '</div>' +
-            '<label class="wallet-custom"><span>' + esc(t('walletCustom', {}, 'Своя сумма')) + '</span>' +
-            '<input id="wallet-custom-amount" inputmode="numeric" min="100" max="20000" step="50" placeholder="100–20000" value="' + (customMode ? esc(String(amount || '')) : '') + '"></label>' +
-            '<p class="wallet-note">' + esc(t('walletPayNote', {}, 'Оплата через тот же контур, что Private Testing. $BUST зачисляет координатор после подтверждения.')) + '</p>' +
-            '<div class="wallet-pay">' +
-            '<div><b>' + esc(formatAmount(valid ? amount : 0)) + ' $BUST</b><small>' + esc(valid ? '' : t('walletCustomHint', {}, 'От 100 до 20 000')) + '</small></div>' +
-            '<button type="button" class="btn btn-primary" data-wallet-pay ' + (valid ? '' : 'disabled') + '>' + esc(t('walletPay', {}, 'К оплате')) + '</button></div>' +
-            '<div id="wallet-pay-desk" class="wallet-desk" hidden></div>';
-    }
-
-    function renderDesk() {
-        var desk = document.getElementById('wallet-pay-desk');
-        if (!desk) return;
-        var pay = window.DevTestPaymentDesk || {};
-        var exchanges = Array.isArray(pay.exchanges) ? pay.exchanges : [];
-        desk.hidden = false;
-        desk.innerHTML =
-            '<p>' + esc(t('walletDeskTitle', { n: formatAmount(packAmount()) }, 'Заявка на ' + formatAmount(packAmount()) + ' $BUST')) + '</p>' +
-            (pay.paypalEmail ? '<button type="button" class="wallet-copy" data-wallet-copy="' + esc(pay.paypalEmail) + '">PayPal · ' + esc(pay.paypalEmail) + '</button>' : '') +
-            exchanges.map(function (ex) {
-                return '<button type="button" class="wallet-copy" data-wallet-copy="' + esc(ex.value) + '">' + esc(ex.name) + ' · ' + esc(ex.value) + '</button>';
-            }).join('') +
-            '<button type="button" class="btn btn-secondary" data-wallet-support>' + esc(t('walletSupport', {}, 'Написать в поддержку')) + '</button>';
+            '<label class="wallet-custom"><span>' + esc(t('walletCustom', {}, 'Или введите свою сумму $BUST')) + '</span>' +
+            '<input id="wallet-custom-amount" inputmode="numeric" min="100" max="20000" step="50" placeholder="100 – 20 000 $BUST" value="' + (customMode ? esc(String(amount || '')) : '') + '"></label>' +
+            '<div id="wallet-gtw-methods-mount">' + methodsHtml + '</div>';
     }
 
     function renderHistory() {
@@ -356,10 +281,11 @@
         }
         host.innerHTML =
             '<div class="wallet-filters">' +
-            '<button type="button" class="' + (historyFilter === 'all' ? 'is-on' : '') + '" data-wallet-filter="all">' + esc(t('walletFilterAll', {}, 'Все')) + '</button>' +
+            '<button type="button" class="' + (historyFilter === 'all' ? 'is-on' : '') + '" data-wallet-filter="all">' + esc(t('walletFilterAll', {}, 'Все операции')) + '</button>' +
             '<button type="button" class="' + (historyFilter === 'grants' ? 'is-on' : '') + '" data-wallet-filter="grants">' + esc(t('walletFilterGrants', {}, 'Гранты')) + '</button></div>' +
-            (historyFilter === 'grants' ? '<p class="wallet-note">' + esc(t('walletGrantFormula', {}, 'Грант = база 50 + идеальный бонус 50 + карма × 5 (до 200). Потолок 300 $BUST.')) + '</p>' : '') +
-            '<button type="button" class="wallet-link" data-rep-open="grants">' + esc(t('walletOpenGrantsSheet', {}, 'Подробная история грантов')) + '</button>' +
+            '<button type="button" class="ri-rules-btn ri-grants-open-btn" style="margin-bottom:10px" data-rep-open="grants">' +
+            '<span class="ri-rules-btn-left"><span>🏆</span><span class="ri-grants-open-copy"><strong>' + esc(t('walletOpenGrantsSheet', {}, 'Подробная история грантов по проектам')) + '</strong><small>' + esc(t('walletGrantFormula', {}, 'База 50 + идеальный бонус 50 + карма × 5 (до 200)')) + '</small></span></span>' +
+            '<span class="ri-rules-chevron" style="transform:rotate(-90deg)">▼</span></button>' +
             (rows.length ? '<div class="wallet-ledger">' + rows.map(function (row) {
                 var amount = Number(row.amount || 0);
                 var sign = amount > 0 ? '+' : '';
@@ -377,7 +303,7 @@
         host.hidden = false;
         host.innerHTML = '<details><summary>' + esc(t('walletReserved', { n: formatAmount(total) }, '🔒 В резерве проектов: ' + formatAmount(total) + ' $BUST')) + '</summary>' +
             rows.map(function (row) {
-                return '<button type="button" class="wallet-reserve-row" data-wallet-project="' + esc(row.id || '') + '"><span>' + esc(row.name) + '<small>' + esc(row.why) + '</small></span><b>' + esc(formatAmount(row.amount)) + '</b></button>';
+                return '<button type="button" class="wallet-reserve-row" data-wallet-project="' + esc(row.id || '') + '"><span>' + esc(row.name) + '<small>' + esc(row.why) + '</small></span><b>' + esc(formatAmount(row.amount)) + ' 💎</b></button>';
             }).join('') + '</details>';
     }
 
@@ -393,13 +319,14 @@
         if (!cards.length) return;
         var now = document.createElement('div');
         now.className = 'wallet-earn-group';
-        now.innerHTML = '<div class="wallet-earn-label">' + esc(t('walletEarnNow', {}, 'Сделать сейчас')) + '</div>';
-        var awards = document.createElement('div');
-        awards.className = 'wallet-earn-group';
-        awards.innerHTML = '<div class="wallet-earn-label">' + esc(t('walletEarnAwards', {}, 'Награды и статусы')) + '</div>';
+        now.innerHTML = '<div class="wallet-earn-label">' + esc(t('walletEarnNow', {}, '⚡ Активные действия — получить сейчас')) + '</div>';
         var once = document.createElement('div');
         once.className = 'wallet-earn-group';
-        once.innerHTML = '<div class="wallet-earn-label">' + esc(t('walletEarnOnce', {}, 'Разовые задания')) + '</div>';
+        once.innerHTML = '<div class="wallet-earn-label">' + esc(t('walletEarnOnce', {}, '🎯 Разовые бонусы')) + '</div>';
+        var awards = document.createElement('div');
+        awards.className = 'wallet-earn-group';
+        awards.innerHTML = '<div class="wallet-earn-label">' + esc(t('walletEarnAwards', {}, '🏅 Награды в процессе тестирования')) + '</div>';
+
         cards.forEach(function (card) {
             var title = (card.querySelector('[data-i18n], span') && card.innerText) || '';
             if (/Контракт|Referral|Пригласи|Спринт|Contract|Invite|Sprint/i.test(title)) now.appendChild(card);
@@ -410,10 +337,10 @@
         if (contracts && !now.querySelector('[data-rep-open="market"]')) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'btn btn-secondary';
+            btn.className = 'btn btn-primary';
             btn.style.cssText = 'width:100%;margin-top:10px';
             btn.setAttribute('data-rep-open', 'market');
-            btn.textContent = t('walletOpenContracts', {}, 'Открыть Контракты');
+            btn.textContent = t('walletOpenContracts', {}, 'Открыть Контракты в Маркете ›');
             contracts.closest('.card').appendChild(btn);
         }
         var invite = now.querySelector('[data-i18n="earnReferralTitle"], #t-earnReferralTitle');
@@ -423,12 +350,22 @@
             guestBtn.className = 'btn btn-secondary';
             guestBtn.style.cssText = 'width:100%;margin-top:10px';
             guestBtn.setAttribute('data-rep-open', 'guests');
-            guestBtn.textContent = t('walletOpenGuests', {}, 'К гостевым проектам');
+            guestBtn.textContent = t('walletOpenGuests', {}, 'К гостевым проектам ›');
             invite.closest('.card').appendChild(guestBtn);
         }
+        var grantCard = awards.querySelector('#t-earnGrantTitle, [data-i18n="earnGrantTitle"]');
+        if (grantCard && !awards.querySelector('[data-rep-open="grants"]')) {
+            var grantBtn = document.createElement('button');
+            grantBtn.type = 'button';
+            grantBtn.className = 'btn btn-secondary';
+            grantBtn.style.cssText = 'width:100%;margin-top:10px';
+            grantBtn.setAttribute('data-rep-open', 'grants');
+            grantBtn.textContent = t('reliabilityOpenGrants', {}, 'Открыть историю грантов ›');
+            grantCard.closest('.card').appendChild(grantBtn);
+        }
         earn.appendChild(now);
-        earn.appendChild(awards);
         earn.appendChild(once);
+        earn.appendChild(awards);
         earn.dataset.walletSorted = '1';
     }
 
@@ -457,16 +394,20 @@
                 return node !== title && node !== desc && node !== closeBtn && !node.id;
             });
             var shell = document.createElement('div');
-            shell.className = 'wallet-shell';
+            shell.className = 'wallet-shell gtw-overlay-vars';
             shell.innerHTML =
                 '<div class="wallet-hero-card">' +
-                '<div class="wallet-hero-kicker">' + esc(t('walletHeroKicker', {}, 'Ваш баланс платформы')) + '</div>' +
-                '<div class="wallet-hero"><span>' + esc(t('walletAvailable', {}, 'Доступно')) + '</span><strong id="wallet-hero-balance">0</strong><small>💎 $BUST</small></div>' +
+                '<div class="wallet-hero-top">' +
+                '<div class="wallet-hero-emblem" aria-hidden="true">💎</div>' +
+                '<div class="wallet-hero-main">' +
+                '<div class="wallet-hero-kicker">' + esc(t('walletHeroKicker', {}, 'Доступный баланс кошелька')) + '</div>' +
+                '<div class="wallet-hero"><strong id="wallet-hero-balance">0</strong><small>$BUST</small></div>' +
+                '</div></div>' +
                 '<div id="wallet-reserve" class="wallet-reserve" hidden></div></div>' +
                 '<div class="wallet-tabs" role="tablist">' +
-                '<button type="button" data-wallet-tab="topup">' + esc(t('walletTabTopup', {}, 'Пополнить')) + '</button>' +
-                '<button type="button" data-wallet-tab="earn" class="is-on">' + esc(t('walletTabEarn', {}, 'Заработать')) + '</button>' +
-                '<button type="button" data-wallet-tab="history">' + esc(t('walletTabHistory', {}, 'История')) + '</button></div>' +
+                '<button type="button" data-wallet-tab="topup">💳 ' + esc(t('walletTabTopup', {}, 'Пополнить')) + '</button>' +
+                '<button type="button" data-wallet-tab="earn" class="is-on">🎯 ' + esc(t('walletTabEarn', {}, 'Заработать')) + '</button>' +
+                '<button type="button" data-wallet-tab="history">📜 ' + esc(t('walletTabHistory', {}, 'История')) + '</button></div>' +
                 '<div id="wallet-panel-topup" hidden></div>' +
                 '<div id="wallet-panel-earn"></div>' +
                 '<div id="wallet-panel-history" hidden></div>';
@@ -487,29 +428,33 @@
 
     function karmaInfluenceHtml() {
         var m = model();
-        var trust = m.karma < 0
-            ? t('karmaInfluenceTrustBad', { n: formatScore(m.trust) }, '⚠️ Квоты отзывов ×' + formatScore(m.trust))
-            : t('karmaInfluenceTrustOk', {}, '✓ Квоты отзывов без штрафа');
-        var slots = (m.karmaMod > 0 ? '+' : '') + m.karmaMod;
+        var cards = [
+            '<div class="karma-inf-card is-bonus">' +
+                '<div class="karma-inf-row"><span class="karma-inf-label">💰 ' + esc(lang() === 'ru' ? 'Бонус к Гранту за 14 дней' : '14-day Grant bonus') + '</span>' +
+                '<strong class="karma-inf-val">+' + esc(formatAmount(m.grantBonus)) + ' $BUST</strong></div>' +
+                '<small>' + esc(lang() === 'ru' ? ('Формула: Карма × 5 · максимум +200 $BUST к каждому гранту') : ('Formula: Karma × 5 · up to +200 $BUST per grant')) + '</small>' +
+            '</div>',
+            '<div class="karma-inf-card is-bonus">' +
+                '<div class="karma-inf-row"><span class="karma-inf-label">🚀 ' + esc(lang() === 'ru' ? 'Приоритет ваших проектов в Маркете' : 'Market priority for your apps') + '</span>' +
+                '<strong class="karma-inf-val">' + (m.karma >= 0 ? '+' : '') + esc(formatScore(m.karma)) + '</strong></div>' +
+                '<small>' + esc(lang() === 'ru' ? 'Прямая прибавка к рейтингу показа ваших приложений во взаимном тестировании' : 'Direct boost to your apps visibility in mutual testing') + '</small>' +
+            '</div>'
+        ];
+        if (m.karma < 0) {
+            cards.push(
+                '<div class="karma-inf-card is-limit">' +
+                    '<div class="karma-inf-row"><span class="karma-inf-label">⚠️ ' + esc(lang() === 'ru' ? 'Штраф к накоплению отзывов' : 'Review quota penalty') + '</span>' +
+                    '<strong class="karma-inf-val">×0.70</strong></div>' +
+                    '<small>' + esc(lang() === 'ru' ? 'При отрицательной карме бесплатная квота отзывов копится на 30% медленнее' : 'Negative karma slows free review quota accumulation by 30%') + '</small>' +
+                '</div>'
+            );
+        }
         return '<div class="karma-influence">' +
-            '<p class="metric-lead">' + esc(t('metricKarmaLead', {}, 'Социальный капитал: вам доверяют авторы и сообщество.')) + '</p>' +
-            '<div class="karma-influence-title">' + esc(t('karmaInfluenceTitle', {}, 'Ваше текущее влияние кармы')) + '</div>' +
-            '<div class="rep-chip-row">' +
-            '<span class="rep-chip is-bonus">' + esc(t('karmaInfluenceGrant', { n: formatAmount(m.grantBonus) }, 'Грант +' + formatAmount(m.grantBonus) + ' / 200')) + '</span>' +
-            '<span class="rep-chip is-bonus">' + esc(t('karmaInfluenceMarket', { n: formatScore(m.karma) }, 'Витрина +' + formatScore(m.karma))) + '</span>' +
-            '<span class="rep-chip ' + (m.karmaMod < 0 ? 'is-limit' : 'is-bonus') + '">' + esc(t('karmaInfluenceSlots', { n: slots }, 'Слоты ' + slots)) + '</span>' +
-            '<span class="rep-chip ' + (m.karma < 0 ? 'is-limit' : 'is-bonus') + '">' + esc(trust) + '</span>' +
-            '</div><p class="wallet-note">' + esc(t('karmaPlatformNote', {}, 'Карма за фидбэк — репутация от платформы и авторов. Очки Вклада за те же отчёты считаются отдельно и идут в Спринт.')) + '</p></div>';
+            '<div class="karma-inf-grid">' + cards.join('') + '</div></div>';
     }
     function paintKarmaInfluence() {
         var host = document.getElementById('karma-influence');
         if (host) host.innerHTML = karmaInfluenceHtml();
-        var title = document.querySelector('#karma-info-modal .dashboard-title');
-        if (title && !title.dataset.subReady) {
-            title.insertAdjacentHTML('afterend', '<div class="metric-lead metric-lead--title">' + esc(t('metricKarmaLead', {}, 'Социальный капитал: вам доверяют авторы и сообщество.')) +
-                ' <button type="button" class="metric-info-btn" data-rep-open="karma-rules" hidden></button></div>');
-            title.dataset.subReady = '1';
-        }
     }
 
     function lifetimeCounts() {
@@ -544,8 +489,6 @@
         var score = lifetimeScore();
         var counts = lifetimeCounts();
         var rate = m.rate;
-        var season = m.season || {};
-        var seasonNo = season.season_number != null ? season.season_number : '—';
         var prices = [
             ['🐞', t('contribPriceBug', {}, 'Баг +5'), counts.bugs],
             ['💡', t('contribPriceIdea', {}, 'Идея +4'), counts.ideas],
@@ -556,52 +499,34 @@
         ];
         return '<section class="contrib-dash">' +
             '<div class="contrib-dash-hero">' +
-            '<span class="contrib-dash-kicker">' + esc(t('contribLifetime', {}, 'Накопленный вклад')) + '</span>' +
-            '<strong>' + esc(formatScore(score)) + ' ⚡</strong>' +
-            '<p class="metric-lead">' + esc(t('metricContributionLead', {}, 'Подтверждённая польза: баги, идеи и отзывы, которые принял автор.')) + '</p>' +
-            '<small class="contrib-quality">' + esc(t('contribAcceptQuality', { n: rate == null ? '—' : formatScore(rate) }, '✓ Качество отчётов (принято): ' + (rate == null ? '—' : formatScore(rate) + '%'))) + '</small>' +
+            '<div class="contrib-dash-top">' +
+            '<div><span class="contrib-dash-kicker">' + esc(t('contribLifetime', {}, 'Вклад за всё время')) + '</span>' +
+            '<strong>' + esc(formatScore(score)) + ' ⚡</strong></div>' +
+            '<span class="contrib-quality-pill">' + esc(t('contribAcceptQuality', { n: rate == null ? '—' : formatScore(rate) }, '✓ Качество отчётов (принято): ' + (rate == null ? '—' : formatScore(rate) + '%'))) + '</span>' +
             '</div>' +
             '<div class="contrib-prices">' + prices.map(function (row) {
                 return '<div><b>' + row[0] + ' ' + esc(row[1]) + '</b><span>' + esc(formatScore(row[2])) + '</span></div>';
-            }).join('') + '</div>' +
-            '<div class="contrib-influence is-open">' +
-            '<div class="contrib-influence-title">' + esc(t('contribInfluenceTitle', {}, 'Влияние вклада на профиль')) + '</div>' +
+            }).join('') + '</div></div>' +
+            '<details class="contrib-influence-acc"' + (contribInfOpen ? ' open' : '') + '>' +
+            '<summary class="ri-rules-btn contrib-influence-btn">' +
+            '<span class="ri-rules-btn-left">⚡ ' + esc(t('contribInfluenceTitle', {}, 'Влияние вклада на профиль')) + '</span>' +
+            '<span class="ri-rules-chevron">▼</span></summary>' +
             '<div class="contrib-cards">' +
-            '<article class="' + (m.sprintM > 1 ? 'is-bonus' : 'is-locked') + '"><b>' + esc(t('contribInfSprint', { n: formatScore(m.sprintM) }, 'Ускоритель квоты отзывов ×' + formatScore(m.sprintM))) + '</b><p>' + esc(t('contribInfSprintText', {}, 'Место прошлого Спринта умножает скорость набора квоты отзывов, максимум ×2.')) + '</p></article>' +
-            '<article class="is-bonus"><b>' + esc(t('contribInfPool', {}, 'Призовой пул 2 000 $BUST')) + '</b><p>' + esc(t('contribInfPoolText', {}, 'Топ-10 получает от 60 до 450 $BUST.')) + '</p></article>' +
-            '<article class="' + (m.contribMod > 0 ? 'is-bonus' : 'is-locked') + '"><b>' + esc(t('contribInfSlots', { n: m.contribMod }, 'Слоты рассылки +' + m.contribMod)) + '</b><p>' + esc(t('contribInfSlotsText', {}, '10+ даёт +2 места, 50+ даёт +4, 100+ даёт +6 — навсегда.')) + '</p></article>' +
-            '<article class="is-bonus"><b>' + esc(t('contribInfMarket', {}, 'Фильтр Маркета по вкладу')) + '</b><p>' + esc(t('contribInfMarketText', {}, 'В подборе контрагентов выше те, у кого вклад больше, при выставлении фильтра.')) + '</p></article>' +
-            '</div></div>' +
-            '<details class="contrib-sprint-shell"' + (sprintOpen ? ' open' : '') + '>' +
-            '<summary>' + esc(t('contribSprintSummary', { n: seasonNo }, '🏆 Спринты · Текущий №' + seasonNo)) + '</summary>' +
-            '<p class="wallet-note">' + esc(t('contribSprintLead', {}, '10 дней, призовой фонд 2 000 $BUST. Ниже — текущий забег и история сезонов.')) + '</p>' +
-            '</details></section>';
+            '<article class="is-bonus"><div class="contrib-card-head"><b>⭐ ' + esc(t('contribInfSprint', { n: formatScore(m.sprintM) }, 'Ускоритель отзывов ×' + formatScore(m.sprintM))) + '</b></div><p>' + esc(t('contribInfSprintText', {}, 'Место прошлого Спринта умножает скорость набора квоты отзывов, максимум ×2.')) + '</p></article>' +
+            '<article class="is-bonus"><div class="contrib-card-head"><b>🏆 ' + esc(t('contribInfPool', {}, 'Призовой пул 2 000 $BUST / 10 дней')) + '</b></div><p>' + esc(t('contribInfPoolText', {}, 'Топ-10 получает от 60 до 450 $BUST.')) + '</p></article>' +
+            '<article class="is-bonus"><div class="contrib-card-head"><b>🔍 ' + esc(t('contribInfMarket', {}, 'Фильтр Маркета по вкладу')) + '</b></div><p>' + esc(t('contribInfMarketText', {}, 'В подборе контрагентов выше те, у кого вклад больше, при выставлении фильтра.')) + '</p></article>' +
+            '<article class="is-bonus"><div class="contrib-card-head"><b>📨 ' + esc(t('contribInfSlots', { n: m.contribMod }, 'Слоты рассылки +' + m.contribMod)) + '</b></div><p>' + esc(t('contribInfSlotsText', {}, '10+ даёт +2 места, 50+ даёт +4, 100+ даёт +6 — навсегда.')) + '</p></article>' +
+            '</div></details></section>';
     }
     function paintContributionDash() {
         var host = document.getElementById('contribution-lifetime-dash');
         if (!host) return;
         host.innerHTML = contributionDashHtml();
-        var shell = host.querySelector('.contrib-sprint-shell');
-        var tabs = document.querySelector('#contribution-info-modal .contribution-tabs');
-        var current = document.getElementById('contribution-tab-current');
-        var history = document.getElementById('contribution-tab-history');
-        var mount = document.getElementById('contribution-sprint-mount');
-        if (!mount && shell) {
-            mount = document.createElement('div');
-            mount.id = 'contribution-sprint-mount';
-            shell.appendChild(mount);
-        }
-        if (mount) {
-            if (tabs && tabs.parentElement !== mount) mount.appendChild(tabs);
-            if (current && current.parentElement !== mount) mount.appendChild(current);
-            if (history && history.parentElement !== mount) mount.appendChild(history);
-        }
-        var title = document.querySelector('#contribution-info-modal .dashboard-title');
-        if (title) title.textContent = t('contributionInfoModalTitle', {}, 'Вклад');
-        var subtitle = document.getElementById('contribution-modal-subtitle');
-        if (subtitle) subtitle.textContent = t('metricContributionLead', {}, 'Подтверждённая польза и качество отчётов');
         var dup = document.getElementById('contribution-lifetime-actions');
-        if (dup) dup.hidden = true;
+        if (dup) {
+            dup.hidden = true;
+            dup.style.display = 'none';
+        }
     }
 
     function bindNote(el) {
@@ -628,21 +553,25 @@
     });
     document.addEventListener('toggle', function (ev) {
         if (!ev.target || !ev.target.classList) return;
-        if (ev.target.classList.contains('rep-influence')) influenceOpen = !!ev.target.open;
-        if (ev.target.classList.contains('contrib-sprint-shell')) sprintOpen = !!ev.target.open;
+        if (ev.target.classList.contains('contrib-influence-acc')) contribInfOpen = !!ev.target.open;
     }, true);
-    // Capture phase: modal-content uses stopPropagation and would block bubble listeners.
+
     document.addEventListener('click', function (ev) {
+        var aboutBtn = ev.target.closest && ev.target.closest('[data-metric-about-toggle]');
+        if (aboutBtn) {
+            ev.preventDefault();
+            var key = aboutBtn.getAttribute('data-metric-about-toggle');
+            var box = document.getElementById('metric-about-' + key);
+            if (box) {
+                box.hidden = !box.hidden;
+                aboutBtn.classList.toggle('is-active', !box.hidden);
+            }
+            return;
+        }
         var open = ev.target.closest && ev.target.closest('[data-rep-open]');
         if (open && open.getAttribute('data-rep-open')) {
-            var kind = open.getAttribute('data-rep-open');
-            if (kind === 'karma-rules') {
-                var rules = document.querySelector('#karma-info-modal .karma-rules');
-                if (rules) rules.open = true;
-                return;
-            }
             ev.preventDefault();
-            openTarget(kind);
+            openTarget(open.getAttribute('data-rep-open'));
             return;
         }
         var tab = ev.target.closest && ev.target.closest('[data-wallet-tab]');
@@ -652,39 +581,61 @@
         var filter = ev.target.closest && ev.target.closest('[data-wallet-filter]');
         if (filter) { historyFilter = filter.getAttribute('data-wallet-filter'); renderHistory(); return; }
         if (ev.target && ev.target.id === 'wallet-custom-amount') customMode = true;
-        var pay = ev.target.closest && ev.target.closest('[data-wallet-pay]');
-        if (pay) { renderDesk(); return; }
-        var copy = ev.target.closest && ev.target.closest('[data-wallet-copy]');
-        if (copy && navigator.clipboard) {
-            navigator.clipboard.writeText(copy.getAttribute('data-wallet-copy') || '').catch(function () {});
+
+        var exRow = ev.target.closest && ev.target.closest('#wallet-panel-topup .gtw-exchange-pick-row');
+        if (exRow) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var exId = exRow.getAttribute('data-exchange');
+            var bustAmt = packAmount();
+            if (!(bustAmt >= 100)) bustAmt = 1500;
+            walletPayMethod = 'crypto';
+            if (window.DevTestPaymentDesk && typeof DevTestPaymentDesk.openBustPaymentFlow === 'function') {
+                DevTestPaymentDesk.openBustPaymentFlow({
+                    bustAmount: bustAmt,
+                    usdBase: packUsd(bustAmt),
+                    method: 'crypto',
+                    exchangeId: exId
+                });
+            }
             return;
         }
-        var support = ev.target.closest && ev.target.closest('[data-wallet-support]');
-        if (support) {
-            var who = (window.DevTestPaymentDesk && DevTestPaymentDesk.support) || 'garantxchange';
-            var link = 'https://t.me/' + who;
-            if (window.tg && typeof tg.openTelegramLink === 'function') tg.openTelegramLink(link);
-            else window.open(link, '_blank', 'noopener');
+
+        var methodCard = ev.target.closest && ev.target.closest('[data-wallet-gtw-method]');
+        if (methodCard) {
+            var mKey = methodCard.getAttribute('data-wallet-gtw-method');
+            walletPayMethod = mKey || 'crypto';
+            var bAmt = packAmount();
+            if (!(bAmt >= 100)) bAmt = 1500;
+            renderTopup();
+            if ((mKey === 'paypal' || mKey === 'rub') && window.DevTestPaymentDesk && typeof DevTestPaymentDesk.openBustPaymentFlow === 'function') {
+                DevTestPaymentDesk.openBustPaymentFlow({
+                    bustAmount: bAmt,
+                    usdBase: packUsd(bAmt),
+                    method: mKey
+                });
+            }
             return;
         }
+
         var project = ev.target.closest && ev.target.closest('[data-wallet-project]');
         if (project) {
             if (typeof window.closeEarnBustModal === 'function') window.closeEarnBustModal();
             if (typeof window.switchTab === 'function') window.switchTab('projects');
         }
     }, true);
+
     document.addEventListener('input', function (ev) {
         if (!ev.target || ev.target.id !== 'wallet-custom-amount') return;
         customMode = true;
         var amount = packAmount();
         var valid = amount >= 100 && amount <= 20000;
-        var pay = document.querySelector('#wallet-panel-topup [data-wallet-pay]');
-        var label = document.querySelector('#wallet-panel-topup .wallet-pay b');
-        var hint = document.querySelector('#wallet-panel-topup .wallet-pay small');
-        if (label) label.textContent = formatAmount(valid ? amount : 0) + ' $BUST';
-        if (hint) hint.textContent = valid ? '' : t('walletCustomHint', {}, 'От 100 до 20 000');
-        if (pay) pay.disabled = !valid;
+        var usd = valid ? packUsd(amount) : 0;
         document.querySelectorAll('[data-wallet-pack]').forEach(function (btn) { btn.classList.remove('is-on'); });
+        var mount = document.getElementById('wallet-gtw-methods-mount');
+        if (mount && window.DevTestPaymentDesk && typeof DevTestPaymentDesk.renderMethodsHtml === 'function') {
+            mount.innerHTML = DevTestPaymentDesk.renderMethodsHtml(usd || 12, walletPayMethod);
+        }
     });
 
     window.ProfileReputation = {
@@ -694,7 +645,6 @@
         sprintCardHtml: sprintCardHtml,
         fillSprintCard: fillSprintCard,
         reliabilityNow: reliabilityNow,
-        metricCardSubHtml: metricCardSubHtml,
         mountWallet: mountWallet,
         paintKarmaInfluence: paintKarmaInfluence,
         paintContributionDash: paintContributionDash,

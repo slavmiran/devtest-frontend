@@ -391,6 +391,7 @@
     var paymentUploadTask = null;
     var paymentScreenshotGeneration = 0;
     var paymentSubmitBusy = false;
+    var bustTopupContext = null;
 
     function paymentActorId() {
         var tgUser = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
@@ -461,6 +462,7 @@
     }
 
     function persistGuaranteedTestWizardDraft() {
+        if (bustTopupContext) return;
         var appName = String(wizardState.appName || '').trim();
         if (!appName) return;
         var step = Number(wizardState.step || 1);
@@ -671,6 +673,9 @@
     }
 
     function getPaymentBaseAmount() {
+        if (bustTopupContext && Number.isFinite(Number(bustTopupContext.usdBase)) && Number(bustTopupContext.usdBase) > 0) {
+            return Number(bustTopupContext.usdBase);
+        }
         return 20;
     }
 
@@ -1976,6 +1981,7 @@
     }
 
     function closePaymentFlow() {
+        bustTopupContext = null;
         var overlay = document.getElementById('gtw-payment-flow-overlay');
         if (overlay) {
             overlay.classList.remove('is-open');
@@ -2035,13 +2041,26 @@
                 `;
             }
         } else if (method === 'paypal') {
+            var baseAmt = getPaymentBaseAmount();
+            var feeAmt = getPaymentFee('paypal');
+            var payBtnText = bustTopupContext
+                ? (getWizardLang() === 'ru' ? ('Оплатить $' + amount) : ('Pay $' + amount))
+                : L('payPaypal');
             title = L('flowPaypalTitle');
-            subtitle = L('flowPaypalSubtitle', { amount: amount });
+            subtitle = bustTopupContext
+                ? (getWizardLang() === 'ru'
+                    ? ('Пакет ' + bustTopupContext.bustAmount + ' $BUST ($' + baseAmt + ' + комиссия $' + feeAmt + ' = $' + amount + '). Оплатите в PayPal и приложите скриншот.')
+                    : ('Pack ' + bustTopupContext.bustAmount + ' $BUST ($' + baseAmt + ' + $' + feeAmt + ' fee = $' + amount + '). Pay in PayPal, then attach the screenshot.'))
+                : L('flowPaypalSubtitle', { amount: amount });
             step1Title = L('flowPaypalStep');
-            step1Desc = L('flowPaypalDesc');
+            step1Desc = bustTopupContext
+                ? (getWizardLang() === 'ru'
+                    ? ('Нажмите кнопку — откроется PayPal на сумму $' + amount + '. После перевода вернитесь и приложите скриншот.')
+                    : ('Tap the button — PayPal opens for $' + amount + '. After the transfer, come back and attach the screenshot.'))
+                : L('flowPaypalDesc');
             step1Actions = `
                 <button type="button" class="gtw-paypal-pay-btn" id="gtw-flow-pay-paypal-btn">
-                    <span>${L('payPaypal')}</span>
+                    <span>${payBtnText}</span>
                     <svg class="gtw-external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                         <polyline points="15 3 21 3 21 9"></polyline>
@@ -2203,7 +2222,10 @@
         var payPaypalBtn = document.getElementById('gtw-flow-pay-paypal-btn');
         if (payPaypalBtn) {
             payPaypalBtn.addEventListener('click', function () {
-                openExternalUrl(PAYPAL_PAY_URL);
+                var payUrl = bustTopupContext
+                    ? ('https://paypal.me/devtesthub/' + getPaymentAmount('paypal') + 'USD')
+                    : PAYPAL_PAY_URL;
+                openExternalUrl(payUrl);
                 markPaymentStep1Done();
             });
         }
@@ -2525,11 +2547,33 @@
         paymentSubmitBusy = true;
         renderPaymentFlow();
         try {
+            if (bustTopupContext) {
+                var proofUrl = await uploadPaymentScreenshot();
+                var method = wizardState.paymentMethod;
+                var amountUsd = getPaymentAmount(method);
+                var ex = method === 'crypto' ? getExchangeById(wizardState.paymentExchange) : null;
+                var methodDesc = method === 'crypto'
+                    ? ('Crypto · ' + (ex ? ex.name : ''))
+                    : (method === 'paypal' ? 'PayPal' : ('Bank · ' + (wizardState.fiatCurrency || '') + ' · ' + (wizardState.fiatBankName || '')));
+                var bustAmt = bustTopupContext.bustAmount;
+                var msg = getWizardLang() === 'ru'
+                    ? ('Здравствуйте! Оплатил пополнение кошелька на ' + bustAmt + ' $BUST ($' + amountUsd + ').\nСпособ: ' + methodDesc + '\nЧек загружен в приложении: ' + proofUrl)
+                    : ('Hello! I paid for a wallet top-up of ' + bustAmt + ' $BUST ($' + amountUsd + ').\nMethod: ' + methodDesc + '\nReceipt uploaded: ' + proofUrl);
+                closePaymentFlow();
+                clearPaymentScreenshot();
+                if (typeof showToast === 'function') {
+                    showToast(getWizardLang() === 'ru' ? 'Чек прикреплён. Открываем чат с координатором…' : 'Receipt attached. Opening coordinator chat…');
+                }
+                openTelegramContact(msg);
+                return;
+            }
             if (wizardState.paymentMethod === 'rub' && wizardState.fiatOrderId) {
                 await attachFiatProofAndComplete();
             } else {
                 await submitGuaranteedOrderAndOpenTelegram();
             }
+        } catch (err) {
+            if (bustTopupContext) reportPaymentError(err, 'toastFailed');
         } finally {
             paymentSubmitBusy = false;
             renderPaymentFlow();
@@ -2573,6 +2617,15 @@
                 helper.textContent = L('fiatMissing');
                 helper.style.display = 'block';
             }
+            return;
+        }
+        if (bustTopupContext) {
+            var amountFiat = getPaymentAmount('rub');
+            var dm = getWizardLang() === 'ru'
+                ? ('Здравствуйте! Хочу пополнить баланс на ' + bustTopupContext.bustAmount + ' $BUST.\n💳 Валюта оплаты: ' + currency.code + '\n🏦 Мой банк: ' + bankName + '\n👤 Личный счёт: ' + (wizardState.fiatPersonalAccount ? 'Да' : 'Нет') + '\n💰 Сумма с комиссией: $' + amountFiat + ' (нужен эквивалент в ' + currency.code + ')\n\nПожалуйста, пришлите точный расчёт и реквизиты.')
+                : ('Hello! I want to top up ' + bustTopupContext.bustAmount + ' $BUST.\n💳 Currency: ' + currency.code + '\n🏦 Bank: ' + bankName + '\n👤 Personal account: ' + (wizardState.fiatPersonalAccount ? 'Yes' : 'No') + '\n💰 Amount with fee: $' + amountFiat + ' (need equivalent in ' + currency.code + ')\n\nPlease send the exact amount and payment details.');
+            openTelegramContact(dm);
+            markPaymentStep1Done();
             return;
         }
         if (wizardState.fiatOrderId) {
@@ -3513,10 +3566,93 @@
     window.resumeGuaranteedTestWizardFromDraft = resumeGuaranteedTestWizardFromDraft;
     window.persistGuaranteedTestWizardDraft = persistGuaranteedTestWizardDraft;
     window.gtwWizardState = wizardState;
+    function renderBustPaymentMethodsHTML(usdBase, selectedMethod) {
+        var price = '$' + Number(usdBase || 12);
+        var cryptoCls = selectedMethod === 'crypto' ? ' selected selected-crypto' : '';
+        var paypalCls = selectedMethod === 'paypal' ? ' selected' : '';
+        var rubCls = selectedMethod === 'rub' ? ' selected' : '';
+        return `
+            <div class="gtw-form-group gtw-wallet-methods-wrap">
+                <label class="gtw-label">${L('methodLabel')}</label>
+                <div class="gtw-payment-methods">
+                    <div class="gtw-method-card${cryptoCls}" data-wallet-gtw-method="crypto">
+                        <div class="gtw-method-header">
+                            <div class="gtw-method-left">
+                                <div class="gtw-method-radio"></div>
+                                <div class="gtw-method-info">
+                                    <div class="gtw-method-title-row">
+                                        <span class="gtw-method-title">${L('methodCrypto')}</span>
+                                        <span class="gtw-method-badge gtw-badge-rec">${L('badgeRecommended')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="gtw-method-price">${price}</span>
+                        </div>
+                        <p class="gtw-method-action-hint">${L('hintCrypto')}</p>
+                        <div class="gtw-exchange-picker">
+                            ${createExchangePickerHTML()}
+                        </div>
+                    </div>
+
+                    <div class="gtw-method-card${paypalCls}" data-wallet-gtw-method="paypal">
+                        <div class="gtw-method-header">
+                            <div class="gtw-method-left">
+                                <div class="gtw-method-radio"></div>
+                                <div class="gtw-method-info">
+                                    <div class="gtw-method-title-row">
+                                        <span class="gtw-method-title">${L('methodPaypal')}</span>
+                                        <span class="gtw-method-badge gtw-badge-fee">${L('badgeFee')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="gtw-method-price gtw-method-price--fee">
+                                <span class="gtw-method-price-base">${price}</span>
+                                <span class="gtw-method-price-extra">${L('priceFeeExtra')}</span>
+                            </span>
+                        </div>
+                        <p class="gtw-method-action-hint">${L('hintSteps')}</p>
+                    </div>
+
+                    <div class="gtw-method-card${rubCls}" data-wallet-gtw-method="rub">
+                        <div class="gtw-method-header">
+                            <div class="gtw-method-left">
+                                <div class="gtw-method-radio"></div>
+                                <div class="gtw-method-info">
+                                    <div class="gtw-method-title-row">
+                                        <span class="gtw-method-title">${L('methodFiat')}</span>
+                                        <span class="gtw-method-badge gtw-badge-fee">${L('badgeFee')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="gtw-method-price gtw-method-price--fee">
+                                <span class="gtw-method-price-base">${price}</span>
+                                <span class="gtw-method-price-extra">${L('priceFeeExtra')}</span>
+                            </span>
+                        </div>
+                        <p class="gtw-method-action-hint">${L('hintSteps')}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function openBustPaymentFlow(opts) {
+        opts = opts || {};
+        ensureWizardInDOM();
+        bustTopupContext = {
+            bustAmount: Number(opts.bustAmount || 1500),
+            usdBase: Number(opts.usdBase || 12)
+        };
+        resetPaymentFlowState();
+        openPaymentFlow(opts.method || 'crypto', opts.exchangeId || null);
+    }
+
     window.DevTestPaymentDesk = {
         paypalEmail: PAYPAL_EMAIL,
         paypalPayUrl: PAYPAL_PAY_URL,
         support: TELEGRAM_SUPPORT,
-        exchanges: CRYPTO_EXCHANGES
+        exchanges: CRYPTO_EXCHANGES,
+        renderMethodsHtml: renderBustPaymentMethodsHTML,
+        openBustPaymentFlow: openBustPaymentFlow
     };
 })();

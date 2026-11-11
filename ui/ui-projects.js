@@ -1408,12 +1408,6 @@ function buildDeveloperProfileWidget() {
             const suffix = kind === 'reliability' ? '%' : '';
             return `<span class="metric-delta ${up ? 'is-up' : 'is-down'}">${up ? '↑' : '↓'} ${up ? '+' : '-'}${body}${suffix}</span>`;
         };
-        const metricSub = function (kind) {
-            return window.ProfileReputation && ProfileReputation.metricCardSubHtml
-                ? ProfileReputation.metricCardSubHtml(kind)
-                : '';
-        };
-
         const dashHtml = `
             <div class="developer-widget">
                 <div class="developer-widget-kicker">${window.t('developerWidgetTitle', {}, lang)}</div>
@@ -1433,7 +1427,6 @@ function buildDeveloperProfileWidget() {
                             ${window.escapeHTML(reliabilityValue)}${!isNewbie ? ' %' : ''}
                             ${statusText ? `<span class="metric-value-status" style="font-size: 11px; opacity: 0.85; font-weight: normal; margin-left: 4px;">(${window.escapeHTML(statusText)})</span>` : ''}
                         </div>
-                        ${metricSub('reliability')}
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-gold" onclick="showKarmaInfo()">
                         <div class="metric-card-top">
@@ -1442,7 +1435,6 @@ function buildDeveloperProfileWidget() {
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-value">${formatUiAmount(visibilityStats.ownerKarma || 0, 1)} <span class="metric-value-mark">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️'}</span></div>
-                        ${metricSub('karma')}
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
                         <div class="metric-card-top">
@@ -1464,11 +1456,9 @@ function buildDeveloperProfileWidget() {
                         <div class="metric-sprint-body">
                             ${sprintView ? sprintView.body : `<div class="metric-value">${window.escapeHTML(contributionPrimary)}</div>`}
                         </div>
-                        ${metricSub('contribution')}
                     </button>
                 </div>
                 ${window.ReviewCredits ? ReviewCredits.widget() : ''}
-                ${window.ProfileReputation ? ProfileReputation.profileStripHtml() : ''}
             </div>
         `;
         container.insertAdjacentHTML('beforeend', dashHtml);

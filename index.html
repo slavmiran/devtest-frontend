@@ -61,8 +61,8 @@
     <script src="./js/live-queue-ui.js?v=20261104-live-routes-v2"></script>
     <script src="./js/live-topic.js?v=20261102-market-communication"></script>
     <script src="./js/live-partner-ui.js?v=20261102-market-communication"></script>
-    <script src="./js/profile-reputation.js?v=20261111-profile-ux-v2"></script>
-    <script src="./js/review-credits.js?v=20261111-profile-ux-v2"></script>
+    <script src="./js/profile-reputation.js?v=20261111-profile-ux-v3"></script>
+    <script src="./js/review-credits.js?v=20261111-profile-ux-v3"></script>
     <script src="./js/review-flow.js?v=20261104-live-routes-v2"></script>
     <script src="./js/live-deal-form.js?v=20261109-market-ux-v2"></script>
     <script src="./js/live-deal-ui.js?v=20261109-market-ux-v2"></script>
@@ -80,10 +80,10 @@
     <script src="./js/live-guidance.js?v=20261110-quick-start-v1"></script>
     <script src="./js/live-project-metrics.js?v=20261110-quick-start-v1"></script>
     <script src="./js/live-metrics-modal.js?v=20261110-quick-start-v1"></script>
-    <script src="./ui/ui-projects.js?v=20261111-profile-ux-v2"></script>
+    <script src="./ui/ui-projects.js?v=20261111-profile-ux-v3"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
     <script src="./ui/ui-projects-moderation.js?v=20261101-hud-polish-v2"></script>
-    <script src="./js/smart-top-bar.js?v=20261111-profile-ux-v2"></script>
+    <script src="./js/smart-top-bar.js?v=20261111-profile-ux-v3"></script>
     <link rel="stylesheet" href="./css/qa-ecosystem.css?v=20261104">
     <script src="./js/qa-ecosystem.js?v=20261104"></script>
     <script src="./js/project-workspace.js?v=20261110-live-card-v1"></script>
@@ -110,7 +110,7 @@
     <script src="./js/live-campaign-growth-card.js?v=20261104-live-routes-v2"></script>
     <script src="./js/live-campaigns.js?v=20261110-live-card-v1"></script>
     <script src="./js/project-parameters.js?v=20261028-review-credits-v2"></script>
-    <script src="./ui/ui-market.js?v=20261111-profile-ux-v2"></script>
+    <script src="./ui/ui-market.js?v=20261111-profile-ux-v3"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261020-geo-v1"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -140,7 +140,7 @@
 <script src="./js/termination-sheet.js?v=20261024-phase2-main-sync-v2"></script>
 <script src="./js/bounty-applications.js?v=20261105-tests-flow-v1"></script>
 <script src="./js/guaranteed-test-offer.js?v=20261023-private-entry-v1"></script>
-    <script src="./js/guaranteed-test-wizard.js?v=20261110-profile-wallet-v1"></script>
+    <script src="./js/guaranteed-test-wizard.js?v=20261111-profile-ux-v3"></script>
     <script src="./js/private-order-ui.js?v=20261023-private-onboarding-v1"></script>
     <link rel="stylesheet" href="./css/private-order-ui.css?v=20261023-private-onboarding-v1">
     <script src="./js/project-results.js?v=20261110-phase2-main-sync-v1"></script>
@@ -152,7 +152,7 @@
     <link rel="stylesheet" href="./css/base.css?v=20260721-done-scroll">
     <link rel="stylesheet" href="./css/keyframes.css?v=20260822-recip-highlight-v1">
     <link rel="stylesheet" href="./css/system-drop-menu.css?v=20261108-phase2-main-sync-v1">
-    <link rel="stylesheet" href="./css/reliability-modal.css?v=20261111-profile-ux-v2">
+    <link rel="stylesheet" href="./css/reliability-modal.css?v=20261111-profile-ux-v3">
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/review-credits.css?v=20261031-review-deadline">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261101-hud-review">
@@ -178,7 +178,7 @@
     <link rel="stylesheet" href="./css/access-issue.css?v=20260917-issue-proof-v2">
     <link rel="stylesheet" href="./css/default-group.css?v=20260820-group-wait-inline-v1">
     <link rel="stylesheet" href="./styles.css?v=20261108-phase2-main-sync-v1">
-    <link rel="stylesheet" href="./css/profile-reputation.css?v=20261111-profile-ux-v2">
+    <link rel="stylesheet" href="./css/profile-reputation.css?v=20261111-profile-ux-v3">
     <link rel="stylesheet" href="./css/deploy-status.css?v=20261023-advisory-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260917-scroll-smooth-v2">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
@@ -2218,9 +2218,14 @@
     <!-- Karma Info Modal (Bottom Sheet) -->
     <div id="karma-info-modal" class="modal-overlay" onclick="closeKarmaInfoModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <div style="text-align:center; margin-bottom: 12px;">
+            <div class="metric-modal-head">
                 <div class="dashboard-title" data-i18n="karmaInfoModalTitle">ТВОЙ БАЛАНС КАРМЫ</div>
-                <div id="karma-balance-value" style="font-size: 36px; font-weight: 800; margin-top: 8px; letter-spacing: 0.5px;">0.0</div>
+                <div class="metric-modal-subline">
+                    <span data-i18n="metricKarmaSub">Индекс доверия и взаимовыручки</span>
+                    <button type="button" class="metric-about-pill" data-metric-about-toggle="karma" data-i18n="metricAboutBtn">ⓘ О метрике</button>
+                </div>
+                <div id="metric-about-karma" class="metric-about-box" hidden data-i18n="metricKarmaAbout">Социальный капитал: насколько с вами приятно и безопасно работать другим разработчикам. Карма растёт от благодарностей авторов и завершения проектов и сгорает на −3 при срыве договорённостей. Главный посыл: вам доверяют разработчики и сообщество.</div>
+                <div id="karma-balance-value" style="font-size: 36px; font-weight: 800; margin-top: 10px; letter-spacing: 0.5px;">0.0</div>
                 <div id="karma-influence"></div>
             </div>
 
@@ -2263,22 +2268,35 @@
 
     <div id="contribution-info-modal" class="modal-overlay" onclick="closeContributionInfoModal(event)">
         <div class="modal-content contribution-modal-content" onclick="event.stopPropagation()">
-            <div class="contribution-modal-header">
-                <div class="dashboard-title" data-i18n="contributionInfoModalTitle">СПРИНТЫ</div>
-                <div id="contribution-modal-subtitle" class="contribution-modal-subtitle"></div>
+            <div class="contribution-modal-header metric-modal-head">
+                <div class="dashboard-title" data-i18n="contributionInfoModalTitle">ВКЛАД</div>
+                <div class="metric-modal-subline">
+                    <span data-i18n="metricContributionSub">Экспертность в поиске багов и тестировании</span>
+                    <button type="button" class="metric-about-pill" data-metric-about-toggle="contribution" data-i18n="metricAboutBtn">ⓘ О метрике</button>
+                </div>
+                <div id="metric-about-contribution" class="metric-about-box" hidden data-i18n="metricContributionAbout">Количественный реестр реальной ценности. Начисляется, когда разработчик проверил и принял ваш баг (+5), идею (+4), отзыв в Google Play (+3), видео (+1), серию из 5 экранов (+0.5) или комментарий (+0.2). Главный посыл: вы находите реальные проблемы и делаете продукты лучше.</div>
             </div>
 
             <div id="contribution-lifetime-dash"></div>
-            <div class="segmented-control contribution-tabs" role="tablist">
-                <button type="button" class="seg-btn active" id="contribution-tab-btn-current"
-                        data-contribution-tab="current" onclick="switchContributionTab('current')">
-                    <span data-i18n="contributionTabCurrent">Текущий спринт</span>
-                </button>
-                <button type="button" class="seg-btn" id="contribution-tab-btn-history"
-                        data-contribution-tab="history" onclick="switchContributionTab('history')">
-                    <span data-i18n="contributionTabHistory">История</span>
-                </button>
-            </div>
+
+            <section class="contrib-sprint-section">
+                <div class="contrib-sprint-head">
+                    <div>
+                        <div class="contrib-sprint-title" data-i18n="contribSprintsSectionTitle">🏆 Спринты</div>
+                        <div id="contribution-modal-subtitle" class="contribution-modal-subtitle"></div>
+                    </div>
+                    <span class="contrib-sprint-pool-pill">2 000 $BUST</span>
+                </div>
+                <div class="segmented-control contribution-tabs" role="tablist">
+                    <button type="button" class="seg-btn active" id="contribution-tab-btn-current"
+                            data-contribution-tab="current" onclick="switchContributionTab('current')">
+                        <span data-i18n="contributionTabCurrent">Текущий спринт</span>
+                    </button>
+                    <button type="button" class="seg-btn" id="contribution-tab-btn-history"
+                            data-contribution-tab="history" onclick="switchContributionTab('history')">
+                        <span data-i18n="contributionTabHistory">История</span>
+                    </button>
+                </div>
 
             <div id="contribution-tab-current" class="contribution-tab-panel" role="tabpanel">
                 <div id="contribution-current-loading" class="contribution-loading" style="display:none;"
@@ -2387,12 +2405,13 @@
                     <div id="contribution-history-empty" class="contribution-empty" style="display:none;"
                          data-i18n="contributionNoHistory">Пока нет завершённых спринтов.</div>
 
-                    <div id="contribution-lifetime-actions" class="card contribution-lifetime-actions" style="display:none;">
+                    <div id="contribution-lifetime-actions" class="card contribution-lifetime-actions" style="display:none !important;" hidden>
                         <div id="contribution-lifetime-score-line" class="contribution-lifetime-score-line"></div>
                         <div id="contribution-lifetime-breakdown-line" class="contribution-lifetime-breakdown-line"></div>
                     </div>
                 </div>
             </div>
+            </section>
 
             <button class="btn btn-secondary contribution-close-btn" style="width: 100%; margin-top: 14px;"
                     onclick="closeContributionInfoModal()" data-i18n="contributionInfoCloseBtn">Закрыть</button>
@@ -2401,16 +2420,18 @@
 
     <div id="reliability-alpha-modal" class="modal-overlay reliability-alpha-modal" onclick="closeReliabilityAlphaModal(event)">
         <div class="modal-content reliability-alpha-modal-content" onclick="event.stopPropagation()">
+            <div class="sheet-handle" aria-hidden="true"></div>
             <div class="reliability-alpha-topbar">
-                <button type="button" class="reliability-alpha-back-btn" onclick="closeReliabilityAlphaModal()" aria-label="Back">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
                 <div class="reliability-alpha-topbar-text">
                     <h3 data-i18n="reliabilityAlphaTitle">Индекс надежности</h3>
+                    <div class="metric-modal-subline metric-modal-subline--left">
+                        <span data-i18n="metricReliabilitySub">Стабильность участия и посещаемость</span>
+                        <button type="button" class="metric-about-pill" data-metric-about-toggle="reliability" data-i18n="metricAboutBtn">ⓘ О метрике</button>
+                    </div>
                 </div>
+                <button type="button" class="reliability-alpha-close" onclick="closeReliabilityAlphaModal()" aria-label="Close">✕</button>
             </div>
+            <div id="metric-about-reliability" class="metric-about-box metric-about-box--sheet" hidden data-i18n="metricReliabilityAbout">Строго технический показатель того, приходите ли вы каждый день открывать приложения и не удаляете ли их раньше срока (&lt;48 ч). Его нельзя подарить, накрутить или купить. Главный посыл: вы ответственный исполнитель, который не подводит по срокам.</div>
             <div id="reliability-alpha-body"></div>
         </div>
     </div>

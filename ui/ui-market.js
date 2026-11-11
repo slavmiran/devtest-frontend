@@ -475,6 +475,11 @@ window.toggleReliabilityInfluences = function(event) {
 window.selectActiveGrant = function(idx, event) {
     if (event) event.stopPropagation();
     window._activeGrantIndex = idx;
+    var sheetBody = document.querySelector('#grants-history-sheet .lm-sheet-body');
+    if (sheetBody && typeof buildGrantsSheetBodyHtml === 'function') {
+        sheetBody.innerHTML = buildGrantsSheetBodyHtml();
+        return;
+    }
     renderReliabilityAlphaModal();
 };
 
@@ -554,97 +559,26 @@ function renderReliabilityAlphaModal() {
         window._activeGrantIndex = 0;
     }
 
-    var grantsSectionHtml = '';
-    if (grants.length > 0) {
-        var activeGrant = grants[window._activeGrantIndex];
-        var isGolden = activeGrant.is_golden;
-        
-        var badgeText = '';
-        if (activeGrant.is_early) {
-            badgeText = lang === 'ru' ? 'Досрочный финиш' : 'Early Finish';
-            if (activeGrant.is_golden) {
-                badgeText += lang === 'ru' ? ' (Идеальный)' : ' (Perfect)';
-            }
-        } else {
-            badgeText = isGolden
-                ? window.t('reliabilityDashSummaryGrantBadgeGolden', {}, lang)
-                : window.t('reliabilityDashSummaryGrantBadgeRegular', { skips: activeGrant.skips_count || 0 }, lang);
-        }
+    var totalGrantBust = grants.reduce(function(acc, g) { return acc + Number(g && g.amount_bust || 0); }, 0);
+    var grantsLauncherTitle = window.t('reliabilityDashGrantsSectionTitle', {}, lang) || (lang === 'ru' ? 'История выплат и грантов' : 'Grants & Payouts History');
+    var grantsLauncherSub = grants.length > 0
+        ? (lang === 'ru'
+            ? ('Получено грантов: ' + grants.length + ' · Всего +' + formatReliabilityIndex(totalGrantBust) + ' $BUST')
+            : ('Grants received: ' + grants.length + ' · Total +' + formatReliabilityIndex(totalGrantBust) + ' $BUST'))
+        : (window.t('reliabilityDashGrantsNoHistory', {}, lang) || (lang === 'ru' ? 'Пока нет полученных грантов' : 'No grants received yet'));
 
-        var detailsText = window.t('reliabilityDashSummaryGrantValue', {
-            amount: formatReliabilityIndex(activeGrant.amount_bust || 0),
-            base: formatReliabilityIndex(activeGrant.base_bonus || 0),
-            perfect: formatReliabilityIndex(activeGrant.perfect_bonus || 0),
-            karma: formatReliabilityIndex(activeGrant.karma_at_moment || 0),
-            karma_bonus: formatReliabilityIndex(activeGrant.karma_component || 0)
-        }, lang);
-
-        function formatIsoDate(isoStr) {
-            if (!isoStr) return '—';
-            try {
-                var d = new Date(isoStr);
-                if (isNaN(d.getTime())) return '—';
-                var day = String(d.getDate()).padStart(2, '0');
-                var month = String(d.getMonth() + 1).padStart(2, '0');
-                var year = d.getFullYear();
-                return day + '.' + month + '.' + year;
-            } catch(e) {
-                return '—';
-            }
-        }
-
-        grantsSectionHtml = `
-            <section class="ri-surface">
-              <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
-              <p class="ri-grant-sub">${window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang))}</p>
-              <button type="button" class="wallet-link" data-rep-open="grants">${window.escapeHTML(window.t('reliabilityOpenGrants', {}, lang) || (lang === 'ru' ? 'Открыть историю грантов' : 'Open grants history'))}</button>
-              <div class="ri-grants-tiles">
-                ${grants.map(function(g, idx) {
-                  var activeClass = idx === window._activeGrantIndex ? 'active' : '';
-                  var goldenClass = g.is_golden ? 'is-golden' : '';
-                  var appIconHtml = typeof renderIcon === 'function'
-                    ? renderIcon(g.app_name || '', g.icon_url || '')
-                    : '';
-                  var ownerIconHtml = typeof renderIcon === 'function'
-                    ? renderIcon(g.owner_name || g.app_name || '?', g.owner_avatar_url || '')
-                    : '';
-                  return `
-                    <button type="button" class="ri-grant-tile ${activeClass} ${goldenClass}" onclick="selectActiveGrant(${idx}, event)">
-                      <span class="ri-grant-pair" aria-hidden="true">
-                        <span class="ri-grant-app">${appIconHtml}</span>
-                        <span class="ri-grant-owner">${ownerIconHtml}</span>
-                      </span>
-                      <span class="ri-grant-amount">
-                        <span class="ri-grant-amount-val">${formatReliabilityIndex(g.amount_bust)}</span>
-                        <span class="ri-grant-bust-ico">💎</span>
-                      </span>
-                    </button>
-                  `;
-                }).join('')}
-              </div>
-              <div class="ri-grant-detail">
-                <div class="ri-grant-detail-row">
-                  <span>${window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang))}</span>
-                  <span>${window.escapeHTML(activeGrant.app_name || '')}</span>
-                </div>
-                <div class="ri-grant-detail-row">
-                  <span>${lang === 'ru' ? 'Дата получения' : 'Date received'}</span>
-                  <span>${window.escapeHTML(formatIsoDate(activeGrant.granted_at))}</span>
-                </div>
-                <div class="ri-grant-formula">${window.escapeHTML(detailsText)}</div>
-                <span class="ri-grant-badge ${isGolden ? 'is-golden' : 'is-regular'}">${window.escapeHTML(badgeText)}</span>
-              </div>
-            </section>
-        `;
-    } else {
-        grantsSectionHtml = `
-            <section class="ri-surface">
-              <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
-              <p class="ri-grant-sub">${window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang))}</p>
-              <div class="ri-empty-hint">${window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang))}</div>
-            </section>
-        `;
-    }
+    var grantsSectionHtml = `
+        <button type="button" class="ri-rules-btn ri-grants-open-btn" onclick="openGrantsHistorySheet()">
+          <span class="ri-rules-btn-left">
+            <span>🏆</span>
+            <span class="ri-grants-open-copy">
+              <strong>${window.escapeHTML(grantsLauncherTitle)}</strong>
+              <small>${window.escapeHTML(grantsLauncherSub)}</small>
+            </span>
+          </span>
+          <span class="ri-rules-chevron" style="transform: rotate(-90deg);">▼</span>
+        </button>
+    `;
 
     body.innerHTML = `
         <div class="page reliability-alpha-page">
@@ -703,7 +637,7 @@ function renderReliabilityAlphaModal() {
                 ['🎁', 'is-welcome', 'influenceWelcomeTitle', 'influenceWelcomeText']
               ].map(function(item) {
                 var now = window.ProfileReputation && ProfileReputation.reliabilityNow ? ProfileReputation.reliabilityNow(item[1]) : '';
-                return '<div class="ri-influence-card"><div class="ri-influence-header"><div class="ri-influence-icon ' + item[1] + '">' + item[0] + '</div><div class="ri-influence-title">' + window.escapeHTML(window.t(item[2], {}, lang)) + '</div></div><div class="ri-influence-text">' + window.escapeHTML(window.t(item[3], {}, lang)) + '</div>' + (now ? '<div class="ri-influence-now">' + window.escapeHTML(now) + '</div>' : '') + '</div>';
+                return '<div class="ri-influence-card"><div class="ri-influence-header"><div class="ri-influence-icon ' + item[1] + '">' + item[0] + '</div><div class="ri-influence-title">' + window.escapeHTML(window.t(item[2], {}, lang)) + '</div>' + (now ? '<span class="ri-influence-now-pill">' + window.escapeHTML(now) + '</span>' : '') + '</div><div class="ri-influence-text">' + window.escapeHTML(window.t(item[3], {}, lang)) + '</div></div>';
               }).join('')}
             </div>
           </div>
@@ -7230,7 +7164,8 @@ function _renderContributionCurrentTab(payload) {
     if (rankEl) {
         rankEl.textContent = hasRank
             ? window.t('contributionRankValue', { rank: rank }, lang)
-            : window.t('contributionRankUnranked', {}, lang);
+            : (lang === 'ru' ? 'Вне топа' : 'Unranked');
+        rankEl.classList.toggle('is-unranked', !hasRank);
     }
 
     const metaEl = document.getElementById('contribution-season-meta');
@@ -7246,7 +7181,11 @@ function _renderContributionCurrentTab(payload) {
     const bugsEl = document.getElementById('contribution-bugs-count');
     const ideasEl = document.getElementById('contribution-ideas-count');
     const reviewsEl = document.getElementById('contribution-reviews-count');
-    if (scoreEl) scoreEl.textContent = String(Math.round(Number(me.contribution_score || 0)));
+    if (scoreEl) {
+        scoreEl.textContent = window.ProfileReputation
+            ? ProfileReputation.formatScore(me.contribution_score || 0)
+            : String(Math.round(Number(me.contribution_score || 0) * 10) / 10);
+    }
     if (bugsEl) bugsEl.textContent = String(Math.round(Number(me.bugs_count || 0)));
     if (ideasEl) ideasEl.textContent = String(Math.round(Number(me.ideas_count || 0)));
     if (reviewsEl) reviewsEl.textContent = String(Math.round(Number(me.play_reviews_count || 0)));
@@ -7437,55 +7376,11 @@ function _renderContributionHistoryTab(payload) {
 
     const actionsEl = document.getElementById('contribution-lifetime-actions');
     if (actionsEl) {
-        // Prefer explicit lifetime counters from API (ledger-backed).
-        let bugsTotal = Math.round(Number(
-            lifetime.bugs_count != null ? lifetime.bugs_count : lifetime.total_bugs || 0
-        ));
-        let ideasTotal = Math.round(Number(
-            lifetime.ideas_count != null ? lifetime.ideas_count : lifetime.total_ideas || 0
-        ));
-        let reviewsTotal = Math.round(Number(
-            lifetime.play_reviews_count != null
-                ? lifetime.play_reviews_count
-                : (lifetime.total_reviews || 0)
-        ));
-        const lifetimeScore = Math.round(Number(lifetime.contribution_lifetime_score || 0));
-
-        // Backward-compatible fallback if an older backend omits action counters.
-        if (!bugsTotal && !ideasTotal && !reviewsTotal) {
-            seasons.forEach((season) => {
-                bugsTotal += Math.round(Number(season.bugs_count || 0));
-                ideasTotal += Math.round(Number(season.ideas_count || 0));
-                reviewsTotal += Math.round(Number(season.play_reviews_count || 0));
-            });
-            const currentMe = (_contributionCurrentCache && _contributionCurrentCache.me) || {};
-            bugsTotal += Math.round(Number(currentMe.bugs_count || 0));
-            ideasTotal += Math.round(Number(currentMe.ideas_count || 0));
-            reviewsTotal += Math.round(Number(currentMe.play_reviews_count || 0));
-        }
-
-        actionsEl.style.display = '';
-        const scoreLine = document.getElementById('contribution-lifetime-score-line');
-        const breakdownLine = document.getElementById('contribution-lifetime-breakdown-line');
-        const scoreText = window.t('contributionLifetimeScoreLine', {
-            score: lifetimeScore,
-            points_word: pluralizePointsWord(lifetimeScore),
-        }, lang);
-        let breakdownText = window.t('contributionLifetimeBreakdownLine', {
-            bugs: bugsTotal,
-            ideas: ideasTotal,
-            reviews: reviewsTotal,
-        }, lang);
-        breakdownText += ' · ' + ['five_screens_count','text_reports_count','video_reports_count'].map((k,i)=>window.t('mkContribution'+(i+3),{},lang)+': '+Number(lifetime[k]||0)).join(' · ');
-        if (scoreLine && breakdownLine) {
-            scoreLine.textContent = scoreText;
-            breakdownLine.textContent = breakdownText;
-        } else {
-            actionsEl.innerHTML = ''
-                + '<div class="contribution-lifetime-score-line">' + _escContribution(scoreText) + '</div>'
-                + '<div class="contribution-lifetime-breakdown-line">' + _escContribution(breakdownText) + '</div>';
-        }
+        actionsEl.style.display = 'none';
+        actionsEl.hidden = true;
     }
+    window._contributionHistoryCache = payload;
+    if (window.ProfileReputation) ProfileReputation.paintContributionDash();
 }
 
 async function _loadContributionCurrentTab() {
@@ -7682,14 +7577,12 @@ function showReliabilityInfo() {
     openReliabilityAlphaModal();
 }
 
-function openGrantsHistorySheet() {
+function buildGrantsSheetBodyHtml() {
     var state = typeof getReliabilityUiState === 'function' ? getReliabilityUiState() : null;
     var summary = state && state.summary;
     var grants = (summary && summary.grants_history) || [];
-    var U = window.LiveMarketUI;
-    if (!U || typeof U.sheet !== 'function') {
-        if (typeof showReliabilityInfo === 'function') showReliabilityInfo();
-        return;
+    if (window._activeGrantIndex == null || window._activeGrantIndex >= grants.length) {
+        window._activeGrantIndex = 0;
     }
     function formatIsoDate(isoStr) {
         if (!isoStr) return '—';
@@ -7699,19 +7592,60 @@ function openGrantsHistorySheet() {
             return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
         } catch (e) { return '—'; }
     }
-    var body = '<div class="grants-sheet-body"><p class="wallet-note">' +
-        window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang)) + '</p>';
+    var sub = window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang));
     if (!grants.length) {
-        body += '<div class="ri-empty-hint">' + window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang)) + '</div>';
-    } else {
-        body += grants.map(function (g) {
-            return '<div class="wallet-tx"><div><b>' + window.escapeHTML(g.app_name || '—') + '</b><small>' +
-                window.escapeHTML(formatIsoDate(g.granted_at)) + '</small></div><span class="is-in">+' +
-                window.escapeHTML(String(formatReliabilityIndex(g.amount_bust || 0))) + ' 💎</span></div>';
-        }).join('');
+        return '<div class="grants-sheet-body"><p class="wallet-note">' + sub + '</p>' +
+            '<div class="ri-empty-hint">' + window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang)) + '</div></div>';
     }
-    body += '</div>';
-    var layer = U.sheet(window.t('reliabilityDashGrantsSectionTitle', {}, lang), body);
+    var activeGrant = grants[window._activeGrantIndex];
+    var isGolden = activeGrant.is_golden;
+    var badgeText = '';
+    if (activeGrant.is_early) {
+        badgeText = lang === 'ru' ? 'Досрочный финиш' : 'Early Finish';
+        if (activeGrant.is_golden) badgeText += lang === 'ru' ? ' (Идеальный)' : ' (Perfect)';
+    } else {
+        badgeText = isGolden
+            ? window.t('reliabilityDashSummaryGrantBadgeGolden', {}, lang)
+            : window.t('reliabilityDashSummaryGrantBadgeRegular', { skips: activeGrant.skips_count || 0 }, lang);
+    }
+    var detailsText = window.t('reliabilityDashSummaryGrantValue', {
+        amount: formatReliabilityIndex(activeGrant.amount_bust || 0),
+        base: formatReliabilityIndex(activeGrant.base_bonus || 0),
+        perfect: formatReliabilityIndex(activeGrant.perfect_bonus || 0),
+        karma: formatReliabilityIndex(activeGrant.karma_at_moment || 0),
+        karma_bonus: formatReliabilityIndex(activeGrant.karma_component || 0)
+    }, lang);
+    var tilesHtml = grants.map(function (g, idx) {
+        var activeClass = idx === window._activeGrantIndex ? 'active' : '';
+        var goldenClass = g.is_golden ? 'is-golden' : '';
+        var appIconHtml = typeof renderIcon === 'function' ? renderIcon(g.app_name || '', g.icon_url || '') : '';
+        var ownerIconHtml = typeof renderIcon === 'function' ? renderIcon(g.owner_name || g.app_name || '?', g.owner_avatar_url || '') : '';
+        return '<button type="button" class="ri-grant-tile ' + activeClass + ' ' + goldenClass + '" onclick="selectActiveGrant(' + idx + ', event)">' +
+            '<span class="ri-grant-pair" aria-hidden="true"><span class="ri-grant-app">' + appIconHtml + '</span><span class="ri-grant-owner">' + ownerIconHtml + '</span></span>' +
+            '<span class="ri-grant-amount"><span class="ri-grant-amount-val">' + formatReliabilityIndex(g.amount_bust) + '</span><span class="ri-grant-bust-ico">💎</span></span></button>';
+    }).join('');
+    return '<div class="grants-sheet-body">' +
+        '<p class="wallet-note">' + sub + '</p>' +
+        '<div class="ri-grants-tiles">' + tilesHtml + '</div>' +
+        '<div class="ri-grant-detail">' +
+        '<div class="ri-grant-detail-row"><span>' + window.escapeHTML(window.t('reliabilityDashSummaryGrantLabel', {}, lang)) + '</span><span>' + window.escapeHTML(activeGrant.app_name || '') + '</span></div>' +
+        '<div class="ri-grant-detail-row"><span>' + (lang === 'ru' ? 'Дата получения' : 'Date received') + '</span><span>' + window.escapeHTML(formatIsoDate(activeGrant.granted_at)) + '</span></div>' +
+        '<div class="ri-grant-formula">' + window.escapeHTML(detailsText) + '</div>' +
+        '<span class="ri-grant-badge ' + (isGolden ? 'is-golden' : 'is-regular') + '">' + window.escapeHTML(badgeText) + '</span>' +
+        '</div></div>';
+}
+
+async function openGrantsHistorySheet() {
+    var U = window.LiveMarketUI;
+    if (!U || typeof U.sheet !== 'function') {
+        if (typeof showReliabilityInfo === 'function') showReliabilityInfo();
+        return;
+    }
+    var state = typeof getReliabilityUiState === 'function' ? getReliabilityUiState() : null;
+    if ((!state || !state.summary) && typeof window.loadReliabilitySummary === 'function') {
+        try { await window.loadReliabilitySummary(false); } catch (_) {}
+    }
+    var layer = U.sheet(window.t('reliabilityDashGrantsSectionTitle', {}, lang), buildGrantsSheetBodyHtml());
     if (layer) layer.id = 'grants-history-sheet';
 }
 
