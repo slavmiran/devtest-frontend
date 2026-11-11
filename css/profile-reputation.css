@@ -16,18 +16,55 @@
 
 /* Modal Headers + Subtitles + About Metric button */
 .metric-modal-head {
-  text-align: center;
+  text-align: left;
   margin-bottom: 12px;
 }
+.metric-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
 .metric-modal-subline {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--hint-color, #9aa6b8);
+}
+.metric-about-icon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  margin-top: -2px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(232, 238, 247, 0.62);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 12.5px;
-  color: var(--hint-color, #9aa6b8);
+  padding: 0;
+  cursor: pointer;
+}
+.metric-about-icon.is-active {
+  color: rgba(232, 238, 247, 0.92);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .metric-modal-subline--left {
   justify-content: flex-start;
@@ -184,13 +221,19 @@
   align-items: baseline;
   gap: 8px;
 }
-.contrib-prices b {
+.contrib-prices .contrib-price-name {
   font-size: 12.5px;
   font-weight: 650;
   min-width: 0;
 }
-.contrib-prices span {
-  font-size: 13.5px;
+.contrib-prices .contrib-price-name small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.5;
+  margin-left: 4px;
+}
+.contrib-prices .contrib-price-count {
+  font-size: 15px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -227,9 +270,22 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+.contrib-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
 .contrib-card-head b {
   font-size: 13px;
   font-weight: 750;
+}
+.metric-key-num {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: #d7e4f8;
+  white-space: nowrap;
 }
 .contrib-cards p {
   font-size: 12px;
@@ -320,6 +376,29 @@
   display: flex;
   gap: 6px;
   margin: 8px 0 12px;
+}
+.wallet-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 12px 0;
+}
+.wallet-nav .wallet-tabs { margin: 0; }
+.wallet-history-link {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: var(--hint-color, #9aa6b8);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+.wallet-history-link.is-on {
+  color: var(--text-color, #f4f6f8);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .wallet-tabs button, .wallet-filters button, .wallet-pack, .wallet-link {
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -469,6 +548,29 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
+#wallet-panel-earn .card {
+  margin-bottom: 8px !important;
+  padding: 10px 12px;
+}
+#wallet-panel-earn .card p {
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.wallet-inline-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.wallet-grants-link { margin: 0 0 10px; }
 
 /* Reliability Modal Influences & Grants Launcher */
 .ri-influence-grid {
@@ -726,8 +828,64 @@
 .rv-earn-row.is-boost {
   background: rgba(229, 181, 103, 0.12);
   border: 1px solid rgba(229, 181, 103, 0.28);
-  font-weight: 700;
 }
+.rv-guide { margin-top: 16px; }
+.rv-guide-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 750;
+  text-align: left;
+}
+.rv-guide-block { margin-bottom: 12px; }
+.rv-guide-label {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+.rv-guide-rows { display: flex; flex-direction: column; }
+.rv-guide-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12.5px;
+}
+.rv-guide-row span { min-width: 0; }
+.rv-guide-row b {
+  font-weight: 750;
+  white-space: nowrap;
+  color: #d5deea;
+}
+.rv-guide-example { margin-top: 2px; }
+.rv-guide-example > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12.5px;
+  font-weight: 650;
+  opacity: 0.7;
+}
+.rv-guide-example > summary::-webkit-details-marker { display: none; }
+.rv-guide-example[open] > summary { margin-bottom: 4px; }
+.rv-history-heading { margin: 22px 0 10px; }
+.rv-wallet-summary .rv-wallet-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rv-pack-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.rv-quota-pack { width: 100%; color: inherit; }
+.rv-quota-pack:disabled { opacity: 0.45; cursor: default; }
+.karma-influence-acc { margin: 4px 0 14px; }
 
 @media (max-width: 360px) {
   .wallet-hero strong, .contrib-dash-hero strong { font-size: 26px; }

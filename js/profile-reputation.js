@@ -15,6 +15,7 @@
     var walletPayMethod = 'crypto';
     var historyFilter = 'all';
     var contribInfOpen = false;
+    var karmaInfOpen = true;
 
     function lang() { return window.lang || 'ru'; }
     function t(key, vars, fallback) {
@@ -265,7 +266,7 @@
                     '<div class="wallet-pack-top"><strong>' + esc(formatAmount(pack.amount)) + ' <span>$BUST</span></strong>' + badge + '</div>' +
                     '<div class="wallet-pack-bottom"><small>' + esc(t('walletPack' + pack.id, {}, pack.id)) + '</small><b class="wallet-pack-usd">$' + pack.usd + '</b></div></button>';
             }).join('') + '</div>' +
-            '<label class="wallet-custom"><span>' + esc(t('walletCustom', {}, 'Или введите свою сумму $BUST')) + '</span>' +
+            '<label class="wallet-custom"><span>' + esc(t('walletCustom', {}, 'Своя сумма $BUST')) + '</span>' +
             '<input id="wallet-custom-amount" inputmode="numeric" min="100" max="20000" step="50" placeholder="100 – 20 000 $BUST" value="' + (customMode ? esc(String(amount || '')) : '') + '"></label>' +
             '<div id="wallet-gtw-methods-mount">' + methodsHtml + '</div>';
     }
@@ -279,13 +280,14 @@
                 return row.type === 'platform_test_grant' || row.type === 'early_finish_grant';
             });
         }
+        var grantsLauncher = historyFilter === 'grants'
+            ? '<button type="button" class="wallet-inline-link wallet-grants-link" data-rep-open="grants">' + esc(t('walletOpenGrantsSheet', {}, 'Подробная история грантов')) + '</button>'
+            : '';
         host.innerHTML =
             '<div class="wallet-filters">' +
-            '<button type="button" class="' + (historyFilter === 'all' ? 'is-on' : '') + '" data-wallet-filter="all">' + esc(t('walletFilterAll', {}, 'Все операции')) + '</button>' +
+            '<button type="button" class="' + (historyFilter === 'all' ? 'is-on' : '') + '" data-wallet-filter="all">' + esc(t('walletFilterAll', {}, 'Операции')) + '</button>' +
             '<button type="button" class="' + (historyFilter === 'grants' ? 'is-on' : '') + '" data-wallet-filter="grants">' + esc(t('walletFilterGrants', {}, 'Гранты')) + '</button></div>' +
-            '<button type="button" class="ri-rules-btn ri-grants-open-btn" style="margin-bottom:10px" data-rep-open="grants">' +
-            '<span class="ri-rules-btn-left"><span>🏆</span><span class="ri-grants-open-copy"><strong>' + esc(t('walletOpenGrantsSheet', {}, 'Подробная история грантов по проектам')) + '</strong><small>' + esc(t('walletGrantFormula', {}, 'База 50 + идеальный бонус 50 + карма × 5 (до 200)')) + '</small></span></span>' +
-            '<span class="ri-rules-chevron" style="transform:rotate(-90deg)">▼</span></button>' +
+            grantsLauncher +
             (rows.length ? '<div class="wallet-ledger">' + rows.map(function (row) {
                 var amount = Number(row.amount || 0);
                 var sign = amount > 0 ? '+' : '';
@@ -337,30 +339,27 @@
         if (contracts && !now.querySelector('[data-rep-open="market"]')) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'btn btn-primary';
-            btn.style.cssText = 'width:100%;margin-top:10px';
+            btn.className = 'wallet-inline-link';
             btn.setAttribute('data-rep-open', 'market');
-            btn.textContent = t('walletOpenContracts', {}, 'Открыть Контракты в Маркете ›');
+            btn.textContent = t('walletOpenContracts', {}, 'Контракты в Маркете');
             contracts.closest('.card').appendChild(btn);
         }
         var invite = now.querySelector('[data-i18n="earnReferralTitle"], #t-earnReferralTitle');
         if (invite && !now.querySelector('[data-rep-open="guests"]')) {
             var guestBtn = document.createElement('button');
             guestBtn.type = 'button';
-            guestBtn.className = 'btn btn-secondary';
-            guestBtn.style.cssText = 'width:100%;margin-top:10px';
+            guestBtn.className = 'wallet-inline-link';
             guestBtn.setAttribute('data-rep-open', 'guests');
-            guestBtn.textContent = t('walletOpenGuests', {}, 'К гостевым проектам ›');
+            guestBtn.textContent = t('walletOpenGuests', {}, 'Гостевые проекты');
             invite.closest('.card').appendChild(guestBtn);
         }
         var grantCard = awards.querySelector('#t-earnGrantTitle, [data-i18n="earnGrantTitle"]');
         if (grantCard && !awards.querySelector('[data-rep-open="grants"]')) {
             var grantBtn = document.createElement('button');
             grantBtn.type = 'button';
-            grantBtn.className = 'btn btn-secondary';
-            grantBtn.style.cssText = 'width:100%;margin-top:10px';
+            grantBtn.className = 'wallet-inline-link';
             grantBtn.setAttribute('data-rep-open', 'grants');
-            grantBtn.textContent = t('reliabilityOpenGrants', {}, 'Открыть историю грантов ›');
+            grantBtn.textContent = t('reliabilityOpenGrants', {}, 'История грантов');
             grantCard.closest('.card').appendChild(grantBtn);
         }
         earn.appendChild(now);
@@ -404,10 +403,11 @@
                 '<div class="wallet-hero"><strong id="wallet-hero-balance">0</strong><small>$BUST</small></div>' +
                 '</div></div>' +
                 '<div id="wallet-reserve" class="wallet-reserve" hidden></div></div>' +
+                '<div class="wallet-nav">' +
                 '<div class="wallet-tabs" role="tablist">' +
                 '<button type="button" data-wallet-tab="topup">💳 ' + esc(t('walletTabTopup', {}, 'Пополнить')) + '</button>' +
-                '<button type="button" data-wallet-tab="earn" class="is-on">🎯 ' + esc(t('walletTabEarn', {}, 'Заработать')) + '</button>' +
-                '<button type="button" data-wallet-tab="history">📜 ' + esc(t('walletTabHistory', {}, 'История')) + '</button></div>' +
+                '<button type="button" data-wallet-tab="earn" class="is-on">🎯 ' + esc(t('walletTabEarn', {}, 'Заработать')) + '</button></div>' +
+                '<button type="button" class="wallet-history-link" data-wallet-tab="history">' + esc(t('walletTabHistory', {}, 'История операций')) + '</button></div>' +
                 '<div id="wallet-panel-topup" hidden></div>' +
                 '<div id="wallet-panel-earn"></div>' +
                 '<div id="wallet-panel-history" hidden></div>';
@@ -426,31 +426,24 @@
         setWalletTab(walletTab);
     }
 
+    function karmaArticle(title, value, text) {
+        return '<article><div class="contrib-card-head"><b>' + esc(title) + '</b>' +
+            (value ? '<span class="metric-key-num">' + esc(value) + '</span>' : '') +
+            '</div><p>' + text + '</p></article>';
+    }
     function karmaInfluenceHtml() {
+        var ru = lang() === 'ru';
         var m = model();
-        var cards = [
-            '<div class="karma-inf-card is-bonus">' +
-                '<div class="karma-inf-row"><span class="karma-inf-label">💰 ' + esc(lang() === 'ru' ? 'Бонус к Гранту за 14 дней' : '14-day Grant bonus') + '</span>' +
-                '<strong class="karma-inf-val">+' + esc(formatAmount(m.grantBonus)) + ' $BUST</strong></div>' +
-                '<small>' + esc(lang() === 'ru' ? ('Формула: Карма × 5 · максимум +200 $BUST к каждому гранту') : ('Formula: Karma × 5 · up to +200 $BUST per grant')) + '</small>' +
-            '</div>',
-            '<div class="karma-inf-card is-bonus">' +
-                '<div class="karma-inf-row"><span class="karma-inf-label">🚀 ' + esc(lang() === 'ru' ? 'Приоритет ваших проектов в Маркете' : 'Market priority for your apps') + '</span>' +
-                '<strong class="karma-inf-val">' + (m.karma >= 0 ? '+' : '') + esc(formatScore(m.karma)) + '</strong></div>' +
-                '<small>' + esc(lang() === 'ru' ? 'Прямая прибавка к рейтингу показа ваших приложений во взаимном тестировании' : 'Direct boost to your apps visibility in mutual testing') + '</small>' +
-            '</div>'
+        var articles = [
+            karmaArticle('📈 ' + (ru ? 'Витрина' : 'Showcase'), (m.karma > 0 ? '+' : '') + formatScore(m.karma), esc(t('karmaWhyShowcase', {}, ru ? 'Карма владельца поднимает его проекты в ленте взаимных тестов и в коммерческой ленте.' : 'Owner karma raises apps in the mutual-test feed and the commercial feed.'))),
+            karmaArticle('💰 ' + (ru ? 'Грант' : 'Grant'), (m.grantBonus > 0 ? '+' + formatAmount(m.grantBonus) : '+200') + ' $BUST', esc(t('karmaWhyGrant', {}, ru ? 'К гранту тестера добавляется карма × 5, но не больше 200 $BUST. Вместе с базой и идеальным бонусом потолок 300.' : 'A tester grant adds karma × 5, capped at 200 $BUST. With base and the perfect bonus the ceiling is 300.'))),
+            karmaArticle('⭐ ' + (ru ? 'Квоты отзывов' : 'Review quota'), '×0,70', esc(t('karmaWhyReviews', {}, ru ? 'Отрицательная карма ставит множитель доверия ×0,70: накопление идёт на 30% медленнее и перекрывает бонус надёжности.' : 'Negative karma sets a ×0.70 trust multiplier. Quota grows 30% slower and overrides the reliability bonus.'))),
+            karmaArticle('📨 ' + (ru ? 'Рассылка' : 'Invites'), ru ? 'до +6' : 'up to +6', esc(t('karmaWhyMail', {}, ru ? 'Минус 1 бесплатный слот за каждые 3 кармы ниже нуля (новичков это не касается). Плюс 1 слот за каждые 7 кармы, максимум +6.' : 'Minus 1 free slot per 3 karma below zero (newcomers are exempt). Plus 1 slot per 7 karma, up to +6.'))),
+            karmaArticle('👁 ' + (ru ? 'Досье' : 'Dossier'), '', esc(t('karmaWhySignal', {}, ru ? 'Карма видна в досье и офферах. На сам индекс надёжности она не влияет.' : 'Karma is visible in the dossier and offers. It does not change the reliability index.')))
         ];
-        if (m.karma < 0) {
-            cards.push(
-                '<div class="karma-inf-card is-limit">' +
-                    '<div class="karma-inf-row"><span class="karma-inf-label">⚠️ ' + esc(lang() === 'ru' ? 'Штраф к накоплению отзывов' : 'Review quota penalty') + '</span>' +
-                    '<strong class="karma-inf-val">×0.70</strong></div>' +
-                    '<small>' + esc(lang() === 'ru' ? 'При отрицательной карме бесплатная квота отзывов копится на 30% медленнее' : 'Negative karma slows free review quota accumulation by 30%') + '</small>' +
-                '</div>'
-            );
-        }
-        return '<div class="karma-influence">' +
-            '<div class="karma-inf-grid">' + cards.join('') + '</div></div>';
+        return '<details class="contrib-influence-acc karma-influence-acc"' + (karmaInfOpen ? ' open' : '') + '>' +
+            '<summary class="ri-rules-btn contrib-influence-btn"><span class="ri-rules-btn-left">⚡ ' + esc(t('influenceSectionTitle', {}, ru ? 'Влияния' : 'Effects')) + '</span><span class="ri-rules-chevron">▼</span></summary>' +
+            '<div class="contrib-cards">' + articles.join('') + '</div></details>';
     }
     function paintKarmaInfluence() {
         var host = document.getElementById('karma-influence');
@@ -505,7 +498,10 @@
             '<span class="contrib-quality-pill">' + esc(t('contribAcceptQuality', { n: rate == null ? '—' : formatScore(rate) }, '✓ Качество отчётов (принято): ' + (rate == null ? '—' : formatScore(rate) + '%'))) + '</span>' +
             '</div>' +
             '<div class="contrib-prices">' + prices.map(function (row) {
-                return '<div><b>' + row[0] + ' ' + esc(row[1]) + '</b><span>' + esc(formatScore(row[2])) + '</span></div>';
+                var parts = String(row[1]).match(/^(.*)\s+(\+\d+(?:[.,]\d+)?)$/);
+                var name = parts ? parts[1] : row[1];
+                var weight = parts ? parts[2] : '';
+                return '<div><span class="contrib-price-name">' + row[0] + ' ' + esc(name) + (weight ? ' <small>' + esc(weight) + '</small>' : '') + '</span><span class="contrib-price-count">' + esc(formatScore(row[2])) + '</span></div>';
             }).join('') + '</div></div>' +
             '<details class="contrib-influence-acc"' + (contribInfOpen ? ' open' : '') + '>' +
             '<summary class="ri-rules-btn contrib-influence-btn">' +
@@ -554,6 +550,7 @@
     document.addEventListener('toggle', function (ev) {
         if (!ev.target || !ev.target.classList) return;
         if (ev.target.classList.contains('contrib-influence-acc')) contribInfOpen = !!ev.target.open;
+        if (ev.target.classList.contains('karma-influence-acc')) karmaInfOpen = !!ev.target.open;
     }, true);
 
     document.addEventListener('click', function (ev) {

@@ -7646,7 +7646,11 @@ async function openGrantsHistorySheet() {
         try { await window.loadReliabilitySummary(false); } catch (_) {}
     }
     var layer = U.sheet(window.t('reliabilityDashGrantsSectionTitle', {}, lang), buildGrantsSheetBodyHtml());
-    if (layer) layer.id = 'grants-history-sheet';
+    if (layer) {
+        layer.id = 'grants-history-sheet';
+        var closeBtn = layer.querySelector('[data-lm-close]');
+        if (closeBtn) closeBtn.remove();
+    }
 }
 
 function closeReliabilityInfo(event) {
