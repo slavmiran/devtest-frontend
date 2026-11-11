@@ -15,7 +15,7 @@
     var walletPayMethod = 'crypto';
     var historyFilter = 'all';
     var contribInfOpen = false;
-    var karmaInfOpen = true;
+    var karmaInfOpen = false;
 
     function lang() { return window.lang || 'ru'; }
     function t(key, vars, fallback) {
@@ -315,6 +315,29 @@
         renderReserve();
     }
 
+    function jumpIcon() {
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>';
+    }
+    function makeJump(label, attr, value) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'earn-jump';
+        if (attr) btn.setAttribute(attr, value);
+        btn.innerHTML = '<span>' + esc(label) + '</span>' + jumpIcon();
+        return btn;
+    }
+    function hoistEarnJumps(root) {
+        var scope = root || document.getElementById('earn-bust-modal');
+        if (!scope) return;
+        scope.querySelectorAll('.card').forEach(function (card) {
+            var head = card.querySelector(':scope > div');
+            if (!head) return;
+            head.classList.add('earn-card-head');
+            card.querySelectorAll('.earn-jump').forEach(function (btn) {
+                if (btn.parentElement !== head) head.appendChild(btn);
+            });
+        });
+    }
     function classifyEarnCards(earn) {
         if (!earn || earn.dataset.walletSorted) return;
         var cards = Array.from(earn.querySelectorAll(':scope > .card'));
@@ -337,31 +360,30 @@
         });
         var contracts = now.querySelector('[data-i18n="earnDailyTitle"], #t-earnDailyTitle');
         if (contracts && !now.querySelector('[data-rep-open="market"]')) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'wallet-inline-link';
-            btn.setAttribute('data-rep-open', 'market');
-            btn.textContent = t('walletOpenContracts', {}, 'Контракты в Маркете');
-            contracts.closest('.card').appendChild(btn);
+            contracts.closest('.card').querySelector(':scope > div').appendChild(
+                makeJump(t('walletOpenContracts', {}, 'Маркет'), 'data-rep-open', 'market')
+            );
         }
         var invite = now.querySelector('[data-i18n="earnReferralTitle"], #t-earnReferralTitle');
         if (invite && !now.querySelector('[data-rep-open="guests"]')) {
-            var guestBtn = document.createElement('button');
-            guestBtn.type = 'button';
-            guestBtn.className = 'wallet-inline-link';
-            guestBtn.setAttribute('data-rep-open', 'guests');
-            guestBtn.textContent = t('walletOpenGuests', {}, 'Гостевые проекты');
-            invite.closest('.card').appendChild(guestBtn);
+            invite.closest('.card').querySelector(':scope > div').appendChild(
+                makeJump(t('walletOpenGuests', {}, 'Гости'), 'data-rep-open', 'guests')
+            );
         }
         var grantCard = awards.querySelector('#t-earnGrantTitle, [data-i18n="earnGrantTitle"]');
         if (grantCard && !awards.querySelector('[data-rep-open="grants"]')) {
-            var grantBtn = document.createElement('button');
-            grantBtn.type = 'button';
-            grantBtn.className = 'wallet-inline-link';
-            grantBtn.setAttribute('data-rep-open', 'grants');
-            grantBtn.textContent = t('reliabilityOpenGrants', {}, 'История грантов');
-            grantCard.closest('.card').appendChild(grantBtn);
+            grantCard.closest('.card').querySelector(':scope > div').appendChild(
+                makeJump(t('reliabilityOpenGrants', {}, 'История'), 'data-rep-open', 'grants')
+            );
         }
+        var sprintBtn = now.querySelector('button.earn-jump[onclick*="showContributionInfo"]');
+        if (sprintBtn) {
+            sprintBtn.className = 'earn-jump';
+            sprintBtn.innerHTML = '<span>' + esc(t('earnSprintOpenBtn', {}, 'Спринт')) + '</span>' + jumpIcon();
+        }
+        hoistEarnJumps(now);
+        hoistEarnJumps(once);
+        hoistEarnJumps(awards);
         earn.appendChild(now);
         earn.appendChild(once);
         earn.appendChild(awards);
@@ -442,7 +464,7 @@
             karmaArticle('👁 ' + (ru ? 'Досье' : 'Dossier'), '', esc(t('karmaWhySignal', {}, ru ? 'Карма видна в досье и офферах. На сам индекс надёжности она не влияет.' : 'Karma is visible in the dossier and offers. It does not change the reliability index.')))
         ];
         return '<details class="contrib-influence-acc karma-influence-acc"' + (karmaInfOpen ? ' open' : '') + '>' +
-            '<summary class="ri-rules-btn contrib-influence-btn"><span class="ri-rules-btn-left">⚡ ' + esc(t('influenceSectionTitle', {}, ru ? 'Влияния' : 'Effects')) + '</span><span class="ri-rules-chevron">▼</span></summary>' +
+            '<summary class="ri-rules-btn contrib-influence-btn"><span class="ri-rules-btn-left">⚡ ' + esc(t('influenceSectionTitle', {}, ru ? 'Влияние на Профиль' : 'Effect on your profile')) + '</span><span class="ri-rules-chevron">▼</span></summary>' +
             '<div class="contrib-cards">' + articles.join('') + '</div></details>';
     }
     function paintKarmaInfluence() {
@@ -505,7 +527,7 @@
             }).join('') + '</div></div>' +
             '<details class="contrib-influence-acc"' + (contribInfOpen ? ' open' : '') + '>' +
             '<summary class="ri-rules-btn contrib-influence-btn">' +
-            '<span class="ri-rules-btn-left">⚡ ' + esc(t('contribInfluenceTitle', {}, 'Влияние вклада на профиль')) + '</span>' +
+            '<span class="ri-rules-btn-left">⚡ ' + esc(t('contribInfluenceTitle', {}, 'Влияние на Профиль')) + '</span>' +
             '<span class="ri-rules-chevron">▼</span></summary>' +
             '<div class="contrib-cards">' +
             '<article class="is-bonus"><div class="contrib-card-head"><b>⭐ ' + esc(t('contribInfSprint', { n: formatScore(m.sprintM) }, 'Ускоритель отзывов ×' + formatScore(m.sprintM))) + '</b></div><p>' + esc(t('contribInfSprintText', {}, 'Место прошлого Спринта умножает скорость набора квоты отзывов, максимум ×2.')) + '</p></article>' +
@@ -645,6 +667,7 @@
         mountWallet: mountWallet,
         paintKarmaInfluence: paintKarmaInfluence,
         paintContributionDash: paintContributionDash,
+        hoistEarnJumps: hoistEarnJumps,
         formatScore: formatScore
     };
 })();

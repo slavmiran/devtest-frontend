@@ -523,62 +523,18 @@ function renderReliabilityAlphaModal() {
     var ringCircumference = 2 * Math.PI * 40;
     var ringOffset = ringCircumference * (1 - ringPct / 100);
     var formulaCount = breakdown.projects_used ? breakdown.projects_used.length : 0;
-
-    var rulesPanelHtml = '';
-    if (_showReliabilityRules) {
-        rulesPanelHtml = `
-            <div class="ri-rules-panel">
-              <div class="ri-rules-grid">
-                <div class="ri-rules-col">
-                  <div class="ri-rules-subtitle">${window.escapeHTML(window.t('rulesPanelStatusTitle', {}, lang))}</div>
-                  <div class="ri-rules-list">
-                    <div class="ri-rules-item"><span class="ri-dot expert"></span><span>${window.escapeHTML(window.t('rulesStatusExpert', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span class="ri-dot active"></span><span>${window.escapeHTML(window.t('rulesStatusActive', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span class="ri-dot basic"></span><span>${window.escapeHTML(window.t('rulesStatusBasic', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span class="ri-dot minimal"></span><span>${window.escapeHTML(window.t('rulesStatusMinimal', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span class="ri-dot bad"></span><span>${window.escapeHTML(window.t('rulesStatusBad', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span class="ri-dot newbie"></span><span>${window.escapeHTML(window.t('rulesStatusNewbie', {}, lang))}</span></div>
-                  </div>
-                </div>
-                <div class="ri-rules-col">
-                  <div class="ri-rules-subtitle">${window.escapeHTML(window.t('rulesPanelCalcTitle', {}, lang))}</div>
-                  <div class="ri-rules-list">
-                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRuleHistoryTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRuleHistoryText', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRuleFreshnessTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRuleFreshnessText', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRuleOvertimeTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRuleOvertimeText', {}, lang))}</span></div>
-                    <div class="ri-rules-item"><span><strong>${window.escapeHTML(window.t('rulesRulePenaltiesTitle', {}, lang))}</strong> ${window.escapeHTML(window.t('rulesRulePenaltiesText', {}, lang))}</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-        `;
+    var rulesSlot = document.getElementById('reliability-rules-slot');
+    if (rulesSlot) {
+        var ruleLines = [
+            ['rulesRuleHistoryTitle', 'rulesRuleHistoryText'],
+            ['rulesRuleFreshnessTitle', 'rulesRuleFreshnessText'],
+            ['rulesRuleOvertimeTitle', 'rulesRuleOvertimeText'],
+            ['rulesRulePenaltiesTitle', 'rulesRulePenaltiesText']
+        ];
+        rulesSlot.innerHTML = '<p class="metric-about-kicker">' + window.escapeHTML(window.t('metricAboutCalcKicker', {}, lang)) + '</p><ul class="metric-about-list">' + ruleLines.map(function (pair) {
+            return '<li><strong>' + window.escapeHTML(window.t(pair[0], {}, lang)) + '</strong> ' + window.escapeHTML(window.t(pair[1], {}, lang)) + '</li>';
+        }).join('') + '</ul>';
     }
-
-    var grants = summary.grants_history || [];
-    if (window._activeGrantIndex >= grants.length) {
-        window._activeGrantIndex = 0;
-    }
-
-    var totalGrantBust = grants.reduce(function(acc, g) { return acc + Number(g && g.amount_bust || 0); }, 0);
-    var grantsLauncherTitle = window.t('reliabilityDashGrantsSectionTitle', {}, lang) || (lang === 'ru' ? 'История выплат и грантов' : 'Grants & Payouts History');
-    var grantsLauncherSub = grants.length > 0
-        ? (lang === 'ru'
-            ? ('Получено грантов: ' + grants.length + ' · Всего +' + formatReliabilityIndex(totalGrantBust) + ' $BUST')
-            : ('Grants received: ' + grants.length + ' · Total +' + formatReliabilityIndex(totalGrantBust) + ' $BUST'))
-        : (window.t('reliabilityDashGrantsNoHistory', {}, lang) || (lang === 'ru' ? 'Пока нет полученных грантов' : 'No grants received yet'));
-
-    var grantsSectionHtml = `
-        <button type="button" class="ri-rules-btn ri-grants-open-btn" onclick="openGrantsHistorySheet()">
-          <span class="ri-rules-btn-left">
-            <span>🏆</span>
-            <span class="ri-grants-open-copy">
-              <strong>${window.escapeHTML(grantsLauncherTitle)}</strong>
-              <small>${window.escapeHTML(grantsLauncherSub)}</small>
-            </span>
-          </span>
-          <span class="ri-rules-chevron" style="transform: rotate(-90deg);">▼</span>
-        </button>
-    `;
 
     body.innerHTML = `
         <div class="page reliability-alpha-page">
@@ -641,16 +597,6 @@ function renderReliabilityAlphaModal() {
               }).join('')}
             </div>
           </div>
-
-          <div>
-            <button type="button" class="ri-rules-btn ${_showReliabilityRules ? 'active' : ''}" onclick="toggleReliabilityRules(event)">
-              <span class="ri-rules-btn-left">${window.escapeHTML(window.t('rulesDisclosureBtn', {}, lang))}</span>
-              <span class="ri-rules-chevron">▼</span>
-            </button>
-            ${rulesPanelHtml}
-          </div>
-
-          ${grantsSectionHtml}
 
           <section class="ri-surface">
             <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashProjectsSectionTitle', {}, lang))}</h4>

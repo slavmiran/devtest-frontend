@@ -53,16 +53,23 @@
     row(ru?'Золотой грант':'Golden grant','+0,50 ⭐'),
     row(ru?'Первый переход проекта в Live':'First move to Live','+2 ⭐')
   ].join('');
-  var mults=[
-    row(ru?'Спринт':'Sprint', ru?'1 место ×2 · 2–3 ×1,5 · 4–10 ×1,3 · остальные ×1':'1st ×2 · 2–3 ×1.5 · 4–10 ×1.3 · else ×1'),
-    row(ru?'Надёжность':'Reliability', ru?'≥80 ×1,2 · 65–79 ×1,1 · иначе ×1':'≥80 ×1.2 · 65–79 ×1.1 · else ×1'),
-    row(ru?'Карма ниже нуля или надёжность <50':'Karma below zero or reliability <50','×0,70')
+  var sprint=[
+    row(ru?'1 место':'1st place','+100%'),
+    row(ru?'2–3 места':'2–3 places','+50%'),
+    row(ru?'4–10 места':'4–10 places','+30%'),
+    row(ru?'Остальные места':'Other places','+0%')
+  ].join('');
+  var trust=[
+    row(ru?'Надёжность от 80%':'Reliability from 80%','+20%'),
+    row(ru?'От 65% до 79%':'From 65% to 79%','+10%'),
+    row(ru?'От 50% или ещё нет индекса':'From 50% or no index yet','+0%'),
+    row(ru?'Ниже 50% или карма ниже нуля':'Below 50% or karma below zero','−30%')
   ].join('');
   var spend=[
     row(ru?'Оценка без текста':'Stars only','0,65 ⭐'),
     row(ru?'Заготовка':'Template','0,85 ⭐'),
     row(ru?'Авторский текст':'Your own text','1,00 ⭐'),
-    row(ru?'Скидка за 4★':'4★ discount', ru?'0,50 / 0,70 / 0,85 ⭐':'0.50 / 0.70 / 0.85 ⭐'),
+    row(ru?'Скидка за 4★':'4★ discount','−0,15 ⭐'),
     row(ru?'Купить 1 ⭐':'Buy 1 ⭐','350 $BUST'),
     row(ru?'Купить 5 ⭐':'Buy 5 ⭐','1 500 $BUST')
   ].join('');
@@ -73,11 +80,12 @@
     row(ru?'С переходами в Live, без ускорителя':'With Live transitions, before accelerator','~10 ⭐')+
     row(ru?'С ускорителем до ×2':'With accelerator up to ×2','~20 ⭐')+
     '</div><p class="rv-muted">'+e(t('rvEarnNote'))+'</p></details>';
-  return '<section class="rv-guide"><h3 class="rv-guide-title">'+e(ru?'Как набирать и как тратить':'How quota is earned and spent')+'</h3>'+
-    '<div class="rv-guide-block"><div class="rv-guide-label">'+e(ru?'Набор':'Earned')+'</div><div class="rv-guide-rows">'+earn+'</div><p class="rv-muted">'+e(ru?'Приветствие Live (+2, при надёжности ≥80 — +4) множители не усиливают. Остальные награды умножаются на спринт и надёжность.':'The Live welcome (+2, or +4 at reliability ≥80) is not multiplied. Other rewards are multiplied by sprint and reliability.')+'</p></div>'+
-    '<div class="rv-guide-block"><div class="rv-guide-label">'+e(ru?'Множители':'Multipliers')+'</div><div class="rv-guide-rows">'+mults+'</div><p class="rv-muted">'+e((ru?'Сейчас ускоритель ×':'Accelerator now ×')+n(mult)+(ru?'. Штраф кармы перекрывает бонус надёжности.':'. A karma penalty overrides the reliability bonus.'))+'</p></div>'+
-    '<div class="rv-guide-block"><div class="rv-guide-label">'+e(ru?'Траты':'Spent')+'</div><div class="rv-guide-rows">'+spend+'</div></div>'+
-    example+'</section>';
+  return '<details class="rv-guide rv-guide-acc"><summary class="rv-guide-summary"><span>'+e(ru?'Как набирать и как тратить':'How quota is earned and spent')+'</span><span class="ri-rules-chevron">▼</span></summary><div class="rv-guide-body">'+
+    '<section class="rv-guide-block"><h4>'+e(ru?'Набор':'Earned')+'</h4><div class="rv-guide-rows">'+earn+'</div><p class="rv-guide-note">'+e(ru?'Приветствие Live (+2, при надёжности от 80% — +4) проценты не усиливают. К остальным наградам прибавляется процент спринта и надёжности.':'The Live welcome (+2, or +4 from 80% reliability) is not increased by these percents. Other rewards get the sprint and reliability percent.')+'</p></section>'+
+    '<section class="rv-guide-block"><h4>'+e(ru?'Спринт':'Sprint')+'</h4><div class="rv-guide-rows">'+sprint+'</div></section>'+
+    '<section class="rv-guide-block"><h4>'+e(ru?'Надёжность и карма':'Reliability and karma')+'</h4><div class="rv-guide-rows">'+trust+'</div><p class="rv-guide-note">'+e((ru?'Сейчас ускоритель ×':'Accelerator now ×')+n(mult)+(ru?'. Минус 30% заменяет прибавку за надёжность.':'. Minus 30% replaces the reliability bonus.'))+'</p></section>'+
+    '<section class="rv-guide-block"><h4>'+e(ru?'Траты':'Spent')+'</h4><div class="rv-guide-rows">'+spend+'</div><p class="rv-guide-note">'+e(ru?'Скидка 4★ снимает 0,15 ⭐ с каждого формата.':'The 4★ discount removes 0.15 ⭐ from every format.')+'</p></section>'+
+    example+'</div></details>';
  }
  function openEduModal(){var overlay=document.createElement('div');overlay.className='rv-buy-modal';overlay.innerHTML='<div class="rv-buy-card rv-edu-card" role="dialog" aria-modal="true"><div class="rv-wallet-head"><strong>'+e(t('rvHowItWorks'))+'</strong></div><div class="rv-edu-alert"><p>'+e(t('rvGeoEducation'))+'</p><p>'+e(t('rvPolicy'))+'</p></div></div>';document.body.appendChild(overlay);overlay.addEventListener('click',function(ev){if(ev.target===overlay)overlay.remove();});}
  function openBuyModal(w,onDone){var overlay=document.createElement('div');overlay.className='rv-buy-modal';var packs=(w.packs||[]).map(function(p){var five=p.id==='five';var disabled=w.enabled===false||w.wallet_bust<p.bust;return '<button type="button" class="wallet-pack rv-quota-pack" data-rv-buy="'+p.id+'"'+(disabled?' disabled':'')+'><div class="wallet-pack-top"><strong>+'+(five?'5':'1')+' <span>⭐</span></strong>'+(five?'<em class="is-value">'+e(window.lang==='ru'?'Выгодно':'Value')+'</em>':'')+'</div><div class="wallet-pack-bottom"><small>'+e(t(five?'rvPackFive':'rvPackOne'))+'</small><b class="wallet-pack-usd">'+e(n(p.bust,0))+' $BUST</b></div></button>';}).join('');overlay.innerHTML='<div class="rv-buy-card" role="dialog" aria-modal="true"><div class="rv-wallet-head"><strong class="rv-buy-title">'+e(t('rvTopup'))+'</strong></div><div class="rv-bust-pill"><span>'+e(window.lang==='ru'?'Ваш баланс кошелька':'Your wallet balance')+'</span><b>'+e(n(w.wallet_bust,0))+' 💎 $BUST</b></div><div class="rv-pack-grid">'+packs+'</div><p class="rv-muted">'+e(t('rvBuyHint'))+'</p><p data-rv-buy-error class="rv-error" role="alert"></p></div>';document.body.appendChild(overlay);var busy=false;overlay.addEventListener('click',async function(ev){if(ev.target===overlay){overlay.remove();return;}var b=ev.target.closest('[data-rv-buy]');if(!b||busy)return;busy=true;b.disabled=true;var pack=b.dataset.rvBuy;buyKeys[pack]=buyKeys[pack]||uuid();try{var result=await api('/review-credits/purchase','POST',{pack:pack,request_key:buyKeys[pack]});wallet=result.wallet;delete buyKeys[pack];repaint();overlay.remove();toast(t('rvPurchased'));if(onDone)onDone();}catch(err){overlay.querySelector('[data-rv-buy-error]').textContent=error(err);}finally{busy=false;if(b.isConnected)b.disabled=false;}});}

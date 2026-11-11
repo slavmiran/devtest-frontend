@@ -3295,7 +3295,27 @@ async function sendReport() {
     }
 }
 
+function applyGrantHistoryFallback() {
+    var summary = window.reliabilitySummary;
+    var history = summary && Array.isArray(summary.grants_history) ? summary.grants_history : null;
+    if (!history || !history.length) return;
+    var bust = history.reduce(function (sum, row) {
+        return sum + Number(row && row.amount_bust || 0);
+    }, 0);
+    if (history.length > Number(_earnGrantCount || 0)) {
+        _earnGrantCount = history.length;
+        _earnGrantBust = bust;
+    }
+}
+
+function dropEarnJump(source) {
+    document.querySelectorAll('#earn-bust-modal [data-earn-source="' + source + '"]').forEach(function (btn) {
+        btn.remove();
+    });
+}
+
 function renderEarnBustDynamic() {
+    applyGrantHistoryFallback();
     const referralCountChip = document.getElementById('earn-referrals-count');
     const referralCount = Number(referralCountChip && referralCountChip.dataset ? referralCountChip.dataset.count || 0 : 0);
     if (referralCountChip) {
@@ -3337,24 +3357,29 @@ function renderEarnBustDynamic() {
         sprintBustEl.innerText = `💎 ${formatBustAmount(_earnSprintBust)}`;
     }
     const socialStatus = document.getElementById('earn-social-status');
-    if (_socialBonusStatus === 'approved') {
-        socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
-    } else if (_socialBonusStatus === 'pending') {
-        socialStatus.innerHTML = `<button class="btn btn-secondary" style="width:100%; opacity:0.6;" disabled>⏳ ${t.earnSocialPending}</button>`;
-    } else {
-        socialStatus.innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="openSocialModal()">🎁 ${t.earnSocialBtn}</button>`;
+    if (socialStatus) {
+        dropEarnJump('social');
+        if (_socialBonusStatus === 'approved') {
+            socialStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${t.earnSocialApproved}</span>`;
+        } else if (_socialBonusStatus === 'pending') {
+            socialStatus.innerHTML = `<button type="button" class="earn-jump" data-earn-source="social" disabled><span>${window.escapeHTML(window.t('earnSocialPendingJump', {}, lang))}</span></button>`;
+        } else {
+            socialStatus.innerHTML = `<button type="button" class="earn-jump" data-earn-source="social" onclick="openSocialModal()"><span>${window.escapeHTML(window.t('earnSocialJump', {}, lang))}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></button>`;
+        }
     }
     const deviceProfileStatus = document.getElementById('earn-device-profile-status');
     if (deviceProfileStatus) {
+        dropEarnJump('device');
         if (_deviceProfileRewardClaimed || Number(_deviceProfileBustEarned || 0) > 0) {
             deviceProfileStatus.innerHTML = `<span class="meta-chip accent-green">✅ ${window.escapeHTML(window.t('earnDeviceProfileClaimedChip', { amount: 30 }, lang))}</span>`;
         } else {
             deviceProfileStatus.innerHTML = `
-                <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:8px;" onclick="openDeviceProfileFromPrompt()"> ${window.escapeHTML(window.t('deviceProfilePrepareBtn', {}, lang))}</button>
-                <div style="font-size:13px; color:var(--hint-color); text-align:center;">${window.escapeHTML(window.t('earnDeviceProfileRewardHint', { amount: 30 }, lang))}</div>
+                <button type="button" class="earn-jump" data-earn-source="device" onclick="openDeviceProfileFromPrompt()"><span>${window.escapeHTML(window.t('earnDeviceJump', {}, lang))}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></button>
+                <div style="font-size:13px; color:var(--hint-color);">${window.escapeHTML(window.t('earnDeviceProfileRewardHint', { amount: 30 }, lang))}</div>
             `;
         }
     }
+    if (window.ProfileReputation && ProfileReputation.hoistEarnJumps) ProfileReputation.hoistEarnJumps();
 }
 
 async function openEarnBustModal() {
@@ -3370,6 +3395,10 @@ async function openEarnBustModal() {
         document.getElementById('earn-referrals-count').innerText = `👥 ${window.t('earnReferralCountChip', { count: referralsCount }, lang)}`;
         _earnGrantCount = data.grant_tests_count || 0;
         _earnGrantBust = Number(data.grant_bust_earned || 0);
+        if (!_earnGrantCount && typeof loadReliabilitySummary === 'function') {
+            try { await loadReliabilitySummary(false); } catch (grantHistoryError) {}
+        }
+        applyGrantHistoryFallback();
         _earnReferralBust = Number(data.referral_bust_earned || 0);
         _earnExchangeBust = Number(data.exchange_bust_earned || 0);
         _earnRetentionBust = Number(data.retention_bust_earned || 0);

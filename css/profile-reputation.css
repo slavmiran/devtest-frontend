@@ -829,21 +829,107 @@
   background: rgba(229, 181, 103, 0.12);
   border: 1px solid rgba(229, 181, 103, 0.28);
 }
-.rv-guide { margin-top: 16px; }
-.rv-guide-title {
-  margin: 0 0 10px;
-  font-size: 15px;
-  font-weight: 750;
-  text-align: left;
+.metric-about-box p,
+.metric-about-lead,
+.metric-about-note {
+  margin: 0 0 8px;
+  line-height: 1.45;
 }
-.rv-guide-block { margin-bottom: 12px; }
-.rv-guide-label {
-  margin-bottom: 4px;
+.metric-about-note { opacity: 0.72; font-size: 12.5px; }
+.metric-about-kicker {
+  margin: 10px 0 4px;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   opacity: 0.62;
+}
+.metric-about-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.metric-about-list li {
+  margin: 4px 0;
+  line-height: 1.45;
+}
+.earn-card-head { flex-wrap: nowrap; align-items: center; }
+.earn-card-head > span:nth-child(2) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.earn-jump {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9ec0ff;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.earn-jump:disabled { opacity: 0.5; cursor: default; }
+.rv-guide-acc { margin-top: 16px; }
+.rv-guide-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 750;
+}
+.rv-guide-summary::-webkit-details-marker { display: none; }
+.rv-guide-acc[open] > .rv-guide-summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.rv-guide-acc[open] .ri-rules-chevron { transform: rotate(180deg); }
+.rv-guide-body {
+  padding: 4px 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+}
+.rv-guide-block {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.rv-guide-body > .rv-guide-block:first-child,
+.rv-guide-body > .rv-guide-example { border-top: 0; }
+.rv-guide-body > .rv-guide-block:first-child {
+  margin-top: 4px;
+  padding-top: 0;
+}
+.rv-guide-block h4 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+.rv-guide-note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  opacity: 0.62;
+}
+.rv-guide-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 750;
+  text-align: left;
 }
 .rv-guide-rows { display: flex; flex-direction: column; }
 .rv-guide-row {
