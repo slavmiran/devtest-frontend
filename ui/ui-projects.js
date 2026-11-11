@@ -1394,7 +1394,6 @@ function buildDeveloperProfileWidget() {
         const achievementsLine = window.escapeHTML(
             profileSummary ? profileSummary.closed : formatDeveloperAchievements(completedTests, goldenCount, totalGrants, activeTests)
         );
-        const qualityLine = profileSummary ? window.escapeHTML(profileSummary.quality) : '';
         const sprintView = window.ProfileReputation ? ProfileReputation.sprintCardHtml() : null;
         const deltaChip = function (kind) {
             const deltas = (visibilityStats && visibilityStats.deltas_7d) || {};
@@ -1409,26 +1408,20 @@ function buildDeveloperProfileWidget() {
             const suffix = kind === 'reliability' ? '%' : '';
             return `<span class="metric-delta ${up ? 'is-up' : 'is-down'}">${up ? '↑' : '↓'} ${up ? '+' : '-'}${body}${suffix}</span>`;
         };
-        const initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) || {};
-        const tgUser = initData.user || {};
-        const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim();
-        const devName = window.escapeHTML(fullName || tgUser.first_name || window.t('unknownLabel', {}, lang));
-        const devUsername = tgUser.username ? '@' + window.escapeHTML(tgUser.username) : '';
+        const metricSub = function (kind) {
+            return window.ProfileReputation && ProfileReputation.metricCardSubHtml
+                ? ProfileReputation.metricCardSubHtml(kind)
+                : '';
+        };
 
         const dashHtml = `
             <div class="developer-widget">
                 <div class="developer-widget-kicker">${window.t('developerWidgetTitle', {}, lang)}</div>
                 <div class="developer-widget-header">
                     <div class="developer-widget-info">
-                        <div class="developer-widget-name-line">
-                            <span class="developer-widget-name">${devName}</span>
-                            ${devUsername ? '<span class="developer-widget-username">(' + devUsername + ')</span>' : ''}
-                        </div>
                         <div class="developer-widget-stats-line">${achievementsLine}</div>
-                        ${qualityLine ? `<div class="developer-widget-quality-line">${qualityLine}</div>` : ''}
                     </div>
                 </div>
-                ${window.ProfileReputation ? ProfileReputation.profileStripHtml() : ''}
                 <div class="metrics-grid">
                     <button type="button" class="metric-card metric-card-clickable ${metricClass}" onclick="showReliabilityInfo()">
                         <div class="metric-card-top">
@@ -1440,6 +1433,7 @@ function buildDeveloperProfileWidget() {
                             ${window.escapeHTML(reliabilityValue)}${!isNewbie ? ' %' : ''}
                             ${statusText ? `<span class="metric-value-status" style="font-size: 11px; opacity: 0.85; font-weight: normal; margin-left: 4px;">(${window.escapeHTML(statusText)})</span>` : ''}
                         </div>
+                        ${metricSub('reliability')}
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-gold" onclick="showKarmaInfo()">
                         <div class="metric-card-top">
@@ -1448,6 +1442,7 @@ function buildDeveloperProfileWidget() {
                             <span class="metric-chevron">›</span>
                         </div>
                         <div class="metric-value">${formatUiAmount(visibilityStats.ownerKarma || 0, 1)} <span class="metric-value-mark">${typeof window.karmaIconHtml === 'function' ? window.karmaIconHtml('karma-yin-icon--inline') : '☯️'}</span></div>
+                        ${metricSub('karma')}
                     </button>
                     <button type="button" class="metric-card metric-card-clickable metric-card-primary" onclick="openEarnBustModal()">
                         <div class="metric-card-top">
@@ -1469,9 +1464,11 @@ function buildDeveloperProfileWidget() {
                         <div class="metric-sprint-body">
                             ${sprintView ? sprintView.body : `<div class="metric-value">${window.escapeHTML(contributionPrimary)}</div>`}
                         </div>
+                        ${metricSub('contribution')}
                     </button>
                 </div>
                 ${window.ReviewCredits ? ReviewCredits.widget() : ''}
+                ${window.ProfileReputation ? ProfileReputation.profileStripHtml() : ''}
             </div>
         `;
         container.insertAdjacentHTML('beforeend', dashHtml);
@@ -1502,17 +1499,6 @@ function buildDeveloperProfileWidget() {
                         gap_to_top5: Number(result.gap_to_top5 || 0),
                         _loaded: true,
                     };
-                    visibilityStats.contribution = {
-                        contribution_score: Number(me.contribution_score || 0),
-                        bugs_count: Number(me.bugs_count || 0),
-                        ideas_count: Number(me.ideas_count || 0),
-                        play_reviews_count: Number(me.play_reviews_count || 0),
-                        five_screens_count: Number(me.five_screens_count || 0),
-                        text_reports_count: Number(me.text_reports_count || 0),
-                        video_reports_count: Number(me.video_reports_count || 0),
-
-                    };
-                    visibilityStats.contribution_score = Number(me.contribution_score || 0);
                 }
                 const sprintCard = document.querySelector('#hud-profile .metric-card-sprint') || container.querySelector('.metric-card-sprint');
                 if (sprintCard && window.ProfileReputation) ProfileReputation.fillSprintCard(sprintCard);

@@ -17,6 +17,21 @@
     return String(value || '').trim();
   }
 
+  function cleanText(val) {
+    if (!val) return '';
+    var str = String(val)
+      .replace(/<br\s*[\/]?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]+>/g, ' ');
+    var tmp = document.createElement('textarea');
+    tmp.innerHTML = str;
+    var decoded = tmp.value || '';
+    return decoded
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n\s*\n/g, '\n\n')
+      .trim();
+  }
+
   async function call(path, body) {
     return (await U.api('/live-ownership' + path, 'POST', body || {})).result;
   }
@@ -30,7 +45,7 @@
   function setTitle(key) {
     if (layer && layer.isConnected) {
       var h2 = layer.querySelector('header.lm-sheet-header h2');
-      if (h2) h2.textContent = t(key);
+      if (h2) h2.textContent = key ? t(key) : '';
     }
   }
 
@@ -81,7 +96,31 @@
     timerInterval = setInterval(renderTime, 1000);
   }
 
-  function startCooldown(btn, sec, origText) {
+  function formatMinSec(sec) {
+    if (sec <= 0) return '00:00';
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function get40mRemaining(req) {
+    if (!req) return 0;
+    var ts = null;
+    if (req.token_copied_at) {
+      var parsed = new Date(req.token_copied_at).getTime();
+      if (!isNaN(parsed)) ts = parsed;
+    }
+    var localTs = parseInt(localStorage.getItem('la_copied_' + req.id), 10);
+    if (localTs && (!ts || localTs > ts)) {
+      ts = localTs;
+    }
+    if (!ts) return 0;
+    var elapsedSec = Math.floor((Date.now() - ts) / 1000);
+    var remaining = 2400 - elapsedSec;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  function startLockTimer(btn, sec, origText, key) {
     if (!btn || !btn.isConnected) return;
     btn.setAttribute('data-cooldown', '1');
     btn.disabled = true;
@@ -92,12 +131,30 @@
         btn.disabled = false;
         btn.textContent = origText;
       } else {
-        btn.textContent = t('laTokenCooldownBtn', {n: sec});
+        btn.textContent = t(key, {m: formatMinSec(sec), n: sec});
         sec--;
         setTimeout(tick, 1000);
       }
     }
     tick();
+  }
+
+  function apply40mLock(reqId, sec) {
+    if (!sec || sec <= 0) return;
+    if (layer && layer.isConnected) {
+      var checkBtn = layer.querySelector('[data-la=check-token]');
+      if (checkBtn && !checkBtn.hasAttribute('data-cooldown')) {
+        startLockTimer(checkBtn, sec, t('laCheckToken'), 'laTokenCooldownMin');
+      }
+      var adminBtn = layer.querySelector('[data-la=alternative]');
+      if (adminBtn && !adminBtn.hasAttribute('data-cooldown')) {
+        startLockTimer(adminBtn, sec, t('laAdminSubmit'), 'laAdminSubmitWait');
+      }
+    }
+    var cardCheckBtn = document.querySelector('[data-la-card-check="' + reqId + '"]');
+    if (cardCheckBtn && !cardCheckBtn.hasAttribute('data-cooldown')) {
+      startLockTimer(cardCheckBtn, sec, t('laCardCheckToken'), 'laTokenCooldownMin');
+    }
   }
 
   function open() {
@@ -122,6 +179,10 @@
 
   function preview() {
     var p = request.passport || {};
+    var fullText = cleanText(p.description || p.summary || '');
+    var shortText = cleanText(p.summary || (fullText.length > 160 ? fullText.slice(0, 160) + '...' : fullText));
+    var canToggle = Boolean(fullText && fullText !== shortText && fullText.length > 80);
+
     master = layer;
     layer = U.sheet(
       t('laIsYours'),
@@ -132,9 +193,9 @@
           '<span class="la-passport-meta">' + e(request.developer || p.developer || '') + (p.category ? ' · ' + e(p.category) : '') + '</span>' +
         '</div>' +
       '</div>' +
-      '<div class="la-desc-box">' +
-        '<p class="la-desc-text is-clamped" data-la-desc>' + e(p.description || '') + '</p>' +
-        ((p.description || '').length > 120 ? '<button type="button" class="la-desc-toggle" data-la="toggle-desc">' + e(t('laShowMore')) + '</button>' : '') +
+      '<div class="la-desc-box" data-la-desc-box>' +
+        '<p class="la-desc-text" data-la-desc>' + e(shortText) + '</p>' +
+        (canToggle ? '<button type="button" class="la-desc-toggle" data-la="toggle-desc">' + e(t('laShowMore')) + '</button>' : '') +
       '</div>' +
       button('laConfirm', 'confirm', true) +
       button('laNotMine', 'not-mine') +
@@ -151,10 +212,12 @@
       if (!b || busy) return;
       var act = b.dataset.la;
       if (act === 'toggle-desc') {
+        var box = layer.querySelector('[data-la-desc-box]');
         var descEl = layer.querySelector('[data-la-desc]');
-        if (descEl) {
-          var clamped = descEl.classList.toggle('is-clamped');
-          b.textContent = t(clamped ? 'laShowMore' : 'laShowLess');
+        if (box && descEl) {
+          var isExpanded = box.classList.toggle('is-expanded');
+          descEl.textContent = isExpanded ? fullText : shortText;
+          b.textContent = t(isExpanded ? 'laShowLess' : 'laShowMore');
         }
       } else if (act === 'not-mine') {
         var alt = layer.querySelector('[data-la-alternatives]');
@@ -184,42 +247,50 @@
   }
 
   function verification() {
+    clearTimer();
     var isSent = request.state === 'code_sent';
+    setTitle('laIsYours');
     body(
-      '<p>' + e(t(isSent ? 'laEmailIntro' : 'laEmailPrompt', {email: request.email_masked || t('laNoEmail')})) + '</p>' +
-      button(isSent ? 'laResendCode' : 'laSend', 'send') +
+      '<p>' + e(t(isSent ? 'laEmailIntro' : 'laEmailPrompt', {email: request.developer_email || request.email_masked || t('laNoEmail')})) + '</p>' +
+      (isSent
+        ? '<div class="la-resend-row"><button type="button" class="la-resend-link" data-la="send">' + e(t('laResendCode')) + '</button></div>'
+        : button('laSend', 'send', true)) +
       '<div class="la-otp-grid" data-la-otp>' +
-        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="0" autocomplete="one-time-code">' +
-        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="1">' +
-        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="2">' +
-        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="3">' +
-        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="4">' +
-        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="5">' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="0" autocomplete="one-time-code"' + (isSent ? '' : ' disabled') + '>' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="1"' + (isSent ? '' : ' disabled') + '>' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="2"' + (isSent ? '' : ' disabled') + '>' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="3"' + (isSent ? '' : ' disabled') + '>' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="4"' + (isSent ? '' : ' disabled') + '>' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="la-otp-cell" data-idx="5"' + (isSent ? '' : ' disabled') + '>' +
       '</div>' +
-      '<div class="la-otp-meta">' +
-        '<span class="la-otp-timer">⏳ <b data-la-timer>15:00</b></span>' +
+      (isSent ? '<div class="la-otp-meta"><span class="la-otp-timer">⏳ <b data-la-timer>15:00</b></span></div>' : '') +
+      button('laVerify', 'verify', false, isSent ? '' : 'disabled') +
+      '<div class="la-alt-trigger-wrap">' +
+        '<button type="button" class="la-alt-link" data-la="toggle-alt">' + e(t('laAlternative')) + '</button>' +
       '</div>' +
-      button('laVerify', 'verify', true) +
-      '<details class="la-alternative">' +
-        '<summary>' + e(t('laAlternative')) + '</summary>' +
-        '<div class="la-alt-body">' +
-          '<p>' + e(t('laTokenHint')) + '</p>' +
-          '<div class="la-token-box">' +
-            '<code class="la-token-value">' + e(request.token) + '</code>' +
-            '<button type="button" class="la-token-copy" data-la="copy-token" title="Копировать">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
-                '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>' +
-              '</svg>' +
-            '</button>' +
-          '</div>' +
-          button('laCheckToken', 'check-token', true) +
-          button('laAdminSubmit', 'alternative', false, 'lm-action-ghost') +
+      '<div class="la-alt-body" data-la-alt-body hidden>' +
+        '<p class="la-alt-hint">' + e(t('laTokenHint')) + '</p>' +
+        '<div class="la-token-box">' +
+          '<code class="la-token-value">' + e(request.token) + '</code>' +
+          '<button type="button" class="la-token-copy" data-la="copy-token" title="' + e(t('laPaste') || 'Копировать') + '">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
+              '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>' +
+            '</svg>' +
+          '</button>' +
         '</div>' +
-      '</details>'
+        button('laCheckToken', 'check-token', true) +
+        button('laAdminSubmit', 'alternative', false, 'lm-action-ghost') +
+      '</div>'
     );
-    startTimer(900);
-    bindOtp();
+    if (isSent) {
+      startTimer(900);
+      bindOtp();
+    }
+    var rem = get40mRemaining(request);
+    if (rem > 0) {
+      apply40mLock(request.id, rem);
+    }
   }
 
   function bindOtp() {
@@ -279,12 +350,12 @@
       triggerVerify();
     });
 
-    if (cells[0]) cells[0].focus();
+    if (cells[0] && !cells[0].disabled) cells[0].focus();
   }
 
   function pendingView() {
     clearTimer();
-    setTitle('laPendingTitle');
+    setTitle('');
     body(
       '<div class="la-pending-view">' +
         '<div class="la-pending-icon">⏳</div>' +
@@ -328,6 +399,45 @@
     }
   }
 
+  function confirmCancel(reqId) {
+    var s = U.sheet(
+      t('laCancelTitle'),
+      '<div class="la-cancel-confirm">' +
+        '<div class="la-pending-icon">🗑️</div>' +
+        '<h3>' + e(t('laCancelConfirmHeading')) + '</h3>' +
+        '<p>' + e(t('laCancelConfirmDesc')) + '</p>' +
+        '<div class="la-cancel-actions">' +
+          '<button type="button" class="lm-action lm-action-danger" data-la-cancel-confirm="' + e(reqId) + '">' + e(t('laCancelAction')) + '</button>' +
+          '<button type="button" class="lm-action lm-action-ghost" data-la-cancel-abort>' + e(t('laCancelAbort')) + '</button>' +
+        '</div>' +
+      '</div>',
+      {presentation: 'dialog'}
+    );
+    s.addEventListener('click', async function(ev) {
+      var abortBtn = ev.target.closest('[data-la-cancel-abort]');
+      if (abortBtn) {
+        U.close(s);
+        return;
+      }
+      var confirmBtn = ev.target.closest('[data-la-cancel-confirm]');
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        try {
+          await call('/' + reqId + '/cancel');
+          localStorage.removeItem('la_copied_' + reqId);
+          if (window.showToast) showToast(t('laCancelled'));
+          U.close(s);
+          if (window.loadData) loadData();
+          mount();
+          window.dispatchEvent(new CustomEvent('live-market:changed'));
+        } catch (ex) {
+          if (window.showToast) showToast(t('laError'));
+          confirmBtn.disabled = false;
+        }
+      }
+    });
+  }
+
   function bind() {
     layer.addEventListener('paste', function(ev) {
       if (ev.target.hasAttribute('data-la-link')) {
@@ -339,8 +449,16 @@
 
     layer.addEventListener('click', async function(ev) {
       var b = ev.target.closest('[data-la]');
-      if (!b || busy || b.hasAttribute('data-cooldown')) return;
+      if (!b || busy) return;
       var action = b.dataset.la, value;
+
+      if (action === 'toggle-alt') {
+        var altBody = layer.querySelector('[data-la-alt-body]');
+        if (altBody) altBody.hidden = !altBody.hidden;
+        return;
+      }
+
+      if (b.hasAttribute('data-cooldown') || b.disabled) return;
 
       if (action === 'paste-link') {
         try {
@@ -360,8 +478,16 @@
 
       if (action === 'copy-token') {
         try {
-          await navigator.clipboard.writeText(request && request.token || '');
+          var tokenVal = request && request.token || '';
+          await navigator.clipboard.writeText(tokenVal);
           if (window.showToast) showToast(t('laTokenCopied'));
+          var now = Date.now();
+          if (request) {
+            request.token_copied_at = new Date(now).toISOString();
+            localStorage.setItem('la_copied_' + request.id, String(now));
+            call('/' + request.id + '/copy-token').catch(function(){});
+            apply40mLock(request.id, 2400);
+          }
         } catch (_) {
           if (window.showToast) showToast(t('laError'));
         }
@@ -404,7 +530,7 @@
             value = await call('/' + request.id + '/check-token');
             if (value && value.error) {
               err({message: value.error, retry_after: value.retry_after});
-              if (value.retry_after) startCooldown(b, value.retry_after, orig);
+              if (value.retry_after) startLockTimer(b, value.retry_after, orig, 'laTokenCooldownBtn');
             } else {
               await done(value);
             }
@@ -447,6 +573,14 @@
                 '<strong class="la-pending-card-title">' + e(p.title || r.package_name) + '</strong>' +
                 '<span class="la-pending-badge">' + e(t('laCardBadge')) + '</span>' +
               '</div>' +
+              '<button type="button" class="la-card-delete-btn" data-la-card-delete="' + e(r.id) + '" title="' + e(t('laCancelAction')) + '">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                  '<polyline points="3 6 5 6 21 6"></polyline>' +
+                  '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>' +
+                  '<line x1="10" y1="11" x2="10" y2="17"></line>' +
+                  '<line x1="14" y1="11" x2="14" y2="17"></line>' +
+                '</svg>' +
+              '</button>' +
             '</div>' +
             '<p class="la-pending-card-desc">' + e(t('laCardDesc')) + '</p>' +
             '<div class="la-pending-card-actions">' +
@@ -458,12 +592,30 @@
 
         root.appendChild(host);
 
+        // Apply synchronized 40-minute lock if remaining
+        rows.forEach(function(r) {
+          var rem = get40mRemaining(r);
+          if (rem > 0) {
+            var checkBtn = host.querySelector('[data-la-card-check="' + r.id + '"]');
+            if (checkBtn) {
+              startLockTimer(checkBtn, rem, t('laCardCheckToken'), 'laTokenCooldownMin');
+            }
+          }
+        });
+
         host.addEventListener('click', async function(ev) {
           var adminBtn = ev.target.closest('[data-la=admin]');
           if (adminBtn) {
             admin();
             return;
           }
+
+          var delBtn = ev.target.closest('[data-la-card-delete]');
+          if (delBtn) {
+            confirmCancel(delBtn.dataset.laCardDelete);
+            return;
+          }
+
           var checkBtn = ev.target.closest('[data-la-card-check]');
           if (checkBtn && !checkBtn.hasAttribute('data-cooldown') && !busy) {
             var reqId = checkBtn.dataset.laCardCheck;
@@ -483,7 +635,7 @@
                 var txt = t(msgKey) !== msgKey ? t(msgKey) : t('laError');
                 if (val.retry_after) txt = txt.replace('{n}', val.retry_after);
                 if (window.showToast) showToast(txt);
-                if (val.retry_after) startCooldown(checkBtn, val.retry_after, origText);
+                if (val.retry_after) startLockTimer(checkBtn, val.retry_after, origText, 'laTokenCooldownBtn');
               }
             } catch (ex) {
               if (window.showToast) showToast(t('laError'));

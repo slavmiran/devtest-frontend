@@ -71,6 +71,9 @@
       font-size: 16px;
       font-weight: 650;
     }
+    .sheet-mock-header h2:empty {
+      display: none;
+    }
     .sheet-close-mock {
       font-size: 20px;
       line-height: 1;
@@ -78,6 +81,7 @@
       border: none;
       background: none;
       cursor: pointer;
+      margin-left: auto;
     }
   </style>
 </head>
@@ -106,22 +110,27 @@
 
     <!-- SCREEN 2 -->
     <div class="screen-card">
-      <span class="screen-label">Экран 2 · Превью паспорта «Это ваше приложение?»</span>
+      <span class="screen-label">Экран 2 · Превью паспорта (Чистое описание без HTML-тегов, с ограничением высоты)</span>
       <div class="sheet-mock">
         <div class="sheet-mock-header">
           <h2>Это ваше приложение?</h2>
           <button class="sheet-close-mock">×</button>
         </div>
         <div class="la-passport-heading">
-          <img class="la-passport-icon" src="https://lh3.googleusercontent.com/d/mock-icon" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\' viewBox=\'0 0 64 64\'><rect width=\'64\' height=\'64\' rx=\'14\' fill=\'%232563eb\'/><text x=\'50%25\' y=\'55%25\' font-size=\'28\' font-weight=\'bold\' fill=\'white\' text-anchor=\'middle\' dominant-baseline=\'middle\'>SN</text></svg>'" alt="">
+          <img class="la-passport-icon" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232563eb'/><text x='50%25' y='55%25' font-size='28' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle'>SN</text></svg>" alt="">
           <div class="la-passport-info">
             <strong class="la-passport-title">SwiftNova Tracker & Tasks</strong>
             <span class="la-passport-meta">SwiftNova Ltd. · Работа</span>
           </div>
         </div>
-        <div class="la-desc-box">
-          <p class="la-desc-text is-clamped">Удобный трекер задач и рабочего времени для распределённых команд и индивидуальных разработчиков. Включает синхронизацию с облаком, учёт рабочего графика и экспорт отчётов в один клик.</p>
-          <button type="button" class="la-desc-toggle">Показать полностью ▾</button>
+        <div class="la-desc-box is-expanded">
+          <p class="la-desc-text">Удобный трекер задач и рабочего времени для распределённых команд и разработчиков.
+
+• Умные тайм-слоты и учёт перерывов
+• Экспорт отчётов в PDF и Google Sheets
+• Клиентское шифрование персональных данных
+• Поддержка оффлайн-режима с автосинхронизацией</p>
+          <button type="button" class="la-desc-toggle">Свернуть ▴</button>
         </div>
         <button type="button" class="lm-action lm-action-primary">Да, подтвердить владение</button>
         <button type="button" class="lm-action">Нет, это не моё приложение</button>
@@ -132,56 +141,81 @@
       </div>
     </div>
 
-    <!-- SCREEN 3 -->
+    <!-- SCREEN 3 (INITIAL: CODE NOT SENT YET) -->
     <div class="screen-card">
-      <span class="screen-label">Экран 3 · Ввод кода и альтернативная проверка токена</span>
+      <span class="screen-label">Экран 3a · До отправки кода (Таймер скрыт, ячейки отключены)</span>
       <div class="sheet-mock">
         <div class="sheet-mock-header">
           <h2>Это ваше приложение?</h2>
           <button class="sheet-close-mock">×</button>
         </div>
-        <p>На почту разработчика <strong>sw***a@gmail.com</strong> отправлен 6-значный код подтверждения.</p>
-        <button type="button" class="lm-action">Отправить код повторно</button>
+        <p>Для подтверждения владения мы отправим 6-значный код на почту разработчика <strong>s***t@codeorigin.tech</strong>.</p>
+        <button type="button" class="lm-action lm-action-primary">Отправить код на почту</button>
         <div class="la-otp-grid">
-          <input type="text" class="la-otp-cell" value="8" readonly>
-          <input type="text" class="la-otp-cell" value="3" readonly>
-          <input type="text" class="la-otp-cell" value="9" readonly>
-          <input type="text" class="la-otp-cell" value="" placeholder="·">
-          <input type="text" class="la-otp-cell" value="" placeholder="·">
-          <input type="text" class="la-otp-cell" value="" placeholder="·">
+          <input type="text" class="la-otp-cell" placeholder="·" disabled>
+          <input type="text" class="la-otp-cell" placeholder="·" disabled>
+          <input type="text" class="la-otp-cell" placeholder="·" disabled>
+          <input type="text" class="la-otp-cell" placeholder="·" disabled>
+          <input type="text" class="la-otp-cell" placeholder="·" disabled>
+          <input type="text" class="la-otp-cell" placeholder="·" disabled>
+        </div>
+        <button type="button" class="lm-action" disabled>Подтвердить код</button>
+
+        <div class="la-alt-trigger-wrap">
+          <button type="button" class="la-alt-link">Альтернативный способ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3 (CODE SENT + ALTERNATIVE 40-MIN LOCK) -->
+    <div class="screen-card">
+      <span class="screen-label">Экран 3b · Код отправлен (Таймер 15:00 + Альтернативный способ с таймером 40:00)</span>
+      <div class="sheet-mock">
+        <div class="sheet-mock-header">
+          <h2>Это ваше приложение?</h2>
+          <button class="sheet-close-mock">×</button>
+        </div>
+        <p>На почту разработчика <strong>s***t@codeorigin.tech</strong> отправлен 6-значный код подтверждения.</p>
+        <div class="la-resend-row"><button type="button" class="la-resend-link">Отправить код повторно</button></div>
+        <div class="la-otp-grid">
+          <input type="text" class="la-otp-cell" value="8">
+          <input type="text" class="la-otp-cell" value="3">
+          <input type="text" class="la-otp-cell" value="9">
+          <input type="text" class="la-otp-cell" placeholder="·">
+          <input type="text" class="la-otp-cell" placeholder="·">
+          <input type="text" class="la-otp-cell" placeholder="·">
         </div>
         <div class="la-otp-meta">
-          <span class="la-otp-timer">⏳ <b>14:48</b></span>
-          <span style="font-size:11px; color:var(--text-secondary);">Осталось попыток: 5</span>
+          <span class="la-otp-timer">⏳ <b>14:52</b></span>
         </div>
         <button type="button" class="lm-action lm-action-primary">Подтвердить код</button>
 
-        <details class="la-alternative" open>
-          <summary>Альтернативный способ: токен в описании ▾</summary>
-          <div class="la-alt-body">
-            <p>Добавьте проверочный токен в краткое или полное описание приложения в Google Play Console. После публикации обновления вы можете проверить токен самостоятельно или отправить на проверку.</p>
-            <div class="la-token-box">
-              <code class="la-token-value">DTH-9K2M-X74Q</code>
-              <button type="button" class="la-token-copy" title="Копировать">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
-            </div>
-            <button type="button" class="lm-action lm-action-primary">🔍 Проверить токен сейчас</button>
-            <button type="button" class="lm-action lm-action-ghost">Отправить на проверку</button>
+        <div class="la-alt-trigger-wrap">
+          <button type="button" class="la-alt-link">Альтернативный способ</button>
+        </div>
+        <div class="la-alt-body">
+          <p class="la-alt-hint">Добавьте проверочный токен в краткое или полное описание приложения в Google Play Console. После публикации обновления вы можете проверить токен самостоятельно или отправить на проверку.</p>
+          <div class="la-token-box">
+            <code class="la-token-value">DTH-4895A8C2</code>
+            <button type="button" class="la-token-copy" title="Копировать">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
           </div>
-        </details>
+          <button type="button" class="lm-action lm-action-primary" disabled data-cooldown="1">Повторить через 39:45</button>
+          <button type="button" class="lm-action lm-action-ghost" disabled data-cooldown="1">Доступно через 39:45</button>
+        </div>
       </div>
     </div>
 
     <!-- SCREEN 4 -->
     <div class="screen-card">
-      <span class="screen-label">Экран 4 · Экран подтверждения после отправки на проверку</span>
+      <span class="screen-label">Экран 4 · Экран подтверждения после отправки на проверку (Без дублирующего заголовка)</span>
       <div class="sheet-mock">
         <div class="sheet-mock-header">
-          <h2>Заявка на рассмотрении</h2>
+          <h2></h2>
           <button class="sheet-close-mock">×</button>
         </div>
         <div class="la-pending-view">
@@ -195,7 +229,7 @@
 
     <!-- SCREEN 5 -->
     <div class="screen-card">
-      <span class="screen-label">Экран 5 · Карточка рассматриваемого проекта в «Моих проектах»</span>
+      <span class="screen-label">Экран 5 · Карточка рассматриваемого проекта с иконкой корзины и синхронным таймером</span>
       <article class="la-pending-card">
         <div class="la-pending-card-head">
           <img class="la-pending-card-icon" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><rect width='48' height='48' rx='12' fill='%232563eb'/><text x='50%25' y='55%25' font-size='20' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle'>SN</text></svg>" alt="">
@@ -203,13 +237,41 @@
             <strong class="la-pending-card-title">SwiftNova Tracker & Tasks</strong>
             <span class="la-pending-badge">⏳ На рассмотрении</span>
           </div>
+          <button type="button" class="la-card-delete-btn" title="Отменить заявку">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
         </div>
         <p class="la-pending-card-desc">Проверяется наличие проверочного токена в описании приложения. Вы можете проверить токен самостоятельно или дождаться автоматической проверки.</p>
         <div class="la-pending-card-actions">
-          <button type="button" class="lm-action lm-action-primary la-card-check-btn">🔍 Проверить токен сейчас</button>
+          <button type="button" class="lm-action lm-action-primary la-card-check-btn" disabled data-cooldown="1">Повторить через 39:45</button>
           <a class="la-card-link" href="https://play.google.com/store/apps/details?id=com.swiftnova.work" target="_blank" rel="noopener noreferrer">Google Play ↗</a>
         </div>
       </article>
+    </div>
+
+    <!-- SCREEN 5b: CONFIRMATION MODAL -->
+    <div class="screen-card">
+      <span class="screen-label">Экран 5b · Модальное окно подтверждения отмены заявки</span>
+      <div class="sheet-mock">
+        <div class="sheet-mock-header">
+          <h2>Отмена заявки</h2>
+          <button class="sheet-close-mock">×</button>
+        </div>
+        <div class="la-cancel-confirm">
+          <div class="la-pending-icon">🗑️</div>
+          <h3>Отменить заявку на рассмотрение?</h3>
+          <p>Если вы удалите заявку, проверка владения будет отменена. Чтобы добавить это приложение в будущем, потребуется отправить новую заявку и заново подтвердить владение.</p>
+          <div class="la-cancel-actions">
+            <button type="button" class="lm-action lm-action-danger">Отменить заявку</button>
+            <button type="button" class="lm-action lm-action-ghost">Оставить заявку</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </body>

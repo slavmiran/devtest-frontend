@@ -4,7 +4,7 @@
  function t(k,v){return window.t(k,v||{},window.lang||'ru');}
  function e(v){return window.escapeHTML(String(v==null?'':v));}
  function stats(){return typeof visibilityStats==='object'&&visibilityStats||{};}
- function who(){var u=window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user||{};return {id:String(u.id||window.userId||'guest'),name:u.first_name||t('hudProfile')};}
+ function who(){var u=window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user||{};var full=[u.first_name,u.last_name].filter(Boolean).join(' ').trim()||u.first_name||t('hudProfile');var nick=u.username?'@'+u.username:'';return {id:String(u.id||window.userId||'guest'),name:full,nick:nick};}
  function number(v,compact){return v!=null&&v!==''&&Number.isFinite(Number(v))?new Intl.NumberFormat(window.lang==='ru'?'ru-RU':'en-US',compact?{notation:'compact',maximumFractionDigits:1}:{maximumFractionDigits:2}).format(Number(v)):'—';}
  function openNow(){return !!(menu&&menu.classList.contains('active'));}
  function childrenOpen(){return !!document.querySelector('.modal-overlay.active,.wizard-overlay.active,.protection-center-view.active,#attract-testers-sheet-overlay.active');}
@@ -110,7 +110,10 @@
  }
  function counts(animate){if(!bar)return;var s=stats(),user=who(),wallet=window.ReviewCredits&&ReviewCredits.get();
   if(actor!==user.id){actor=user.id;rotation=0;profileKey='';}
-  var name=bar.querySelector('[data-hud-name]');name.textContent=user.name;name.title=user.name;
+  var name=bar.querySelector('[data-hud-name]');
+  var showNick=!!(user.nick&&rotation%6===5);
+  var identity=showNick?user.nick:user.name;
+  name.textContent=identity;name.title=user.nick?user.name+' · '+user.nick:user.name;
   var score=finite(s.reliability_index),tone=reliabilityTone(score),pct=score==null?'—':number(score)+'%';
   var rel=bar.querySelector('[data-hud-reliability]');rel.innerHTML=e(t('hudReliabilityWord'))+' <em'+(tone?' style="color:'+tone+'"':'')+'>'+e(pct)+'</em>';
   var slides=tickerSlides(),rotating=bar.querySelector('[data-hud-rotation]');rotating.dataset.slide=String(rotation%slides.length);

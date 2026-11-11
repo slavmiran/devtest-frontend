@@ -597,7 +597,7 @@ function renderReliabilityAlphaModal() {
             <section class="ri-surface">
               <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
               <p class="ri-grant-sub">${window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang))}</p>
-              <button type="button" class="wallet-link" data-rep-open="wallet">${window.escapeHTML(window.t('reliabilityOpenWallet', {}, lang))}</button>
+              <button type="button" class="wallet-link" data-rep-open="grants">${window.escapeHTML(window.t('reliabilityOpenGrants', {}, lang) || (lang === 'ru' ? 'Открыть историю грантов' : 'Open grants history'))}</button>
               <div class="ri-grants-tiles">
                 ${grants.map(function(g, idx) {
                   var activeClass = idx === window._activeGrantIndex ? 'active' : '';
@@ -641,7 +641,6 @@ function renderReliabilityAlphaModal() {
             <section class="ri-surface">
               <h4 class="ri-section-title">${window.escapeHTML(window.t('reliabilityDashGrantsSectionTitle', {}, lang))}</h4>
               <p class="ri-grant-sub">${window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang))}</p>
-              <button type="button" class="wallet-link" data-rep-open="wallet">${window.escapeHTML(window.t('reliabilityOpenWallet', {}, lang))}</button>
               <div class="ri-empty-hint">${window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang))}</div>
             </section>
         `;
@@ -6871,25 +6870,21 @@ function _cacheContributionSeasonSnapshot(currentPayload) {
     if (!visibilityStats) return;
     const me = (currentPayload && currentPayload.me) || {};
     const season = (currentPayload && currentPayload.season) || {};
+    // Season score/counts must NOT overwrite lifetime contribution on the profile card.
     visibilityStats.contribution_season = {
         rank: me.rank != null ? Number(me.rank) : null,
         score: Number(me.contribution_score || 0),
         season_number: season.season_number != null ? Number(season.season_number) : null,
         ends_at: season.ends_at || null,
         gap_to_top5: Number((currentPayload && currentPayload.gap_to_top5) || 0),
-        _loaded: true,
-    };
-    visibilityStats.contribution = {
-        contribution_score: Number(me.contribution_score || 0),
         bugs_count: Number(me.bugs_count || 0),
         ideas_count: Number(me.ideas_count || 0),
         play_reviews_count: Number(me.play_reviews_count || 0),
         five_screens_count: Number(me.five_screens_count || 0),
         text_reports_count: Number(me.text_reports_count || 0),
         video_reports_count: Number(me.video_reports_count || 0),
-
+        _loaded: true,
     };
-    visibilityStats.contribution_score = Number(me.contribution_score || 0);
     try {
         if (typeof setProjectsCache === 'function' && typeof myProjects !== 'undefined') {
             setProjectsCache({ projects: myProjects, visibilityStats: visibilityStats, ts: Date.now() });
@@ -7584,8 +7579,12 @@ async function showContributionInfo(options) {
     try {
         if (initialTab === 'history') {
             await _loadContributionHistoryTab();
+            if (!_contributionCurrentCache) await _loadContributionCurrentTab();
         } else {
-            await _loadContributionCurrentTab();
+            await Promise.all([
+                _loadContributionCurrentTab(),
+                _contributionHistoryCache ? Promise.resolve(true) : _loadContributionHistoryTab()
+            ]);
         }
     } finally {
         // History tab never hid the deeplink glass loader (only Current did),
@@ -7681,6 +7680,39 @@ async function claimContributionPrizeFromUi(seasonId, buttonEl) {
 
 function showReliabilityInfo() {
     openReliabilityAlphaModal();
+}
+
+function openGrantsHistorySheet() {
+    var state = typeof getReliabilityUiState === 'function' ? getReliabilityUiState() : null;
+    var summary = state && state.summary;
+    var grants = (summary && summary.grants_history) || [];
+    var U = window.LiveMarketUI;
+    if (!U || typeof U.sheet !== 'function') {
+        if (typeof showReliabilityInfo === 'function') showReliabilityInfo();
+        return;
+    }
+    function formatIsoDate(isoStr) {
+        if (!isoStr) return '—';
+        try {
+            var d = new Date(isoStr);
+            if (isNaN(d.getTime())) return '—';
+            return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+        } catch (e) { return '—'; }
+    }
+    var body = '<div class="grants-sheet-body"><p class="wallet-note">' +
+        window.escapeHTML(window.t('reliabilityGrantSubtitle', {}, lang)) + '</p>';
+    if (!grants.length) {
+        body += '<div class="ri-empty-hint">' + window.escapeHTML(window.t('reliabilityDashGrantsNoHistory', {}, lang)) + '</div>';
+    } else {
+        body += grants.map(function (g) {
+            return '<div class="wallet-tx"><div><b>' + window.escapeHTML(g.app_name || '—') + '</b><small>' +
+                window.escapeHTML(formatIsoDate(g.granted_at)) + '</small></div><span class="is-in">+' +
+                window.escapeHTML(String(formatReliabilityIndex(g.amount_bust || 0))) + ' 💎</span></div>';
+        }).join('');
+    }
+    body += '</div>';
+    var layer = U.sheet(window.t('reliabilityDashGrantsSectionTitle', {}, lang), body);
+    if (layer) layer.id = 'grants-history-sheet';
 }
 
 function closeReliabilityInfo(event) {
@@ -11617,6 +11649,7 @@ Object.assign(window, {
     pluralizePointsWord,
     formatContributionPointsLabel,
     showReliabilityInfo,
+    openGrantsHistorySheet,
     closeReliabilityInfo,
     showRankPopup,
     showTestDayPopup,
