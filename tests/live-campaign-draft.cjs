@@ -23,7 +23,9 @@ const project={id:42,name:'Family Budget Planner',live_metrics:{source:'devtesth
  assert.equal(model.change(d,'checkpointCount',0),d,'At least one paid checkpoint remains');assert.equal(model.change(d,'checkpoint',1),d);
  d=model.change(d,'retention',35);assert.ok(d.retention.checkpoints.includes(35));assert.equal(model.change(d,'retention',36).retention.days,36);assert.equal(model.change(d,'retention',61),d);
  assert.equal(model.change(d,'target',0),d);assert.equal(model.change(d,'daily',1.5),d);assert.equal(model.change(d,'daily',Infinity),d);
- d=model.change(d,'source','web');d=model.change(d,'webQuery','');assert.equal(model.valid(d,1),false);
+ d=model.change(d,'source','web');assert.equal(model.valid(d,1),true,'Brand search needs no manual query');
+ assert.equal((await model.definition(d,async()=>{})).web.mode,'web_brand');
+ d=model.change(d,'webMode','web_custom');d=model.change(d,'webQuery','');assert.equal(model.valid(d,1),false);
  d=model.change(d,'webQuery','Family budget Android');assert.equal(model.valid(d,1),true);
  d=model.media(d,'web',{name:'reference.png'});
  const serialized=await model.definition(d,async()=>({name:'reference.png',mime:'image/png',data_base64:'AA=='}));

@@ -3,7 +3,7 @@
     'use strict';
     var ru = {
         lcwTitle:'Новая кампания', lcwStep:'Шаг {n} из 3', lcwNext:'Продолжить →', lcwBack:'Назад', lcwClose:'Закрыть мастер', lcwLaunch:'Запустить кампанию',
-        lcwStep1:'Источник трафика', lcwStep2:'Удержание и КД', lcwStep3:'Сценарий, отзыв и объём', lcwStep4:'Темп и объём',
+        lcwStep1:'Источники, поиск, ключи, ГЕО', lcwStep2:'Продолжительность, контрольные дни отчетов', lcwStep3:'Пользовательские сценарии, опыт использования, объём, бюджет и запуск',
         lcwPaceNote:'Общий суточный темп приёма участников регулируется единой настройкой «Контроль темпа» на карточке проекта.',
         lcwPriorityRoute:'⭐ Сделать приоритетным маршрутом',
         lcwIntro:'Задайте направление. Пресет заполнит следующие шаги — настройки можно изменить.',
@@ -29,7 +29,7 @@
     };
     var en = {
         lcwTitle:'New campaign', lcwStep:'Step {n} of 3', lcwNext:'Continue →', lcwBack:'Back', lcwClose:'Close wizard', lcwLaunch:'Launch campaign',
-        lcwStep1:'Traffic source', lcwStep2:'Retention & checkpoints', lcwStep3:'Scenario, review & volume', lcwStep4:'Pace & volume',
+        lcwStep1:'Sources, search, keywords, GEO', lcwStep2:'Duration, report checkpoints', lcwStep3:'User scenarios, impression, volume, budget & launch',
         lcwPaceNote:'The shared daily intake pace is the single “Pace control” setting on the project card.',
         lcwPriorityRoute:'⭐ Make this the priority route',
         lcwIntro:'Choose a direction. The preset fills the next steps; you can adjust it later.',

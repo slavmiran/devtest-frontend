@@ -5366,7 +5366,7 @@ function refreshAddProjectChooserTexts(overlay) {
 
     var sec2Header = overlay.querySelector('.add-project-chooser-section--growth .add-project-chooser-section-title');
     if (sec2Header) {
-        sec2Header.textContent = getProjectUiText('section_growth', 'МАСШТАБИРОВАНИЕ И РОСТ');
+        sec2Header.textContent = getProjectUiText('section_growth', 'РАЗВИТИЕ И МАСШТАБИРОВАНИЕ');
     }
 
     var mutual = overlay.querySelector('.add-project-chooser-option--mutual');
@@ -5451,6 +5451,7 @@ function ensureAddProjectChooser() {
                 '<button type="button" class="add-project-chooser-close" data-i18n-aria-label="addProjectChooserClose" aria-label="">×</button>' +
                 '<h3 class="add-project-chooser-title" data-i18n="addProjectChooserTitle"></h3>' +
                 '<div class="add-project-chooser-content">' +
+                    '<section class="lc-community" data-live-community></section>' +
                     '<div class="add-project-chooser-section add-project-chooser-section--closed">' +
                         '<div class="add-project-chooser-section-title" data-i18n="section_closed_testing">ЗАКРЫТОЕ ТЕСТИРОВАНИЕ (14 ДНЕЙ)</div>' +
                         '<div class="add-project-chooser-options">' +
@@ -5469,7 +5470,7 @@ function ensureAddProjectChooser() {
                         '</div>' +
                     '</div>' +
                     '<div class="add-project-chooser-section add-project-chooser-section--growth">' +
-                        '<div class="add-project-chooser-section-title" data-i18n="section_growth">МАСШТАБИРОВАНИЕ И РОСТ</div>' +
+                        '<div class="add-project-chooser-section-title" data-i18n="section_growth">РАЗВИТИЕ И МАСШТАБИРОВАНИЕ</div>' +
                         '<div class="add-project-chooser-options">' +
                             optionHtml(
                                 'boost', trendingIcon,
@@ -5519,6 +5520,7 @@ function openAddProjectChooser() {
     if (!overlay) return;
     refreshAddProjectChooserTexts(overlay);
     overlay.style.display = 'flex';
+    if (window.LiveCommunity) LiveCommunity.mount(overlay.querySelector('[data-live-community]'),false);
     overlay.classList.remove('is-closing');
     requestAnimationFrame(function () { overlay.classList.add('is-open'); });
 }

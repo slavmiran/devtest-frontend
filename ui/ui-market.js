@@ -5601,7 +5601,17 @@ function renderProjectFeedbackCards(project, items) {
             window.feedbackCaptionRegistry[item.id] = item.message_text || '';
 
             var mediaHtml = '';
-            if (item.report_has_video && Number(item.report_proof_id) > 0) {
+            if (item.scenario_media_mime && window.LiveMarketUI) {
+                const url = String(window.API_BASE || '/api').replace(/\/$/, '') +
+                    '/live-scenarios/feedback/' + Number(item.id) + '/proof?init_data=' +
+                    encodeURIComponent(window.LiveMarketUI.auth());
+                const source = window.escapeHTML(url);
+                mediaHtml = item.scenario_media_mime.startsWith('video/')
+                    ? '<video class="growth-proof-video" controls preload="none" src="' + source +
+                        '" aria-label="' + window.escapeHTML(window.t('growthOpenVideo', {}, lang)) + '"></video>'
+                    : '<img class="growth-proof-video" loading="lazy" src="' + source + '" alt="' +
+                        window.escapeHTML(window.t('growthScreenshot', {}, lang)) + '">';
+            } else if (item.report_has_video && Number(item.report_proof_id) > 0) {
                 window.feedbackMediaRegistry[item.id] = [];
                 var videoLabel = lang === 'ru' ? 'Видео и вложения · Смотреть в Telegram' : 'Video and attachments · Watch in Telegram';
                 mediaHtml = '<button type="button" class="fb-action-btn fb-action-btn--topic" onclick="openCheckinProofOriginal(' + Number(item.report_proof_id) + ',0,event)">▶ ' + window.escapeHTML(videoLabel) + '</button>';

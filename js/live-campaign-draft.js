@@ -6,18 +6,24 @@
   var m=p.live_metrics,b=m&&m.installs&&m.installs.baseline,r=b?b.per_day:m&&m.installs&&m.installs.per_day,title=String(p.play_store_raw&&p.play_store_raw.title||p.name||p.package_name||'');
   return {schemaVersion:6,appId:Number(p.id||p.app_id),appTitle:title,template:'custom',name:'',icon:'rocket',source:'link',allowedSources:['link'],country:null,
    baseline:{available:!!(m&&m.source==='devtesthub_live'&&m.boundary_available!==false&&(!b||b.available)&&typeof r==='number'&&Number.isFinite(r)&&r>=0),perDay:r||0,days:b&&b.days||7},
-   web:{query:title.slice(0,200),screenshot:null},keywords:[],nextKeywordId:1,
+   web:{query:title.slice(0,200),screenshot:null,mode:'web_brand'},
+   developerName:String(p.play_store_raw&&(p.play_store_raw.developer||p.play_store_raw.developer_name)||''),keywords:[],nextKeywordId:1,
    retention:{days:14,min_days:14,max_days:14,checkpoint_mode:'count',checkpoint_count:2,checkpoints:[1,8,14]},activity:{enabled:false,screenshot:false,instructions:''},
    reviews:{enabled:false,delayDays:7,prompt:'soft'},contracts:{enabled:false,limit:10,daily_rate_bust:10,kd_rate_bust:10,source_bonus_bust:{link:0,web:20,keywords:40},scenario_bonus_bust:30,required_review_bonus_bust:70,payout_mode:'daily'},
    volume:{limit_mode:'budget',paced:true,dailyInstalls:1,acquisitionDays:14,totalInstalls:14,paceVersion:2,pauseHours:24,rampDays:0,allowContractsDuringPause:true},routePriority:false};
  }
  function total(d){return d.volume.totalInstalls;}
  function allowed(d){return d.allowedSources||[d.source];}
+ function brandQuery(d){
+  var name=Array.from(d.appTitle.trim().replace(/"/g,'')).slice(0,115).join('');
+  var developer=Array.from((d.developerName||'').trim()).slice(0,55).join('');
+  return 'скачать "'+name+'"'+(developer?' '+developer:'')+' Google Play';
+ }
  function counts(d){var c={link:0,web:0,keywords:0};c[allowed(d).length>1?'unknown':d.source]=total(d);return c;}
  function checkpoints(days,count,interval){if(interval)return Array.from(new Set(Array.from({length:Math.ceil(days/interval)},function(_,i){return 1+i*interval;}).filter(function(d){return d<=days;}).concat([days]))).sort(function(a,b){return a-b;});count=Math.min(days-1,count||3);return [1].concat(Array.from({length:count},function(_,i){return 1+Math.ceil((i+1)*(days-1)/count);}));}
  function applyStrategy(d,template){
   if(!['aso','retention','deep','custom'].includes(template))return d;
-  var n=create({id:d.appId,name:d.appTitle});n.baseline=clone(d.baseline);n.corridor=d.corridor;n.thermalPhase=d.thermalPhase;n.autoDailyCost=d.autoDailyCost;n.template=template;
+  var n=create({id:d.appId,name:d.appTitle});n.developerName=d.developerName;n.baseline=clone(d.baseline);n.corridor=d.corridor;n.thermalPhase=d.thermalPhase;n.autoDailyCost=d.autoDailyCost;n.template=template;
   var rate=d.baseline.available?d.baseline.perDay:0;
   if(template==='aso'){
    n.source='keywords';n.reviews.enabled=true;n.volume.rampDays=7;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.3)));
@@ -41,6 +47,7 @@
   else if(f==='country'&&(v===null||typeof v==='string'&&/^[A-Z]{2}$/.test(v)))n.country=v;
   else if(f==='name'&&typeof v==='string'&&v.length<=80)n.name=v;
   else if(f==='webQuery'&&typeof v==='string'&&v.length<=200)n.web.query=v;
+  else if(f==='webMode'&&['web_brand','web_custom'].includes(v))n.web.mode=v;
   else if(f==='instructions'&&typeof v==='string'&&v.length<=5000)n.activity.instructions=v;
   else if(f==='scenarioTitle'&&typeof v==='string'&&v.length<=80)n.activity.title=v;
   else if(f==='scenarioLimit'&&(v===null||Number.isInteger(v)&&v>=1&&v<=100000))n.activity.execution_limit=v;
@@ -58,7 +65,7 @@
   else if(f==='checkpoint'){
    if(v===1||!checkpointOptions(n.retention.days).includes(v))return d;
    var ds=n.retention.checkpoints;if(ds.includes(v)){if(ds.length===2)return d;ds.splice(ds.indexOf(v),1);}else ds.push(v);ds.sort(function(a,b){return a-b;});
-  }else if(f==='limit_mode'&&['budget','installs'].includes(v))n.volume.limit_mode=v;else if(f==='activity'){n.activity.enabled=!!v;if(!v)n.activity.screenshot=false;}
+  }else if(f==='limit_mode'&&['budget','installs'].includes(v))n.volume.limit_mode=v;else if(f==='activity'){n.activity.enabled=!!v;n.activity.screenshot=!!v&&n.activity.proof_mode!=='video';}
   else if(f==='screenshot'&&n.activity.enabled)n.activity.screenshot=!!v;
   else if(f==='reviews')n.reviews.enabled=!!v;
   else if(f==='routePriority')n.routePriority=!!v;
@@ -99,9 +106,11 @@
   return {available:installs>0,installs:installs,checkpointUnit:10,paidCheckpoints:schedule.length-1,perInstall:unit,totalCommitment:installs*unit,dailyCommitment:d.volume.paced?Math.round(unit*goal*100)/100:null,
    acquisitionDays:null,completionDays:null,channels:channels};
  }
- function valid(d,step){return (!window.LiveManualPlan||LiveManualPlan.valid(d.volume.manualPlan))&&!!d.source&&(!allowed(d).includes('web')||!!d.web.query.trim())&&(!allowed(d).includes('keywords')||d.keywords.some(function(k){return k.enabled!==false&&!k.is_fallback;}))&&d.retention.checkpoints.length>=2&&(!d.activity.enabled||!(d.activity.steps||[]).some(function(s){return !s.text.trim();}))&&(step<3||!!d.icon||!!d.name.trim());}
+ function valid(d,step){return (!window.LiveManualPlan||LiveManualPlan.valid(d.volume.manualPlan))&&!!d.source&&(!allowed(d).includes('web')||d.web.mode==='web_brand'||!!d.web.query.trim())&&(!allowed(d).includes('keywords')||d.keywords.some(function(k){return k.enabled!==false&&!k.is_fallback;}))&&d.retention.checkpoints.length>=2&&(step<3||(!window.LiveScenarioEditor||LiveScenarioEditor.valid(d.activity,d.retention.min_days||d.retention.days))&&(!!d.icon||!!d.name.trim()));}
  async function definition(d,serialize){
-  var sources=allowed(d),payload={name:d.name,icon:d.icon===null?null:d.icon||'rocket',template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:clone(d.reviews),volume:clone(d.volume),web:{query:sources.includes('web')?d.web.query:'',screenshot:null},keywords:[]};
+  var sources=allowed(d),web=sources.includes('web'),custom=web&&d.web.mode!=='web_brand';
+  var payload={name:d.name,icon:d.icon===null?null:d.icon||'rocket',template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:clone(d.reviews),volume:clone(d.volume),web:{query:custom?d.web.query:'',screenshot:null},keywords:[]};
+  if(web)payload.web.mode=d.web.mode||'web_custom';
   if(d.allowedSources){payload.allowed_sources=sources.slice();if(!d.contracts||!d.contracts.enabled)payload.preferred_track={source:d.source,days:d.retention.days};}
   if(d.contracts)payload.contracts=clone(d.contracts);
   if(d.country)payload.country=d.country;
@@ -109,7 +118,7 @@
   if(d.activity.screenshots){payload.activity.screenshots=[];for(var i=0;i<d.activity.screenshots.length;i++)if(d.activity.screenshots[i])payload.activity.screenshots.push(await serialize('scenario:'+i,d.activity.screenshots[i]));}
   // Project control is saved separately in the same transaction. Legacy volume fields no longer gate intake.
   payload.volume.paced=false;payload.volume.paceVersion=2;['mode','manualPlan','dailyCampaignCaps','contractsDuringPauseLimit','corridorProfile'].forEach(function(k){delete payload.volume[k];});
-  if(sources.includes('web')&&d.web.screenshot)payload.web.screenshot=await serialize('web',d.web.screenshot);
+  if(custom&&d.web.screenshot)payload.web.screenshot=await serialize('web',d.web.screenshot);
   if(sources.includes('keywords'))for(var k of d.keywords)payload.keywords.push({keyword:k.keyword,position:k.position,enabled:k.enabled!==false,geo_countries:k.geo_countries||[],is_fallback:!!k.is_fallback,screenshot:k.screenshot?await serialize('keyword:'+k.id,k.screenshot):null});
   return payload;
  }
@@ -122,8 +131,8 @@
   d.country=saved.country||null;if(saved.contracts)d.contracts=Object.assign(d.contracts,saved.contracts);
   d.volume=Object.assign(d.volume,{limit_mode:'installs'},saved.volume);if(d.volume.paced&&saved.volume.paceVersion!==2)d.volume.totalInstalls=d.volume.dailyInstalls*d.volume.acquisitionDays;d.volume.paceVersion=saved.volume.paceVersion||1;
   d.allowedSources=saved.allowed_sources?saved.allowed_sources.slice():null;
-  d.web={query:saved.web.query||d.appTitle,screenshot:asset(saved.web.asset_id)};
+  d.web={query:saved.web.query||d.appTitle,screenshot:asset(saved.web.asset_id),mode:saved.web.mode||'web_custom'};
   d.keywords=(c.keywords||[]).map(function(k,i){return {id:'k'+(i+1),keyword:k.keyword,position:k.position||'',enabled:k.enabled!==false,geo_countries:k.geo_countries||[],is_fallback:!!k.is_fallback,screenshot:asset(k.asset_id)};});d.nextKeywordId=d.keywords.length+1;return d;
  }
- window.LiveCampaignDraft={create:create,fromCampaign:fromCampaign,applyStrategy:applyStrategy,counts:counts,allowed:allowed,checkpoints:checkpoints,change:change,addKeyword:addKeyword,keyword:keyword,media:media,quote:quote,valid:valid,definition:definition,checkpointOptions:checkpointOptions,maxKeywords:20,limit:100000};
+ window.LiveCampaignDraft={create:create,fromCampaign:fromCampaign,applyStrategy:applyStrategy,counts:counts,allowed:allowed,brandQuery:brandQuery,checkpoints:checkpoints,change:change,addKeyword:addKeyword,keyword:keyword,media:media,quote:quote,valid:valid,definition:definition,checkpointOptions:checkpointOptions,maxKeywords:20,limit:100000};
 })();

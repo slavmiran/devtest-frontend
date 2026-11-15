@@ -16,6 +16,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.route('http://fixture.local/**',async route=>{
    const url=new URL(route.request().url()),request=route.request(),method=request.method(),body=method==='GET'?null:request.postDataJSON();
    const ok=json=>route.fulfill({json:{status:'success',...json}});
+   if(url.pathname.endsWith('/live-community/snapshot'))return ok({released:12,checkins_30d:150,bugs:9,ideas:17});
    if(url.pathname.endsWith('/stats/countries'))return geoFailure?route.fulfill({status:503,json:{status:'error'}}):ok({countries:[{country_code:'RU',name_ru:'Россия',name_en:'Russia',flag:'🇷🇺',total_count:100,active_count:40},{country_code:'KZ',name_ru:'Казахстан',name_en:'Kazakhstan',flag:'🇰🇿',total_count:6,active_count:2},{country_code:'TH',name_ru:'Таиланд',name_en:'Thailand',flag:'🇹🇭',total_count:20,active_count:0},{country_code:'US',name_ru:'США',name_en:'United States',flag:'🇺🇸',total_count:10,active_count:1},{country_code:'VN',name_ru:'Вьетнам',name_en:'Vietnam',flag:'🇻🇳',total_count:9,active_count:2}],total_registered:145,total_active:45});
    if(url.pathname.endsWith('/users/me/google-play-country'))throw Error('Campaign GEO must not change the owner profile');
    if(url.pathname.endsWith('/campaigns')&&method==='GET')return ok({campaigns,project_control:{...projectControl,allocations:campaigns.map(c=>({campaign_id:c.id,kind:c.kind,name:c.name,status:c.status,source:c.definition&&c.definition.source,limit:c.cycle_limit||null}))},capacity:capacity(),pace:{needed:1,policies:[]},hud:{last_screenshot_at:new Date(Date.now()-2*3600000).toISOString(),on_schedule_percent:75,active_testers:4}});
@@ -39,7 +40,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.goto('http://fixture.local/');
   for(const file of css)if(fs.existsSync(path.join(root,file)))await page.addStyleTag({path:path.join(root,file)});
   await page.addStyleTag({content:'body{padding:8px}#tab-projects{display:block}'});
-  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-campaign-geo.js','i18n/live-project-control.js','i18n/live-guidance.js','i18n/live-smart-pro.js','i18n/live-pace-forecast.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-market-ui.js','js/review-credits.js','js/live-pace-forecast.js','js/live-manual-plan.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-scenario-editor.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/country-catalog.js','js/showcase-geo.js','js/live-campaign-geo.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
+  for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-campaign-geo.js','i18n/live-project-control.js','i18n/live-guidance.js','i18n/live-smart-pro.js','i18n/live-pace-forecast.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-market-ui.js','js/review-credits.js','js/live-pace-forecast.js','js/live-manual-plan.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-scenario-editor.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/country-catalog.js','js/showcase-geo.js','js/live-campaign-geo.js','js/live-campaign-sources-view.js','js/live-community.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
   await page.evaluate(({language,index})=>{
    const ref=new DOMParser().parseFromString(index,'text/html').querySelector('#add-bounty-settings');const holder=document.createElement('div');holder.hidden=true;holder.appendChild(ref);document.body.appendChild(holder);
    const dom=new DOMParser().parseFromString(index,'text/html');['showcase-geo-picker-modal','showcase-geo-list-modal'].forEach(id=>document.body.appendChild(dom.getElementById(id)));
@@ -71,14 +72,18 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await layer.locator('.lcw-learn-btn').click();await page.locator('#live-campaign-learning').waitFor();
   await page.evaluate(()=>tg.BackButton.callback());await page.waitForSelector('#live-campaign-learning',{state:'detached'});
   assert.equal(await layer.locator('[data-lcw-action="manual"]').isVisible(),true,'Closing learning returns to the untouched entry');
-  await fit();await page.screenshot({path:path.join(out,'entry-'+language+'-'+width+'.png'),animations:'disabled'});
+  await layer.locator('.lc-community-metrics').waitFor();assert.match(await layer.locator('.lc-community').innerText(),/145/);await fit();await page.screenshot({path:path.join(out,'entry-'+language+'-'+width+'.png'),animations:'disabled'});
   await page.evaluate(()=>tg.BackButton.callback());await layer.waitFor({state:'detached'});
   await open();await layer.locator('[data-lcw-action="manual"]').click();await fit();
   assert.match(await layer.locator('#lcw-title').innerText(),/1.*3/);assert.equal(await layer.locator('.lcw-footer [data-lcw-action="back"]').count(),0);
   await layer.locator('.lcw-heading').click();assert.equal(await layer.locator('[data-step="2"]').isDisabled(),true);
   await page.evaluate(()=>tg.BackButton.callback());assert.equal(await layer.locator('#lcw-outline').isVisible(),false);
   await page.evaluate(()=>tg.BackButton.callback());assert.equal(await layer.locator('[data-lcw-action="manual"]').isVisible(),true);
-  await layer.locator('[data-lcw-action="manual"]').click();await choose('web');await field('webQuery').fill('Orbit android budget');
+  await layer.locator('[data-lcw-action="manual"]').click();await choose('web');
+  assert.equal(await field('webQuery').getAttribute('readonly'),'');
+  assert.match(await field('webQuery').inputValue(),/Orbit Budget Planner.*Google Play/);
+  await layer.locator('[data-lcw-field="webMode"][data-value="web_custom"]').click();
+  await field('webQuery').fill('Orbit android budget');
   const selectCountry=async(code)=>{await layer.locator('[data-lcw-action="geo"]').click();await page.locator('#showcase-geo-picker-modal.active').waitFor();await page.locator('#showcase-geo-search').fill(code);await page.locator('#showcase-geo-options [data-geo-code="'+code+'"]').click();};
   await selectCountry('KZ');await page.waitForFunction(()=>document.querySelector('.lcw-geo-counts dd')?.textContent==='6');
   assert.deepEqual(await layer.locator('.lcw-geo-counts dd').allTextContents(),['6','2']);assert.match(await layer.locator('.lcw-geo .is-warn').innerText(),/10/);
@@ -106,7 +111,19 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await layer.locator('.lcw-attachment figure').waitFor();await fit();await page.screenshot({path:path.join(out,'source-'+language+'-'+width+'.png'),animations:'disabled'});
   await next();await layer.locator('[data-lcw-field="retention"][data-value="35"]').click();assert.equal(await field('retention').inputValue(),'35');assert.match(await layer.locator('.lcw-scroll').innerText(),/D35/);await field('retention').fill('16');await field('retention').blur();assert.equal(await field('retention').inputValue(),'16');await fit();
   await layer.locator('[data-lcw-field="retention"][data-value="14"]').click();await next();
-  await layer.locator('[data-lcw-field="activity"]').click();await layer.locator('[data-lse-field="text"]').fill('Open settings');await layer.locator('[data-lse-field="description"]').fill('Check the language selector');await layer.locator('[data-lcw-file^="step:"]').setInputFiles({name:'step.png',mimeType:'image/png',buffer:png});await layer.locator('.lse-media img').waitFor();await layer.locator('[data-lse-add]').click();await layer.locator('[data-lse-field="text"]').nth(1).fill('Create a note');await fit();await page.screenshot({path:path.join(out,'scenario-steps-'+language+'-'+width+'.png'),animations:'disabled'});await layer.locator('[data-lcw-action="review-settings"]').click();await page.locator('[data-rv-mode=voluntary]').click();await page.locator('[data-rv-save]').click();
+  await layer.locator('[data-lcw-field="activity"]').click();await layer.locator('[data-lse-field="text"]').fill('Open settings');await layer.locator('[data-lse-field="description"]').fill('1. Open settings\n2. Check the selector');
+  assert.equal(await layer.locator('[data-lse-split]').isVisible(),true);
+  await layer.locator('[data-lse-assist]').uncheck();
+  assert.equal(await layer.locator('[data-lse-split]').isVisible(),false);
+  await layer.locator('[data-lse-assist]').check();
+  await layer.locator('[data-lse-field="description"]').fill('Check the language selector');
+  assert.match(await layer.locator('[data-lse-fee]').innerText(),/0[.,]40/);
+  await layer.locator('[data-lse-setting="proof_mode"]').selectOption('video');
+  assert.match(await layer.locator('[data-lse-fee]').innerText(),/0[.,]60/);
+  await layer.locator('[data-lse-setting="proof_mode"]').selectOption('screenshot');
+  await layer.locator('[data-lse-setting="dose"]').check();
+  await layer.locator('[data-lse-dose="35"]').click();
+  assert.equal(await layer.locator('[data-lse-setting="scenario_share_pct"]').inputValue(),'35');await layer.locator('[data-lcw-file^="step:"]').setInputFiles({name:'step.png',mimeType:'image/png',buffer:png});await layer.locator('.lse-media img').waitFor();await layer.locator('[data-lse-add]').click();await layer.locator('[data-lse-field="text"]').nth(1).fill('Create a note');await fit();await page.screenshot({path:path.join(out,'scenario-steps-'+language+'-'+width+'.png'),animations:'disabled'});await layer.locator('[data-lcw-action="review-settings"]').click();await page.locator('[data-rv-mode=voluntary]').click();await page.locator('[data-rv-save]').click();
   await field('name').fill('Summer ASO');
   await layer.locator('[data-lcw-icon="none"]').click();await field('name').fill('');assert.equal(await layer.locator('[data-lcw-action="save"]').isDisabled(),true);await field('name').fill('Summer ASO');
   assert.equal(await layer.locator('.lpc-global-policy,[data-lcw-field="pauseHours"],[data-lcw-field="mode"]').count(),0,'Campaign wizard does not edit the project pace');
@@ -154,10 +171,10 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await flip(11,true);await flip(12,true); // Explicit owner actions still respect active capacity.
   await open();await layer.locator('[data-lcw-template="deep"]').click();await layer.waitFor({state:'detached'});await page.locator('[data-campaign-id="13"]').waitFor();assert.equal(posts.at(-1).status,'paused');
   await page.locator('[data-lc-action="buy-active"]').waitFor();assert.equal(capacity().active,3);assert.equal(limit,3);
-  await page.evaluate(()=>confirmAnswer=true);await page.locator('[data-lc-action="buy-active"]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="buy-active"]'));assert.equal(limit,4);assert.equal(slotKeys.size,1);
+  await page.locator('[data-lc-action="buy-active"]').click();await page.locator('#lc-slot-sheet [data-slot-buy]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-action="buy-active"]'));assert.equal(limit,4);assert.equal(slotKeys.size,1);
   assert.equal(await page.locator('.lc-section').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'Several campaign cards fit mobile width');
   await page.screenshot({path:path.join(out,'campaigns-'+language+'-'+width+'.png'),fullPage:true,animations:'disabled'});
-  await open();await layer.locator('[data-lcw-action="manual"]').click();await choose('web');await field('webQuery').fill('unsaved');
+  await open();await layer.locator('[data-lcw-action="manual"]').click();await choose('web');await layer.locator('[data-lcw-field="webMode"][data-value="web_custom"]').click();await field('webQuery').fill('unsaved');
   await page.evaluate(()=>confirmAnswer=false);await layer.locator('[data-lcw-action="close"]').click();assert.equal(await layer.isVisible(),true);
   await page.evaluate(()=>confirmAnswer=true);await layer.locator('[data-lcw-action="close"]').click();await layer.waitFor({state:'detached'});
   assert.equal(await page.locator('.lc-section [data-lc-action="learn"]').count(),0);

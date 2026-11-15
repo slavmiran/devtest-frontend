@@ -120,3 +120,65 @@
 .lcw-forecast{padding:11px}.lcw-forecast .lcw-mix-caption{margin-top:0}.lcw-forecast p{font-size:10px;margin-bottom:0}.lcw-passport-ref>summary{font-size:12px;color:var(--accent-primary);cursor:pointer}
 .lcw-ideas{max-height:180px;overflow-y:auto}.lcw-quantity{max-width:76px}
 #live-campaign-wizard[aria-busy=true] button{opacity:.6;cursor:wait}
+.lc-community {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--border-color, #303944);
+    border-radius: 12px;
+    background: var(--bg-secondary, #18212a);
+    font-size: .83rem;
+}
+.lc-community[hidden] { display: none; }
+.lc-community-compact { padding: 9px 12px; }
+.lc-community-metrics { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.lc-community ul { margin: 8px 0 0; padding-inline-start: 22px; }
+.lc-community-flags { letter-spacing: .12em; }
+.lcw-growth-wallet { align-self: start; margin: 8px 0; }
+
+.lse-editor, .lse-step, .lse-settings, .lse-dose {
+    display: grid;
+    min-width: 0;
+    gap: 9px;
+}
+.lse-editor > header, .lse-step > header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px 12px;
+}
+.lse-editor [data-lse-fee] { color: #8ddfc6; font-weight: 700; }
+.lse-editor label { min-width: 0; }
+.lse-editor input:not([type="checkbox"]), .lse-editor textarea, .lse-editor select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+}
+.lse-editor label.lse-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.lse-editor .lse-checkbox input {
+    flex: 0 0 auto;
+    width: auto;
+    margin: 0;
+}
+.lse-editor [data-lse-counter] { margin: 0; }
+.lse-editor [aria-invalid="true"] { outline: 1px solid #e8ab67; }
+.lse-dose .lcw-chips { flex-wrap: wrap; }
+.lse-upload { position: relative; width: fit-content; max-width: 100%; cursor: pointer; }
+.lse-upload input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.lse-upload:focus-within { outline: 2px solid currentColor; }
+.lse-media :is(img, video), .lr-scenario-steps :is(img, video), .lr-web-reference, .growth-proof-video {
+    display: block;
+    max-width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+}
+.lr-scenario-steps { overflow-wrap: anywhere; }
+.lr-scenario-funnel { margin: 8px 0; padding: 0 8px; font-size: .83rem; }
+.lr-funnel-hint { color: #f5c77b; }
+.lr-task small { display: block; margin-top: 6px; }
