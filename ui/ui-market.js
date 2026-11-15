@@ -4907,6 +4907,7 @@ function resolveFeedbackRejectReasonLabel(reasonRaw) {
 }
 
 function buildFeedbackMicroSummaryHtml(item, isRejected) {
+    const status = normalizeFeedbackStatus(item && item.status);
     const when = window.escapeHTML(formatFeedbackRelativeTime(
         (item && (item.processed_at || item.accepted_at || item.rejected_at || item.replied_at || item.updated_at || item.created_at)) || ''
     ));
@@ -4914,6 +4915,10 @@ function buildFeedbackMicroSummaryHtml(item, isRejected) {
     const metaSuffix = when
         ? ('<span class="fb-micro-meta"> <span class="fb-micro-sep">·</span> ' + when + '</span>')
         : '';
+    if (isOpenFeedbackStatus(status) || status === 'expired') {
+        const key = status === 'needs_reply' ? 'pfWaitingTester' : status === 'expired' ? 'pfExpired' : 'pfWaitingOwner';
+        return '<span class="pf-muted">' + window.escapeHTML(window.t(key, {}, lang)) + '</span>' + metaSuffix;
+    }
     if (isRejected) {
         const reasonRaw = String((item && (item.rejection_reason || item.reject_reason || item.decline_reason)) || '').trim();
         const reasonLabel = reasonRaw ? window.escapeHTML(resolveFeedbackRejectReasonLabel(reasonRaw)) : '';
@@ -4954,6 +4959,7 @@ function getFeedbackPreviewText(item, isReviewTicket) {
 function getFeedbackTypePillLabel(item) {
     const feedbackType = String((item && item.type) || 'bug').toLowerCase();
     if (feedbackType === 'scenario') return window.t('lrScenario', {}, lang);
+    if (feedbackType === 'project_impression') return window.t('pfKind_project_impression', {}, lang);
     if (feedbackType.indexOf('google_play_review') === 0) {
         return window.t('feedbackChipReview', {}, lang) || '⭐️ Review';
     }
@@ -5039,6 +5045,7 @@ function groupFeedbackByDate(items) {
 window.groupFeedbackByDate = groupFeedbackByDate;
 
 function toggleFeedbackCardCollapse(cardEl, event) {
+    if (event?.target?.closest('.pf-thread-embed')) return;
     if (!cardEl || !event) return;
     const target = event.target;
     if (target.closest('a') || target.closest('button') || target.closest('.fb-media-thumb') || target.closest('input') || target.closest('textarea') || target.closest('.fb-device-line')) {
@@ -5082,6 +5089,7 @@ function getProjectFeedbackHeader(project, items, meta) {
     let bugCount = 0;
     let ideaCount = 0;
     let scenarioCount = 0;
+    let impressionCount = 0;
     let openCount = 0;
     let processedCount = 0;
 
@@ -5093,6 +5101,8 @@ function getProjectFeedbackHeader(project, items, meta) {
                 googlePlayCount++;
             } else if (feedbackType === 'scenario') {
                 scenarioCount++;
+            } else if (feedbackType === 'project_impression') {
+                impressionCount++;
             } else if (feedbackType === 'idea') {
                 ideaCount++;
             } else {
@@ -5171,6 +5181,7 @@ function getProjectFeedbackHeader(project, items, meta) {
 
             <div class="feedback-filters">
                 <button type="button" class="filter-chip${typeFilter === 'scenario' ? ' active' : ''}" data-filter="scenario" onclick="filterFeedback('scenario')">${window.escapeHTML(window.t('lrScenario', {}, lang))} <span class="filter-count">${scenarioCount}</span></button>
+                ${impressionCount ? `<button type="button" class="filter-chip${typeFilter === 'project_impression' ? ' active' : ''}" data-filter="project_impression" onclick="filterFeedback('project_impression')">${window.escapeHTML(window.t('pfKind_project_impression', {}, lang))} <span class="filter-count">${impressionCount}</span></button>` : ''}
                 <button type="button" class="filter-chip${typeFilter === 'all' ? ' active' : ''}" data-filter="all" onclick="filterFeedback('all')">${window.escapeHTML(window.t('feedbackFilterAll', {}, lang))}</button>
                 <button type="button" class="filter-chip${typeFilter === 'google_play' ? ' active' : ''}" data-filter="google_play" onclick="filterFeedback('google_play')">${window.escapeHTML(window.t('feedbackFilterGooglePlay', {}, lang))} <span class="filter-count">${googlePlayCount}</span></button>
                 <button type="button" class="filter-chip${typeFilter === 'bug' ? ' active' : ''}" data-filter="bug" onclick="filterFeedback('bug')">${window.escapeHTML(window.t('feedbackFilterBugs', {}, lang))} <span class="filter-count">${bugCount}</span></button>
@@ -5212,7 +5223,7 @@ var _projectFeedbackStatusFilter = 'all';
 var _projectFeedbackCardNodes = null;
 
 function resetProjectFeedbackFilters(preferUnprocessed, typeFilter) {
-    _projectFeedbackTypeFilter = ['all', 'google_play', 'bug', 'idea', 'scenario'].includes(typeFilter) ? typeFilter : 'all';
+    _projectFeedbackTypeFilter = ['all', 'google_play', 'bug', 'idea', 'scenario','project_impression'].includes(typeFilter) ? typeFilter : 'all';
     _projectFeedbackStatusFilter = preferUnprocessed ? 'new' : 'all';
     _projectFeedbackCardNodes = null;
 }
@@ -5313,7 +5324,7 @@ function normalizeFeedbackStatus(status) {
 /** Open/active ticket: DB default is pending; legacy rows may still be new/processing. */
 function isOpenFeedbackStatus(status) {
     const s = normalizeFeedbackStatus(status);
-    return s === 'pending' || s === 'new' || s === 'processing';
+    return ['pending','new','processing','needs_reply'].includes(s);
 }
 
 function isRejectedFeedbackStatus(status) {
@@ -5330,6 +5341,7 @@ function feedbackMatchesTypeFilter(cardType, filterType) {
     if (filterType === 'bug') return !isGooglePlay && (cardType === 'bug' || cardType === 'general' || cardType === 'question');
     if (filterType === 'idea') return !isGooglePlay && cardType === 'idea';
     if (filterType === 'scenario') return cardType === 'scenario';
+    if (filterType === 'project_impression') return cardType === 'project_impression';
     return true;
 }
 
@@ -5665,7 +5677,7 @@ function renderProjectFeedbackCards(project, items) {
                 deviceInfoHtml = renderFeedbackDeviceInfoBlock(item);
             }
 
-            var hasTopicLink = !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
+            var hasTopicLink = !['scenario','project_impression'].includes(feedbackType) && !!(item.telegram_message_id && Number(item.telegram_message_id) > 0);
             const chatIconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>';
             const discussLabel = window.escapeHTML(window.t('feedbackDiscussInChatBtn', {}, lang) || (lang === 'ru' ? 'Обсудить в чате' : 'Discuss in chat'));
             const completeLabel = window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || '🎁 Complete');
@@ -5688,7 +5700,7 @@ function renderProjectFeedbackCards(project, items) {
                             onclick="handleFeedbackAcceptClick(${projectId}, ${item.id}, this, event)">
                         <span class="fb-btn-accept-text">${completeLabel}</span>
                     </button>`;
-            } else if (isOpen) {
+            } else if (isOpen && feedbackType !== 'project_impression') {
                 decideButtonsHtml = `
                     <button class="fb-action-btn fb-action-btn--reject" onclick="openFeedbackRejectModal(${item.id}, ${projectId}, this)">${window.escapeHTML(window.t('feedbackRejectBtn', {}, lang) || 'Reject')}</button>
                     <button type="button" class="fb-action-btn fb-action-btn--primary fb-action-btn--accept"
@@ -5744,6 +5756,7 @@ function renderProjectFeedbackCards(project, items) {
                         ${deviceInfoHtml}
                         ${rewardHtml}
                         ${replyHtml}
+                        ${window.ProjectFeedback && ['bug','idea','scenario','project_impression'].includes(feedbackType) ? ProjectFeedback.embed(item.id) : ''}
                     </div>
                     ${toolbarHtml}
                 </div></div>
@@ -6324,7 +6337,7 @@ function showProjectFeedbackModal(project, items, options) {
     if (!body) return;
     body.innerHTML = getProjectFeedbackHeader(project, items, {
         partialLoad: !!options.partialLoad
-    }) + renderProjectFeedbackCards(project, items);
+    }) + (window.ProjectFeedback ? ProjectFeedback.ownerBanner(project.id || project.app_id) : '') + renderProjectFeedbackCards(project, items);
     if (window.ReviewFlow) ReviewFlow.owner(Number(project.id || project.app_id), body, false);
     document.getElementById('project-feedback-modal').classList.add('active');
     cacheProjectFeedbackCards();

@@ -1,0 +1,71 @@
+.pf-layout, .pf-config, .pf-config > div, .pf-thread, .pf-chat-log {
+    display: grid;
+    gap: 12px;
+    min-inline-size: 0;
+}
+.pf-layout [hidden], .pf-config [hidden], .pf-test-feedback:empty { display: none; }
+.pf-layout label, .pf-config label { display: grid; gap: 6px; min-inline-size: 0; }
+.pf-layout .pf-inline, .pf-config .pf-inline { display: flex; align-items: start; gap: 9px; }
+.pf-layout .pf-inline input, .pf-config .pf-inline input { inline-size: auto; flex: 0 0 auto; margin: .25em 0 0; }
+.pf-layout :is(input:not([type=checkbox]),textarea,select), .pf-config :is(input:not([type=checkbox]),select) {
+    box-sizing: border-box;
+    inline-size: 100%;
+    min-inline-size: 0;
+}
+.pf-layout :is(.gtw-input,.gtw-textarea), .pf-config :is(.gtw-input,select) {
+    padding: 9px 11px;
+    color: inherit;
+    background: rgba(116, 144, 180, .08);
+    border: 1px solid rgba(144, 165, 197, .25);
+    border-radius: 9px;
+    font: inherit;
+}
+.pf-layout p, .pf-thread p, .pf-route-banner p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pf-layout fieldset, .pf-config, .pf-score {
+    margin: 0;
+    min-inline-size: 0;
+    padding: 9px 11px 11px;
+    border: 1px solid rgba(144, 165, 197, .26);
+    border-radius: 12px;
+}
+.pf-score legend, .pf-config legend { padding-inline: 4px; font-weight: 650; line-height: 1.3; }
+.pf-score > div { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px; }
+.pf-star {
+    min-block-size: 36px;
+    min-inline-size: 0;
+    padding: 4px;
+    color: #9daabb;
+    background: rgba(122, 154, 201, .08);
+    border: 1px solid rgba(144, 165, 197, .16);
+    border-radius: 9px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 22px;
+}
+.pf-star.is-filled { color: #ffd578; background: rgba(243, 177, 64, .15); border-color: rgba(243, 177, 64, .45); }
+.pf-average { font-weight: 750; color: #ffd578; }
+.pf-muted { color: var(--text-secondary, #a4b2c5); line-height: 1.45; }
+.pf-history, .pf-thread-embed, .pf-route-banner, .pf-test-feedback {
+    min-inline-size: 0;
+    padding: 10px;
+    background: rgba(116, 144, 180, .08);
+    border: 1px solid rgba(144, 165, 197, .21);
+    border-radius: 12px;
+}
+.pf-route-banner, .pf-test-feedback, .pf-history[open], .pf-thread-embed[open] { display: grid; gap: 9px; }
+.pf-test-feedback { margin: 8px 0 0; }
+.pf-test-feedback details > button { display: flex; width: 100%; margin-top: 7px; text-align: start; }
+.pf-history summary, .pf-thread-embed summary, .pf-test-feedback summary { cursor: pointer; font-weight: 650; }
+.pf-history ol { display: grid; gap: 10px; list-style: none; padding: 0; margin: 0; }
+.pf-history li, .pf-message { display: grid; gap: 6px; padding: 9px; min-inline-size: 0; border-radius: 10px; background: rgba(113, 145, 183, .10); }
+.pf-message.is-mine { margin-inline-start: 8%; background: rgba(76, 137, 223, .16); }
+.pf-message:not(.is-mine) { margin-inline-end: 8%; }
+.pf-message header, .pf-history li header { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .82em; }
+.pf-message img { max-inline-size: 100%; max-block-size: 150px; border-radius: 6px; }
+.pf-thumb { overflow: hidden; inline-size: 68px; block-size: 55px; padding: 0; border: 0; border-radius: 7px; }
+.pf-thumb img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.pf-copy { flex: 0 0 auto; }
+.pf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-actions > :is(button,a) { flex: 1 1 130px; }
+.pf-share { display: grid; gap: 8px; }
+.pf-badge { max-inline-size: 100%; white-space: normal; }

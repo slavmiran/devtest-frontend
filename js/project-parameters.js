@@ -175,6 +175,7 @@
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + argument + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + argument + ',event)', false) +
                 (adapter && adapter.extraHtml ? adapter.extraHtml(project) : '') +
+                (window.ProjectFeedback ? ProjectFeedback.ownerTools(id, project.phase === 'live') : '') +
                 '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="ProjectParameters.openBoost(' + argument + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
                     '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
                     '<span class="pc-project-param__value">' + boostValueHtml + '</span>' +

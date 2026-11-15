@@ -133,6 +133,7 @@
         var s=session,el=event.target;if(!s)return;if(!accessible(s)){dispose(s);return;}
         if(s.confirming||s.saving)return;
         if(el.dataset.ctField){var name=el.dataset.ctField,value=Number(el.value),ok=el.value.trim()!==''&&Number.isInteger(value)&&value>=Number(el.min)&&value<=Number(el.max);el.setAttribute('aria-invalid',String(!ok));if(ok){if(name.startsWith('source_'))s.draft.contracts.source_bonus_bust[name.slice(7)]=value;else s.draft.contracts[name]=value;s.edited=true;}refresh(s);return;}
+        if(el.dataset.pfField&&window.ProjectFeedback){s.draft.impression=ProjectFeedback.configValue(el);s.edited=true;return;}
         if(window.LiveScenarioEditor&&LiveScenarioEditor.input(s.draft.activity,el)){s.edited=true;if(el.dataset.lseSetting&&el.dataset.lseSetting!=='scenario_share_pct')render(s,false);else refresh(s);return;}var field=el.dataset.lcwInput;if(!field)return;
         if(field==='scenarioLimit'){var limit=el.value===''?null:Number(el.value),valid=limit===null||Number.isInteger(limit)&&limit>=1&&limit<=100000;el.setAttribute('aria-invalid',String(!valid));if(valid){s.draft=LiveCampaignDraft.change(s.draft,field,limit);s.edited=true;}refresh(s);return;}
         if(field==='scenarioTitle'){s.draft=LiveCampaignDraft.change(s.draft,field,el.value);s.edited=true;refresh(s);return;}

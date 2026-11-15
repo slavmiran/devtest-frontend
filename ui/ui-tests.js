@@ -3535,6 +3535,7 @@ function renderTests(force) {
                 cardContent += reminderHtml;
             }
             card.innerHTML = cardContent;
+            if (!isExternal && window.ProjectFeedback) ProjectFeedback.mountCard(card, test.id);
             doneFrag.appendChild(card);
             doneCount++;
         } else if (shouldShowInPendingList) {
@@ -3559,6 +3560,7 @@ function renderTests(force) {
                 );
             }
             card.innerHTML = cardContent;
+            if (!isExternal && window.ProjectFeedback) ProjectFeedback.mountCard(card, test.id);
             activeFrag.appendChild(card);
             activeCount++;
         }
@@ -3566,6 +3568,7 @@ function renderTests(force) {
 
     if (activeList) activeList.appendChild(activeFrag);
     if (doneList) doneList.appendChild(doneFrag);
+    if (window.ProjectFeedback) ProjectFeedback.refreshCards();
 
     if (pendingList) {
         if (pendingFrag.children.length > 1) {
@@ -3777,6 +3780,7 @@ function renderCompletedTests(completedTests) {
         }
 
         card.innerHTML = cardContent;
+        if (window.ProjectFeedback) ProjectFeedback.mountCard(card, test.id);
         doneList.appendChild(card);
         doneCount++;
     });

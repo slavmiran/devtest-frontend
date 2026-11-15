@@ -109,6 +109,9 @@
         if(minDay!=null){var dText='📅 D'+(minDay===maxDay?minDay:minDay+'–'+maxDay);if(bridge&&bridge.control_day_count&&bridge.control_day_count<5)tags.push(dText+' · '+t('mkFewerReports',{n:bridge.control_day_count}));else if(kmin!=null)tags.push(dText+' · 📸 '+(kmin===kmax?kmin:kmin+'–'+kmax)+' '+t('lrCheckpointsShort'));else tags.push(dText);}
         if(shelfKey!=='contracts'&&view.section!=='contracts'&&contractTag)tags.push(contractTag);
         if(row.instructions||tasks.some(function(x){return x.scenario_enabled;}))tags.push(window.LiveRouteUI&&tasks.find(function(x){return x.activity&&x.activity.enabled;})?LiveRouteUI.badge(tasks.find(function(x){return x.activity&&x.activity.enabled;}).activity):t('mkScenario'));
+        var impression=tasks.find(function(task){return task.impression&&task.impression.mode==='mutual';})||
+            tasks.find(function(task){return task.impression;});
+        if(impression&&window.ProjectFeedback)tags.unshift(ProjectFeedback.badgeLabel(impression.impression));
         var reqRev=tasks.some(function(x){return x.review_mode==='required'&&x.reviews_available;}),volRev=tasks.some(function(x){return x.reviews_available;});
         if(reqRev||volRev)tags.push(t(reqRev?'mkReviewRequiredChip':'mkReviewVoluntaryChip'));
         var geo=tasks.map(function(x){return x.country;}).filter(Boolean).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ');

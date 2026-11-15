@@ -113,6 +113,7 @@
   if(web)payload.web.mode=d.web.mode||'web_custom';
   if(d.allowedSources){payload.allowed_sources=sources.slice();if(!d.contracts||!d.contracts.enabled)payload.preferred_track={source:d.source,days:d.retention.days};}
   if(d.contracts)payload.contracts=clone(d.contracts);
+  if(d.impression)payload.impression=clone(d.impression);
   if(d.country)payload.country=d.country;
   payload.volume.totalInstalls=total(d);if(window.LiveScenarioEditor&&d.activity.steps)payload.activity.steps=await LiveScenarioEditor.serialize(d.activity,serialize);
   if(d.activity.screenshots){payload.activity.screenshots=[];for(var i=0;i<d.activity.screenshots.length;i++)if(d.activity.screenshots[i])payload.activity.screenshots.push(await serialize('scenario:'+i,d.activity.screenshots[i]));}
@@ -123,7 +124,7 @@
   return payload;
  }
  function fromCampaign(p,c,asset){
-  var d=create(p),saved=clone(c.definition);['name','icon','template','source','retention','activity','reviews'].forEach(function(k){if(saved[k]!=null)d[k]=saved[k];});
+  var d=create(p),saved=clone(c.definition);['name','icon','template','source','retention','activity','reviews','impression'].forEach(function(k){if(saved[k]!=null)d[k]=saved[k];});
   if(saved.icon===null)d.icon=null;
   d.routePriority=c.route_priority===true;
   d.parentCampaignId=c.parent_campaign_id||null;
