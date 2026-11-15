@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {chromium}=require('C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/live-contracts-20261030/ui');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..'),out=path.resolve(process.env.LIVE_TEST_ARTIFACTS||path.resolve(root,'../artifacts/live-contracts-20261030/ui'));fs.mkdirSync(out,{recursive:true});
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const scripts=['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-campaign-geo.js','i18n/live-project-control.js','i18n/live-guidance.js','i18n/live-smart-pro.js','i18n/live-pace-forecast.js','i18n/core.js','ui/ui-helpers.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-campaign-keywords.js','js/live-campaign-traffic.js','js/live-market-ui.js','js/live-contracts.js','js/live-market.js','js/review-credits.js','js/live-pace-forecast.js','js/live-manual-plan.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-learning.js','js/live-campaign-draft.js','js/live-campaign-wizard-media.js','js/live-campaign-wizard-view.js','js/country-catalog.js','js/showcase-geo.js','js/live-campaign-geo.js','js/live-campaign-sources-view.js','js/live-campaign-entry.js','js/live-campaign-wizard.js','js/live-campaign-growth-card.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaigns.js','js/app-navigation.js'];
 (async()=>{const browser=await chromium.launch({channel:'chrome',headless:true});try{
@@ -54,6 +54,18 @@ const scripts=['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-cam
   await page.locator('[data-ct-video]').click();await page.waitForFunction(()=>typeof window.openedBot==='string');assert.match(await page.evaluate(()=>window.openedBot),/^https:\/\/t.me\//);await page.keyboard.press('Escape');
   caseState='owner_pending';await page.evaluate(()=>LiveContracts.help(71));assert.equal(await page.locator('[data-ct-video]').count(),0);await fit();await page.keyboard.press('Escape');
   assert.equal(await page.locator('.lm-sheet-overlay').count(),0,'All sheets close cleanly');
+  await page.addScriptTag({path:path.join(root,'js/live-route-ui.js')});
+  const webQuery='скачать "Orbit Budget" Orbit Labs Google Play';
+  await page.evaluate(query=>{
+   Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>window.copiedWebQuery=value}});
+   tg.openLink=url=>window.openedWebQuery=url;
+   return LiveContracts.install({app_id:42,terms:{install_source:'web',queue_definition:{web:{mode:'web_brand',query}}}});
+  },webQuery);
+  await page.locator('[data-growth-open]').click();
+  assert.equal(await page.evaluate(()=>window.copiedWebQuery),webQuery);
+  assert.equal(await page.evaluate(()=>new URL(window.openedWebQuery).searchParams.get('q')),webQuery);
+  await fit();
+  await page.keyboard.press('Escape');
   assert.match(await page.evaluate(()=>LiveContracts.receipt({live_contract:{buffer_bust:0,receipt:{paid:50,buffer_released:50}}})),/50/);
   assert.deepEqual(errors,[]);await page.close();
  }

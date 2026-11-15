@@ -44,8 +44,13 @@
    (asset?'<img class="lr-web-reference" src="'+e(asset)+'" alt="'+e(t('lcwReference'))+'">':'')+
    '<a class="lm-action" data-growth-open href="'+e(url)+'" target="_blank" rel="noopener noreferrer">'+e(t(source==='web'?'growthCopyOpen':'ctOpenSource'))+'</a>'+
    button('lxProof','data-ct-proof-app="'+Number(leg.app_id)+'"',true));
-  if(source==='web') layer.querySelector('[data-growth-open]').addEventListener('click',function(){
+  if(source==='web') layer.querySelector('[data-growth-open]').addEventListener('click',function(event){
    if(window.LiveRouteUI) LiveRouteUI.copy(query).catch(function(){});
+   var webApp=window.Telegram&&window.Telegram.WebApp||window.tg;
+   if(webApp&&typeof webApp.openLink==='function'){
+    webApp.openLink(url);
+    event.preventDefault();
+   }
   });
  }
  async function help(leg,initial,app){
