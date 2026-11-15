@@ -31,6 +31,11 @@
         return steps;
     }
 
+    function splitDraft(step) {
+        var parts = split(step.description || '');
+        return {parts: parts, extra: parts.length - (step.text.trim() ? 0 : 1)};
+    }
+
     function normalize(activity) {
         if (!activity.steps || !activity.steps.length) {
             activity.steps = split(activity.instructions || '');
@@ -130,9 +135,9 @@
             var button = editor.querySelector('[data-lse-split="' + step._key + '"]');
             if (!button) return;
             var panel = button.closest('[data-lse-split-panel]');
-            var suggested = split(step.description || '');
+            var suggested = splitDraft(step);
             panel.hidden = step._split === false || !(count(step.description) > 220 || /(?:^|\s)(?:\d+[.)]|[•–-])\s/u.test(step.description || ''));
-            button.disabled = !suggested.length || activity.steps.length + suggested.length > 12;
+            button.disabled = !suggested.parts.length || activity.steps.length + suggested.extra > 12;
             var row = panel.closest('article');
             row.querySelector('[data-lse-counter]').textContent = count(step.description) + ' / 220';
             row.querySelector('textarea').setAttribute('aria-invalid', String(count(step.description) > 220));
@@ -166,10 +171,11 @@
             var index = activity.steps.findIndex(function (step) { return step._key === button.dataset.lseSplit; });
             if (index < 0) return false;
             var original = activity.steps[index];
-            var parts = split(original.description || '');
-            if (!parts.length || activity.steps.length + parts.length > 12) return false;
+            var result = splitDraft(original);
+            if (!result.parts.length || activity.steps.length + result.extra > 12) return false;
             original.description = '';
-            activity.steps.splice(index + 1, 0, ...parts);
+            if (!original.text.trim()) Object.assign(original, result.parts.shift());
+            activity.steps.splice(index + 1, 0, ...result.parts);
         } else {
             var key = button.dataset.lseRemove || button.dataset.lseMediaRemove;
             if (!key) return false;

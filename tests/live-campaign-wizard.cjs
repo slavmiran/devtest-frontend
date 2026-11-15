@@ -116,6 +116,11 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await layer.locator('[data-lse-assist]').uncheck();
   assert.equal(await layer.locator('[data-lse-split]').isVisible(),false);
   await layer.locator('[data-lse-assist]').check();
+  await layer.locator('[data-lse-split]').click();
+  assert.deepEqual(await layer.locator('[data-lse-field="text"]').evaluateAll(rows=>rows.map(row=>row.value)),
+   ['Open settings','Open settings','Check the selector']);
+  await layer.locator('[data-lse-remove]').last().click();
+  await layer.locator('[data-lse-remove]').last().click();
   await layer.locator('[data-lse-field="description"]').fill('Check the language selector');
   assert.match(await layer.locator('[data-lse-fee]').innerText(),/0[.,]40/);
   await layer.locator('[data-lse-setting="proof_mode"]').selectOption('video');

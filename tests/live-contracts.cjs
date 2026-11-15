@@ -32,12 +32,12 @@ const scripts=['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-cam
   assert.match(partialPrice,/90 \$BUST/,'Partial server configuration uses canonical price defaults');
   assert.doesNotMatch(partialPrice,/NaN|undefined/);
   const wizard=page.locator('#live-campaign-wizard'),fit=async()=>{assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&[...document.querySelectorAll('.lm-sheet,.lm-sheet-body,.lcw-scroll')].every(el=>el.scrollWidth<=el.clientWidth)),true,'No horizontal overflow');};
-  await page.locator('[data-lcw-action="manual"]').click();await page.locator('[data-lcw-action="next"]').click();await page.locator('[data-lcw-action="next"]').click();await page.locator('[data-lcw-action="next"]').click();
+  await page.locator('[data-lcw-action="manual"]').click();await page.locator('[data-lcw-action="next"]').click();await page.locator('[data-lcw-action="next"]').click();
   await page.locator('[data-ct-enable]').click();await page.locator('[data-ct-field="daily_rate_bust"]').fill('20');await page.locator('[data-ct-field="source_keywords"]').count();
   assert.match(await page.locator('[data-ct-price]').innerText(),/300/);
   await page.locator('[data-ct-mode="retention"]').click();await fit();
   await wizard.screenshot({path:path.join(out,`settings-${lang}-${width}.png`)});
-  await page.locator('[data-lcw-action="back"]').click();await page.locator('[data-lcw-action="back"]').click();
+  await page.locator('[data-lcw-action="back"]').click();
   assert.equal(await page.locator('[data-lcw-input="retention"]').count(),0,'Contract has no preferred track');
   await page.locator('[data-lcw-action="back"]').click();await page.locator('[data-lcw-field="allowedSource"][data-value="keywords"]').click();
   await page.locator('[data-lcw-action="suggestion"]').first().click();await page.locator('[data-lcw-action="key-fallback"]').first().click();await fit();

@@ -44,7 +44,7 @@ for(const language of ['ru','en'])for(const width of [360,390,430]){
  assert.match(await page.locator('#review-balance-modal .lm-sheet-header').innerText(),/Квоты Роста|Growth Quotas/);
  await page.click('[data-rv-open-buy]');
  await page.click('[data-rv-buy=one]');await page.waitForFunction(()=>document.querySelector('.rv-buy-modal [data-rv-buy-error]').textContent.length>0);await page.click('[data-rv-buy=one]');await page.waitForFunction(()=>!document.querySelector('.rv-buy-modal')&&document.querySelector('#review-balance-modal'));assert.equal(buys[0].request_key,buys[1].request_key);assert.equal(bust,1650);assert.ok(Math.abs(available-4.47)<1e-9);
- await page.screenshot({path:path.join(out,`wallet-${language}-${width}.png`)});await page.keyboard.press('Escape');assert.equal(await page.locator('.lm-sheet-overlay').count(),0);
+ await page.screenshot({path:path.join(out,`wallet-${language}-${width}.png`)});await page.locator('#review-balance-modal').click({position:{x:3,y:3}});await page.locator('#review-balance-modal').waitFor({state:'detached'});
  await page.evaluate(()=>ReviewCredits.openSettings(42));await page.locator('[data-rv-save]').waitFor();
  assert.equal(await page.locator('[data-rv-target=optimal]').getAttribute('aria-pressed'),'true');
  assert.equal(await page.locator('.rv-share.is-raised').count(),1,'40% is an elevated pace');
