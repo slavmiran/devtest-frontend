@@ -29,8 +29,8 @@ const clone=x=>JSON.parse(JSON.stringify(x));
     await route.fulfill({contentType:'text/html',body:'<button id="opener">Metrics</button>'});
    });
    await page.goto('http://fixture.local/');
-   for(const file of ['css/tokens.css','css/base.css','styles.css','css/live-project-metrics.css','css/live-metrics-modal.css'])await page.addStyleTag({path:path.join(root,file)});
-   for(const file of ['i18n/ru.js','i18n/en.js','i18n/core.js','ui/ui-helpers.js','js/live-radar-layers.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
+   for(const file of ['css/tokens.css','css/base.css','styles.css','css/live-project-metrics.css','css/live-market.css','css/live-metrics-modal.css'])await page.addStyleTag({path:path.join(root,file)});
+   for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-guidance.js','i18n/core.js','ui/ui-helpers.js','js/live-market-ui.js','js/live-guidance-routing.js','js/live-guidance.js','js/live-radar-layers.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
    await page.evaluate(lang=>{window.lang=lang;window.API_BASE='/api';window.showToast=message=>window.lastToast=message;window.getTelegramInitDataRaw=()=> 'signed-fixture';window.myProjects=[{id:42,name:'Orbit Notes <img src=x>'},{id:43,name:'Second app'}];window.archivedProjects=[];document.getElementById('opener').onclick=e=>LiveProjectMetrics.details(42,e);},lang);
    await page.click('#opener');await page.waitForFunction(()=>document.querySelector('.la-score-ring strong')?.textContent==='95');
    const assertWidth=async()=>{
@@ -151,6 +151,22 @@ const clone=x=>JSON.parse(JSON.stringify(x));
    // Keyboard trap and Escape close.
    await page.locator('#la-back').focus();await page.keyboard.press('Shift+Tab');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'opener');
    await page.keyboard.press('Escape');assert.equal(await page.locator('#live-analytics-modal').count(),0);assert.deepEqual(errors,[]);
+   // Full owner snapshot retains the fifth branch, seven-day corridor, and current feedback settings action.
+   mode='ok';data=clone(base);data.engagement={available:true,status:'active',discipline_percent:87,hours_since_last_report:6,depth_score:64,active_testers:12};
+   data.market={thermal_week:data.daily.slice(-7).map((row,i)=>({day:row.day,C_t:2+i%3,B_t:3,L_floor:2,U_opt:5,U_crit:8}))};
+   await page.evaluate(()=>{
+    myProjects[0].phase='live';window.switchTab=()=>{};window.ProjectFeedback={openSettings:id=>{window.openedFeedbackSettings=id;}};
+    LiveMetricsAnalytics.open(42);
+   });
+   await page.locator('[data-branch="engagement"]').waitFor();
+   assert.equal(await page.locator('.la-tree-row').count(),5);
+   assert.equal(await page.locator('.lm-week-chart circle').count(),7);
+   await assertWidth();await page.screenshot({path:path.join(out,`pulse-${lang}-${width}.png`)});
+   await page.locator('#la-detailed-view').click();assert.equal(await page.locator('.la-chart-row').count(),5);
+   await page.locator('[data-signal="REVIEW_TREND_DOWN"] [data-live-action="reviews"]').click();
+   assert.equal(await page.evaluate(()=>window.openedFeedbackSettings),42);
+   assert.equal(await page.locator('#live-analytics-modal').count(),0);
+   assert.deepEqual(errors,[]);
    await page.close();
   }
   console.log('Analytics passed: RU/EN 360×640/390×700/430×844, continuous 30:70 tree fitting the viewport, retained detailed view, hidden history, cohorts, OVER, rolling risks, early calibration, demo/cache/access/focus/Back.');

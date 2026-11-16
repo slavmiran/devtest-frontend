@@ -46,7 +46,7 @@
     };
     Object.assign(words.ru, {
         tree:'Древо', detailed:'Подробно', treeBrowser:'Веб', declineZone:'Зона спада (−)', growthZone:'Зона роста (+)',
-        treeInstalls:'Установки', treeRetention:'Удержание', treeReviews:'Отзывы', treeFreshness:'Свежесть',
+        treeInstalls:'Установки', treeRetention:'Удержание', treeReviews:'Отклики', treeFreshness:'Свежесть',
         earlyCalibration:'Ранняя калибровка', minimum:'Индекс рассчитывается от 5 подтверждённых установок.',
         historyToggle:'Развернуть историю и когорты (14 дней)', recent:'за 30 дней', departures:'удалений',
         actions:'Сигналы к действию', allClear:'Все метрики в норме, рисков не обнаружено.', collecting:'Наблюдения продолжаются — часть сигналов ещё не измерена.',
@@ -66,7 +66,7 @@
     });
     Object.assign(words.en, {
         tree:'Tree', detailed:'Detailed', treeBrowser:'Web', declineZone:'Decline (−)', growthZone:'Growth (+)',
-        treeInstalls:'Installs', treeRetention:'Retention', treeReviews:'Reviews', treeFreshness:'Freshness',
+        treeInstalls:'Installs', treeRetention:'Retention', treeReviews:'Feedback', treeFreshness:'Freshness',
         earlyCalibration:'Early calibration', minimum:'The index needs at least 5 verified installs.',
         historyToggle:'Expand history & cohorts (14 days)', recent:'last 30 days', departures:'departures',
         actions:'Action signals', allClear:'All measured metrics are healthy; no risks detected.', collecting:'Observation continues — some signals are not measured yet.',
