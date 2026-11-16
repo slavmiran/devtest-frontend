@@ -1,174 +1,150 @@
-const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,process.env.LIVE_TEST_ARTIFACTS || '../artifacts/live-two-layer-radar/analytics');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const fs = require('node:fs');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,process.env.LIVE_TEST_ARTIFACTS || '../artifacts/live-metrics-cleanup');
 fs.mkdirSync(out,{recursive:true});
 const base=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/live-analytics.json'),'utf8'));
-base.storefront={country:'TH',countries:{TH:{score:4.7,ratings:238,ratings_delta:4,installs:500,next_installs:1000,state:'fresh'},
-  GB:{score:4.3,ratings:12345678901,installs:500000000,next_installs:1000000000,state:'fresh'}}};
+base.storefront={country:'TH',countries:{TH:{score:4.7,ratings:238,ratings_delta:4,installs:500,next_installs:1000,state:'stale'},
+    GB:{score:4.3,ratings:12345678901,installs:500000000,next_installs:1000000000,state:'fresh'}}};
 base.project_feedback={total:68,rated:61,criteria:[4.6,4.0,4.3],rating:4.3,detailed_text_count:26,scenarios_completed:18,
-  balance:[{days:7,installs:38,responses:14,percent:36.8},{days:28,installs:117,responses:40,percent:34.2}],
-  distribution:{countries:[{code:'GB',installed:123456,responded:23,rating:4.5},{code:'unknown',installed:2,responded:1}],
-    devices:[{code:'phone',installed:123458,responded:24}]}};
+    distribution:{countries:[{code:'GB',installed:330,responded:23,rating:4.5},{code:'unknown',installed:2,responded:1}],
+        devices:[{code:'phone',installed:332,responded:24}]}};
+base.engagement={available:true,discipline_percent:87,hours_since_last_report:6,active_testers:12};
+base.market={thermal:{T_t:85,K_thermal:.912,L_floor:2,U_opt:5},
+    thermal_week:base.daily.slice(-7).map((row,i)=>({day:row.day,C_t:i===6?7:2+i%3,L_floor:2,U_opt:5}))};
+base.action_summary.signals=base.action_summary.signals.filter(signal=>signal.code==='REVIEW_TREND_DOWN');
 const clone=x=>JSON.parse(JSON.stringify(x));
+
 (async()=>{
- const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'chrome'});
- try {
-  for(const lang of ['ru','en'])for(const width of [360,390,430]){
-   const height=width===360?640:width===390?700:844;
-   const page=await browser.newPage({viewport:{width,height}});
-   let data=clone(base),mode='ok',gets=0,hold=false,pending;const errors=[];
-   page.on('pageerror',e=>errors.push(e.message));
-   await page.route('http://fixture.local/**',async route=>{
-    const url=new URL(route.request().url());
-    if(url.pathname.includes('/live-metrics/analytics')){
-     assert.equal(route.request().method(),'GET');assert.equal(url.searchParams.get('init_data'),'signed-fixture');gets++;
-     const payload=clone(data),failure=mode==='error',forbidden=mode==='forbidden';if(hold)await new Promise(r=>pending=r);
-     try{await route.fulfill(forbidden?{status:403,json:{error:'not_owner'}}:failure?{status:503,json:{error:'live_metrics_unavailable'}}:{json:{status:'success',analytics:payload}});}catch(_){/* request aborted on close */}
-     return;
-    }
-    await route.fulfill({contentType:'text/html',body:'<button id="opener">Metrics</button>'});
-   });
-   await page.goto('http://fixture.local/');
-   for(const file of ['css/tokens.css','css/base.css','styles.css','css/live-project-metrics.css','css/live-market.css','css/live-metrics-modal.css'])await page.addStyleTag({path:path.join(root,file)});
-   for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-guidance.js','i18n/core.js','ui/ui-helpers.js','js/live-market-ui.js','js/live-guidance-routing.js','js/live-guidance.js','js/live-radar-layers.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
-   await page.evaluate(lang=>{window.lang=lang;window.API_BASE='/api';window.showToast=message=>window.lastToast=message;window.getTelegramInitDataRaw=()=> 'signed-fixture';window.myProjects=[{id:42,name:'Orbit Notes <img src=x>'},{id:43,name:'Second app'}];window.archivedProjects=[];document.getElementById('opener').onclick=e=>LiveProjectMetrics.details(42,e);},lang);
-   await page.click('#opener');await page.waitForFunction(()=>document.querySelector('.la-score-ring strong')?.textContent==='95');
-   const assertWidth=async()=>{
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    assert.equal(await page.locator('.live-analytics-scroll').evaluate(n=>n.scrollWidth<=n.clientWidth),true);
-    const box=await page.locator('.live-analytics-page').boundingBox();assert.equal(box.width,width);assert.equal(box.height,height);
-    for(const el of await page.locator('.la-track').all()){
-     const all=await el.boundingBox(),negative=await el.locator('.la-negative').boundingBox();assert.ok(Math.abs(negative.width/all.width-.3)<.005);
-    }
-   };
-   await assertWidth();assert.equal(await page.locator('.la-tree-row').count(),4);
-   assert.equal(await page.locator('.la-chart-row').count(),0);
-   assert.equal(await page.locator('.la-check').count(),0);
-   assert.equal(await page.locator('#la-history').getAttribute('open'),null);
-   assert.equal(await page.locator('#la-tree-cohorts').isVisible(),false);
-   assert.ok((await page.locator('.la-tree').boundingBox()).y+(await page.locator('.la-tree').boundingBox()).height<=height,'Entire tree fits the initial phone viewport');
-   const spine=await page.locator('.la-tree').evaluate(el=>{const s=getComputedStyle(el,'::after');return {left:parseFloat(s.left)/el.clientWidth,height:parseFloat(s.height)/el.clientHeight};});
-   assert.ok(Math.abs(spine.left-.3)<.005);assert.ok(Math.abs(spine.height-1)<.005);
-   assert.equal(await page.locator('.la-over').count(),1);
-   assert.equal(await page.locator('.la-topbar img').count(),0);
-   assert.equal(await page.locator('[data-signal="REVIEW_TREND_DOWN"]').count(),1);
-   assert.equal(await page.locator('[data-signal="EARLY_DROPOFFS"]').count(),1);
-   await page.locator('[data-branch="retention"]').click();assert.equal(await page.locator('#la-tree-cohorts').isVisible(),true);
-   assert.match(await page.locator('#la-tree-cohorts').innerText(),/D14: 90%/);
-   await page.locator('[data-branch="retention"]').focus();await page.keyboard.press('Enter');assert.equal(await page.locator('#la-tree-cohorts').isVisible(),false);
-   await page.evaluate(()=>document.querySelector('.la-topbar > div > span').textContent='Orbit Notes'); // Clean presentation after verifying escaping.
-   await page.evaluate(()=>document.activeElement.blur());
-   await page.screenshot({path:path.join(out,`analytics-${lang}-${width}.png`)});
-   assert.equal(await page.locator('.lrdr-criterion').count(),3);
-   assert.equal(await page.locator('.lrdr-balance progress').count(),2);
-   await page.locator('#la-feedback').evaluate(el=>el.scrollIntoView({block:'start'}));
-   await page.screenshot({path:path.join(out,`feedback-${lang}-${width}.png`)});
-   const regionalReads=gets;
-   await page.locator('[data-lrdr-country]').selectOption('GB');
-   assert.match(await page.locator('.lrdr-public p').innerText(),/4[,.]3/);
-   assert.equal(gets,regionalReads);
-   await page.locator('#la-geo summary').click();
-   assert.equal(await page.locator('.lrdr-distribution-list li').count(),3);
-   await assertWidth();
-   await page.locator('#la-geo summary').click();
-   await page.locator('[data-lrdr-country]').selectOption('TH');
-   await page.locator('#la-method summary').click();assert.equal(await page.locator('#la-method li').count(),5);
-   await page.locator('#la-method summary').click();
-   await page.locator('#la-history summary').click();assert.equal(await page.locator('.la-day').count(),14);
-   assert.equal(await page.locator('#la-history .la-cohorts > span').count(),4);
-   await page.locator('[data-series="reviews"]').click();assert.equal(await page.locator('[data-series="reviews"]').getAttribute('aria-pressed'),'true');
-   await page.locator('#la-history summary').click();
-   await page.locator('#la-detailed-view').click();assert.equal(await page.locator('.la-chart-row').count(),4);
-   assert.equal(await page.locator('.la-check').count(),2);assert.equal(await page.locator('.la-check.is-unknown').count(),0);
-   assert.match(await page.locator('#la-history .la-cohorts').innerText(),/85/);
-   await page.screenshot({path:path.join(out,`analytics-detailed-${lang}-${width}.png`)});
-   await page.locator('#la-tree-view').click();
-   assert.equal(await page.locator('#la-history').getAttribute('open'),null);
-   // Example is explicitly labeled and cannot fetch/write or replace actual cache.
-   const before=gets;await page.locator('#la-demo').click();assert.equal(await page.locator('#la-demo-note').isVisible(),true);assert.equal(gets,before);
-   assert.equal(await page.locator('.la-score-ring strong').innerText(),'95');
-   await page.locator('#la-actual').click();assert.equal(await page.locator('#la-demo-note').isVisible(),false);
-   // Inclusive source threshold, negative momentum, capped over-duration, stale build.
-   data=clone(base);data.install_velocity.dominant_source_warning=true;data.install_velocity.sources_breakdown={key_percent:80,link_percent:10,browser_percent:10,unknown_percent:0};
-   data.install_velocity.trend_wma_percent=-100;data.retention.avg_days=90;data.retention.d30_target_percent=300;data.retention.toxic_dropoffs_d1_d3=3;
-   data.update_freshness={days_since_update:90,status:'stale',lifecycle_percent:-100};data.risk_triggers[0].status='warning';data.risk_triggers[1].status='warning';
-   data.action_summary.signals.push({code:'SOURCE_IMBALANCE',channel:'key',percent:80},{code:'UPDATE_STALE',days:90});
-   await page.locator('#la-refresh').click();await page.waitForFunction(()=>!!document.querySelector('.la-tree-row.is-source-warning'));
-   await assertWidth();assert.equal(await page.locator('[data-signal="SOURCE_IMBALANCE"]').count(),1);
-   assert.equal(await page.locator('[data-branch="retention"] .la-positive .la-fill').getAttribute('style'),'width:100%');
-   assert.match(await page.locator('[data-branch="retention"] .la-tree-loss').innerText(),/3 <D3/);
-   assert.equal(await page.locator('[data-branch="freshness"] .la-negative > span').getAttribute('style'),'width:100%');
-   await page.evaluate(()=>document.querySelector('.live-analytics-scroll').scrollTop=0);
-   await page.screenshot({path:path.join(out,`analytics-risk-${lang}-${width}.png`)});
-   for(const [days,signal] of [[31,96.7],[60,0]]){
-    data.update_freshness={days_since_update:days,status:'aging',lifecycle_percent:signal};
-    await page.locator('#la-refresh').click();await page.waitForFunction(days=>document.querySelector('[data-branch="freshness"] header strong')?.textContent===days+'d',days);
-    assert.equal(await page.locator('[data-branch="freshness"] .la-fill').getAttribute('style'),'width:'+signal+'%');
-    await assertWidth();
-   }
-   // Expired historical departures never create a current red branch or an action.
-   data=clone(base);data.retention.history_totals={early_uninstalls_count:100,toxic_dropoffs_d1_d3:20};data.retention.early_uninstalls_count=0;data.retention.toxic_dropoffs_d1_d3=0;
-   data.action_summary={status:'clear',signals:[]};
-   await page.locator('#la-refresh').click();await page.waitForFunction(()=>!document.querySelector('[data-branch="retention"] .la-tree-loss'));
-   assert.equal(await page.locator('.la-actions li').count(),0);assert.match(await page.locator('.la-actions p').innerText(),lang==='ru'?/в норме/:/healthy/);
-   data.health_score=77;data.health_status='watch';data.calibration_status='early';data.install_velocity.total=5;
-   await page.locator('#la-refresh').click();await page.waitForFunction(()=>document.querySelector('.la-score-ring strong')?.textContent==='77');
-   assert.match(await page.locator('.la-calibration').innerText(),lang==='ru'?/Ранняя калибровка/:/Early calibration/);
-   // Imported lifetime count remains visible even without a measurable WMA.
-   data=clone(base);data.health_score=null;data.health_status='insufficient_data';data.calibration_status='insufficient_data';data.coverage_percent=0;
-   Object.assign(data.install_velocity,{total:1,per_day:0,trend_wma_percent:0,trend_available:false,dominant_source_warning:true,sources_breakdown:{key_percent:0,link_percent:100,browser_percent:0}});
-   Object.assign(data.retention,{avg_days:2,d30_target_percent:6.7,observed_only_count:1,early_uninstalls_count:0,toxic_dropoffs_d1_d3:0});
-   await page.locator('#la-refresh').click();await page.waitForFunction(()=>document.querySelector('[data-branch="installs"] header>span').textContent.endsWith('· 1'));
-   const source=page.locator('[data-branch="installs"] .la-tree-chip.is-source-warning');
-   assert.match(await source.innerText(),/100%/);assert.equal(await source.count(),1);
-   assert.equal(await page.locator('[data-branch="installs"] .la-positive').evaluate(el=>getComputedStyle(el).outlineStyle),'none','Traffic warning must not draw a misleading frame around the velocity track');
-   await source.click();assert.match(await page.evaluate(()=>lastToast),lang==='ru'?/балансе источников, а не о скорости/:/source mix, not install speed/);
-   await assertWidth();await page.screenshot({path:path.join(out,`imported-one-${lang}-${width}.png`)});
-   // No activity, no attributed sources, no score or green security claims.
-   data=clone(base);data.health_score=null;data.health_status='insufficient_data';data.coverage_percent=0;data.data_status='no_activity';
-   data.install_velocity={total:0,per_day:0,trend_wma_percent:0,trend_available:false,sources_breakdown:{key_percent:null,link_percent:null,browser_percent:null,unknown_percent:null},source_sample_ready:false};
-   data.retention={avg_days:null,d30_target_percent:null,early_uninstalls_count:0,toxic_dropoffs_d1_d3:0,d7:{percent:null,eligible:0},d30:{percent:null,eligible:0}};
-   data.reviews_health={target_baseline_count:null,actual_reviews_count:0,baseline_ratio_percent:null,velocity_trend_percent:0,trend_available:false};
-   data.update_freshness={days_since_update:null,status:'unknown',lifecycle_percent:null};data.risk_triggers.forEach(c=>c.status='unknown');
-   data.calibration_status='insufficient_data';data.action_summary={status:'collecting',signals:[]};
-   data.components.forEach(c=>{c.points=null;c.available=false;});
-   await page.locator('#la-refresh').click();await page.waitForFunction(()=>document.querySelector('.la-score-ring strong').textContent==='—');
-   assert.equal(await page.locator('.la-check.is-good').count(),0);assert.equal(await page.locator('.la-empty h2').count(),1);await assertWidth();
-   await page.screenshot({path:path.join(out,`analytics-empty-${lang}-${width}.png`)});
-   // Error preserves the last real snapshot; explicit refresh recovers.
-   mode='error';await page.locator('#la-refresh').click();await page.waitForFunction(()=>!document.getElementById('la-error').hidden);
-   assert.equal(await page.locator('.la-score-ring strong').innerText(),'—');
-   mode='ok';data=clone(base);await page.locator('#la-refresh').click();await page.waitForFunction(()=>document.querySelector('.la-score-ring strong').textContent==='95');
-   await page.evaluate(()=>handleAppBack());assert.equal(await page.locator('#live-analytics-modal').count(),0);assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
-   assert.equal(await page.evaluate(()=>document.activeElement.id),'opener');
-   // Instant cached reopen while the API is held, then a different project.
-   hold=true;pending=null;await page.click('#opener');assert.equal(await page.locator('.la-score-ring strong').innerText(),'95');
-   while(!pending)await new Promise(r=>setTimeout(r,10));const releaseOld=pending;
-   hold=false;data=clone(base);data.health_score=60;data.health_status='watch';await page.evaluate(()=>LiveMetricsAnalytics.open(43));releaseOld();
-   await page.waitForFunction(()=>document.querySelector('.la-score-ring strong')?.textContent==='60');assert.equal(await page.locator('.la-score-ring.is-watch').count(),1);
-   mode='forbidden';await page.locator('#la-refresh').click();await page.waitForFunction(()=>!document.getElementById('la-error').hidden);
-   assert.equal(await page.locator('.la-score-ring').count(),0); // Access loss clears the private cache.
-   // Keyboard trap and Escape close.
-   await page.locator('#la-back').focus();await page.keyboard.press('Shift+Tab');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'opener');
-   await page.keyboard.press('Escape');assert.equal(await page.locator('#live-analytics-modal').count(),0);assert.deepEqual(errors,[]);
-   // Full owner snapshot retains the fifth branch, seven-day corridor, and current feedback settings action.
-   mode='ok';data=clone(base);data.engagement={available:true,status:'active',discipline_percent:87,hours_since_last_report:6,depth_score:64,active_testers:12};
-   data.market={thermal_week:data.daily.slice(-7).map((row,i)=>({day:row.day,C_t:2+i%3,B_t:3,L_floor:2,U_opt:5,U_crit:8}))};
-   await page.evaluate(()=>{
-    myProjects[0].phase='live';window.switchTab=()=>{};window.ProjectFeedback={openSettings:id=>{window.openedFeedbackSettings=id;}};
-    LiveMetricsAnalytics.open(42);
-   });
-   await page.locator('[data-branch="engagement"]').waitFor();
-   assert.equal(await page.locator('.la-tree-row').count(),5);
-   assert.equal(await page.locator('.lm-week-chart circle').count(),7);
-   await assertWidth();await page.screenshot({path:path.join(out,`pulse-${lang}-${width}.png`)});
-   await page.locator('#la-detailed-view').click();assert.equal(await page.locator('.la-chart-row').count(),5);
-   await page.locator('[data-signal="REVIEW_TREND_DOWN"] [data-live-action="reviews"]').click();
-   assert.equal(await page.evaluate(()=>window.openedFeedbackSettings),42);
-   assert.equal(await page.locator('#live-analytics-modal').count(),0);
-   assert.deepEqual(errors,[]);
-   await page.close();
-  }
-  console.log('Analytics passed: RU/EN 360×640/390×700/430×844, continuous 30:70 tree fitting the viewport, retained detailed view, hidden history, cohorts, OVER, rolling risks, early calibration, demo/cache/access/focus/Back.');
- }finally{await browser.close();}
+    const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'chrome'});
+    try {
+        for(const lang of ['ru','en'])for(const width of [360,390,430]){
+            const height=width===360?640:width===390?700:844;
+            const page=await browser.newPage({viewport:{width,height}});
+            let data=clone(base),mode='ok',gets=0;const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.route('http://fixture.local/**',route=>{
+                const url=new URL(route.request().url());
+                if(url.pathname.includes('/live-metrics/analytics')){
+                    assert.equal(route.request().method(),'GET');
+                    assert.equal(url.searchParams.get('init_data'),'signed-fixture');
+                    gets++;
+                    return route.fulfill(mode==='forbidden'?{status:403,json:{error:'not_owner'}}:
+                        mode==='error'?{status:503,json:{error:'unavailable'}}:{json:{status:'success',analytics:data}});
+                }
+                return route.fulfill({contentType:'text/html',body:'<button id="opener">Metrics</button>'});
+            });
+            await page.goto('http://fixture.local/');
+            for(const file of ['css/tokens.css','css/base.css','styles.css','css/project-parameters.css','css/live-campaign-pace.css','css/live-project-metrics.css','css/live-market.css','css/live-metrics-modal.css'])
+                await page.addStyleTag({path:path.join(root,file)});
+            for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaign-pace.js','i18n/live-guidance.js','i18n/core.js','ui/ui-helpers.js','js/live-market-ui.js','js/live-guidance-routing.js','js/live-guidance.js','js/live-radar-layers.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/live-campaign-learning.js','js/app-navigation.js'])
+                await page.addScriptTag({path:path.join(root,file)});
+            await page.evaluate(lang=>{
+                window.lang=lang;window.API_BASE='/api';window.getTelegramInitDataRaw=()=> 'signed-fixture';
+                window.myProjects=[{id:42,phase:'live',name:'Orbit Notes <img src=x>'}];window.archivedProjects=[];
+                window.switchTab=()=>{};window.ProjectFeedback={openSettings:id=>{window.openedFeedbackSettings=id;}};
+                document.getElementById('opener').onclick=e=>LiveProjectMetrics.details(42,e);
+            },lang);
+            await page.click('#opener');
+            const pulse=page.locator('.live-analytics-page'),review=pulse.locator('#la-feedback');
+            const refresh=async()=>{
+                await pulse.locator('#la-refresh').click();
+                await pulse.locator('#la-refresh').evaluate(el=>new Promise(resolve=>{
+                    if(!el.disabled)return resolve();
+                    const observer=new MutationObserver(()=>{if(!el.disabled){observer.disconnect();resolve();}});
+                    observer.observe(el,{attributes:true,attributeFilter:['disabled']});
+                }));
+            };
+            const clean=async()=>{
+                assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+                assert.equal(await pulse.locator('.live-analytics-scroll').evaluate(n=>n.scrollWidth<=n.clientWidth),true);
+                assert.doesNotMatch(await pulse.innerText(),/^\s*—\s*$|\bWMA\b|\bOVER\b|L_floor|U_opt|P_3d|Привижионал/m);
+                assert.equal(await pulse.locator('#la-tree-view,#la-detailed-view,.la-track').count(),0);
+            };
+            await pulse.locator('.la-score-ring strong').waitFor();
+            assert.equal(await pulse.locator('.la-score-ring strong').innerText(),'95');
+            assert.equal(await pulse.locator('.la-metric').count(),6); // Five indicators and the separate pace chart.
+            assert.equal(await pulse.locator('.la-topbar img').count(),0);
+            assert.ok(await pulse.locator('.la-actions + [data-metric="installs"]').count());
+            assert.match(await pulse.locator('.la-cohorts').innerText(),/90%/);
+            assert.equal(await pulse.locator('[data-metric="retention"] progress').getAttribute('value'),'100');
+            assert.equal(await review.locator('.lrdr-criterion').count(),3);
+            assert.match(await review.locator('.lrdr-private header').innerText(),/4[,.]3 ★/);
+            assert.equal(await review.locator('#la-geo').getAttribute('open'),null);
+            assert.match(await review.locator('.lrdr-public').innerText(),lang==='ru'?/Снимок устарел/:/Outdated snapshot/);
+            assert.equal(await pulse.locator('.la-week-chart circle').count(),7);
+            assert.match(await pulse.locator('[data-metric="rhythm"]').innerText(),/×0[,.]912/);
+            await clean();
+            await page.evaluate(()=>{document.querySelector('.la-topbar span').textContent='Orbit Notes';document.activeElement.blur();});
+            await page.screenshot({path:path.join(out,'pulse-'+lang+'-'+width+'.png')});
+            await review.scrollIntoViewIfNeeded();
+            await page.screenshot({path:path.join(out,'pulse-feedback-'+lang+'-'+width+'.png')});
+            await pulse.locator('[data-metric="rhythm"]').scrollIntoViewIfNeeded();
+            await page.screenshot({path:path.join(out,'pulse-rhythm-'+lang+'-'+width+'.png')});
+
+            await review.locator('#la-geo summary').click();
+            const before=gets;
+            await review.locator('select').selectOption('GB');
+            assert.equal(gets,before);
+            assert.equal(await review.locator('#la-geo').getAttribute('open'),'');
+            assert.equal(await review.locator('.lrdr-distribution-list li').count(),3);
+            await clean();
+            await pulse.locator('[data-lm-learn]').click();
+            const guide=page.locator('#live-campaign-learning');
+            assert.equal(await guide.locator('.lcp-learning-topics > section').count(),5);
+            assert.equal(await guide.locator('a[href^="https://"]').count(),3);
+            assert.doesNotMatch(await guide.innerText(),/lcpEvidence|lcpGooglePolicy|pulseLearn/);
+            assert.equal(await guide.locator('.lcp-learning-topics').evaluate(n=>n.scrollWidth<=n.clientWidth),true);
+            await page.screenshot({path:path.join(out,'guide-'+lang+'-'+width+'.png')});
+            await page.evaluate(()=>handleAppBack());
+            assert.equal(await guide.count(),0);
+            assert.equal(await pulse.locator('[data-lm-learn]').evaluate(el=>el===document.activeElement),true);
+
+            data=clone(base);data.health_score=60;data.calibration_status='early';data.action_summary.signals=[];
+            data.install_velocity.sources_breakdown={key_percent:0,browser_percent:20,link_percent:78,unknown_percent:2};
+            data.retention.d30={percent:null,eligible:0};data.update_freshness.days_since_update=60;
+            await refresh();
+            assert.equal(await pulse.locator('.la-score-ring strong').innerText(),'60');
+            assert.equal(await pulse.locator('.la-score-ring.is-watch').count(),1);
+            assert.equal(await pulse.locator('.la-calibration').count(),1);
+            assert.equal(await pulse.locator('.la-actions').count(),0);
+            assert.equal(await pulse.locator('.la-cohorts .la-readings > div').count(),4);
+            assert.match(await pulse.locator('.la-cohorts').innerText(),lang==='ru'?/Рано считать/:/Too early/);
+            assert.equal(await pulse.locator('.la-release-scale .is-aging[aria-current]').count(),1);
+            await clean();
+            await pulse.locator('.live-analytics-scroll').evaluate(el=>el.scrollTop=0);
+            await page.screenshot({path:path.join(out,'pulse-early-'+lang+'-'+width+'.png')});
+
+            data=clone(base);data.health_score=null;data.data_status='no_activity';data.action_summary.signals=[];
+            data.install_velocity={total:0,per_day:0,trend_available:false};
+            data.retention={avg_days:null};data.reviews_health={actual_reviews_count:0};
+            data.project_feedback={total:0,rating:null,criteria:[null,null,null]};data.storefront=null;
+            data.engagement={discipline_percent:null,active_testers:0};data.update_freshness={days_since_update:null};
+            await refresh();
+            assert.equal(await pulse.locator('.la-score-ring').count(),0);
+            assert.equal(await pulse.locator('.la-source-stack').count(),0);
+            assert.equal(await pulse.locator('progress').count(),0);
+            assert.equal(await review.locator('.lrdr-criterion,#la-geo').count(),0);
+            assert.equal(await pulse.locator('.la-week-chart').count(),0);
+            await clean();
+            await pulse.locator('.live-analytics-scroll').evaluate(el=>el.scrollTop=0);
+            await page.screenshot({path:path.join(out,'pulse-empty-'+lang+'-'+width+'.png')});
+
+            mode='error';await refresh();assert.equal(await pulse.locator('#la-error').isVisible(),true);
+            assert.equal(await pulse.locator('.la-metric').count(),6);
+            mode='ok';data=clone(base);await refresh();assert.equal(await pulse.locator('.la-score-ring strong').innerText(),'95');
+            mode='forbidden';await refresh();assert.equal(await pulse.locator('.la-metric').count(),0);
+            await page.keyboard.press('Escape');assert.equal(await pulse.count(),0);
+            assert.equal(await page.evaluate(()=>document.activeElement.id),'opener');
+            assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+            mode='ok';await page.click('#opener');
+            await pulse.locator('[data-signal="REVIEW_TREND_DOWN"] [data-live-action="reviews"]').click();
+            assert.equal(await page.evaluate(()=>window.openedFeedbackSettings),42);
+            assert.equal(await pulse.count(),0);
+            assert.deepEqual(errors,[]);
+            await page.close();
+        }
+        console.log('Pulse passed (RU/EN 360/390/430): five indicators, pace chart, empty/calibration/mature states, regions, guide, actions, access and Back.');
+    }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

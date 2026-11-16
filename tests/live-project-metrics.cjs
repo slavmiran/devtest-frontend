@@ -3,161 +3,122 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(__dirname,'..');
-const artifacts = path.resolve(root,process.env.LIVE_TEST_ARTIFACTS || '../artifacts/live-two-layer-radar/metrics');
+const artifacts = path.resolve(root,process.env.LIVE_TEST_ARTIFACTS || '../artifacts/live-metrics-cleanup');
 fs.mkdirSync(artifacts,{recursive:true});
+
 const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_available:true,health_score:88,
     reviews:{total:68,rating:4.3,criteria:[4.6,4.0,4.3],per_day:.5,trend_available:true,trend_percent:-1.2},
     installs:{total:332,per_day:3.5,trend_available:true,trend_percent:3},
-    active_users:112,avg_retention_days:23,days_since_update:79,
-    storefront:{country:'TH',countries:{TH:{score:4.7,ratings:238,ratings_delta:4,installs:500,next_installs:1000,state:'fresh'},
+    engagement:{available:true,score:85,discipline_percent:84,active_testers:12,hours_since_last_report:6},
+    active_users:12,avg_retention_days:23,days_since_update:79,early_exit_impact:{points_lost:17},
+    storefront:{country:'TH',countries:{TH:{score:4.7,ratings:238,ratings_delta:4,installs:500,next_installs:1000,state:'stale'},
         GB:{score:null,ratings:12345678901,installs:500000000,next_installs:1000000000,state:'fresh'}}},
-    keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]};
+    keywords:[{keyword:'Legacy only',installs:44}]};
 
 (async()=>{
     const browser = await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'chrome'});
     try {
-        for (const lang of ['ru','en']) for(const width of [360,390,430]) {
-            const page = await browser.newPage({viewport:{width,height:900}});
-            const errors=[]; let gets=0,posts=0,mode='ready',pendingGet,hold=false,responseMetrics=metrics;
+        for (const lang of ['ru','en']) for (const width of [360,390,430]) {
+            const page = await browser.newPage({viewport:{width,height:800}});
+            const errors=[]; let gets=0,responseMetrics=metrics,failed=false;
             page.on('pageerror',e=>errors.push(e.message));
-            await page.route('http://fixture.local/**',async route=>{
+            await page.route('http://fixture.local/**',route=>{
                 const url=new URL(route.request().url());
-                if(url.pathname.includes('live-metrics')) {
+                if (url.pathname.endsWith('/live-metrics')) {
                     gets++; assert.equal(url.searchParams.get('init_data'),'signed-fixture');
-                    const data=responseMetrics;
-                    if(hold) await new Promise(resolve=>pendingGet=resolve);
-                    if(mode==='failure') return route.fulfill({status:503,json:{error:'live_metrics_unavailable'}});
-                    return route.fulfill({json:{status:'success',metrics:data}});
+                    return route.fulfill(failed ? {status:503,json:{error:'unavailable'}} : {json:{status:'success',metrics:responseMetrics}});
                 }
-                if(url.pathname.includes('live-keywords')) {
-                    posts++;const body=route.request().postDataJSON();
-                    assert.deepEqual(Object.keys(body).sort(),['init_data','keyword']);
-                    assert.equal(body.init_data,'signed-fixture');
-                    if(mode==='limit') return route.fulfill({status:409,json:{error:'keyword_limit'}});
-                    responseMetrics={...metrics,as_of:'2026-10-09T12:01:00Z',keywords:[{keyword:body.keyword,installs:0}]};
-                    return route.fulfill({json:{status:'success',metrics:responseMetrics}});
-                }
+                assert.ok(!url.pathname.includes('/live-keywords'),'The card must never mutate keywords');
                 return route.fulfill({contentType:'text/html',body:'<section id="tab-projects"><div class="card" style="margin:12px"><div class="pc-state-unified"><div class="live-metrics-slot" data-app-id="42"></div></div></div></section>'});
             });
             await page.goto('http://fixture.local/');
-            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/live-project-metrics.css']) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-history.js','i18n/core.js','ui/ui-helpers.js','js/live-history-import.js','js/live-market-ui.js','js/live-radar-layers.js','js/live-project-metrics.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/project-parameters.css','css/live-campaign-pace.css','css/live-project-metrics.css'])
+                await page.addStyleTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaign-pace.js','i18n/live-guidance.js','i18n/core.js','ui/ui-helpers.js','js/live-market-ui.js','js/live-radar-layers.js','js/live-project-metrics.js','js/live-campaign-learning.js'])
+                await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(({lang,metrics})=>{
                 window.lang=lang;window.API_BASE='/api';window.getTelegramInitDataRaw=()=> 'signed-fixture';
-                window.myProjects=[{id:42,phase:'live',checkins_count:9999,play_store_raw:{score:5,ratings:999999},live_metrics:metrics,
-                    live_market_score:{rank:17,tier:3,market_score:567,rank_delta:2,score_delta:12}}];
+                window.myProjects=[{id:42,phase:'live',checkins_count:9999,live_metrics:metrics,
+                    live_market_score:{rank:17,tier:3,market_score:567,rank_delta:2},
+                    live_tier_event:{id:9,from_tier:4,to_tier:3,score:567},
+                    live_campaign_rows:[{keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:0}]},
+                        {keywords:[{keyword:'Taxi',installs:2}]},{status:'archived',keywords:[{keyword:'hidden',installs:9}]}]}];
                 window.archivedProjects=[];
                 window.paint=()=>document.querySelector('.live-metrics-slot').innerHTML=LiveProjectMetrics.render(myProjects[0]);
                 paint();LiveProjectMetrics.mount(document.querySelector('.card'),myProjects[0]);
                 window.graphEvents=[];addEventListener('live-metrics:details',e=>graphEvents.push(e.detail));
             },{lang,metrics});
-            const assertNoOverflow=async()=>{
+            const card=page.locator('.live-metrics');
+            const assertClean=async()=>{
                 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-                assert.equal(await page.locator('.live-metrics').evaluate(n=>n.scrollWidth<=n.clientWidth),true);
+                assert.equal(await card.evaluate(n=>n.scrollWidth<=n.clientWidth),true);
+                assert.doesNotMatch(await card.innerText(),/^\s*—\s*$|Снимок устарел|outdated snapshot|stale snapshot|snapshot is stale|Legacy only|9999/im);
+                assert.equal(await card.locator('.live-keyword-add').count(),0);
+                const rows=await card.locator('.live-metric-row').all();
+                assert.equal((await rows[0].boundingBox()).height,(await rows[1].boundingBox()).height);
             };
-            await assertNoOverflow(); assert.equal(gets,0);
-            assert.match(await page.locator('.live-metric-row').nth(0).innerText(),/68/);
-            assert.match(await page.locator('.live-metric-row').nth(1).innerText(),/332/);
-            assert.equal(await page.locator('.lrdr-mini span').count(),3);
-            assert.match(await page.locator('.lrdr-store-chip').first().innerText(),/GP \(TH\)[\s\S]*\+4/);
-            assert.match(await page.locator('.lrdr-store-chip').last().innerText(),/500\+.*→.*1[\s,]000\+/);
-            const rows=await page.locator('.live-metric-row').all();
-            assert.equal((await rows[0].boundingBox()).height,(await rows[1].boundingBox()).height);
-            assert.equal(await page.locator('.live-metric-trend.is-down').count(),1);
-            assert.equal(await page.locator('.live-metric-trend.is-up').count(),1);
-            assert.equal(await page.locator('.live-health-badge.is-excellent').count(),2); // badge + legend
-            assert.equal(await page.locator('.live-health-freshness.is-stale').count(),1);
-            await page.locator('.live-metrics-legend summary').click();
-            await assertNoOverflow();
-            assert.equal(await page.locator('.live-metrics-legend-body').isVisible(),true);
-            const legend=await page.locator('.live-metrics-legend-body').boundingBox(),surface=await page.locator('.pc-state-unified').boundingBox();
-            assert.ok(legend.y+legend.height<=surface.y+surface.height,'Legend must stay visible inside the surface');
-            await page.locator('.live-metrics-legend summary').click();
-            await page.locator('.live-metrics-more').click();
+            await assertClean(); assert.equal(gets,0);
+            assert.match(await card.locator('.lm-result-tile').first().innerText(),/#17.*Tier 3[\s\S]*567[\s\S]*\+2/);
+            assert.match(await card.locator('.lm-result-tile').last().innerText(),/88 \/ 100/);
+            assert.equal(await card.locator('.lm-result-events [data-lr-tier-ack],.lm-result-events .lm-early-chip').count(),2);
+            await card.locator('.lm-early-chip').click();assert.equal(await card.locator('.lm-early-body').isVisible(),true);
+            await card.locator('[data-lm-early-close]').click();
+            assert.match(await card.locator('.lrdr-store-chip').first().innerText(),/Google Play \(TH\)[\s\S]*\+4/);
+            assert.equal(await card.locator('.lrdr-mini span').count(),3);
+            assert.deepEqual(await card.locator('.live-keyword-installs').allTextContents(),['46','0']);
+            await card.locator('.live-metrics-more').click();
             assert.deepEqual(await page.evaluate(()=>graphEvents),[{appId:42}]);
-            await page.locator('.pc-state-unified').screenshot({path:path.join(artifacts,`metrics-${lang}-${width}.png`)});
-            await page.evaluate(()=>LiveRadarLayers.setCountry(42,'GB'));
-            assert.match(await page.locator('.lrdr-store-chip').first().innerText(),lang==='ru'?/Нет публичного балла/:/No public rating/);
-            await assertNoOverflow();
-            await page.evaluate(()=>LiveRadarLayers.setCountry(42,'TH'));
-            // Exact threshold colors; missing values must remain neutral.
-            for(const [days,band] of [[6.9,'risk'],[7,'basic'],[13.9,'basic'],[14,'good'],[20.9,'good'],[21,'excellent'],[30.9,'excellent'],[31,'superb']]) {
-                await page.evaluate(days=>{myProjects[0].live_metrics={...myProjects[0].live_metrics,avg_retention_days:days};paint();},days);
-                assert.match(await page.locator('.live-health-info').getAttribute('class'),new RegExp('is-'+band+'$'));
-            }
-            for(const [days,band] of [[30,'fresh'],[31,'aging'],[60,'aging'],[61,'stale']]) {
-                await page.evaluate(days=>{myProjects[0].live_metrics={...myProjects[0].live_metrics,days_since_update:days};paint();},days);
-                assert.match(await page.locator('.live-health-freshness').getAttribute('class'),new RegExp('is-'+band+'$'));
-            }
-            // Large values and many long keywords can scroll only the keyword rail.
-            await page.evaluate(()=>{
-                myProjects[0].live_metrics={...myProjects[0].live_metrics,installs:{...myProjects[0].live_metrics.installs,total:999999999,per_day:9999999,trend_percent:12345678},
-                    reviews:{...myProjects[0].live_metrics.reviews,total:999999999},active_users:999999999,
-                    keywords:Array.from({length:20},(_,i)=>({keyword:'Very long ASO keyword '.repeat(3)+i,installs:99999}))};paint();
-            });
-            await assertNoOverflow();
-            assert.equal(await page.locator('.live-keywords').evaluate(n=>n.scrollWidth>n.clientWidth),true);
-            // One imported install is a lifetime total, not fresh acquisition.
-            await page.evaluate(metrics=>{
-                window.showToast=message=>window.lastToast=message;
-                myProjects[0].live_metrics={...metrics,installs:{total:1,per_day:0,trend_available:false,trend_reason:'zero_baseline',baseline:{available:false}},
-                    retention_observed_only_count:1,avg_retention_days:2,keywords:[],engagement:{available:false,score:null,status:'unknown',discipline_percent:null,active_testers:0,depth_score:0}};paint();
-            },metrics);
-            assert.equal(await page.locator('.live-metrics .lh-pace-note').count(),0,'No explanatory paragraphs on the compact project card');
-            assert.equal(await page.locator('.live-metrics-health>*').count(),3,'Engagement must not remove the retention control');
-            assert.match(await page.locator('.live-metric-row').nth(1).locator('.live-metric-card-main').innerText(),/^1/);
-            assert.doesNotMatch(await page.locator('.live-metrics').innerText(),/7–28|последнего подтверждённого|last verified report/);
-            await page.locator('.live-metric-row').nth(1).locator('.live-metric-card-sub').click();
-            assert.match(await page.evaluate(()=>lastToast),/7–28/);
-            await page.locator('.live-metric-row').nth(1).locator('.live-metric-trend').click();
-            assert.match(await page.evaluate(()=>lastToast),/7–28/);
-            await page.locator('.live-health-info').focus();await page.keyboard.press('Enter');
-            assert.match(await page.evaluate(()=>lastToast),lang==='ru'?/дольше/:/longer/);
-            await page.locator('.live-health-info').evaluate(el=>el.blur());
-            await assertNoOverflow();await page.locator('.pc-state-unified').screenshot({path:path.join(artifacts,`imported-one-${lang}-${width}.png`)});
-            // Unknown internal values must not fall back to Google Play or test checkins.
-            responseMetrics={...metrics,reviews:{total:0,rating:null,per_day:0,trend_available:false,trend_percent:100},installs:{total:0,per_day:0,trend_available:false},avg_retention_days:null,days_since_update:null,active_users:0,keywords:[]};
-            await page.evaluate(()=>{myProjects[0].live_metrics=null;LiveProjectMetrics.reload(42);});
-            await page.waitForFunction(()=>document.querySelectorAll('.live-metric-trend.is-neutral').length===2);
-            assert.match(await page.locator('.live-metric-row').first().innerText(),/—.*★/);
-            assert.doesNotMatch(await page.locator('.live-metrics').innerText(),/9999/);
-            assert.equal(await page.locator('.live-metrics-health .is-unknown').count(),2);
-            // Existing GET cannot overwrite a successful keyword save.
-            pendingGet=null;hold=true;
-            await page.evaluate(()=>LiveProjectMetrics.reload(42));
-            while(!pendingGet) await new Promise(resolve=>setTimeout(resolve,10));
-            await page.locator('.live-keyword-add').click();
-            await page.locator('#live-keyword-input').fill('  <img src=x>   taxi  ');
-            await page.locator('#live-keyword-dialog [type="submit"]').click();
-            await page.waitForFunction(()=>!document.querySelector('#live-keyword-dialog'));
-            hold=false;pendingGet();
-            await page.waitForTimeout(100);
-            assert.equal(await page.locator('.live-keyword-name').count(),0,'New keys stay hidden until confirmed installs exist');
-            assert.match(await page.evaluate(()=>myProjects[0].live_metrics.keywords[0].keyword),/<img src=x> taxi/,'Stale GET must not restore old keyword data');
-            assert.equal(await page.locator('.live-keyword-chip img').count(),0);
-            assert.equal(posts,1);
-            // Keyword limit error leaves the editor usable.
-            mode='limit';await page.locator('.live-keyword-add').click();
-            await page.locator('#live-keyword-input').fill('extra');
-            await page.locator('#live-keyword-dialog [type="submit"]').click();
-            await page.waitForFunction(()=>!document.querySelector('#live-keyword-dialog p').hidden);
-            assert.match(await page.locator('#live-keyword-dialog p').innerText(),/20/);
-            assert.equal(await page.locator('#live-keyword-dialog [type="submit"]').isDisabled(),false);
+            await page.evaluate(()=>document.activeElement.blur());
+            await card.screenshot({path:path.join(artifacts,'metrics-'+lang+'-'+width+'.png')});
+            await card.locator('.lm-guide-link').click();
+            await page.locator('#lcp-topic-rank').waitFor();
             await page.keyboard.press('Escape');
-            // Refreshing the Play passport immediately refreshes freshness.
-            mode='ready';responseMetrics={...responseMetrics,as_of:'2026-10-09T12:02:00Z',days_since_update:0,keywords:responseMetrics.keywords.map(k=>({...k,installs:1}))};
-            const before=gets;
-            await page.evaluate(()=>dispatchEvent(new CustomEvent('play-store:synced',{detail:{appId:42}})));
-            await page.waitForFunction(()=>document.querySelector('.live-health-freshness').classList.contains('is-fresh'));
-            assert.equal(gets,before+1);
-            // Unavailability is explicit and never replaces an old snapshot with zeros.
-            mode='failure';await page.evaluate(()=>LiveProjectMetrics.reload(42));
-            await page.waitForFunction(()=>!!document.querySelector('.live-metrics-status button'));
-            assert.match(await page.locator('.live-keyword-name').innerText(),/taxi/);
-            mode='ready';await page.locator('.live-metrics-status button').click();
-            await page.waitForFunction(()=>!document.querySelector('.live-metrics-status button'));
-            await assertNoOverflow();assert.deepEqual(errors,[]);await page.close();
+            assert.equal(await card.locator('.lm-guide-link').evaluate(el=>el===document.activeElement),true);
+            await card.locator('.live-health-freshness').click();
+            assert.ok(await page.locator('#lcp-topic-release').isVisible());
+            await page.keyboard.press('Escape');
+            await page.evaluate(()=>LiveRadarLayers.setCountry(42,'GB'));
+            assert.match(await card.locator('.lrdr-store-chip').first().innerText(),/Google Play \(GB\)/);
+            await assertClean();
+            await page.evaluate(()=>LiveRadarLayers.setCountry(42,'TH'));
+            for (const [days,band] of [[0,'fresh'],[30,'fresh'],[31,'aging'],[60,'aging'],[61,'stale']]) {
+                await page.evaluate(days=>{myProjects[0].live_metrics={...myProjects[0].live_metrics,days_since_update:days};paint();},days);
+                assert.match(await card.locator('.live-health-freshness').getAttribute('class'),new RegExp('is-'+band+'$'));
+                assert.match(await card.locator('.live-health-freshness strong').innerText(),new RegExp(days+ (lang==='ru'?' дн. назад':'d ago')));
+                await assertClean();
+            }
+            // A campaign edit repaints the rail from the owner campaign list, and legacy ASO entries stay hidden.
+            await page.evaluate(()=>{
+                myProjects[0].live_campaign_rows=[{keywords:Array.from({length:20},(_,i)=>({keyword:'Long search phrase '.repeat(4)+i,installs:1000000}))}];
+                LiveProjectMetrics.repaint(42);
+            });
+            assert.equal(await card.locator('.live-keywords').evaluate(el=>el.scrollWidth>el.clientWidth),true);
+            await assertClean();
+            await page.evaluate(()=>{
+                myProjects[0].live_campaign_rows=[];myProjects[0].live_market_score.rank_delta=0;
+                LiveProjectMetrics.repaint(42);
+            });
+            assert.equal(await card.locator('.live-metrics-aso').count(),0);
+            assert.equal(await card.locator('.lm-result-link').count(),2);
+
+            responseMetrics={...metrics,as_of:'2026-10-09T12:01:00Z',health_score:null,reviews:{total:0,rating:null,per_day:0,criteria:[null,null,null]},
+                installs:{total:0,per_day:0},avg_retention_days:null,days_since_update:null,storefront:null,
+                engagement:{available:false,active_testers:0,discipline_percent:null}};
+            await page.evaluate(()=>LiveProjectMetrics.reload(42));
+            await card.getByText(lang==='ru'?'Нет оценок в Хабе':'No Hub ratings yet',{exact:true}).waitFor();
+            assert.equal(await card.locator('.live-metric-card-speed-val').first().innerText(),'0');
+            assert.equal(await card.locator('.live-metric-trend').count(),0);
+            assert.equal(await card.locator('.lrdr-mini').count(),0);
+            await assertClean();
+            await card.screenshot({path:path.join(artifacts,'metrics-empty-'+lang+'-'+width+'.png')});
+
+            failed=true;await page.evaluate(()=>LiveProjectMetrics.reload(42));await card.locator('.live-metrics-status button').waitFor();
+            failed=false;responseMetrics={...metrics,as_of:'2026-10-09T12:02:00Z',health_score:60};
+            await card.locator('.live-metrics-status button').click();
+            await card.locator('.lm-score-status.is-watch').waitFor();
+            assert.deepEqual(errors,[]);
+            await page.close();
         }
-        console.log('Live metrics passed: RU/EN 360/390/430, isolation, threshold bands, legend, large values, keywords, GET/POST race, errors and Play refresh.');
+        console.log('Live metrics passed (RU/EN 360/390/430): layout, guide links, freshness, campaigns, empty state and recovery.');
     } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -17,7 +17,7 @@
     function view(id, data) {
         var rows = data && data.countries || {};
         var code = selected.get(id) || data && (data.reference_country || data.country) || Object.keys(rows)[0];
-        return {code: code, label: code && code !== 'unknown' ? 'GP (' + code + ')' : 'GP', row: rows[code], rows: rows};
+        return {code: code, label: code && code !== 'unknown' ? 'Google Play (' + code + ')' : 'Google Play', row: rows[code], rows: rows};
     }
     function delta(row) {
         return row && row.ratings_delta > 0 ? '<span class="lrdr-delta" title="'+e(t('lrdrDelta'))+'">+'+e(n(row.ratings_delta))+'</span>' : '';
@@ -37,12 +37,12 @@
         var action = !available || row.state !== 'fresh' ? 'passport' : 'pulse';
         return '<button type="button" class="lrdr-store-chip" data-lrdr-open="'+action+'" data-lrdr-id="'+Number(id)+'"' +
             ' title="'+e(t(action === 'passport' ? 'lrdrPortal' : 'lrdrRegion'))+'"><span class="lrdr-store-label">🌐 '+e(gp.label)+'</span>'+
-            '<span class="lrdr-store-value">'+value+(available && row.state === 'stale' ? ' <small>'+e(t('lrdrOld'))+'</small>' : '')+'</span></button>';
+            '<span class="lrdr-store-value">'+value+'</span></button>';
     }
     function mini(values) {
         if (!values || !values.some(function (value) { return value != null; })) return '';
         return '<div class="lrdr-mini">'+criteria.map(function (item, index) {
-            return '<span title="'+e(t(item[1]))+'">'+item[0]+' '+e(n(values[index],1))+'</span>';
+            return values[index] == null ? '' : '<span title="'+e(t(item[1]))+'">'+item[0]+' '+e(n(values[index],1))+'</span>';
         }).join('')+'</div>';
     }
     function options(gp) {
@@ -56,7 +56,9 @@
         var gp = view(id,data), row = gp.row, entries = options(gp);
         return '<div class="lrdr-public"><div class="lrdr-public-head"><strong>🌐 '+e(t('lrdrPublic'))+'</strong>'+
             (entries ? '<select data-lrdr-country data-lrdr-id="'+Number(id)+'" aria-label="'+e(t('lrdrRegion'))+'">'+entries+'</select>' : '')+'</div>'+
-            '<p>'+ (row ? rating(row,true)+delta(row)+(row.installs != null ? ' · '+downloads(row) : '') : e(t('lrdrRefresh')))+'</p>'+
+            '<p>'+ (row ? rating(row,true)+delta(row) : e(t('lrdrRefresh')))+'</p>'+
+            (row && row.installs != null ? '<p>'+e(t('lrdrDownloadStep'))+' <strong>'+e(n(row.installs)+'+')+'</strong>'+
+                (row.next_installs == null ? '' : ' → '+e(t('lrdrGoal',{n:n(row.next_installs)})))+'</p>' : '')+
             (row && row.state === 'stale' ? '<small>'+e(t('lrdrOld'))+'</small>' : '')+
             (row && row.synced_at ? '<small>'+e(t('lrdrSnapshot',{date:new Date(row.synced_at).toLocaleDateString(window.lang)}))+'</small>' : '')+
             (canOpen ? '<button type="button" class="lrdr-link" data-passport>'+e(t('lrdrPortal'))+' ↗</button>' : '')+
@@ -71,24 +73,23 @@
             }).join('')+'</ul>' : '<p>'+e(t('lrdrEmpty'))+'</p>')+'</section>';
     }
     function feedback(id, data, canOpen) {
-        var responses = data.project_feedback;
-        if (!responses) return '';
-        return '<section class="lrdr-feedback" id="la-feedback"><h2>⭐ '+e(t('lrdrPulseTitle'))+'</h2>'+
-            '<div class="lrdr-private"><header><strong>⚡ DevTestHub</strong><span>'+e(t('lrdrResponses',{n:n(responses.total)}))+'</span></header>' +
+        var responses = data.project_feedback || {total:data.reviews_health?.actual_reviews_count || 0,rating:data.reviews_health?.rating};
+        var geo = responses.distribution || {};
+        var countries = geo.countries || [], devices = geo.devices || [];
+        var observed = countries.reduce(function (sum,row) { return sum + (Number(row.installed) || 0); }, 0);
+        return '<section class="la-metric lrdr-feedback" id="la-feedback"><h2>⭐ '+e(t('lrdrPulseTitle'))+'</h2>'+
+            '<div class="lrdr-private"><header><strong>DevTestHub</strong><span>'+e(
+                (responses.rating > 0 ? n(responses.rating,1)+' ★ · ' : '')+
+                t(responses.total ? 'lrdrResponses' : 'lmNoRatings',{n:n(responses.total || 0)}))+'</span></header>' +
             criteria.map(function (item, index) {
                 var value = responses.criteria && responses.criteria[index];
-                return '<div class="lrdr-criterion"><span>'+item[0]+' '+e(t(item[1]))+'</span><strong>'+e(n(value,1))+'</strong>'+
-                    '<progress max="5" value="'+(Number(value)||0)+'" aria-label="'+e(t(item[1]))+'"></progress></div>';
-            }).join('')+'<p>'+e(t('lrdrTextScenarios',{texts:n(responses.detailed_text_count), scenarios:n(responses.scenarios_completed)}))+'</p></div>'+
+                return value == null ? '' : '<div class="lrdr-criterion"><span>'+item[0]+' '+e(t(item[1]))+'</span><strong>'+e(n(value,1))+'</strong>'+
+                    '<progress max="100" value="'+(Number(value)*20)+'" aria-label="'+e(t(item[1]))+'"></progress></div>';
+            }).join('')+(data.project_feedback ? '<p>'+e(t('lrdrTextScenarios',{texts:n(responses.detailed_text_count || 0), scenarios:n(responses.scenarios_completed || 0)}))+'</p>' : '')+'</div>'+
             publicPanel(id, data.storefront, canOpen)+
-            '<section class="lrdr-balance"><h3>'+e(t('lrdrBalance'))+'</h3>'+(responses.balance || []).map(function (row) {
-                return '<div><strong>'+e(t('lrdrDays',{n:row.days}))+'</strong><span>'+e(n(row.responses)+' / '+n(row.installs))+
-                    ' · '+e(row.percent == null ? '—' : n(row.percent,1)+'%')+'</span><progress max="100" value="'+Math.min(100,Number(row.percent)||0)+
-                    '" aria-label="'+e(t('lrdrDays',{n:row.days}))+'"></progress></div>';
-            }).join('')+'<small>'+e(t('lrdrBalanceHelp'))+'</small></section>'+
-            '<details id="la-geo" class="lrdr-geo"><summary>'+e(t('lrdrGeo'))+'</summary><p>'+e(t('lrdrGeoHelp'))+'</p>'+
-            distribution(responses.distribution && responses.distribution.countries || [],'countries')+
-            distribution(responses.distribution && responses.distribution.devices || [],'devices')+'</details></section>';
+            (countries.length || devices.length ? '<details id="la-geo" class="lrdr-geo"><summary>'+e(t('lrdrGeo')+
+                (observed ? ' ('+n(observed)+')' : ''))+'</summary><p>'+e(t('lrdrGeoHelp'))+'</p>'+
+                distribution(countries,'countries')+distribution(devices,'devices')+'</details>' : '')+'</section>';
     }
     function setCountry(id, code) {
         selected.set(Number(id), code);
