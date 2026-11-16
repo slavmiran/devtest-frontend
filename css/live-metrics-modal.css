@@ -130,3 +130,33 @@
 .la-cohorts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
 .la-view-tree .la-empty { padding: 8px 10px; margin-bottom: 10px !important; }
 .la-view-tree .la-empty h2 { margin-bottom: 4px; font-size: 11px; }.la-view-tree .la-empty p { font-size: 10px; }
+.lrdr-feedback,.lrdr-private,.lrdr-public,.lrdr-balance,.lrdr-geo,.lrdr-passport-region form {
+    display:grid;
+    gap:9px;
+    min-width:0;
+    overflow-wrap:anywhere;
+}
+.lrdr-feedback { padding-block:12px; }
+.lrdr-feedback h2,.lrdr-feedback h3,.lrdr-feedback h4,.lrdr-feedback p,.lrdr-public p { margin:0; }
+.lrdr-private,.lrdr-public,.lrdr-balance,.lrdr-geo {
+    padding:10px 11px;
+    border:1px solid var(--border-subtle,rgba(133,157,191,.22));
+    border-radius:12px;
+    background:rgba(100,156,232,.065);
+}
+.lrdr-private { background:rgba(72,188,150,.06); }
+.lrdr-private header,.lrdr-public-head { display:flex; gap:8px; justify-content:space-between; align-items:center; flex-wrap:wrap; min-width:0; }
+.lrdr-feedback small,.lrdr-geo p,.lrdr-passport-region small { color:var(--text-secondary,#aab7c8); line-height:1.4; }
+.lrdr-criterion,.lrdr-balance > div { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:8px; row-gap:4px; }
+.lrdr-feedback progress { grid-column:1/-1; display:block; width:100%; height:5px; accent-color:#52b495; }
+.lrdr-balance progress { accent-color:#6a9dd7; }
+.lrdr-geo:not([open]) > :not(summary) { display:none; }
+.lrdr-geo > summary { cursor:pointer; font-weight:700; }
+.lrdr-distribution-list ul { padding:0; list-style:none; display:grid; gap:5px; margin:6px 0 0; }
+.lrdr-distribution-list li { display:flex; flex-wrap:wrap; justify-content:space-between; gap:3px 8px; padding:5px 0; border-bottom:1px solid var(--border-subtle); }
+.lrdr-distribution-list li span { color:var(--text-secondary,#aab7c8); }
+.lrdr-public select,.lrdr-passport-region select { max-width:100%; min-width:0; border:1px solid var(--border-subtle, #3c4b60); padding:5px 8px; border-radius:8px; background:var(--bg-surface-2,#1d2736); color:inherit; font:inherit; }
+.lrdr-public-head select { flex:0 1 156px; }
+.lrdr-link { color:var(--accent-primary,#75adff); background:transparent; font:inherit; border:0; justify-self:start; padding:4px 0; cursor:pointer; text-align:start; }
+.lrdr-passport-region form { margin-top:12px; }
+.lrdr-passport-region [data-lrdr-save-status]:empty { display:none; }

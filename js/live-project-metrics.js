@@ -55,7 +55,7 @@
         hint=(paceHint?paceHint+' ':'')+hint;
         return '<button type="button" class="live-metric-trend is-' + direction + '"'+hintAttrs((pct > 0 ? '+' : '') + num(pct,1) + '% · ' + hint)+'>' + glyph + (pct > 0 ? '+' : '') + esc(Math.abs(pct) < 10000 ? num(pct, 1) : compact(pct)) + '%</button>';
     }
-    function metricCard(label, main, metric, paceHint) {
+    function metricCard(label, main, metric, paceHint, secondary, storefront) {
         var rate = metric ? esc(num(metric.per_day, 1)) : '—';
         return '<div class="live-metric-card live-metric-row">' +
             '<div class="live-metric-card-head">' +
@@ -63,15 +63,16 @@
                 trend(metric, paceHint) +
             '</div>' +
             '<div class="live-metric-card-main">' + main + '</div>' +
+            (secondary || '') +
             '<button type="button" class="live-metric-card-sub"'+hintAttrs(paceHint||t('windows'))+'>' +
                 '<span class="live-metric-card-speed-label">' + esc(t('speedLabel')) + '</span> ' +
                 '<strong class="live-metric-card-speed-val">' + rate + '</strong> ' +
                 '<span class="live-metric-card-speed-unit">' + esc(t('day')) + '</span>' +
-            '</button>' +
+            '</button>' + (storefront || '') +
         '</div>';
     }
     function legend() {
-        return '<details class="live-metrics-legend"><summary aria-label="' + esc(t('legend')) + '" title="' + esc(t('legend')) + '">ⓘ</summary><div class="live-metrics-legend-body"><p>' + esc(t('source')) + '</p><p>' + esc(t('windows')) + '</p><p>' + esc(t('activeHint')) + '</p><p>' + esc(t('retentionHint')) + '</p>' +
+        return '<details class="live-metrics-legend"><summary aria-label="' + esc(t('legend')) + '" title="' + esc(t('legend')) + '">ⓘ</summary><div class="live-metrics-legend-body"><p>' + esc(window.LiveRadarLayers ? LiveRadarLayers.text('lrdrLayers') : t('source')) + '</p><p>' + esc(t('windows')) + '</p><p>' + esc(t('activeHint')) + '</p><p>' + esc(t('retentionHint')) + '</p>' +
             '<strong>' + esc(t('retention')) + '</strong><div class="live-metrics-legend-bands">' + ['risk', 'basic', 'good', 'excellent', 'superb'].map(function (band, i) {
                 return '<span class="live-health-badge is-' + band + '">' + ['<7d', '7–13d', '14–20d', '21–30d', '31d+'][i].replace('<', '&lt;') + ' · ' + esc(t(band)) + '</span>';
             }).join('') + '</div><strong>' + esc(t('fresh')) + '</strong><div class="live-metrics-legend-bands"><span class="live-health-badge is-fresh">≤30d</span><span class="live-health-badge is-aging">31–60d</span><span class="live-health-badge is-stale">61d+</span></div></div></details>';
@@ -123,12 +124,14 @@
             '<div class="live-keywords" tabindex="0">' + chips + '</div>' +
         '</div>';
         var paceNote=window.LiveHistoryImport&&installs?window.LiveHistoryImport.pace(installs):'';
+        var radar = window.LiveRadarLayers, storefront = metrics && metrics.storefront;
         var section='<section class="live-metrics" aria-label="' + esc(t('title')) + '"><div class="live-metrics-head"><strong>' + esc(t('title')) + '</strong><span>' + esc(t('phase')) + '</span>' + legend() + '</div>' +
             resultBlock(id, metrics) +
-            '<div class="live-metrics-grid">' + metricCard(t('reviews'), reviewMain, reviews) + metricCard(t('installs'), installMain, installs, paceNote) + '</div>' +
+            '<div class="live-metrics-grid">' + metricCard(radar ? radar.text('lrdrCardTitle') : t('reviews'), reviewMain, reviews, null,
+                radar && reviews ? radar.mini(reviews.criteria) : '', radar ? radar.compact(id, storefront, 'rating') : '') +
+                metricCard(t('installs'), installMain, installs, paceNote, '', radar ? radar.compact(id, storefront, 'installs') : '') + '</div>' +
             '<div class="live-metrics-health">' + health + '</div>' + aso +
             '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>';
-        if(quick)section='<details class="lm-fold"><summary><span>'+esc(window.t('lmMetricsFold',{},window.lang))+'</span></summary>'+section+'</details>';
         return quick+(window.LiveTopic?LiveTopic.buttons(id):'')+section+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
     }
     function remember(id, metrics) {
@@ -142,9 +145,7 @@
     function update(id, metrics, failure) {
         if (metrics) remember(id, metrics);
         document.querySelectorAll('.live-metrics-slot[data-app-id="' + id + '"]').forEach(function (slot) {
-            var open = !!slot.querySelector('.lm-fold[open]');
             slot.innerHTML = render({ id: id }, failure);
-            if (open) { var fold = slot.querySelector('.lm-fold'); if (fold) fold.open = true; }
         });
     }
     function endpoint(id, suffix) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + id + '/' + suffix; }
@@ -152,7 +153,7 @@
     function ensureHealth(id) {
         if (healthLoads.has(id)) return;
         var current = cache.get(id);
-        if (!current || current.health_score != null) return;
+        if (!current || Object.hasOwn(current,'health_score')) return;
         healthLoads.add(id);
         current.health_pending = true;
         update(id, current);
@@ -179,16 +180,10 @@
                 var response = await fetch(endpoint(id, 'live-metrics') + '?init_data=' + encodeURIComponent(window.getTelegramInitDataRaw()), { cache: 'no-store' });
                 var data = await response.json();
                 if (!response.ok || !data.metrics || data.metrics.source !== 'devtesthub_live') throw new Error('unavailable');
-                if (revision === (revisions.get(id) || 0)) update(id, data.metrics);
-                try {
-                    var analyticsResponse = await fetch(endpoint(id, 'live-metrics/analytics') + '?init_data=' + encodeURIComponent(window.getTelegramInitDataRaw()), { cache: 'no-store' });
-                    var analyticsPayload = await analyticsResponse.json();
-                    if (analyticsResponse.ok && analyticsPayload.analytics && revision === (revisions.get(id) || 0)) {
-                        data.metrics.health_score = analyticsPayload.analytics.health_score;
-                        data.metrics.health_delta = analyticsPayload.analytics.health_delta;
-                        update(id, data.metrics);
-                    }
-                } catch (_) {}
+                if (revision === (revisions.get(id) || 0)) {
+                    update(id, data.metrics);
+                    ensureHealth(id);
+                }
             } catch (_) { if (revision === (revisions.get(id) || 0)) update(id, null, true); }
             finally { requests.delete(id); }
         })();
@@ -268,6 +263,13 @@
         };
     }
     document.addEventListener('click', function (event) {
+        var store = event.target.closest('[data-lrdr-open]');
+        if (store) {
+            event.stopPropagation();
+            var id = Number(store.dataset.lrdrId);
+            if (store.dataset.lrdrOpen === 'passport' && window.openPlayStorePassport) return window.openPlayStorePassport(id, event);
+            if (window.LiveMetricsAnalytics) return LiveMetricsAnalytics.open(id, 'feedback');
+        }
         var early = event.target.closest('[data-lm-early]');
         if (early) { event.stopPropagation(); var body = early.parentElement.querySelector('[data-lm-early-body="' + early.dataset.lmEarly + '"]'); if (body) body.hidden = !body.hidden; return; }
         var close = event.target.closest('[data-lm-early-close]');
@@ -291,7 +293,7 @@
         },
         mount: function (card, project) {
             var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
-            if (metrics && metrics.source === 'devtesthub_live') { remember(id, metrics); if (metrics.health_score == null) ensureHealth(id); return; }
+            if (metrics && metrics.source === 'devtesthub_live') { remember(id, metrics); ensureHealth(id); return; }
             load(id);
         },
         reload: function (id, event) { if (event) event.stopPropagation(); load(id); },
@@ -306,5 +308,6 @@
         var id = Number(event.detail && event.detail.appId);
         if (id && document.querySelector('.live-metrics-slot[data-app-id="' + id + '"]')) load(id);
     });
+    window.addEventListener('live-storefront:country',function(event){var id=event.detail.appId;if(cache.has(id))update(id,cache.get(id));});
     window.addEventListener('live-history:imported',function(event){var id=Number(event.detail&&event.detail.appId);if(!id)return;revisions.set(id,(revisions.get(id)||0)+1);Promise.resolve(requests.get(id)).finally(function(){load(id);});});
 })();

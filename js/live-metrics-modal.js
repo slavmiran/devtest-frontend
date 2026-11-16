@@ -7,10 +7,10 @@
             index:'ASO Health Index', internal:'Внутренний индекс DevTestHub', coverage:'Охват факторов', snapshot:'Срез', missing:'Индекс пока недоступен', minimum:'Нужно ≥20 установок и ≥60% измеренных факторов.',
             loading:'Загружаем аналитику…', error:'Не удалось обновить аналитику. Сохранённый срез остаётся доступен.', noAccess:'Нет доступа к аналитике. Откройте проект в своём Telegram-аккаунте.', retry:'Повторить', empty:'Live-активностей пока нет', emptyText:'Подтверждённые действия появятся здесь после запуска Live-кампаний. Откройте пример, чтобы посмотреть, как читать сигналы.',
             signals:'Сигналы здоровья', risk:'Риски', growth:'Здоровье', scale:'Слева −100…0, справа 0…140+. Единицы каждого показателя указаны в строке.',
-            installs:'Скорость установок', installsUnit:'установок', retention:'Срок установки и отток', reviews:'Внутренние отзывы', updates:'Цикл обновлений', perDay:'/день', noTrend:'WMA пока недоступна',
+            installs:'Скорость установок', installsUnit:'установок', retention:'Срок установки и отток', reviews:'Внутренние отклики', updates:'Цикл обновлений', perDay:'/день', noTrend:'WMA пока недоступна',
             key:'Ключевик', link:'Ссылка', browser:'Веб-поиск', unknown:'Неразмечено', skew:'Перекос ≥80% в одном канале', sample:'Малая выборка или неполная разметка источников.',
             average:'Средний срок', reference:'Ориентир 30 дней', over:'OVER', early:'до D7', toxic:'в первые 72ч', cohorts:'Когортное удержание', eligible:'наблюдений', immature:'Когорта ещё не созрела',
-            reviewRef:'Ориентир: 30% установок — внутренний отзыв. Это сравнительная отметка.', momentum:'Темп отзывов · WMA', noDate:'Дата обновления неизвестна', fresh:'Свежий билд', aging:'Пора оценить обновление', stale:'Давнее обновление', days:'дн. с апдейта',
+            reviewRef:'Ориентир: 30% установок — отклик DevTestHub. Это сравнительная отметка.', momentum:'Темп откликов · WMA', noDate:'Дата обновления неизвестна', fresh:'Свежий билд', aging:'Пора оценить обновление', stale:'Давнее обновление', days:'дн. с апдейта',
             checks:'Проверки и ограничения', DOMINANT_SOURCE:'Баланс источников', EARLY_UNINSTALL:'Ранний отток', POLICY_CHECK:'Безопасность данных Google Play', BOT_FARM_SHIELD:'Проверки устройств',
             ok:'Измерено', warning:'Требует внимания', unknownCheck:'Нет заключения', notConnected:'Не подключено', sourceOk:'Выраженного перекоса источников нет.',
             churnOk:'Ранний отток ниже порога 10%; удалений в первые 72ч нет.', churnUnknown:'Данных для устойчивой оценки оттока пока мало.',
@@ -18,7 +18,7 @@
             fraud:'Телеметрия и антифрод-проверки устройств ещё не подключены.', passport:'Открыть паспорт Google Play',
             timeline:'Динамика за 14 дней', completed:'Полные дни UTC; последние 7 дней имеют веса 1…7.', noBaseline:'Предыдущая WMA равна нулю: относительное изменение не рассчитывается.',
             methodology:'Как рассчитан индекс', formula:'Сумма баллов доступных факторов × их веса / сумма доступных весов. Неизмеренные факторы пропускаются.',
-            install_momentum:'Темп установок', retention_d7:'Когортное D7', review_momentum:'Темп отзывов', source_balance:'Баланс каналов', freshness:'Свежесть сборки',
+            install_momentum:'Темп установок', retention_d7:'Когортное D7', review_momentum:'Темп откликов', source_balance:'Баланс каналов', freshness:'Свежесть сборки',
             weight:'вес', points:'баллов', unavailable:'не измерен', scope:'Весь текущий период Live; WMA сравнивает две полные недели UTC.',
             insufficient_install_history:'Нужны две полные недели, ненулевая база и ≥20 установок за эти дни.', immature_cohort:'Нужно ≥10 установок, достигших возраста 7 дней.',
             insufficient_review_history:'Нужны две полные недели, ненулевая база и ≥5 внутренних отзывов за эти дни.', incomplete_attribution_or_small_sample:'Нужно ≥20 установок и ≥80% размеченных источников.', missing_update_date:'Загрузите дату обновления через паспорт Google Play.',
@@ -27,10 +27,10 @@
             index:'ASO Health Index', internal:'Internal DevTestHub index', coverage:'Factor coverage', snapshot:'Snapshot', missing:'Index not available yet', minimum:'Needs ≥20 installs and ≥60% measured factors.',
             loading:'Loading analytics…', error:'Could not refresh analytics. The saved snapshot remains available.', noAccess:'Analytics access unavailable. Open the project in your Telegram account.', retry:'Retry', empty:'No Live activity yet', emptyText:'Verified activity will appear after Live campaigns launch. Open the example to explore the signals.',
             signals:'Health signals', risk:'Risks', growth:'Health', scale:'Left −100…0, right 0…140+. Each row states its own units.',
-            installs:'Install velocity', installsUnit:'installs', retention:'Install duration & departures', reviews:'Internal reviews', updates:'Update lifecycle', perDay:'/day', noTrend:'WMA not available yet',
+            installs:'Install velocity', installsUnit:'installs', retention:'Install duration & departures', reviews:'Internal feedback', updates:'Update lifecycle', perDay:'/day', noTrend:'WMA not available yet',
             key:'Keyword', link:'Link', browser:'Web search', unknown:'Unattributed', skew:'One channel represents ≥80%', sample:'Small sample or incomplete source attribution.',
             average:'Average duration', reference:'30-day reference', over:'OVER', early:'before D7', toxic:'in the first 72h', cohorts:'Cohort retention', eligible:'observations', immature:'Cohort not mature yet',
-            reviewRef:'Reference: 30% of installs have an internal review. A comparison marker.', momentum:'Review momentum · WMA', noDate:'Update date unknown', fresh:'Fresh build', aging:'Consider an update', stale:'Older update', days:'days since update',
+            reviewRef:'Reference: 30% of installs have an DevTestHub response. A comparison marker.', momentum:'Feedback momentum · WMA', noDate:'Update date unknown', fresh:'Fresh build', aging:'Consider an update', stale:'Older update', days:'days since update',
             checks:'Checks & limitations', DOMINANT_SOURCE:'Source balance', EARLY_UNINSTALL:'Early departures', POLICY_CHECK:'Google Play Data safety', BOT_FARM_SHIELD:'Device checks',
             ok:'Measured', warning:'Needs attention', unknownCheck:'No conclusion', notConnected:'Not connected', sourceOk:'No strong source concentration.',
             churnOk:'Early departures below 10%; no departures in the first 72h.', churnUnknown:'Not enough observations for a stable departure assessment.',
@@ -38,10 +38,10 @@
             fraud:'Device telemetry and anti-fraud checks are not connected yet.', passport:'Open Google Play passport',
             timeline:'14-day activity', completed:'Completed UTC days; the recent 7 days are weighted 1…7.', noBaseline:'Previous WMA is zero: a relative change cannot be calculated.',
             methodology:'How the index works', formula:'Sum of available factor points × weights / sum of available weights. Unmeasured factors are omitted.',
-            install_momentum:'Install momentum', retention_d7:'Cohort D7', review_momentum:'Review momentum', source_balance:'Channel balance', freshness:'Build freshness',
+            install_momentum:'Install momentum', retention_d7:'Cohort D7', review_momentum:'Feedback momentum', source_balance:'Channel balance', freshness:'Build freshness',
             weight:'weight', points:'points', unavailable:'unmeasured', scope:'Current Live period; WMA compares two completed UTC weeks.',
             insufficient_install_history:'Needs two completed weeks, a nonzero baseline and ≥20 installs in those days.', immature_cohort:'Needs ≥10 installs aged at least 7 days.',
-            insufficient_review_history:'Needs two completed weeks, a nonzero baseline and ≥5 internal reviews in those days.', incomplete_attribution_or_small_sample:'Needs ≥20 installs and ≥80% attributed sources.', missing_update_date:'Fetch the update date through the Google Play passport.',
+            insufficient_review_history:'Needs two completed weeks, a nonzero baseline and ≥5 DevTestHub responses in those days.', incomplete_attribution_or_small_sample:'Needs ≥20 installs and ≥80% attributed sources.', missing_update_date:'Fetch the update date through the Google Play passport.',
         },
     };
     Object.assign(words.ru, {
@@ -182,6 +182,7 @@
             if(!key&&window.LiveMarketUI){var engagementKey={ENGAGEMENT_DISCIPLINE_LOW:'lmSignalDiscipline',ENGAGEMENT_STALE_REPORT:'lmSignalStale',ENGAGEMENT_IDLE:'lmSignalIdle',ENGAGEMENT_DEPTH_LOW:'lmSignalDepth'}[signal.code];if(engagementKey)return '<li data-signal="'+esc(signal.code)+'">'+esc(LiveMarketUI.t(engagementKey,{n:n(signal.percent==null?signal.days:signal.percent)}))+signalActions(signal.code)+'</li>';}
             if(!key)return '';
             var message=signal.code==='SOURCE_IMBALANCE'&&signal.channel==='link'&&window.LiveHistoryImport?window.t('lhiLinkImbalance',{n:n(signal.percent)},window.lang==='ru'?'ru':'en'):t(key).replace('{p}',n(Math.abs(signal.percent))).replace('{n}',n(signal.count==null?signal.days:signal.count,0)).replace('{d}',n(signal.toxic_count,0)).replace('{channel}',t(signal.channel));
+            if(signal.code==='REVIEW_TREND_DOWN'&&data.project_feedback&&window.LiveRadarLayers)message=LiveRadarLayers.text('lrdrTrendDown',{n:n(Math.abs(signal.percent))});
             return '<li data-signal="'+esc(signal.code)+'">'+esc(message)+signalActions(signal.code)+'</li>';
         }).join('');
         return '<section class="la-actions"><h2>💡 '+esc(t('actions'))+'</h2>'+(messages?'<ul>'+messages+'</ul>':'<p>'+esc(t(summary.status==='clear'?'allClear':'collecting'))+'</p>')+'</section>';
@@ -202,12 +203,14 @@
             body.innerHTML='<section class="la-score-section"><div class="la-score-ring is-'+status+'" style="--score:'+width(data.health_score,100)+'%"><div><strong>'+esc(n(data.health_score,0))+'</strong><span>/ 100</span></div></div><div class="la-score-copy"><h2>'+esc(window.LiveGuidance?LiveGuidance.text('lgPulseTitle'):t('index'))+'</h2><p>'+esc(window.LiveGuidance?LiveGuidance.text('lgPulseSubtitle'):t('internal'))+'</p><strong>'+esc(t('coverage'))+': '+esc(pct(data.coverage_percent))+'</strong>'+(data.calibration_status==='early'?'<small class="la-calibration">'+esc(t('earlyCalibration'))+'</small>':'')+(data.health_score==null?'<small>'+esc(t('minimum'))+'</small>':'')+'</div></section>'+
                 (data.data_status==='no_activity'?'<section class="la-empty"><h2>'+esc(t('empty'))+'</h2><p>'+esc(t('emptyText'))+'</p></section>':'')+
                 (current.view==='tree'?'<section class="la-tree-section">'+tree(data)+'</section>'+actions(data):'<section><h2>'+esc(t('signals'))+'</h2>'+chart(data)+'</section><section class="la-checks-section"><h2>'+esc(t('checks'))+'</h2><ul class="la-checks">'+checks(data)+'</ul></section>'+actions(data))+
-                (window.ReviewCredits?ReviewCredits.shareHTML(data.review_geo,data.review_geo&&data.review_geo.config)+ReviewCredits.geoHTML(data.review_geo):'')+
+                (window.LiveRadarLayers?LiveRadarLayers.feedback(current.id,data,!current.demo&&!current.errorAccess):'')+
                 (window.LivePaceSignals&&data.market?LivePaceSignals.html(data.market.pace_signals,current.id,false):'')+(window.LiveMarketUI?LiveMarketUI.thermal(data.market):'')+
-                '<details id="la-history" class="la-history"'+(current.view==='detailed'?' open':'')+'><summary>'+esc(t('historyToggle'))+'</summary>'+cohorts(data)+'<h2>'+esc(t('timeline'))+'</h2>'+timeline(data)+'</details><details id="la-method" class="la-method"><summary>'+esc(t('methodology'))+'</summary><p>'+esc(t('formula'))+'</p><ul>'+data.components.map(function(component){return '<li><span>'+esc(t(component.code))+' <small>'+esc(t('weight'))+' '+esc(n(component.weight,0))+'%</small>'+(!component.available&&component.reason?'<small>'+esc(t(component.reason))+'</small>':'')+'</span><strong>'+esc(component.points==null?t('unavailable'):n(component.points)+' / 100')+'</strong></li>';}).join('')+'</ul><p>'+esc(t('minimum'))+'</p><p>'+esc(t('scope'))+'</p><p>'+esc(t('noBaseline'))+'</p></details><p class="la-caption">'+esc(current.demo?t('demo'):t('snapshot')+': '+new Date(data.as_of).toLocaleString(window.lang==='ru'?'ru-RU':'en-US'))+'</p>';
+                '<details id="la-history" class="la-history"'+(current.view==='detailed'?' open':'')+'><summary>'+esc(t('historyToggle'))+'</summary>'+cohorts(data)+'<h2>'+esc(t('timeline'))+'</h2>'+timeline(data)+'</details><details id="la-method" class="la-method"><summary>'+esc(t('methodology'))+'</summary><p>'+esc(t('formula'))+'</p><p>'+esc(window.LiveRadarLayers?LiveRadarLayers.text('lrdrMethod'):'')+'</p><ul>'+data.components.map(function(component){return '<li><span>'+esc(t(component.code))+' <small>'+esc(t('weight'))+' '+esc(n(component.weight,0))+'%</small>'+(!component.available&&component.reason?'<small>'+esc(t(component.reason))+'</small>':'')+'</span><strong>'+esc(component.points==null?t('unavailable'):n(component.points)+' / 100')+'</strong></li>';}).join('')+'</ul><p>'+esc(t('minimum'))+'</p><p>'+esc(t('scope'))+'</p><p>'+esc(t('noBaseline'))+'</p></details><p class="la-caption">'+esc(current.demo?t('demo'):t('snapshot')+': '+new Date(data.as_of).toLocaleString(window.lang==='ru'?'ru-RU':'en-US'))+'</p>';
         }
         if(data&&window.LiveHistoryImport){var paceNote=window.LiveHistoryImport.pace(data.install_velocity);if(paceNote)(body.querySelector('.la-tree-section')||body.querySelector('.la-score-section')).insertAdjacentHTML('afterend','<p class="lh-pace-note">'+esc(paceNote)+'</p>');if(data.retention.observed_only_count)body.insertAdjacentHTML('beforeend','<p class="lh-pace-note">'+esc(window.t('lhiRetentionLower',{},window.lang==='ru'?'ru':'en'))+'</p>');if(!current.demo)body.insertAdjacentHTML('beforeend',window.LiveHistoryImport.footer(current.id,data.history_import,data.live_activated_at));}
         opened.forEach(function(id){var el=document.getElementById(id);if(el)el.open=true;});scroll.scrollTop=position;
+        var feedback=body.querySelector('#la-feedback');
+        if(current.focusFeedback&&feedback){current.focusFeedback=false;feedback.scrollIntoView({block:'start'});var selector=feedback.querySelector('select,button');if(selector)selector.focus({preventScroll:true});}
     }
     async function read(state) {
         if(state.controller) state.controller.abort();
@@ -226,13 +229,13 @@
         document.getElementById('live-analytics-modal').remove();document.body.style.overflow=overflow;
         if(previousFocus&&previousFocus.isConnected)previousFocus.focus();
     }
-    function open(id) {
+    function open(id, focus) {
         id=Number(id);if(!id)return;if(current)close();
         previousFocus=document.activeElement;overflow=document.body.style.overflow;document.body.style.overflow='hidden';
         var project=(window.myProjects||[]).concat(window.archivedProjects||[]).find(function(p){return Number(p.id||p.app_id)===id;})||{};
         var initData='';try{initData=window.getTelegramInitDataRaw();}catch(_){}
         var cacheKey=id+':'+initData;
-        current={id:id,initData:initData,cacheKey:cacheKey,data:cache.get(cacheKey)||null,demo:false,view:'tree',cohortsExpanded:false,series:'installs',loading:true,error:false,errorAccess:false};
+        current={id:id,initData:initData,cacheKey:cacheKey,data:cache.get(cacheKey)||null,demo:false,view:'tree',cohortsExpanded:false,series:'installs',loading:true,error:false,errorAccess:false,focusFeedback:focus==='feedback'};
         var overlay=document.createElement('div');overlay.id='live-analytics-modal';overlay.className='modal-overlay active live-analytics-modal';
         overlay.innerHTML='<div class="live-analytics-page" role="dialog" aria-modal="true" aria-labelledby="la-title"><header class="la-topbar"><button type="button" id="la-back" aria-label="'+esc(t('back'))+'">‹</button><div><h1 id="la-title">'+esc(t('title'))+'</h1><span>'+esc(project.name||t('subtitle'))+'</span></div><button type="button" id="la-refresh" aria-label="'+esc(t('refresh'))+'" title="'+esc(t('refresh'))+'">↻</button></header><div class="la-mode"><button type="button" id="la-actual">'+esc(t('actual'))+'</button><button type="button" id="la-demo">'+esc(t('demo'))+'</button><div class="la-view-switch"><button type="button" id="la-tree-view">'+esc(t('tree'))+'</button><button type="button" id="la-detailed-view">'+esc(t('detailed'))+'</button></div></div><p id="la-demo-note" class="la-demo-note" hidden>'+esc(t('demoNote'))+'</p><div class="live-analytics-scroll"><p id="la-error" class="la-error" role="alert" hidden></p><main id="live-analytics-content"></main></div></div>';
         document.body.appendChild(overlay);overlay.onclick=function(event){if(event.target===overlay)close();};
@@ -240,6 +243,7 @@
         document.getElementById('la-demo').onclick=function(){current.demo=true;render();document.querySelector('.live-analytics-scroll').scrollTop=0;};
         document.getElementById('la-actual').onclick=function(){current.demo=false;render();document.querySelector('.live-analytics-scroll').scrollTop=0;};
         ['tree','detailed'].forEach(function(view){document.getElementById('la-'+view+'-view').onclick=function(){current.view=view;if(view==='tree'){document.querySelectorAll('#live-analytics-content details').forEach(function(el){el.open=false;});current.cohortsExpanded=false;}render();document.querySelector('.live-analytics-scroll').scrollTop=0;};});
+        overlay.addEventListener('change',function(event){if(event.target.matches('[data-lrdr-country]')){LiveRadarLayers.setCountry(current.id,event.target.value);render();overlay.querySelector('[data-lrdr-country]')?.focus({preventScroll:true});}});
         overlay.addEventListener('click',function(event){
             if(event.target.closest('[data-branch="retention"]')){current.cohortsExpanded=!current.cohortsExpanded;render();return;}
             var button=event.target.closest('button');if(!button)return;
@@ -251,7 +255,7 @@
             if(event.key==='Escape'){event.stopPropagation();close();return;}
             if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-branch="retention"]')){event.preventDefault();current.cohortsExpanded=!current.cohortsExpanded;render();document.querySelector('[data-branch="retention"]').focus();return;}
             if(event.key!=='Tab')return;
-            var nodes=Array.from(overlay.querySelectorAll('button:not(:disabled),summary,a,[role="button"]')).filter(function(el){return !el.hidden&&el.getClientRects().length;});
+            var nodes=Array.from(overlay.querySelectorAll('button:not(:disabled),summary,select,a,[role="button"]')).filter(function(el){return !el.hidden&&el.getClientRects().length;});
             if(event.shiftKey&&document.activeElement===nodes[0]){event.preventDefault();nodes[nodes.length-1].focus();}
             else if(!event.shiftKey&&document.activeElement===nodes[nodes.length-1]){event.preventDefault();nodes[0].focus();}
         });

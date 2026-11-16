@@ -1,8 +1,14 @@
 const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../artifacts/live-card-compact-20261027/analytics');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,process.env.LIVE_TEST_ARTIFACTS || '../artifacts/live-two-layer-radar/analytics');
 fs.mkdirSync(out,{recursive:true});
 const base=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/live-analytics.json'),'utf8'));
+base.storefront={country:'TH',countries:{TH:{score:4.7,ratings:238,ratings_delta:4,installs:500,next_installs:1000,state:'fresh'},
+  GB:{score:4.3,ratings:12345678901,installs:500000000,next_installs:1000000000,state:'fresh'}}};
+base.project_feedback={total:68,rated:61,criteria:[4.6,4.0,4.3],rating:4.3,detailed_text_count:26,scenarios_completed:18,
+  balance:[{days:7,installs:38,responses:14,percent:36.8},{days:28,installs:117,responses:40,percent:34.2}],
+  distribution:{countries:[{code:'GB',installed:123456,responded:23,rating:4.5},{code:'unknown',installed:2,responded:1}],
+    devices:[{code:'phone',installed:123458,responded:24}]}};
 const clone=x=>JSON.parse(JSON.stringify(x));
 (async()=>{
  const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'chrome'});
@@ -23,8 +29,8 @@ const clone=x=>JSON.parse(JSON.stringify(x));
     await route.fulfill({contentType:'text/html',body:'<button id="opener">Metrics</button>'});
    });
    await page.goto('http://fixture.local/');
-   for(const file of ['css/tokens.css','css/base.css','styles.css','css/live-metrics-modal.css'])await page.addStyleTag({path:path.join(root,file)});
-   for(const file of ['ui/ui-helpers.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
+   for(const file of ['css/tokens.css','css/base.css','styles.css','css/live-project-metrics.css','css/live-metrics-modal.css'])await page.addStyleTag({path:path.join(root,file)});
+   for(const file of ['i18n/ru.js','i18n/en.js','i18n/core.js','ui/ui-helpers.js','js/live-radar-layers.js','js/live-project-metrics.js','js/live-metrics-modal.js','js/app-navigation.js'])await page.addScriptTag({path:path.join(root,file)});
    await page.evaluate(lang=>{window.lang=lang;window.API_BASE='/api';window.showToast=message=>window.lastToast=message;window.getTelegramInitDataRaw=()=> 'signed-fixture';window.myProjects=[{id:42,name:'Orbit Notes <img src=x>'},{id:43,name:'Second app'}];window.archivedProjects=[];document.getElementById('opener').onclick=e=>LiveProjectMetrics.details(42,e);},lang);
    await page.click('#opener');await page.waitForFunction(()=>document.querySelector('.la-score-ring strong')?.textContent==='95');
    const assertWidth=async()=>{
@@ -53,6 +59,19 @@ const clone=x=>JSON.parse(JSON.stringify(x));
    await page.evaluate(()=>document.querySelector('.la-topbar > div > span').textContent='Orbit Notes'); // Clean presentation after verifying escaping.
    await page.evaluate(()=>document.activeElement.blur());
    await page.screenshot({path:path.join(out,`analytics-${lang}-${width}.png`)});
+   assert.equal(await page.locator('.lrdr-criterion').count(),3);
+   assert.equal(await page.locator('.lrdr-balance progress').count(),2);
+   await page.locator('#la-feedback').evaluate(el=>el.scrollIntoView({block:'start'}));
+   await page.screenshot({path:path.join(out,`feedback-${lang}-${width}.png`)});
+   const regionalReads=gets;
+   await page.locator('[data-lrdr-country]').selectOption('GB');
+   assert.match(await page.locator('.lrdr-public p').innerText(),/4[,.]3/);
+   assert.equal(gets,regionalReads);
+   await page.locator('#la-geo summary').click();
+   assert.equal(await page.locator('.lrdr-distribution-list li').count(),3);
+   await assertWidth();
+   await page.locator('#la-geo summary').click();
+   await page.locator('[data-lrdr-country]').selectOption('TH');
    await page.locator('#la-method summary').click();assert.equal(await page.locator('#la-method li').count(),5);
    await page.locator('#la-method summary').click();
    await page.locator('#la-history summary').click();assert.equal(await page.locator('.la-day').count(),14);

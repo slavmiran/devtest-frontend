@@ -58,6 +58,22 @@
             (live ? '<button type="button" class="pc-project-param" data-pf-settings="' + Number(app) + '">⭐ ' + e(t('pfModule')) + '</button>' : '');
     }
 
+    function topicReference(value) {
+        var text = value.trim();
+        if (!text) return {topic: null};
+        if (/^\d+$/.test(text) && Number(text) <= 2147483647) return {topic: Number(text)};
+        var url;
+        try { url = new URL(text); } catch (_) { return null; }
+        if (url.protocol !== 'https:' || url.host !== 't.me' || url.username || url.password) return null;
+        var path = url.pathname.replace(/\/$/, '').split('/').slice(1);
+        var privateLink = path[0] === 'c';
+        if (path.length !== (privateLink ? 4 : 3) ||
+            !/^[1-9]\d{0,9}$/.test(path.at(-1)) || !/^[1-9]\d{0,9}$/.test(path.at(-2)) ||
+            !(privateLink ? /^[1-9]\d{0,11}$/.test(path[1]) : /^[A-Za-z0-9_]+$/.test(path[0]))) return null;
+        var topic = Number(path.at(-2));
+        return topic <= 2147483647 ? {topic: topic, chat: privateLink ? '-100' + path[1] : null} : null;
+    }
+
     async function settings(app, routing) {
         var actor = U.auth();
         var layer = U.sheet(t(routing ? 'pfRoutes' : 'pfModule'), '<p>' + e(t('lmLoading')) + '</p>');
@@ -71,16 +87,32 @@
                 '<input class="gtw-input" name="chat" type="text" inputmode="text" pattern="-?[0-9]+" placeholder="-100…" value="' + e(route.chat_id || '') + '" required></label>' +
                 (route.title ? '<small class="pf-muted">' + e(route.title) + '</small>' : '') +
                 ['reports','private','updates'].map(function (key) {
-                    return '<label>' + e(t('pfTopic_' + key)) + '<input class="gtw-input" name="' + key +
-                        '" type="number" inputmode="numeric" min="0" max="2147483647" value="' + e(topics[key]) +
+                    return '<label>' + e(t('pfTopic_' + key)) + '<input class="gtw-input" data-pf-topic name="' + key +
+                        '" type="text" value="' + e(topics[key]) +
                         '" placeholder="' + e(t('pfTopicDisabled')) + '"></label>';
-                }).join('') + '<small class="pf-muted">' + e(t('pfTopicGeneral')) + '</small>' :
+                }).join('') + '<small class="pf-muted">' + e(t('pfTopicGeneral')) + ' ' + e(t('pfTopicPaste')) + '</small>' :
                 configFields(result.impression, 60, false)) +
                 '<p class="lm-error" role="alert" data-pf-error></p><div class="pf-actions"><button class="lm-action lm-action-primary">' +
                 e(t('pfSave')) + '</button>' + (routing && route.chat_id ? '<button type="button" class="lm-action" data-pf-disconnect>' +
                 e(t('pfDisconnect')) + '</button>' : '') + '</div></form>';
             var form = host.querySelector('form');
-            form.addEventListener('input', function (event) { if (event.target.dataset.pfField) configValue(event.target); });
+            function normalizeTopic(input, replace) {
+                var reference = topicReference(input.value);
+                var group = form.elements.chat;
+                var conflict = reference && reference.chat && group.value.trim() && reference.chat !== group.value.trim();
+                input.setCustomValidity(!reference || conflict ? t(conflict ? 'pfTopicWrongGroup' : 'pfTopicInvalidLink') : '');
+                if (!reference || conflict) return;
+                if (reference.chat && !group.value.trim()) group.value = reference.chat;
+                if (replace && reference.topic != null && !reference.chat) input.value = reference.topic;
+            }
+            form.addEventListener('input', function (event) {
+                if (event.target.dataset.pfField) configValue(event.target);
+                if (event.target.matches('[data-pf-topic]')) normalizeTopic(event.target, false);
+                if (event.target.name === 'chat') form.querySelectorAll('[data-pf-topic]').forEach(function (input) { normalizeTopic(input, false); });
+            });
+            form.addEventListener('change', function (event) {
+                if (event.target.matches('[data-pf-topic]')) normalizeTopic(event.target, true);
+            });
             form.onsubmit = function (event) { event.preventDefault(); save(false); };
             var disconnect = form.querySelector('[data-pf-disconnect]');
             if (disconnect) disconnect.onclick = function () { if (window.confirm(t('pfDisconnectConfirm'))) save(true); };
@@ -96,7 +128,7 @@
                         data = {chat_id: remove ? null : Number(fields.get('chat')), topics: {}};
                         if (!remove) ['reports','private','updates'].forEach(function (key) {
                             var raw = fields.get(key);
-                            data.topics[key] = raw === '' ? null : Number(raw);
+                            data.topics[key] = topicReference(raw).topic;
                         });
                     }
                     await U.api('/apps/' + app + '/' + path, 'PUT', data);
@@ -235,7 +267,7 @@
                 '</small><label>' + e(t('pfReply')) +
                 '<textarea class="gtw-textarea" name="body" maxlength="2000" rows="2"></textarea></label>' +
                 '<label>' + e(t('pfAddScreenshot')) + '<input type="file" name="file" accept="image/png,image/jpeg,image/webp"></label>' +
-                '<button class="lm-action lm-action-primary">' + e(t(owner ? 'pfAsk' : 'pfSend')) + '</button></form>' : '') +
+                '<button class="lm-action lm-action-primary" disabled>' + e(t(owner ? 'pfAsk' : 'pfSend')) + '</button></form>' : '') +
             (owner && open ? '<div class="pf-actions"><button type="button" class="lm-action" data-pf-close="accepted">' + e(t('pfAccept')) +
                 '</button>' + (row.type === 'project_impression' ? '<button type="button" class="lm-action" data-pf-close="rejected">' +
                 e(t('pfDecline')) + '</button>' : '') + '</div>' : '') +
@@ -281,11 +313,19 @@
         host.innerHTML = threadControls(row);
         paintLog(host,row);
         var form = host.querySelector('form');
-        if (form) form.onsubmit = async function (event) {
+        if (!form) return;
+        var button = form.querySelector('button'), sending = false;
+        function updateButton() {
+            button.disabled = sending || (!form.elements.body.value.trim() && !form.elements.file.files.length);
+        }
+        form.addEventListener('input', updateButton);
+        form.addEventListener('change', updateButton);
+        form.onsubmit = async function (event) {
             event.preventDefault();
-            var button = form.querySelector('button'), file = form.elements.file.files[0];
-            if (button.disabled || !form.elements.body.value.trim() && !file) return;
-            button.disabled = true;
+            if (button.disabled) return;
+            var file = form.elements.file.files[0];
+            sending = true;
+            updateButton();
             try {
                 var data = new FormData(form);
                 if (!file) data.delete('file');
@@ -299,7 +339,8 @@
                 if (!response.ok) throw Error(result.code || 'unavailable');
                 paintThread(host,result.result);
                 refreshCards(true);
-            } catch (error) { showError(host,error); button.disabled=false; }
+            } catch (error) { showError(host,error); }
+            finally { sending = false; updateButton(); }
         };
     }
 
@@ -412,7 +453,7 @@
         if(document.querySelector('#tab-tests.active'))refreshCards();
         document.querySelectorAll('details[open] > [data-pf-thread-host],.lm-sheet-overlay [data-pf-thread-host]').forEach(function (host) {
             var row=threadState.get(host);
-            if(!row||host.querySelector('button:disabled,textarea:focus')||host.querySelector('textarea')?.value)return;
+            if(!row||host.querySelector('textarea:focus')||host.querySelector('textarea')?.value||host.querySelector('input[type=file]')?.files.length)return;
             U.api('/feedback/'+row.id+'/thread').then(function (response) {
                 if(!host.isConnected||threadState.get(host)!==row)return;
                 if(response.result.status!==row.status||response.result.comments.at(-1)?.id!==row.comments.at(-1)?.id)paintThread(host,response.result);
@@ -420,5 +461,6 @@
         });
     },20000);
     window.ProjectFeedback={configFields:configFields,configValue:configValue,badge:badge,badgeLabel:badgeLabel,embed:embed,ownerTools:ownerTools,
+        openSettings:function(id){return settings(Number(id),false);},
         ownerBanner:ownerBanner,mountCard:mountCard,refreshCards:refreshCards};
 })();

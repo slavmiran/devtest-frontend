@@ -11,6 +11,7 @@
   layer.addEventListener('click',function(ev){var b=ev.target.closest('[data-lg-existing],[data-lg-new]');if(!b)return;var row=rows.find(function(r){return r.id===Number(b.dataset.lgExisting);});LiveMarketUI.closeTop();if(row)open(row);else if(create)create();});return true;
  }
  async function route(id,kind){
+  if(kind==='reviews'&&window.ProjectFeedback){project(id);return ProjectFeedback.openSettings(id);}
   var data=await LiveCampaigns.workspace(id);if(!data)return false;
   var rows=data.rows,custom=rows.filter(function(c){return !!c.definition;}),active=custom.filter(function(c){return c.status==='active';});
   if(kind==='reviews'){

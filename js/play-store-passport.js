@@ -139,11 +139,24 @@
             return '<li><strong>' + esc(pair[0]) + '</strong>' + (pair[1].length ? '<span>' + esc(Array.from(new Set(pair[1])).join(', ')) + '</span>' : '') + '</li>';
         }).join('') + '</ul>';
     }
+    function storeRegion(state) {
+        if (!window.LiveRadarLayers || !state.data.storefront) return '';
+        var radar = LiveRadarLayers, current = state.data.storefront.reference_country;
+        var countries = (window.COUNTRY_CATALOG || []).slice().sort(function (a,b) {
+            return radar.country(a.code).localeCompare(radar.country(b.code),window.lang);
+        });
+        return '<section class="play-passport-section lrdr-passport-region">'+radar.publicPanel(state.id,state.data.storefront,false)+
+            '<form data-lrdr-reference><label for="lrdr-reference-country">'+esc(radar.text('lrdrReference'))+'</label>'+
+            '<select name="country" id="lrdr-reference-country"><option value="">'+esc(radar.text('lrdrReferenceAuto'))+'</option>'+
+            countries.map(function (country) { return '<option value="'+esc(country.code)+'"'+(country.code===current?' selected':'')+'>'+esc(radar.country(country.code)+' · '+country.code)+'</option>'; }).join('')+
+            '</select><small>'+esc(radar.text('lrdrReferenceHint'))+'</small><button class="lrdr-link" type="submit">'+esc(radar.text('lrdrReferenceSave'))+'</button>'+
+            '<p role="status" data-lrdr-save-status></p></form></section>';
+    }
     function renderContent() {
         if (!current) return;
         var node = document.getElementById('play-passport-content'), data = current.data.play_store_raw;
         if (!data) {
-            node.innerHTML = '<div class="play-passport-empty"><span aria-hidden="true">📄</span><h2>' + esc(current.project.name || text('title')) + '</h2><p>' + esc(current.loading ? text('loading') : text('empty')) + '</p></div>';
+            node.innerHTML = '<div class="play-passport-empty"><span aria-hidden="true">📄</span><h2>' + esc(current.project.name || text('title')) + '</h2><p>' + esc(current.loading ? text('loading') : text('empty')) + '</p></div>' + storeRegion(current);
             return;
         }
         var categories = [data.genre].concat((data.categories || []).map(function (c) { return c.name; })).filter(Boolean);
@@ -169,12 +182,12 @@
         var ratingCount = data.ratings != null ? data.ratings : data.reviews;
         var ratingLabel = text(data.ratings != null ? 'ratings' : 'reviews');
         var score = data.scoreText || (data.score != null ? Number(data.score).toFixed(1) : null);
-        var locale = data.storeLocale && data.storeLocale.country || 'ru';
-        var metrics = available(score) ? metric('rating', esc(score) + ' <span class="play-passport-star" aria-hidden="true">★</span>',
+        var locale = data.country || data.storeLocale && data.storeLocale.country || '—';
+        var metrics = !current.data.storefront && available(score) ? metric('rating', esc(score) + ' <span class="play-passport-star" aria-hidden="true">★</span>',
             ratingCount != null ? compact(ratingCount) + ' ' + ratingLabel : ratingLabel,
             (ratingCount != null ? number(ratingCount) + ' ' + ratingLabel + ' · ' : '') + 'Google Play · ' + String(locale).toUpperCase()) : '';
         var installs = data.minInstalls != null ? compact(data.minInstalls) + '+' : data.installs;
-        if (available(installs)) metrics += metric('installs', esc(installs), text('installs'));
+        if (!current.data.storefront && available(installs)) metrics += metric('installs', esc(installs), text('installs'));
         if (available(data.size)) metrics += metric('size', esc(data.size), text('size'));
         if (available(data.contentRating)) metrics += metric('age', '<span class="play-passport-age">' + esc(data.contentRating) + '</span>', text('age'));
         node.innerHTML = '<div class="play-passport-hero">' +
@@ -182,6 +195,7 @@
             '<div><h1 class="notranslate">' + esc(data.title || current.project.name) + '</h1><p class="play-passport-muted">' + esc(Array.from(new Set(categories)).join(' · ') || text('unknown')) + '</p>' +
             link(data.developerUrl, data.developer || text('developer'), 'market') + '</div></div>' +
             '<div class="play-passport-metrics" tabindex="0" aria-label="Google Play">' + metrics + '</div>' +
+            storeRegion(current) +
             '<div class="play-passport-links">' + link(appUrl, text('app'), 'market') + '</div>' +
             section(text('summary'), '<p>' + esc(value(data.summary)) + '</p>') +
             section(text('screenshots'), images ? '<div class="play-passport-carousel" tabindex="0" aria-label="' + esc(text('screenshots')) + '">' + images + '</div>' : '<p class="play-passport-muted">' + esc(text('unknown')) + '</p>') +
@@ -288,10 +302,31 @@
         document.getElementById('play-passport-back').onclick = close;
         document.getElementById('play-passport-refresh').onclick = sync;
         document.getElementById('play-passport-retry').onclick = function () { if (current) readCache(current); };
+        overlay.addEventListener('change',function(event){if(event.target.matches('[data-lrdr-country]')){
+            LiveRadarLayers.setCountry(id,event.target.value);renderContent();overlay.querySelector('[data-lrdr-country]')?.focus({preventScroll:true});
+        }});
+        overlay.addEventListener('submit',async function(event){
+            if(!event.target.matches('[data-lrdr-reference]'))return;
+            event.preventDefault();var form=event.target,button=form.querySelector('button'),state=current;
+            if(button.disabled)return;button.disabled=true;
+            try {
+                var country=form.elements.country.value||null;
+                var response=await fetch(endpoint(id,'play-store-reference'),{method:'PUT',headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({country:country,init_data:window.getTelegramInitDataRaw()})});
+                if(!response.ok)throw Error('reference');
+                var data=await response.json();
+                if(current!==state)return;
+                versions.set(id,(versions.get(id)||0)+1);
+                state.data=remember(id,data);LiveRadarLayers.setCountry(id,country);renderContent();updateControls();
+                window.dispatchEvent(new CustomEvent('play-store:synced',{detail:{appId:id}}));
+                overlay.querySelector('[data-lrdr-save-status]').textContent=LiveRadarLayers.text('lrdrReferenceSaved');
+            }catch(_){form.querySelector('[data-lrdr-save-status]').textContent=LiveRadarLayers.text('lrdrReferenceError');}
+            finally{button.disabled=false;}
+        });
         overlay.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
             if (e.key !== 'Tab') return;
-            var focusables = Array.from(overlay.querySelectorAll('button:not(:disabled), a, summary, [tabindex="0"]')).filter(function (n) { return !n.hidden && n.getClientRects().length; });
+            var focusables = Array.from(overlay.querySelectorAll('button:not(:disabled), a, summary, select, [tabindex="0"]')).filter(function (n) { return !n.hidden && n.getClientRects().length; });
             var first = focusables[0], last = focusables[focusables.length - 1];
             if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
             if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }

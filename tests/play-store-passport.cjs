@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(__dirname, '..');
-const artifacts = path.resolve(root, '../artifacts/play-store-passport');
+const artifacts = path.resolve(root, process.env.LIVE_TEST_ARTIFACTS || '../artifacts/live-two-layer-radar/passport');
 fs.mkdirSync(artifacts, { recursive: true });
 
 const raw = {
@@ -22,6 +22,8 @@ const raw = {
         sharedData: [], securityPractices: [{ practice: 'Данные шифруются при передаче', description: 'Защищённое соединение' }], privacyPolicyUrl: 'https://example.com/privacy' },
 };
 const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at: new Date().toISOString(), retry_after_seconds: 259200, sync_retry_after_seconds: 0 };
+const storefront = {country:'US',countries:{US:{score:4.8,ratings:798958,installs:100000,next_installs:500000,state:'fresh'},
+    TH:{score:4.4,ratings:215,ratings_delta:6,installs:100000,next_installs:500000,state:'fresh'}}};
 
 (async () => {
     const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'chrome' });
@@ -29,7 +31,7 @@ const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at:
         for (const language of ['ru', 'en']) {
             for (const width of [360, 390, 430]) {
                 const page = await browser.newPage({ viewport: { width, height: 844 } });
-                const errors = []; let gets = 0, posts = 0, mode = 'cached', hold = false, pendingGet, pendingPost;
+                const errors = []; let gets = 0, posts = 0, mode = 'cached', hold = false, pendingGet, pendingPost, reference;
                 page.on('pageerror', e => errors.push(e.message));
                 await page.route('http://fixture.local/**', async route => {
                     const url = route.request().url();
@@ -42,8 +44,14 @@ const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at:
                             await route.fulfill({ json: { play_store_raw: null, retry_after_seconds: 0, sync_retry_after_seconds: 1 } });
                             return;
                         }
-                        const data = mode === 'empty' ? { play_store_raw: null, play_store_synced_at: null, retry_after_seconds: 0 } : mode === 'expired' ? { ...snapshot, retry_after_seconds: 0 } : snapshot;
+                        const data = mode === 'empty' ? { play_store_raw: null, play_store_synced_at: null, retry_after_seconds: 0 } :
+                            mode === 'expired' ? { ...snapshot, retry_after_seconds: 0 } : mode === 'regions' ? {...snapshot,storefront} : snapshot;
                         await route.fulfill({ json: data }); return;
+                    }
+                    if (url.includes('play-store-reference')) {
+                        assert.equal(route.request().method(),'PUT');
+                        reference=route.request().postDataJSON();
+                        await route.fulfill({json:{...snapshot,storefront:{...storefront,reference_country:reference.country}}});return;
                     }
                     if (url.includes('sync-play-store')) {
                         posts++;
@@ -59,8 +67,8 @@ const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at:
                 await page.route('https://play-lh.googleusercontent.com/**', route => route.fulfill({ contentType: 'image/svg+xml', body:
                     '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="320"><rect width="180" height="320" fill="#1b2440"/><rect x="15" y="45" width="150" height="50" rx="12" fill="#4c8dff"/><rect x="15" y="110" width="150" height="50" rx="12" fill="#283650"/><text x="20" y="30" fill="white" font-size="16">Orbit Notes</text></svg>' }));
                 await page.goto('http://fixture.local/');
-                for (const file of ['css/tokens.css', 'css/base.css', 'styles.css', 'css/play-store-passport.css']) await page.addStyleTag({ path: path.join(root, file) });
-                for (const file of ['ui/ui-helpers.js', 'js/play-store-passport.js', 'js/app-navigation.js']) await page.addScriptTag({ path: path.join(root, file) });
+                for (const file of ['css/tokens.css', 'css/base.css', 'styles.css', 'css/play-store-passport.css','css/live-project-metrics.css','css/live-metrics-modal.css']) await page.addStyleTag({ path: path.join(root, file) });
+                for (const file of ['i18n/ru.js','i18n/en.js','i18n/core.js','ui/ui-helpers.js','js/country-catalog.js','js/live-radar-layers.js','js/play-store-passport.js','js/app-navigation.js']) await page.addScriptTag({ path: path.join(root, file) });
                 await page.evaluate(({ language, snapshot }) => {
                     window.lang = language; window.API_BASE = '/api'; window.getTelegramInitDataRaw = () => 'signed-fixture';
                     window.myProjects = [{ id: 42, name: 'Orbit Notes', package: 'com.example.orbit', live_balance_bust: 137.5,
@@ -167,6 +175,22 @@ const snapshot = { status: 'success', play_store_raw: raw, play_store_synced_at:
                 while (!pendingGet) await new Promise(resolve => setTimeout(resolve, 10));
                 hold = false; pendingGet(); pendingGet = null;
                 await page.waitForFunction(() => !document.querySelector('#play-passport-refresh').textContent.includes('…'));
+                await page.evaluate(() => closePlayStorePassport());
+                mode='regions';
+                await page.evaluate(()=>openPlayStorePassport(42));
+                const regionalPicker=page.locator('[data-lrdr-country]');
+                await regionalPicker.waitFor();
+                const beforeSwitch=gets, beforeRefresh=posts;
+                await regionalPicker.selectOption('TH');
+                assert.match(await page.locator('.lrdr-public p').innerText(),/4[,.]4.*\+6/);
+                assert.equal(gets,beforeSwitch);
+                await page.locator('#lrdr-reference-country').selectOption('DE');
+                await page.locator('[data-lrdr-reference] button').click();
+                await page.waitForFunction(()=>document.querySelector('[data-lrdr-save-status]').textContent.length);
+                assert.deepEqual(reference,{country:'DE',init_data:'signed-fixture'});
+                assert.equal(posts,beforeRefresh);
+                assert.equal(await page.locator('.play-passport-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+                await page.locator('.lrdr-passport-region').screenshot({path:path.join(artifacts,`regions-${language}-${width}.png`)});
                 await page.evaluate(() => closePlayStorePassport());
                 assert.deepEqual(errors, []);
                 assert.ok(gets >= 4);

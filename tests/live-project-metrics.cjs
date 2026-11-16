@@ -3,12 +3,14 @@ const path = require('node:path');
 const fs = require('node:fs');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/moska/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root = path.resolve(__dirname,'..');
-const artifacts = path.resolve(root,'../artifacts/live-card-compact-20261027/metrics');
+const artifacts = path.resolve(root,process.env.LIVE_TEST_ARTIFACTS || '../artifacts/live-two-layer-radar/metrics');
 fs.mkdirSync(artifacts,{recursive:true});
-const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_available:true,
-    reviews:{total:68,rating:4.3,per_day:.5,trend_available:true,trend_percent:-1.2},
+const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_available:true,health_score:88,
+    reviews:{total:68,rating:4.3,criteria:[4.6,4.0,4.3],per_day:.5,trend_available:true,trend_percent:-1.2},
     installs:{total:332,per_day:3.5,trend_available:true,trend_percent:3},
     active_users:112,avg_retention_days:23,days_since_update:79,
+    storefront:{country:'TH',countries:{TH:{score:4.7,ratings:238,ratings_delta:4,installs:500,next_installs:1000,state:'fresh'},
+        GB:{score:null,ratings:12345678901,installs:500000000,next_installs:1000000000,state:'fresh'}}},
     keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]};
 
 (async()=>{
@@ -39,10 +41,11 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             });
             await page.goto('http://fixture.local/');
             for (const file of ['css/tokens.css','css/base.css','styles.css','css/project-card-dashboard.css','css/live-project-metrics.css']) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-history.js','i18n/core.js','ui/ui-helpers.js','js/live-history-import.js','js/live-market-ui.js','js/live-project-metrics.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-history.js','i18n/core.js','ui/ui-helpers.js','js/live-history-import.js','js/live-market-ui.js','js/live-radar-layers.js','js/live-project-metrics.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(({lang,metrics})=>{
                 window.lang=lang;window.API_BASE='/api';window.getTelegramInitDataRaw=()=> 'signed-fixture';
-                window.myProjects=[{id:42,phase:'live',checkins_count:9999,play_store_raw:{score:5,ratings:999999},live_metrics:metrics}];
+                window.myProjects=[{id:42,phase:'live',checkins_count:9999,play_store_raw:{score:5,ratings:999999},live_metrics:metrics,
+                    live_market_score:{rank:17,tier:3,market_score:567,rank_delta:2,score_delta:12}}];
                 window.archivedProjects=[];
                 window.paint=()=>document.querySelector('.live-metrics-slot').innerHTML=LiveProjectMetrics.render(myProjects[0]);
                 paint();LiveProjectMetrics.mount(document.querySelector('.card'),myProjects[0]);
@@ -55,6 +58,11 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             await assertNoOverflow(); assert.equal(gets,0);
             assert.match(await page.locator('.live-metric-row').nth(0).innerText(),/68/);
             assert.match(await page.locator('.live-metric-row').nth(1).innerText(),/332/);
+            assert.equal(await page.locator('.lrdr-mini span').count(),3);
+            assert.match(await page.locator('.lrdr-store-chip').first().innerText(),/GP \(TH\)[\s\S]*\+4/);
+            assert.match(await page.locator('.lrdr-store-chip').last().innerText(),/500\+.*→.*1[\s,]000\+/);
+            const rows=await page.locator('.live-metric-row').all();
+            assert.equal((await rows[0].boundingBox()).height,(await rows[1].boundingBox()).height);
             assert.equal(await page.locator('.live-metric-trend.is-down').count(),1);
             assert.equal(await page.locator('.live-metric-trend.is-up').count(),1);
             assert.equal(await page.locator('.live-health-badge.is-excellent').count(),2); // badge + legend
@@ -68,6 +76,10 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             await page.locator('.live-metrics-more').click();
             assert.deepEqual(await page.evaluate(()=>graphEvents),[{appId:42}]);
             await page.locator('.pc-state-unified').screenshot({path:path.join(artifacts,`metrics-${lang}-${width}.png`)});
+            await page.evaluate(()=>LiveRadarLayers.setCountry(42,'GB'));
+            assert.match(await page.locator('.lrdr-store-chip').first().innerText(),lang==='ru'?/Нет публичного балла/:/No public rating/);
+            await assertNoOverflow();
+            await page.evaluate(()=>LiveRadarLayers.setCountry(42,'TH'));
             // Exact threshold colors; missing values must remain neutral.
             for(const [days,band] of [[6.9,'risk'],[7,'basic'],[13.9,'basic'],[14,'good'],[20.9,'good'],[21,'excellent'],[30.9,'excellent'],[31,'superb']]) {
                 await page.evaluate(days=>{myProjects[0].live_metrics={...myProjects[0].live_metrics,avg_retention_days:days};paint();},days);

@@ -5681,7 +5681,8 @@ function renderProjectFeedbackCards(project, items) {
             const chatIconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>';
             const discussLabel = window.escapeHTML(window.t('feedbackDiscussInChatBtn', {}, lang) || (lang === 'ru' ? 'Обсудить в чате' : 'Discuss in chat'));
             const completeLabel = window.escapeHTML(window.t('feedbackAcceptBtn', {}, lang) || '🎁 Complete');
-            const copyButtonHtml = (!isReviewTicket && (item.message_text || deviceInfoHtml))
+            const hasFeedbackThread = !!window.ProjectFeedback && ['bug','idea','scenario','project_impression'].includes(feedbackType);
+            const copyButtonHtml = (!isReviewTicket && (!hasFeedbackThread || deviceInfoHtml) && (item.message_text || deviceInfoHtml))
                 ? `<button type="button" class="fb-icon-btn" onclick="copyFeedbackCardContent(${item.id}, ${projectId})" aria-label="${window.escapeHTML(window.t('feedbackCopyBtn', {}, lang) || 'Copy')}">
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                    </button>`
@@ -5756,7 +5757,7 @@ function renderProjectFeedbackCards(project, items) {
                         ${deviceInfoHtml}
                         ${rewardHtml}
                         ${replyHtml}
-                        ${window.ProjectFeedback && ['bug','idea','scenario','project_impression'].includes(feedbackType) ? ProjectFeedback.embed(item.id) : ''}
+                        ${hasFeedbackThread ? ProjectFeedback.embed(item.id) : ''}
                     </div>
                     ${toolbarHtml}
                 </div></div>
