@@ -3760,8 +3760,8 @@ async function toggleProjectDetailsReviewCheckbox(input, appId) {
 }
 
 function openPlayReviewModal(appId, event, options) {
-    const test = (window.myTests || []).find(item => Number(item.id || item.app_id) === Number(appId));
-    if (window.LiveReviewQualityPolicy && !LiveReviewQualityPolicy.externalAllowed(test)) return;
+    const test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
+    if (window.LiveReviewQualityPolicy && !window.LiveReviewQualityPolicy.externalAllowed(test)) return;
     if (window.ReviewFlow && !(options && options.legacy)) return ReviewFlow.open(appId, event);
     if (event) {
         event.preventDefault();
@@ -3770,7 +3770,6 @@ function openPlayReviewModal(appId, event, options) {
     _playReviewModalAppId = appId;
     _playReviewModalSource = (options && options.source) || 'badge';
     
-    var test = typeof window.getMyTestById === 'function' ? window.getMyTestById(appId) : null;
     var reviewStatus = typeof window.getPlayReviewStatus === 'function'
         ? window.getPlayReviewStatus(test)
         : String(test && test.play_review_status || 'none').toLowerCase();
