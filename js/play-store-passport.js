@@ -96,6 +96,8 @@
                 p.play_store_synced_at = data.play_store_synced_at;
             }
         });
+        var label = document.querySelector('[data-live-passport="' + id + '"] [data-live-passport-status]');
+        if (label) label.textContent = window.t(data.play_store_raw ? 'pcLivePassportSynced' : 'pcLivePassportPending', {}, window.lang);
         return entry;
     }
     function remaining(entry, key) {

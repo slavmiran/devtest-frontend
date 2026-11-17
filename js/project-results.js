@@ -556,6 +556,7 @@
                         '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
                         '<span aria-hidden="true">→</span></button>') +
                 '</div>' +
+                (project.phase === 'live' && window.LiveProjectMetrics ? '<div data-live-experience="' + appId + '">' + LiveProjectMetrics.experience(project) + '</div>' : '') +
                 '<div class="pc-results-footer">' +
                     evidenceHtml +
                     '<button type="button" class="pc-results-feedback-link" onclick="event.stopPropagation(); openProjectFeedback(' + appId + ', false, { preferUnprocessed: false, typeFilter: \'all\' });">' +

@@ -66,7 +66,8 @@ const metrics = {source:'devtesthub_live',as_of:'2026-10-09T12:00:00Z',boundary_
             assert.match(await card.locator('.lrdr-store-chip').first().innerText(),/Google Play \(TH\)[\s\S]*\+4/);
             assert.equal(await card.locator('.lrdr-mini span').count(),3);
             assert.deepEqual(await card.locator('.live-keyword-installs').allTextContents(),['46','0']);
-            await card.locator('.live-metrics-more').click();
+            assert.equal(await card.locator('.live-metrics-more').count(),0);
+            await card.locator('[data-lm-health]').click();
             assert.deepEqual(await page.evaluate(()=>graphEvents),[{appId:42}]);
             await page.evaluate(()=>document.activeElement.blur());
             await card.screenshot({path:path.join(artifacts,'metrics-'+lang+'-'+width+'.png')});

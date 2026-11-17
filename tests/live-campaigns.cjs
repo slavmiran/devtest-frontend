@@ -7,14 +7,24 @@ const definition=source=>({source,name:source==='keywords'?'ASO keywords':'Direc
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
  for(const language of ['ru','en'].filter(x=>!process.env.LIVE_TEST_LANG||x===process.env.LIVE_TEST_LANG))for(const width of [360,390,430].filter(x=>!process.env.LIVE_TEST_WIDTH||x===Number(process.env.LIVE_TEST_WIDTH))){
   const page=await browser.newPage({viewport:{width,height:900}}),errors=[],requests=[],seen=new Set();page.on('pageerror',e=>errors.push(e.message));
-  let fail=false;
+  let fail=false, failRead=true, activeParticipation=true;
   const bridge={id:3,app_id:42,kind:'closed_bridge',status:'active',revision:1,control_days:[1,4,7,10,14],overlimit_cost:40,total_slots:7,free_occupied:0,next_slot:8,next_slot_price:350,request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:'',additional_reports:[],cycle_limit:1};
   const campaigns=[bridge,{id:4,kind:'custom',status:'active',revision:1,name:'ASO keywords',definition:definition('keywords'),cycle_limit:2,keywords:[{id:1,keyword:'budget',enabled:true,installs:4},{id:2,keyword:'travel',enabled:true,installs:0}],confirmed_installs:4},{id:5,kind:'custom',status:'active',revision:1,name:'Direct link',definition:definition('link'),cycle_limit:1,keywords:[],confirmed_installs:2}];
   const control={revision:1,pool_available:160,reserved_bust:40,allow_wallet_spending:false,wallet_balance:1000,thermal_phase:{code:'stabilizing',B_t:10,L_floor:3,U_opt:20,today_installs_utc:1,stabilization_days_remaining:5,peak_window_days_remaining:1,trend_percent:40},corridor:{day:'2026-10-27',B_t:10,L_floor:3,U_opt:20},auto_daily_cost_bust:0,policy:{mode:'manual',paced:true,dailyInstalls:4,pauseHours:24,rampDays:0,allowContractsDuringPause:true},parameters:{request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:'Use the main feature'},tier_event:{id:9,from_tier:5,to_tier:4,score:309}};
   const workspace=()=>({campaigns,project_control:{...control,allocations:campaigns.map(c=>({campaign_id:c.id,kind:c.kind,name:c.name,source:c.definition&&c.definition.source,status:c.status,limit:c.cycle_limit,used:0}))},capacity:{active:2,limit:3},pace:{paced:control.policy.paced,quota:4,admitted:2,needed:2,accepting:true,cycle_started_at:new Date().toISOString()}});
   await page.route('http://fixture.local/**',async route=>{const req=route.request(),url=new URL(req.url()),ok=data=>route.fulfill({json:{status:'success',...data}});
    if(url.pathname.includes('/campaigns')){
-    if(req.method()==='GET')return ok(workspace());let data=req.postDataJSON();assert.equal(data.init_data,'signed-fixture');requests.push({path:url.pathname,data});
+    if(req.method()==='GET'){
+     if(failRead){failRead=false;return route.fulfill({status:503,json:{status:'error',code:'failed'}});}
+     return ok(workspace());
+    }
+    let data=req.postDataJSON();assert.equal(data.init_data,'signed-fixture');requests.push({path:url.pathname,data});
+    if(req.method()==='DELETE'){
+     assert.equal(url.pathname,'/api/apps/42/campaigns/5');
+     if(activeParticipation)return route.fulfill({status:409,json:{status:'error',code:'campaign_has_active_participants'}});
+     campaigns.splice(campaigns.findIndex(c=>c.id===5),1);
+     return ok({campaign_ids:[5]});
+    }
     if(fail)return route.fulfill({status:503,json:{status:'error',code:'failed'}});
     if(url.pathname==='/api/apps/42/campaigns/pool'){assert.match(data.request_key,/^[0-9a-f-]{36}$/);if(!seen.has(data.request_key)){control.pool_available+=data.amount;control.wallet_balance-=data.amount;seen.add(data.request_key);}if(data.allow_wallet_spending!==undefined)control.allow_wallet_spending=data.allow_wallet_spending;control.revision++;return ok(workspace());}
     if(url.pathname.endsWith('/pace')){assert.equal(data.control.revision,control.revision);control.policy=data.control.policy;for(const a of data.control.allocations)campaigns.find(c=>c.id===a.campaign_id).cycle_limit=a.limit;control.revision++;return ok(workspace());}
@@ -31,8 +41,21 @@ const definition=source=>({source,name:source==='keywords'?'ASO keywords':'Direc
   await page.addStyleTag({content:'body{padding:8px;background:#111a26;color:#eff4fb}#projects-list{width:100%}.card{width:100%}'});
   for(const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/live-guidance.js','i18n/live-smart-pro.js','i18n/live-pace-forecast.js','i18n/core.js','ui/ui-helpers.js','ui/ui-tests.js','ui/ui-projects.js','js/project-parameters.js','js/project-contract-pricing.js','js/live-pace-forecast.js','js/live-manual-plan.js','js/live-campaign-pace.js','js/live-campaign-pace-view.js','js/live-campaign-draft.js','js/live-campaign-wizard-view.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-market-ui.js','js/live-admission.js','js/live-campaign-growth-card.js','js/live-campaigns.js'])await page.addScriptTag({path:path.join(root,file)});
   await page.evaluate(language=>{window.lang=language;window.API_BASE='/api';window.getTelegramInitDataRaw=()=> 'signed-fixture';window.showToast=x=>window.lastToast=x;window.myProjects=[{id:42,phase:'live',name:'Orbit Notes',screenshot_boost_campaign:{enabled:true,pool_remaining:34,reward_bust:2}}];const card=document.createElement('div');card.className='card';card.innerHTML=LiveProjectControl.statusHTML(myProjects[0])+LiveCampaigns.build(myProjects[0]);document.querySelector('#projects-list').append(card);LiveCampaigns.mount(card,myProjects[0]);},language);
+  await page.locator('.lc-error [data-lc-action=retry]').click();
   const card=page.locator('[data-campaign-id="3"]');await page.locator('[data-lc-action="project-pool"]').waitFor();
+  assert.equal(await page.locator('.lc-error').count(),0,'A successful refresh clears the error');
+  assert.match(await page.locator('[data-lc-capacity]').innerText(),/3 \/ 3/,'The enabled Bridge consumes a slot');
+  assert.equal(await card.getByRole('switch').count(),1);
   await page.waitForFunction(()=>myProjects[0].live_tier_event&&myProjects[0].live_tier_event.id===9);
+  await page.evaluate(()=>{window.LiveQueueUI={};});
+  control.queue_count=2;
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:42}})));
+  const queue=page.locator('[data-lq-owner-queue]');
+  await queue.waitFor();
+  assert.match(await queue.innerText(),/^⏳ [^⏳🌡°]+2/);
+  control.queue_count=0;
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:42}})));
+  await queue.waitFor({state:'detached'});
   assert.equal(await page.locator('.lc-section .lr-tier-event').count(),0,'League change is no longer a campaign banner');
   const fit=async()=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.equal(await page.locator('[data-lc-action=project-admission]').count(),1);await page.click('[data-lc-action=project-admission]');await page.waitForSelector('.lm-sheet');await page.keyboard.press('Escape');assert.equal(await page.locator('.lm-sheet').count(),0);
@@ -40,7 +63,7 @@ const definition=source=>({source,name:source==='keywords'?'ASO keywords':'Direc
   assert((await page.locator('.lc-section-head').boundingBox()).height<=70,'Header stays in two compact rows, without a third reserve line');
   assert.equal(await page.locator('.lc-section-head .lc-note').count(),0,'Reserve detail belongs in the pool sheet');
   assert.equal(await page.locator('.lpc-project-budget strong').evaluate(el=>getComputedStyle(el).color),await page.locator('.lc-section').evaluate(el=>{const e=document.createElement('i');e.style.color='var(--reward)';el.append(e);const c=getComputedStyle(e).color;e.remove();return c;}));
-  assert.equal(await page.locator('.lc-create').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.querySelector('svg').getBoundingClientRect();return a.width===44&&a.height===44&&Math.abs(a.x+a.width/2-b.x-b.width/2)<1&&Math.abs(a.y+a.height/2-b.y-b.height/2)<1;}),true,'SVG plus is centered in a stable touch target');
+  assert.equal(await page.locator('.lc-create:visible').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.querySelector('svg').getBoundingClientRect();return a.width===44&&a.height===44&&Math.abs(a.x+a.width/2-b.x-b.width/2)<1&&Math.abs(a.y+a.height/2-b.y-b.height/2)<1;}),true,'SVG plus is centered in a stable touch target');
   await page.locator('.lpc-project-budget strong').click();assert.match(await page.locator('[data-lc-wallet-main]').innerText(),/1[\s,]?000 \$BUST/);await fit();
   await page.screenshot({path:path.join(out,`pool-${language}-${width}.png`),fullPage:true});
   await page.keyboard.press('Escape');assert.equal(await page.locator('.lpc-project-budget').evaluate(el=>el===document.activeElement),true);
@@ -51,8 +74,12 @@ const definition=source=>({source,name:source==='keywords'?'ASO keywords':'Direc
   await page.locator('.lc-section').screenshot({path:path.join(out,`compact-${language}-${width}.png`)});
   await card.locator('[data-lc-card]>summary').click();assert.equal(await card.locator('textarea,input:not([type="checkbox"]),select').count(),0);
   await card.locator('[data-day="4"]').click();await page.waitForFunction(()=>document.querySelector('.lc-budget>strong').textContent.includes('30'));assert.equal(await card.locator('[data-lc-card]').getAttribute('open'),'');
-  const params=page.locator('.lc-section>.pc-project-params');await params.locator('.pc-project-params__toggle').click();await params.locator('[data-project-param="target_lang"]').click();await page.locator('#project-language-options button').nth(1).click();await page.waitForFunction(()=>myProjects[0].target_lang==='EN');assert.equal(control.parameters.target_lang,'EN');
-  assert.equal(await params.locator('[data-project-param="request_reviews"]').count(),0,'Live project settings omit external reviews');
+  const params=page.locator('.lc-full>.pc-project-params');await params.locator('.pc-project-params__toggle').click();await params.locator('[data-project-param="target_lang"]').click();await page.locator('#project-language-options button').nth(1).click();await page.waitForFunction(()=>myProjects[0].target_lang==='EN');assert.equal(control.parameters.target_lang,'EN');
+  assert.equal(await params.locator('[data-project-param="request_reviews"]').count(),0,'Live settings group feedback and Bridge controls in one tile');
+  await params.locator('[data-project-param="feedback"]').click();
+  await page.locator('[data-lc-feedback="bridge"]').click();
+  await page.locator('#project-language-options button').nth(1).click();
+  await page.waitForFunction(()=>myProjects[0].request_reviews===false);
   await page.locator('[data-lc-action="project-pool"]').click();await page.locator('[data-lc-wallet-toggle]').locator('..').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-wallet-toggle]').disabled);
   await page.locator('[data-lc-wallet-amount]').fill('60');fail=true;await page.locator('[data-lc-wallet-deposit]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-wallet-deposit]').disabled);const failedKey=requests.at(-1).data.request_key;
   fail=false;await page.locator('[data-lc-wallet-deposit]').click();await page.waitForFunction(()=>!document.querySelector('#live-campaign-wallet-modal').classList.contains('active'));assert.equal(requests.at(-1).data.request_key,failedKey);assert.equal(control.pool_available,220);assert.equal(await page.locator('.lc-section-balance .lc-wallet-badge').count(),1);
@@ -102,6 +129,19 @@ const definition=source=>({source,name:source==='keywords'?'ASO keywords':'Direc
   }
   await page.waitForFunction(()=>document.querySelector('[data-lc-action="keyword"][aria-checked="false"]'));assert.equal(await page.locator('[data-lc-action="keyword"][aria-checked="true"]').isDisabled(),true);
   await card.locator('[data-lc-action="toggle-status"]').locator('..').click();await page.waitForFunction(()=>document.querySelector('[data-campaign-id="3"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='false');assert.equal(await card.count(),1);
+  const deleted=page.locator('[data-campaign-id="5"]');
+  await deleted.locator('summary').click();
+  await page.evaluate(()=>{window.confirm=()=>false;});
+  await deleted.locator('[data-lc-action="delete"]').click();
+  assert.equal(requests.filter(x=>x.path.endsWith('/5')).length,0);
+  await page.evaluate(()=>{window.confirm=()=>true;});
+  await deleted.locator('[data-lc-action="delete"]').click();
+  await page.waitForFunction(()=>window.lastToast===t('lcDeleteBusy',{},lang));
+  assert.equal(await deleted.count(),1);
+  activeParticipation=false;
+  await deleted.locator('[data-lc-action="delete"]').click();
+  await deleted.waitFor({state:'detached'});
+  assert.match(await page.locator('[data-lc-capacity]').innerText(),/1 \/ 3/);
   assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>Object.keys(I18NRU).filter(k=>k.startsWith('lpc')).every(k=>typeof I18NEN[k]==='string')),true);await page.close();
  }
  console.log('RU/EN 360/390/430: header pool, main wallet, centered SVG create, refreshed balance/focus, global project parameters, folded cards, checkpoints, pace/distribution, UUID retry, keyword guard and mobile layout passed.');

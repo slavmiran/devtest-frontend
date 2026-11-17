@@ -22,6 +22,7 @@
         request: null,
         pollUntil: 0,
         errorCode: '',
+        candidateStatus: '',
     };
 
     function text(key, fallback, params) {
@@ -767,7 +768,14 @@
         }
         if (body) {
             if (!state.recipients.length) {
-                body.innerHTML = '<div class="smart-ping-empty">' + esc(text('smartPingEmpty', 'Нет получателей для Smart Ping')) + '</div>';
+                var key = state.candidateStatus === 'loading' ? 'smartPingLiveLoading'
+                    : state.candidateStatus === 'error' ? 'smartPingLiveLoadError' : 'smartPingEmpty';
+                body.textContent = '';
+                var message = document.createElement('div');
+                message.className = 'smart-ping-empty';
+                message.setAttribute('role', 'status');
+                message.textContent = text(key);
+                body.append(message);
             } else {
                 body.innerHTML = SECTION_ORDER.map(function (section) {
                     return sectionHtml(section, state.recipients.filter(function (row) { return row.section === section; }));
@@ -1260,6 +1268,27 @@
         }
         if (isCurrent(ctx)) checkDelivery(ctx);
     }
+    async function loadLiveRecipients(ctx) {
+        try {
+            var result = await requestJson(apiBase() + '/project/' + ctx.appId + '/smart-ping/live-candidates?init_data=' +
+                encodeURIComponent(initData()), { cache: 'no-store' }, ctx);
+            if (!isCurrent(ctx)) return;
+            if (!result.response.ok || !Array.isArray(result.payload?.items)) throw new Error('candidates_unavailable');
+            state.recipients = result.payload.items.map(function (row) {
+                var markers = [];
+                if (row.control_day) markers.push(text('smartPingLiveCheckpoint', null, { day: row.control_day }));
+                if (row.scenario_due) markers.push(text('smartPingLiveScenario'));
+                return { testerId: Number(row.tester_id), tester: row,
+                    section: row.control_day && row.scenario_due ? 'both' : row.control_day ? 'control' : 'attention',
+                    markers: markers, hasPingReason: true, risk: true, checked: true };
+            });
+            state.candidateStatus = '';
+            applyFilter(state.filter);
+        } catch (_) {
+            if (isCurrent(ctx)) state.candidateStatus = 'error';
+        }
+        if (isCurrent(ctx)) render();
+    }
     function open(appId) {
         var project = projectById(appId);
         if (!project) return;
@@ -1271,7 +1300,9 @@
         state.delivery = null;
         state.pending = readPending(context());
         if (state.pending) state.view = 'queued';
-        state.recipients = collectRecipients(project);
+        var live = project.phase === 'live';
+        state.recipients = live ? [] : collectRecipients(project);
+        state.candidateStatus = live ? 'loading' : '';
         applyFilter('risk');
         var html = '<div id="smart-ping-modal" class="modal-overlay smart-ping-overlay active" role="presentation">' +
             '<section class="smart-ping-sheet" role="dialog" aria-modal="true" aria-labelledby="smart-ping-title">' +
@@ -1306,6 +1337,7 @@
         } else if (cooldownRemaining(project) > 0) {
             startCountdownTimer();
         }
+        if (live && !state.pending) loadLiveRecipients(context());
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
     }
     function buttonHtml(appId) {

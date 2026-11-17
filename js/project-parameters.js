@@ -14,6 +14,7 @@
     var CHEVRON = '<svg viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var ICONS = {
         reviews: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
+        clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
         language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18z"/>',
         android: '<path d="m7 6-2-3m12 3 2-3M4 14v-3a8 8 0 0 1 16 0v3zM8 9h.01M16 9h.01M7 14v6m10-6v6M4 17h16"/>',
         email: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 6 8 7 8-7"/>',
@@ -127,6 +128,8 @@
         var id = parameterId(project);
         var argument = esc(JSON.stringify(id));
         var adapter = target(project);
+        var live = adapter?.liveControls?.();
+        var appId = Number(project.id || project.app_id);
         var open = expanded.has(projectKey(project));
         var count = activeCount(project);
         var version = androidVersion(project);
@@ -134,7 +137,7 @@
         var boost = boostMeta(project);
         var depleted = boost.depleted;
         var toggleLabel = text(open ? 'pcParamsCollapse' : 'pcParamsExpand');
-        var languageValue = code === 'RU' ? '🇷🇺 RU' : code === 'EN' ? '🇬🇧 EN' : 'ALL';
+        var languageValue = code === 'RU' ? '🇷🇺 RU' : code === 'EN' ? '🇬🇧 EN' : live ? text('lcAnyLanguage') : 'ALL';
         var onLabel = text('pcParamsOn');
         var offLabel = text('pcParamsOff');
         var countLabel = plural(count, 'pcParamsCountOne', 'pcParamsCountFew', 'pcParamsCountMany');
@@ -155,7 +158,7 @@
         return '<div class="pc-project-params__head">' +
             '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + argument + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '"' + (depleted ? ' aria-description="' + esc(text('pcParamsBoostDepletedHint')) + '"' : '') + '>' +
                 '<span class="pc-project-params__title">' + esc(text(adapter && adapter.titleKey || 'pcParamsTitle')) + '</span>' +
-                '<span class="pc-project-params__count" title="' + esc(text('pcParamsCountHint')) + '"><i aria-hidden="true"></i>' + esc(countLabel) + '</span>' +
+                (live && !count ? '' : '<span class="pc-project-params__count" title="' + esc(text('pcParamsCountHint')) + '"><i aria-hidden="true"></i>' + esc(countLabel) + '</span>') +
                 '<span class="pc-project-params__boost-cue-slot pc-project-params__boost-cue-slot--head">' + (!open ? cue : '') + '</span>' +
                 '<span class="pc-project-params__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
             '</button>' +
@@ -170,12 +173,16 @@
         '</div>' +
         '<div class="pc-project-params__body" id="project-parameters-body-' + id + '"' + (open ? '' : ' inert aria-hidden="true"') + '><div class="pc-project-params__clip"><div class="pc-project-params__content">' +
             '<div class="pc-project-params__grid">' +
+                (live ? tile(project, 'pace', 'lcPaceTitle', live.pace, 'clock', false, 'event.stopPropagation(); LiveCampaigns.openPace(' + appId + ',this)', false) +
+                tile(project, 'admission', 'lcAdmissionTitle', live.admission, 'email', false, 'event.stopPropagation(); LiveCampaigns.openAdmission(' + appId + ')', false) +
+                tile(project, 'feedback', 'lcFeedbackSettings', text('lcFeedbackValue'), 'reviews', false, 'event.stopPropagation(); LiveCampaigns.openFeedback(' + appId + ')', false) : '') +
+                (live && window.ProjectFeedback ? ProjectFeedback.ownerTools(id, false, 'lcRouteTitle') : '') +
                 (project.phase === 'live' ? '' : tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', false)) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + argument + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + argument + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + argument + ',event)', false) +
                 (adapter && adapter.extraHtml ? adapter.extraHtml(project) : '') +
-                (window.ProjectFeedback ? ProjectFeedback.ownerTools(id, project.phase === 'live') : '') +
+                (!live && window.ProjectFeedback ? ProjectFeedback.ownerTools(id, project.phase === 'live') : '') +
                 '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="ProjectParameters.openBoost(' + argument + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
                     '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
                     '<span class="pc-project-param__value">' + boostValueHtml + '</span>' +
@@ -305,6 +312,12 @@
     }
     function openReviews(id,event) {
         showChoice(id,event,'request_reviews','pcParamsReviews','requestReviewsHint',[
+            {value:true,label:'pcParamsOn'},{value:false,label:'pcParamsOff'}],'selectReview');
+    }
+    function openBridgeReviews(id) {
+        var project = projectById(id);
+        if (!project || !target(project)?.liveControls?.().bridge) return;
+        showChoice(id,null,'request_reviews','lcBridgeReviews','lcBridgeReviewsHint',[
             {value:true,label:'pcParamsOn'},{value:false,label:'pcParamsOff'}],'selectReview');
     }
     function selectReview(value) {
@@ -621,4 +634,5 @@
         if(typeof openScreenshotBoostSettings==='function')return openScreenshotBoostSettings(Number(project.id || project.app_id),event);
     }
     window.ProjectParameters = { registerTarget:registerTarget, buildTarget:buildTarget, openBoost:openBoost, icon:icon, selectReview:selectReview, build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
+    window.ProjectParameters.openBridgeReviews = openBridgeReviews;
 })();

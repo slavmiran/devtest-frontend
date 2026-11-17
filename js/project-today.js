@@ -5406,6 +5406,7 @@
                     filterIcon('testers') + '<span>' + esc(teamLabel) + ' · ' + team.length + '</span>' +
                 '</button>' +
                 '<div class="pc-team-collapsed__actions">' + collapsedKarmaButtonHtml(project) +
+                    (project.phase === 'live' ? window.SmartPing?.buttonHtml(appId) || '' : '') +
                     '<button type="button" class="pc-team-collapsed__chevron" onclick="event.stopPropagation(); pcToggleParticipantsCollapse(' + appId + ');" aria-label="' + esc(workspaceText('Развернуть команду', 'Expand team')) + '">' +
                         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
                     '</button>' +
@@ -5429,7 +5430,8 @@
             return tab;
         }).filter(function (tab) { return tab.count > 0; });
 
-        if (!quickTabs.length) return '';
+        var ping = project.phase === 'live' ? window.SmartPing?.buttonHtml(appId) || '' : '';
+        if (!quickTabs.length && !ping) return '';
 
         var todayLabel = text('pcTeamQuickToday', workspaceText('Сегодня', 'Today'));
         var chipsHtml = quickTabs.map(function (tab) {
@@ -5440,8 +5442,8 @@
         }).join('');
 
         return '<div class="pc-team-collapsed-bar" role="group" aria-label="' + esc(workspaceText('Активные вкладки сегодня', 'Active tabs today')) + '" onclick="event.stopPropagation(); pcOnTodayLabelClick(' + appId + ');">' +
-            '<span class="pc-team-quick-today" onclick="event.stopPropagation(); pcOnTodayLabelClick(' + appId + ');" title="' + esc(todayLabel) + '">' + esc(todayLabel) + '</span>' +
-            chipsHtml +
+            (quickTabs.length ? '<span class="pc-team-quick-today" onclick="event.stopPropagation(); pcOnTodayLabelClick(' + appId + ');" title="' + esc(todayLabel) + '">' + esc(todayLabel) + '</span>' : '') +
+            chipsHtml + ping +
         '</div>';
     }
     window.buildProjectTeamCollapsedBar = buildProjectTeamCollapsedBar;
@@ -5484,7 +5486,8 @@
 
         return '<section class="pc-activity pc-activity--workspace' + (data.loading ? ' is-hydrating' : '') + (collapsed ? ' is-participants-collapsed' : ' is-participants-expanded') + '">' +
             '<div class="participants-inset-card' + (collapsed ? ' is-collapsed' : '') + '">' +
-                (collapsed ? '' : headerHtml) +
+                (collapsed ? '' : project.phase === 'live' && window.SmartPing
+                    ? '<div class="pc-live-roster-header">' + headerHtml + SmartPing.buttonHtml(appId) + '</div>' : headerHtml) +
                 contentHtml +
             '</div>' +
         '</section>';

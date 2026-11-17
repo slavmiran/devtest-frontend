@@ -67,8 +67,11 @@
         return label?'<span class="meta-chip pf-badge">'+e(label)+'</span>':'';
     }
 
-    function ownerTools(app, live) {
-        return '<button type="button" class="pc-project-param" data-pf-route="' + Number(app) + '">🏠 ' + e(t('pfRoutes')) + '</button>' +
+    function ownerTools(app, live, routingTitle) {
+        return '<button type="button" class="pc-project-param" data-pf-route="' + Number(app) + '" aria-haspopup="dialog">' +
+            '<span class="pc-project-param__label"><span aria-hidden="true">🏠</span><span>' + e(t(routingTitle || 'pfRoutes')) + '</span></span>' +
+            '<span class="pc-project-param__value">' + e(t('lcConfigure')) + '</span>' +
+            '<span class="pc-project-param__edit" aria-hidden="true">›</span></button>' +
             (live ? '<button type="button" class="pc-project-param" data-pf-settings="' + Number(app) + '">⭐ ' + e(t('pfModule')) + '</button>' : '');
     }
 

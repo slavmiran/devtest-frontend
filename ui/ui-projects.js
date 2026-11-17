@@ -2488,7 +2488,6 @@ function renderProjects(force) {
                     <button type="button" class="project-icon-btn" aria-label="${window.escapeHTML(window.t('pcQuickSettingsTitle', {}, lang) || 'Быстрые настройки проекта')}" onclick="event.stopPropagation(); toggleProjectSettingsDrawer(${project.id}, event)">
                         <img class="project-icon-btn__glyph project-icon-btn__glyph--asset" src="./images/Icons/settings-svgrepo-com.svg" alt="" aria-hidden="true">
                     </button>
-                    ${phase === 'live' ? window.renderPlayStoreDetailsButton(project.id) : ''}
                 </div>
             </div>
             
@@ -2500,6 +2499,16 @@ function renderProjects(force) {
                             <span class="pc-quick-settings__meta">${window.escapeHTML(quickSettingsMeta)}</span>
                         </div>
                         <div class="pc-quick-settings__grid">
+                            ${phase === 'live' ? `
+                                <button type="button" class="pc-quick-tile" data-live-passport="${project.id}" onclick="openPlayStorePassport(${project.id}, event)">
+                                    <span class="pc-quick-tile__icon" aria-hidden="true">📄</span>
+                                    <span class="pc-quick-tile__copy">
+                                        <span class="pc-quick-tile__label">${window.escapeHTML(window.t('pcLivePassport', {}, lang))}</span>
+                                        <span class="pc-quick-tile__value" data-live-passport-status>${window.escapeHTML(window.t(project.play_store_raw ? 'pcLivePassportSynced' : 'pcLivePassportPending', {}, lang))}</span>
+                                    </span>
+                                </button>
+                                ${window.LiveTopic ? LiveTopic.quickTile(project.id) : ''}
+                            ` : ''}
                             <button type="button" class="pc-quick-tile pc-quick-tile--visibility" onclick="openVisibilityModeModal(${project.id}, event)">
                                 <span class="pc-quick-tile__icon pc-quick-tile__icon--visibility" aria-hidden="true">${visibilitySvg}</span>
                                 <span class="pc-quick-tile__copy">
@@ -7851,6 +7860,7 @@ function toggleProjectCard(projectId, event) {
         if (chevron) chevron.classList.remove('is-collapsed');
     } else {
         card.classList.add('card-collapsed');
+        window.LiveCampaigns?.collapse(card);
         localStorage.setItem('project_card_collapsed_' + projectId, 'true');
         if (chevron) chevron.classList.add('is-collapsed');
     }
@@ -8302,6 +8312,7 @@ function toggleProjectSettingsDrawer(projectId, event) {
     
     if (!isActive) {
         drawer.classList.add('active');
+        if (drawer.querySelector('[data-mtp-open]') && window.LiveTopic) LiveTopic.loadBadge(projectId);
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
         setTimeout(() => {
             document.addEventListener('click', closeAllDrawersOnOutsideClick);

@@ -80,6 +80,19 @@
         return Array.from(keys.values()).sort(function (a, b) { return b.installs - a.installs; });
     }
     function newer(a, b) { return a && (!b || Date.parse(a.as_of) >= Date.parse(b.as_of)) ? a : b; }
+    function experience(project) {
+        var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
+        var feedback = metrics?.reviews;
+        var values = feedback?.criteria || [];
+        var count = feedback?.basis === 'legacy' ? 0 : Number(feedback?.total || 0);
+        var labels = [['🎨','lrdrUsability'], ['⚡','lrdrStability'], ['💡','lrdrValue']];
+        return '<section class="lc-participant-experience"><header><strong>⭐ '+esc(tr('lcExperienceTitle'))+
+            '</strong><small>'+esc(tr(!metrics?'lmWaiting':count?'lcExperienceCount':'lmNoRatings',{n:num(count)}))+'</small></header>'+
+            (values.some(function(value){return value!=null;})?'<div class="lc-experience-criteria">'+labels.map(function(label,index){
+                return '<div><span>'+label[0]+' '+esc(tr(label[1]))+'</span><b>'+esc(values[index]==null?tr('lcExperienceNoScore'):num(values[index],1)+' ★')+'</b></div>';
+            }).join('')+'</div>':'')+
+            '<button type="button" class="pc-results-feedback-link" onclick="event.stopPropagation(); openProjectFeedback('+id+',false,{preferUnprocessed:false,typeFilter:\'project_impression\'});">'+esc(tr('lcExperienceRead'))+' <span aria-hidden="true">›</span></button></section>';
+    }
     function render(project, failure) {
         var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
         if (metrics && metrics.source !== 'devtesthub_live') metrics = null;
@@ -136,8 +149,10 @@
                 radar && reviews ? radar.mini(reviews.criteria) : '', radar ? radar.compact(id, storefront, 'rating') : '') +
                 metricCard(t('installs'), installMain, installs, paceNote, '', radar ? radar.compact(id, storefront, 'installs') : '') + '</div>' +
             '<div class="live-metrics-health">' + health + '</div>' + aso +
-            '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : !metrics ? esc(t('loading')) : !metrics.boundary_available ? esc(t('boundary')) : '') + '</span><button type="button" class="live-metrics-more" onclick="LiveProjectMetrics.details(' + id + ',event)">' + esc(t('more')) + ' ↗</button></div></section>';
-        return quick+(window.LiveTopic?LiveTopic.buttons(id):'')+section+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
+            (failure || !metrics || !metrics.boundary_available
+                ? '<div class="live-metrics-footer"><span class="live-metrics-status" role="status">' + (failure ? esc(t('error')) + ' <button type="button" onclick="LiveProjectMetrics.reload(' + id + ',event)">' + esc(t('retry')) + '</button>' : esc(t(!metrics ? 'loading' : 'boundary'))) + '</span></div>' : '') +
+            '</section>';
+        return quick+section+(window.LiveHistoryImport&&metrics&&!(window.LiveGuidance&&installs&&installs.total<LiveGuidance.target(metrics))?window.LiveHistoryImport.banner(id,metrics.history_import):'');
     }
     function remember(id, metrics) {
         if(window.LiveMarket)LiveMarket.prefetch();
@@ -151,6 +166,9 @@
         if (metrics) remember(id, metrics);
         document.querySelectorAll('.live-metrics-slot[data-app-id="' + id + '"]').forEach(function (slot) {
             slot.innerHTML = render({ id: id }, failure);
+        });
+        document.querySelectorAll('[data-live-experience="' + id + '"]').forEach(function (slot) {
+            slot.innerHTML = experience( { id: id } );
         });
     }
     function endpoint(id, suffix) { return String(window.API_BASE || '/api').replace(/\/$/, '') + '/apps/' + id + '/' + suffix; }
@@ -265,13 +283,14 @@
         var close = event.target.closest('[data-lm-early-close]');
         if (close) { event.stopPropagation(); var box = close.closest('.lm-early-body'); if (box) box.hidden = true; return; }
         var health = event.target.closest('[data-lm-health]');
-        if (health && window.LiveProjectMetrics) { LiveProjectMetrics.details(health.dataset.lmHealth, event); return; }
+        if (health && window.LiveProjectMetrics) { LiveProjectMetrics.details(Number(health.dataset.lmHealth), event); return; }
         var position = event.target.closest('[data-lm-position]');
         if (position) { event.stopPropagation(); openPosition(Number(position.dataset.lmPosition)); }
     });
     window.LiveProjectMetrics = {
         explain: function(event) { if(event)event.stopPropagation();var control=event&&event.currentTarget;var hint=control&&control.dataset.liveHint;if(hint&&window.showToast)window.showToast(hint,10000); },
         render: render,
+        experience: experience,
         repaint: function(id){update(Number(id),cache.get(Number(id)));},
         applyPulse: function (id, score, delta) {
             id = Number(id);
