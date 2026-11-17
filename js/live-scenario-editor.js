@@ -101,6 +101,11 @@
         var steps = normalize(activity);
         return '<section class="lse-editor"><header><strong>' + e(t('growthScenario')) +
             '</strong><span data-lse-fee aria-live="polite">' + e(feeLabel(activity)) + '</span></header>' +
+            '<div class="lse-meta-fields"><label>' + e(t('lrScenarioTitle')) +
+            '<input class="gtw-input" data-lcw-input="scenarioTitle" maxlength="80" value="' + e(activity.title) + '"></label>' +
+            '<label>' + e(t('lrScenarioLimit')) +
+            '<input class="gtw-input" data-lcw-input="scenarioLimit" type="number" min="1" max="100000" placeholder="' +
+            e(t('lrUnlimited')) + '" value="' + (activity.execution_limit || '') + '"></label></div>' +
             steps.map(function (step, index) {
                 var key = 'step:' + step._key;
                 var media = step.media && step.media.asset;
@@ -206,6 +211,6 @@
             if (step.media.asset) step.media.asset.type = step.media.kind === 'video' ? 'video/mp4' : 'image/png';
         });
     }
-    window.LiveScenarioEditor = {body: body, input: input, click: click, set: set, refresh: refresh,
+    window.LiveScenarioEditor = {body: body, input: input, click: click, set: set, refresh: refresh, feeLabel: feeLabel,
         valid: valid, fee: fee, split: split, serialize: serialize, load: load};
 })();

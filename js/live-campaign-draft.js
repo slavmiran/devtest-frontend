@@ -8,7 +8,7 @@
    baseline:{available:!!(m&&m.source==='devtesthub_live'&&m.boundary_available!==false&&(!b||b.available)&&typeof r==='number'&&Number.isFinite(r)&&r>=0),perDay:r||0,days:b&&b.days||7},
    web:{query:title.slice(0,200),screenshot:null,mode:'web_brand'},
    developerName:String(p.play_store_raw&&(p.play_store_raw.developer||p.play_store_raw.developer_name)||''),keywords:[],nextKeywordId:1,
-   retention:{days:14,min_days:14,max_days:14,checkpoint_mode:'count',checkpoint_count:2,checkpoints:[1,8,14]},activity:{enabled:false,screenshot:false,instructions:''},
+   retention:{days:14,min_days:7,max_days:14,checkpoint_mode:'count',checkpoint_count:2,checkpoints:[1,8,14]},activity:{enabled:false,screenshot:false,instructions:''},
    reviews:{enabled:false,delayDays:7,prompt:'soft'},contracts:{enabled:false,limit:10,daily_rate_bust:10,kd_rate_bust:10,source_bonus_bust:{link:0,web:20,keywords:40},scenario_bonus_bust:30,required_review_bonus_bust:70,payout_mode:'daily'},
    volume:{limit_mode:'budget',paced:true,dailyInstalls:1,acquisitionDays:14,totalInstalls:14,paceVersion:2,pauseHours:24,rampDays:0,allowContractsDuringPause:true},routePriority:false};
  }
@@ -26,15 +26,15 @@
   var n=create({id:d.appId,name:d.appTitle});n.developerName=d.developerName;n.baseline=clone(d.baseline);n.corridor=d.corridor;n.thermalPhase=d.thermalPhase;n.autoDailyCost=d.autoDailyCost;n.template=template;
   var rate=d.baseline.available?d.baseline.perDay:0;
   if(template==='aso'){
-   n.source='keywords';n.reviews.enabled=true;n.volume.rampDays=7;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.3)));
+   n.source='keywords';n.volume.rampDays=7;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.3)));
    var phrase=LiveCampaignKeywords.suggest({title:d.appTitle})[0]||LiveCampaignKeywords.clean(d.appTitle).slice(0,80);
    if(phrase)n=addKeyword(n,phrase);
   }else if(template==='retention'){
-   n.retention={days:28,checkpoints:[1,7,14,21,28]};n.volume.rampDays=14;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.1)));
+   n.retention={days:28,min_days:14,max_days:35,checkpoints:[1,7,14,21,28]};n.volume.rampDays=14;n.volume.dailyInstalls=Math.min(500,Math.max(1,Math.round(rate*.1)));
   }else if(template==='deep'){
-   n.retention={days:7,checkpoints:[1,7]};n.activity={enabled:true,screenshot:true,instructions:''};n.volume.acquisitionDays=7;
+   n.retention={days:7,min_days:7,max_days:14,checkpoints:[1,7]};n.activity={enabled:true,screenshot:true,instructions:''};n.volume.acquisitionDays=7;
   }
-  n.allowedSources=[n.source];n.retention.min_days=n.retention.days;n.retention.max_days=n.retention.days;n.retention.checkpoint_mode='count';n.retention.checkpoint_count=n.retention.checkpoints.length-1;n.retention.checkpoints=checkpoints(n.retention.days,n.retention.checkpoint_count);n.volume.totalInstalls=n.volume.dailyInstalls*n.volume.acquisitionDays;return n;
+  n.allowedSources=[n.source];n.retention.checkpoint_mode='count';n.retention.checkpoint_count=n.retention.checkpoints.length-1;n.retention.checkpoints=checkpoints(n.retention.days,n.retention.checkpoint_count);n.volume.totalInstalls=n.volume.dailyInstalls*n.volume.acquisitionDays;return n;
  }
  function checkpointOptions(days){var list=[1,4,7,10,14,21,28,35].filter(function(n){return n<=days;});if(!list.includes(days))list.push(days);return list.sort(function(a,b){return a-b;});}
  function change(d,f,v){
@@ -52,7 +52,7 @@
   else if(f==='scenarioTitle'&&typeof v==='string'&&v.length<=80)n.activity.title=v;
   else if(f==='scenarioLimit'&&(v===null||Number.isInteger(v)&&v>=1&&v<=100000))n.activity.execution_limit=v;
   else if(['retention','minDays','maxDays','checkpointCount','checkpointInterval'].includes(f)&&Number.isInteger(v)){
-   var r=n.retention;if(f==='retention'&&v>=3&&v<=60){r.days=v;r.min_days=Math.min(r.min_days||v,v);r.max_days=Math.max(r.max_days||v,v);}
+   var r=n.retention;if(f==='retention'&&v>=(r.min_days||r.days)&&v<=(r.max_days||r.days)){r.days=v;}
    else if(f==='minDays'&&v>=3&&v<=60){r.min_days=v;r.max_days=Math.max(r.max_days||v,v);r.days=Math.max(r.days,v);}
    else if(f==='maxDays'&&v>=3&&v<=60){r.max_days=v;r.min_days=Math.min(r.min_days||v,v);r.days=Math.min(r.days,v);}
    else if(f==='checkpointCount'&&v>=1&&v<=59){r.checkpoint_mode='count';r.checkpoint_count=v;}
@@ -60,7 +60,8 @@
    else return d;
    if(!r.checkpoint_mode||r.checkpoint_mode==='manual'){r.checkpoint_mode='count';r.checkpoint_count=Math.max(1,r.checkpoints.length-1);}
    r.checkpoints=checkpoints(r.days,r.checkpoint_count,r.checkpoint_mode==='interval'?r.checkpoint_interval:null);
-   if(n.reviews.config){n.reviews.config.day=Math.min(n.reviews.config.day,r.max_days||r.days);n.reviews.delayDays=n.reviews.config.day;}
+   if(n.impression?.day)n.impression.day=Math.min(n.impression.day,r.max_days||r.days);
+   if(n.activity.open_day)n.activity.open_day=Math.min(n.activity.open_day,r.min_days||r.days);
   }
   else if(f==='checkpoint'){
    if(v===1||!checkpointOptions(n.retention.days).includes(v))return d;
@@ -109,9 +110,9 @@
  function valid(d,step){return (!window.LiveManualPlan||LiveManualPlan.valid(d.volume.manualPlan))&&!!d.source&&(!allowed(d).includes('web')||d.web.mode==='web_brand'||!!d.web.query.trim())&&(!allowed(d).includes('keywords')||d.keywords.some(function(k){return k.enabled!==false&&!k.is_fallback;}))&&d.retention.checkpoints.length>=2&&(step<3||(!window.LiveScenarioEditor||LiveScenarioEditor.valid(d.activity,d.retention.min_days||d.retention.days))&&(!!d.icon||!!d.name.trim()));}
  async function definition(d,serialize){
   var sources=allowed(d),web=sources.includes('web'),custom=web&&d.web.mode!=='web_brand';
-  var payload={name:d.name,icon:d.icon===null?null:d.icon||'rocket',template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:clone(d.reviews),volume:clone(d.volume),web:{query:custom?d.web.query:'',screenshot:null},keywords:[]};
+  var payload={name:d.name,icon:d.icon===null?null:d.icon||'rocket',template:d.template,source:d.source,retention:clone(d.retention),activity:clone(d.activity),reviews:{enabled:false,delayDays:7,prompt:'soft'},volume:clone(d.volume),web:{query:custom?d.web.query:'',screenshot:null},keywords:[]};
   if(web)payload.web.mode=d.web.mode||'web_custom';
-  if(d.allowedSources){payload.allowed_sources=sources.slice();if(!d.contracts||!d.contracts.enabled)payload.preferred_track={source:d.source,days:d.retention.days};}
+  if(d.allowedSources){payload.allowed_sources=sources.slice();payload.preferred_track={source:d.source,days:d.retention.days};}
   if(d.contracts)payload.contracts=clone(d.contracts);
   if(d.impression)payload.impression=clone(d.impression);
   if(d.country)payload.country=d.country;
@@ -124,7 +125,13 @@
   return payload;
  }
  function fromCampaign(p,c,asset){
-  var d=create(p),saved=clone(c.definition);['name','icon','template','source','retention','activity','reviews','impression'].forEach(function(k){if(saved[k]!=null)d[k]=saved[k];});
+  var d=create(p),saved=clone(c.definition);['name','icon','template','source','retention','activity','impression'].forEach(function(k){if(saved[k]!=null)d[k]=saved[k];});
+  if(saved.preferred_track){
+   var track=saved.preferred_track,r=d.retention;
+   if((saved.allowed_sources||[saved.source]).includes(track.source))d.source=track.source;
+   if(track.days>=(r.min_days||r.days)&&track.days<=(r.max_days||r.days)&&track.days!==r.days)
+    d=change(d,'retention',track.days);
+  }
   if(saved.icon===null)d.icon=null;
   d.routePriority=c.route_priority===true;
   d.parentCampaignId=c.parent_campaign_id||null;

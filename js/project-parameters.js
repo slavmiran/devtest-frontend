@@ -104,7 +104,7 @@
     }
     function activeCount(project) {
         var adapter=target(project); if(adapter && adapter.activeCount){var count=Number(adapter.activeCount(project));return Number.isFinite(count)?Math.max(0,Math.trunc(count)):0;}
-        return Number(project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
+        return Number(project.phase !== 'live' && project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
             + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list');
     }
     function icon(name, className) {
@@ -170,7 +170,7 @@
         '</div>' +
         '<div class="pc-project-params__body" id="project-parameters-body-' + id + '"' + (open ? '' : ' inert aria-hidden="true"') + '><div class="pc-project-params__clip"><div class="pc-project-params__content">' +
             '<div class="pc-project-params__grid">' +
-                tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', false) +
+                (project.phase === 'live' ? '' : tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', false)) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + argument + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + argument + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + argument + ',event)', false) +
@@ -283,6 +283,7 @@
         }
     }
     function toggleReviews(id, event, legacy) {
+        if(projectById(id)?.phase==='live'){stop(event);return;}
         if(window.ReviewCredits&&!legacy){stop(event);return ReviewCredits.refresh().then(function(w){return w.enabled===false?toggleReviews(id,null,true):ReviewCredits.openSettings(Number((projectById(id)||{}).id||(projectById(id)||{}).app_id||id));}).catch(function(){if(window.showToast)showToast(ReviewCredits.t('rvUnavailable'));});}
         return openReviews(id,event);
     }

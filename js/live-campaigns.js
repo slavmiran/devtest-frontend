@@ -66,7 +66,7 @@
             onChange:function () { repaint(s); },
             activeCount:function (value) {
                 var boost=value.screenshot_boost_campaign || {};
-                return Number(value.request_reviews !== false) + Number(!!value.target_lang && value.target_lang !== 'ALL') + Number(value.min_android_version > 0) +
+                return Number(!!value.target_lang && value.target_lang !== 'ALL') + Number(value.min_android_version > 0) +
                     Number(!!String(value.instructions || '').trim()) + Number(!!(boost.enabled && boost.pool_remaining >= boost.reward_bust && boost.reward_bust > 0));
             }
         });

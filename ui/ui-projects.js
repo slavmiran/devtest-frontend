@@ -7176,7 +7176,7 @@ function openProjectDetailsModal(appId) {
         ? cachedOwnerProfile.karma
         : (test && typeof test.owner_karma !== 'undefined' ? test.owner_karma : test.ownerKarma);
     const ownerKarma = Number.isFinite(Number(ownerKarmaRaw)) ? Number(ownerKarmaRaw) : 0;
-    const hasPlayReviewRequest = !!test.request_reviews;
+    const hasPlayReviewRequest = !!test.request_reviews && (window.LiveReviewQualityPolicy?.externalAllowed(test) ?? test.phase !== 'live');
     const rewardsSummary = (test && test.rewards_summary && typeof test.rewards_summary === 'object') ? test.rewards_summary : {};
     const playReviewStatus = typeof window.getPlayReviewStatus === 'function'
         ? window.getPlayReviewStatus(test)

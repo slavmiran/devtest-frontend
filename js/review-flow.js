@@ -1,4 +1,5 @@
 /* Existing Play Review modal + Feedback Center, backed by versioned review tasks. */
+/* DISABLED_BY_QUALITY_POLICY for Live. Internal DevTestHub experience feedback uses ProjectFeedback. */
 (function(){
  'use strict';var C=window.ReviewCredits,session=null,sequence=0,starts=new Map();
  function t(k,v){return C.t(k,v);}function e(v){return C.e(v);}function n(v){return C.n(v);}function test(id){return (window.myTests||[]).find(function(x){return Number(x.id||x.app_id)===Number(id);});}

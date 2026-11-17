@@ -1,6 +1,12 @@
 /* Shared review allowance wallet and configurator; all prices/receipts come from the server. */
+/* DISABLED_BY_QUALITY_POLICY: External Google Play reviews are disabled for Live projects.
+ * Only internal DevTestHub experience ratings and feedback are active for Live.
+ * Growth quota accounting is independent of the archived external workflow. */
 (function(){
  'use strict';var wallet=null,owner='',pending=null,buyKeys={},seenReceipts=new Set();
+ const LEGACY_EXTERNAL_GP_REVIEWS_ENABLED = false;
+ function externalAllowed(app){return LEGACY_EXTERNAL_GP_REVIEWS_ENABLED || !app || (app.phase || app.app_phase) !== 'live';}
+ window.LiveReviewQualityPolicy=Object.freeze({LEGACY_EXTERNAL_GP_REVIEWS_ENABLED,status:'DISABLED_BY_QUALITY_POLICY',externalAllowed});
  function t(k,v){return window.t(k,v||{},window.lang==='ru'?'ru':'en');}
  function e(v){return window.escapeHTML(String(v==null?'':v));}
  function n(v,d){return Number(v||0).toLocaleString(window.lang==='ru'?'ru-RU':'en-US',{minimumFractionDigits:0,maximumFractionDigits:d===undefined?2:d});}

@@ -10,7 +10,8 @@
 
     function configFields(value, maxDay, inherit) {
         var current = value || {mode: inherit ? 'inherit' : 'off', day: null, bonus: 0};
-        var day = current.day || Math.max(2, maxDay - 4);
+        var day = Math.min(maxDay,current.day || Math.max(2, maxDay - 4));
+        var jitter = Number(current.jitter_days) || 0;
         return '<fieldset class="pf-config"><legend>⭐ ' + e(t('pfModule')) + '</legend>' +
             '<label>' + e(t('pfMode')) + '<select class="gtw-input" data-pf-field="mode">' +
             (inherit ? ['inherit'].concat(modes) : modes).map(function (mode) {
@@ -22,7 +23,12 @@
             '<label data-pf-day-box' + (current.day ? '' : ' hidden') + '>' + e(t('pfOpeningDay')) +
             '<output data-pf-day-output>D' + day + '</output><input type="range" data-pf-field="day" min="2" max="' + maxDay +
             '" value="' + day + '"></label>' +
-            '<p class="pf-muted">' + e(inherit ? t('pfDefaultDay', {day: Math.max(2, maxDay - 4)}) : t('pfDefaultDayGeneric')) + '</p>' +
+            '<p class="pf-muted">' + e(t('bpBeforeFinish')) + '</p>' +
+            '<label>' + e(t('bpJitter')) + '<select class="gtw-input" data-pf-field="jitter">' + [0,1,2,3].map(function (days) {
+                return '<option value="'+days+'"'+(days===jitter?' selected':'')+'>'+(days?'±'+days+' d':'0')+'</option>';
+            }).join('') + '</select></label><p class="pf-muted" data-pf-window data-pf-generic="'+(!inherit)+'"'+(!inherit&&!current.day?' hidden':'')+'>' + e(t('bpFeedbackWindow', {
+                min:Math.max(2, day-jitter),max:Math.min(maxDay,day+jitter)
+            })) + ' · ' + e(t('bpJitterHelp')) + '</p>' +
             '<label data-pf-bonus-box' + (current.mode === 'voluntary' ? '' : ' hidden') + '>' + e(t('pfBonus')) +
             '<input class="gtw-input" type="number" inputmode="numeric" data-pf-field="bonus" min="0" max="300" value="' +
             (Number(current.bonus) || 0) + '"></label>' +
@@ -33,15 +39,23 @@
         var root = field.closest('.pf-config');
         var selected = root.querySelector('[data-pf-field="mode"]').value;
         var custom = root.querySelector('[data-pf-field="custom"]').checked;
-        var day = Number(root.querySelector('[data-pf-field="day"]').value);
+        var knob = root.querySelector('[data-pf-field="day"]'), maxDay = Number(knob.max);
+        var day = custom ? Number(knob.value) : Math.max(2, maxDay-4);
+        var jitter = Number(root.querySelector('[data-pf-field="jitter"]').value);
         var bonus = root.querySelector('[data-pf-field="bonus"]');
         root.querySelector('[data-pf-open-fields]').hidden = !['voluntary','mutual'].includes(selected);
         root.querySelector('[data-pf-bonus-box]').hidden = selected !== 'voluntary';
         root.querySelector('[data-pf-day-box]').hidden = !custom;
         root.querySelector('[data-pf-day-output]').textContent = 'D' + day;
+        var windowHint = root.querySelector('[data-pf-window]');
+        windowHint.hidden = !custom && windowHint.dataset.pfGeneric==='true';
+        windowHint.textContent = t('bpFeedbackWindow', {
+            min:Math.max(2,day-jitter),max:Math.min(maxDay,day+jitter)
+        }) + ' · ' + t('bpJitterHelp');
         root.querySelector('[data-pf-mirror-hint]').hidden = selected !== 'mutual';
         if (selected === 'inherit') return null;
-        return {mode: selected, day: custom ? day : null, bonus: selected === 'voluntary' ? Number(bonus.value) : 0};
+        return {mode: selected, day: custom ? day : null, bonus: selected === 'voluntary' ? Number(bonus.value) : 0,
+            ...(jitter && selected !== 'off' ? {jitter_days:jitter} : {})};
     }
 
     function badgeLabel(value) {

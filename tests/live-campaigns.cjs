@@ -52,7 +52,7 @@ const definition=source=>({source,name:source==='keywords'?'ASO keywords':'Direc
   await card.locator('[data-lc-card]>summary').click();assert.equal(await card.locator('textarea,input:not([type="checkbox"]),select').count(),0);
   await card.locator('[data-day="4"]').click();await page.waitForFunction(()=>document.querySelector('.lc-budget>strong').textContent.includes('30'));assert.equal(await card.locator('[data-lc-card]').getAttribute('open'),'');
   const params=page.locator('.lc-section>.pc-project-params');await params.locator('.pc-project-params__toggle').click();await params.locator('[data-project-param="target_lang"]').click();await page.locator('#project-language-options button').nth(1).click();await page.waitForFunction(()=>myProjects[0].target_lang==='EN');assert.equal(control.parameters.target_lang,'EN');
-  await params.locator('[data-project-param="request_reviews"]').click();assert.equal(await page.locator('#project-language-hint').textContent(),await page.evaluate(()=>t('requestReviewsHint',{},lang)));await page.locator('#project-language-options button').last().click();await page.waitForFunction(()=>myProjects[0].request_reviews===false);
+  assert.equal(await params.locator('[data-project-param="request_reviews"]').count(),0,'Live project settings omit external reviews');
   await page.locator('[data-lc-action="project-pool"]').click();await page.locator('[data-lc-wallet-toggle]').locator('..').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-wallet-toggle]').disabled);
   await page.locator('[data-lc-wallet-amount]').fill('60');fail=true;await page.locator('[data-lc-wallet-deposit]').click();await page.waitForFunction(()=>!document.querySelector('[data-lc-wallet-deposit]').disabled);const failedKey=requests.at(-1).data.request_key;
   fail=false;await page.locator('[data-lc-wallet-deposit]').click();await page.waitForFunction(()=>!document.querySelector('#live-campaign-wallet-modal').classList.contains('active'));assert.equal(requests.at(-1).data.request_key,failedKey);assert.equal(control.pool_available,220);assert.equal(await page.locator('.lc-section-balance .lc-wallet-badge').count(),1);
@@ -92,8 +92,14 @@ const definition=source=>({source,name:source==='keywords'?'ASO keywords':'Direc
   await sheet.locator('.lpp-advanced>summary').click();await sheet.locator('[data-lcw-field="plan:pausePreset"][data-value="36_48"]').click();assert.ok((await sheet.locator('[data-lmp-pause-hint]').innerText()).length>30);await page.setViewportSize({width,height:480});await fit();await page.setViewportSize({width,height:900});
   await sheet.locator('.lpc-pace-sheet').evaluate(el=>el.scrollTop=0);await page.screenshot({path:path.join(out,`pro-landing-${language}-${width}.png`),fullPage:true});await sheet.locator('[data-lpc-save]').click();await sheet.waitFor({state:'detached'});assert.equal(control.policy.manualPlan.strategy,'landing');assert.equal(control.policy.manualPlan.batchSize,3);assert.equal(control.policy.manualPlan.pauseMaxHours,48);
   await page.locator('[data-lc-action="project-pace"]').click();await sheet.locator('.lpp-advanced>summary').click();await sheet.locator('[data-lcw-field="plan:strategy"][data-value="legacy"]').click();await sheet.locator('[data-lpc-save]').click();await sheet.waitFor({state:'detached'});assert.equal(control.policy.manualPlan,null,'Legacy return is explicit');
-  await page.locator('[data-campaign-id="4"] [data-lc-card]>summary').click();await page.locator('[data-growth-keys]>summary').click();
-  try{await page.locator('[data-lc-action="keyword"]').first().locator('..').click();}catch(error){console.error(language,width,await page.locator('[data-campaign-id="4"]').evaluate(el=>({html:el.outerHTML,rect:el.getBoundingClientRect().toJSON()})));await page.screenshot({path:path.join(out,'failed-keyword.png'),fullPage:true});throw error;}
+  const growth=page.locator('[data-campaign-id="4"]');
+  await growth.locator('[data-lc-card]>summary').click();
+  const keys=growth.locator('[data-growth-keys]'), keySwitch=keys.locator('[data-lc-action="keyword"]').first().locator('..');
+  for(let attempt=0;attempt<2;attempt++){
+   if(await keys.getAttribute('open')===null)await keys.locator('summary').click();
+   try{await keySwitch.click({timeout:1800});break;}
+   catch(error){if(attempt===1)throw error;}
+  }
   await page.waitForFunction(()=>document.querySelector('[data-lc-action="keyword"][aria-checked="false"]'));assert.equal(await page.locator('[data-lc-action="keyword"][aria-checked="true"]').isDisabled(),true);
   await card.locator('[data-lc-action="toggle-status"]').locator('..').click();await page.waitForFunction(()=>document.querySelector('[data-campaign-id="3"] [data-lc-action="toggle-status"]').getAttribute('aria-checked')==='false');assert.equal(await card.count(),1);
   assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>Object.keys(I18NRU).filter(k=>k.startsWith('lpc')).every(k=>typeof I18NEN[k]==='string')),true);await page.close();

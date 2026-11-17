@@ -1442,7 +1442,7 @@ function renderCompactMeta(daysSincePublish, activeTestersCount, isNew, userTest
             ? window.getPlayReviewStatus(test)
             : String(test.play_review_status || 'none').toLowerCase();
         const canShowReviewChip = !!(
-            test.request_reviews
+            test.request_reviews && (window.LiveReviewQualityPolicy?.externalAllowed(test) ?? test.phase !== 'live')
             && (window.ReviewFlow || Number(userTestingDay || 0) >= 7)
             && String(test.progress_status || 'active').toLowerCase() === 'active'
         );

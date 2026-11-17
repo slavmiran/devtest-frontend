@@ -3760,6 +3760,8 @@ async function toggleProjectDetailsReviewCheckbox(input, appId) {
 }
 
 function openPlayReviewModal(appId, event, options) {
+    const test = (window.myTests || []).find(item => Number(item.id || item.app_id) === Number(appId));
+    if (window.LiveReviewQualityPolicy && !LiveReviewQualityPolicy.externalAllowed(test)) return;
     if (window.ReviewFlow && !(options && options.legacy)) return ReviewFlow.open(appId, event);
     if (event) {
         event.preventDefault();
@@ -6339,7 +6341,7 @@ function showProjectFeedbackModal(project, items, options) {
     body.innerHTML = getProjectFeedbackHeader(project, items, {
         partialLoad: !!options.partialLoad
     }) + (window.ProjectFeedback ? ProjectFeedback.ownerBanner(project.id || project.app_id) : '') + renderProjectFeedbackCards(project, items);
-    if (window.ReviewFlow) ReviewFlow.owner(Number(project.id || project.app_id), body, false);
+    if (window.ReviewFlow && project.phase !== 'live') ReviewFlow.owner(Number(project.id || project.app_id), body, false);
     document.getElementById('project-feedback-modal').classList.add('active');
     cacheProjectFeedbackCards();
     applyProjectFeedbackFilters();
