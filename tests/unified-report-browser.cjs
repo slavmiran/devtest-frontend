@@ -215,7 +215,7 @@ const root = path.resolve(__dirname, '..');
             assert(submitRect.y>=0&&submitRect.y+submitRect.height<=460,'CTA remains above the reduced viewport/keyboard');
             const field=await page.locator('#unified-report-note').boundingBox();
             const scrollBody=await page.locator('.unified-report-body').boundingBox();
-            assert(field.y>=scrollBody.y-1&&field.y+field.height<=scrollBody.y+scrollBody.height+1,'Whole focused field is above the keyboard, inside the scroll area');
+            assert(field.y>=scrollBody.y-1&&field.y+field.height<=scrollBody.y+scrollBody.height+1,'Whole focused field is above the keyboard, inside the scroll area: '+JSON.stringify({width,language,field,scrollBody}));
             assert(await page.locator('#report-modal-heading').evaluate(el=>el.parentElement.classList.contains('unified-report-body')),'Heading is in the scrolling body');
             await page.locator('.unified-report-body').evaluate(el=>el.scrollTop=el.scrollHeight);
             const scrolled=await page.locator('.unified-report-body').evaluate(el=>document.getElementById('report-modal-heading').getBoundingClientRect().bottom<el.getBoundingClientRect().top);

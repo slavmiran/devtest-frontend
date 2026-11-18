@@ -1921,6 +1921,7 @@ function renderIncomingOffers() {
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
                     '</button>') +
                 '</div>' +
+                (window.AutoAcceptFilters ? AutoAcceptFilters.reasonsHtml(offer.auto_accept_reasons) : '') +
                 renderIncomingAccessIssue(offer, lang) +
                 (decisionError ? '<p class="offer-decision-error" role="alert">' + window.escapeHTML(decisionError) + '</p>' : '') +
             '</div>';
