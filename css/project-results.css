@@ -3080,6 +3080,10 @@
     padding: 0 0 max(28px, env(safe-area-inset-bottom));
     overscroll-behavior-y: contain;
 }
+.coverage-error-state {
+    padding: max(28px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+    text-align: center;
+}
 .coverage-body > .coverage-header {
     position: relative;
     will-change: auto;
