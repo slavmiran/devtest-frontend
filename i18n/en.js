@@ -6053,5 +6053,7 @@ Object.assign(window.I18NEN, {
  "lcardProfileHint": "Projects without a separate chat inherit these defaults. Existing project chats stay as configured.",
  "lcardConnectChat": "Connect your Telegram chat ›",
  "lcardZeroFeedback": "0 responses",
- "lcardExperience": "Experience rating"
+ "lcardExperience": "Experience rating",
+ "pfError_feedback_profile_changed": "Profile settings changed. Reopen this window and use the current settings.",
+ "pfError_impression_campaign_only": "Enable mutual written feedback in the individual campaign settings."
 });

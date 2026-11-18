@@ -91,7 +91,7 @@
         if(!accessible(s)){dispose(s);return;}
         var canvas=s.layer.querySelector('.lcw-scroll'),panel=s.layer.querySelector('.bp-sheet-body');
         var body=s.step===0?canvas:panel,position=body.scrollTop,focused=document.activeElement;
-        var attrs=['lcwFocus','lcwInput','lcwAction','lcwField','value','step','keyword','lseKey','lseField','lseQuestion','lseOption','lseSetting','pfField'];
+        var attrs=['lcwFocus','lcwInput','lcwAction','lcwField','value','step','keyword','lseKey','lseField','lseQuestion','lseOption','lseSetting','pfField','pfCampaignMutual'];
         var identity=attrs.map(function(k){return focused&&focused.dataset[k];});
         var start=focused&&focused.selectionStart,end=focused&&focused.selectionEnd;
         s.context.descriptionOpen=!!panel.querySelector('.lcw-description[open]');
@@ -129,6 +129,7 @@
                 var b=analytics.install_velocity.baseline,rate=b?b.per_day:analytics.install_velocity.per_day;s.draft.baseline={available:(!b||b.available)&&typeof rate==='number'&&Number.isFinite(rate)&&rate>=0,perDay:rate||0,days:b&&b.days||7};
             }else if(kind==='campaigns'){s.context.capacity=data.capacity||{active:0,limit:3};s.context.hud=data.hud||null;s.context.campaignsError=false;
                 if(data.project_control)s.context.poolAvailable=data.project_control.pool_available;
+                if(data.project_control?.feedback_settings&&window.ProjectFeedback)ProjectFeedback.rememberSettings(s.draft.appId,data.project_control.feedback_settings);
                 if(data.project_control&&!s.context.projectControl){var pristine=!dirty(s);s.context.projectControl=LiveProjectControl.setup(s.draft,data.project_control,data.campaigns,s.editing);if(pristine)s.initial=fingerprint(s.draft);}
             }else{
                 s.context.market=data.play_store_raw || null;
@@ -142,7 +143,7 @@
         finally{
             s.readers=s.readers.filter(function(r){return r!==c;});
             if(accessible(s)){s.context[kind+'Loading']=false;refresh(s);
-                if(kind==='market' && s.step===1)render(s,false);
+                if(kind==='market' && s.step===1 || kind==='campaigns' && s.step===0)render(s,false);
             }else if(session===s)dispose(s);
         }
     }
