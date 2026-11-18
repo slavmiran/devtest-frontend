@@ -6054,6 +6054,7 @@ Object.assign(window.I18NEN, {
  "lcardConnectChat": "Connect your Telegram chat ›",
  "lcardZeroFeedback": "0 responses",
  "lcardExperience": "Experience rating",
+ "pcResultsExperience": "Experience",
  "pfError_feedback_profile_changed": "Profile settings changed. Reopen this window and use the current settings.",
  "pfError_impression_campaign_only": "Enable mutual written feedback in the individual campaign settings."
 });

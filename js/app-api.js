@@ -2434,6 +2434,8 @@ function _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision) 
             ideas_total_count: Number(project.ideas_total_count || 0),
             reviews_new_count: Number(project.reviews_new_count || 0),
             reviews_total_count: Number(project.reviews_total_count || 0),
+            impressions_new_count: Number(project.impressions_new_count || 0),
+            impressions_total_count: Number(project.impressions_total_count || 0),
             // Keep the lightweight coverage aggregate returned by the
             // dashboard API. Dropping this object made the card render five
             // zeroes even though the detailed coverage endpoint had data.

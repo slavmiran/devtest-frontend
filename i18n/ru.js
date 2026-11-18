@@ -6069,6 +6069,7 @@ Object.assign(window.I18NRU, {
  "lcardConnectChat": "Подключить свой ТГ-чат ›",
  "lcardZeroFeedback": "0 откликов",
  "lcardExperience": "Оценка опыта",
+ "pcResultsExperience": "Оценка опыта",
  "pfError_feedback_profile_changed": "Настройки профиля изменились. Откройте окно заново и подставьте актуальные настройки.",
  "pfError_impression_campaign_only": "Взаимный текстовый отклик включается в настройках отдельной кампании."
 });

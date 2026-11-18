@@ -80,17 +80,21 @@
         return Array.from(keys.values()).sort(function (a, b) { return b.installs - a.installs; });
     }
     function newer(a, b) { return a && (!b || Date.parse(a.as_of) >= Date.parse(b.as_of)) ? a : b; }
-    function experience(project) {
+    function experienceIndicator(project) {
+        project=Object.assign({},(window.myProjects||[]).find(function(p){return Number(p.id||p.app_id)===Number(project.id||project.app_id);}),project);
         var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
         var feedback = metrics?.reviews;
-        var values = feedback?.criteria || [];
-        var count = feedback?.basis === 'legacy' ? 0 : Number(feedback?.total || 0);
-        var labels = [['🎨','lrdrUsability'], ['⚡','lrdrStability'], ['💡','lrdrValue']];
-        return '<button type="button" class="pc-results-tile pc-results-tile--experience" onclick="event.stopPropagation(); openProjectFeedback('+id+',false,{preferUnprocessed:false,typeFilter:\'project_impression\'});">'+
-            '<span class="pc-results-tile__icon-wrap">'+(window.ProjectParameters?ProjectParameters.icon('reviews'):'⭐')+'</span><span class="pc-results-tile__copy">'+
-            '<span class="pc-results-tile__value">'+esc(count&&feedback.rating?num(feedback.rating,1)+' ★':tr('lcardZeroFeedback'))+'</span>'+
-            '<span class="pc-results-tile__label">'+esc(tr('lcardExperience'))+'</span><span class="pc-results-tile__sub">'+esc(tr('lcExperienceCount',{n:num(count)}))+'</span>'+
-            (count&&values.some(function(value){return value!=null;})?'<span class="pc-results-criteria">'+labels.map(function(label,index){return values[index]!=null?label[0]+num(values[index],1):'';}).filter(Boolean).join(' · ')+'</span>':'')+'</span></button>';
+        var count = Math.max(Number(project.impressions_total_count)||0,feedback?.basis==='legacy'?0:Number(feedback?.total)||0);
+        var fresh = Math.max(0,Number(project.impressions_new_count)||0);
+        var rated = feedback?.basis!=='legacy'&&feedback?.rating>0;
+        return {key:'experience',type:'experience',always:true,newCount:fresh,totalCount:Math.max(count,fresh),
+            value:rated?num(feedback.rating,1)+' ★':String(count),
+            iconSvg:'<svg class="pc-results-tile__glyph" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/></svg>',
+            label:tr('pcResultsExperience'),title:tr('lcardExperience'),detail:tr('lcExperienceCount',{n:num(Math.max(count,fresh))}),
+            action:'openProjectFeedback('+id+',false,{preferUnprocessed:'+!!fresh+',typeFilter:\'project_impression\'});'};
+    }
+    function experience(project) {
+        return window.buildProjectExperienceTile?window.buildProjectExperienceTile(project):'';
     }
 
     function render(project, failure) {
@@ -290,7 +294,7 @@
     window.LiveProjectMetrics = {
         explain: function(event) { if(event)event.stopPropagation();var control=event&&event.currentTarget;var hint=control&&control.dataset.liveHint;if(hint&&window.showToast)window.showToast(hint,10000); },
         render: render,
-        experience: experience,
+        experienceIndicator: experienceIndicator,experience: experience,
         repaint: function(id){update(Number(id),cache.get(Number(id)));},
         applyPulse: function (id, score, delta) {
             id = Number(id);

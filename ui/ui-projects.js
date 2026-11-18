@@ -1643,6 +1643,8 @@ function renderProjects(force) {
                 ideas_total_count: Number(p.ideas_total_count || 0),
                 reviews_new_count: Number(p.reviews_new_count || 0),
                 reviews_total_count: Number(p.reviews_total_count || 0),
+                impressions_new_count: Number(p.impressions_new_count || 0),
+                impressions_total_count: Number(p.impressions_total_count || 0),
                 results_summary: p.results_summary || {},
                 guest_testers_count: Number(p.guest_testers_count || 0),
                 paid_protection_days: Number(p.purchased_protection_days || p.paid_protection_days || 0),

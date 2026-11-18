@@ -20,8 +20,11 @@ Phase-2 Test, 2026-11-18.
   in the capture handler because the drawer intentionally stops bubbling. Opening
   the tile does not publish or charge. The Passport and post show available age
   data; missing timestamps are not invented. Icons use the same bordered SVG well.
-- Coverage and experience includes an experience rating tile, including the zero
-  state. Its action opens the Feedback Center filtered to internal impressions.
+- Coverage and experience retains its horizontal swipe strip and every existing
+  metric. Experience is one more standard compact tile, including the zero state.
+  New internal responses show `+N` and sort with other new results; otherwise it
+  shows the available average and response count. The three criterion scores
+  stay in detailed analytics. Its action opens the Feedback Center filtered to internal impressions.
   The Center has no Telegram banner. A connection link appears only inside an
   owner's private scenario or impression ticket when no effective chat exists.
 

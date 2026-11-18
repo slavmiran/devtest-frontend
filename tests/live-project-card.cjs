@@ -51,7 +51,7 @@ fs.mkdirSync(artifacts, {recursive:true});
                 window.fetchWithRetry=async()=>({ok:true,json:async()=>({status:'success',items:[]})});
                 window.myProjects=[{id:30,name:'Published App',phase:'live',status:'completed',is_visible:true,
                     created_at:'2026-09-10T12:00:00Z',last_sync_date:'2026-09-24',google_sync_day:14,
-                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',bugs_new_count:1,bugs_total_count:1,coverage_devices_total:4,coverage_countries_total:2,testers:[{tester_id:77,username:'live_tester',join_type:'mutual',is_live_tester:true,connection_type:'live',progress_id:777,current_day:4,testing_days:4,last_check_date:'2026-10-07',status:'active'}, {tester_id:78,username:'phase_one_only',join_type:'mutual',progress_id:778,current_day:14,status:'active'}],results_summary:{models_count:4,countries_count:2},live_balance_bust:137.5,protection_bust_pool:999,
+                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',bugs_new_count:1,bugs_total_count:1,ideas_total_count:6,reviews_total_count:28,impressions_total_count:8,impressions_new_count:2,coverage_devices_total:4,coverage_countries_total:2,testers:[{tester_id:77,username:'live_tester',join_type:'mutual',is_live_tester:true,connection_type:'live',progress_id:777,current_day:4,testing_days:4,last_check_date:'2026-10-07',status:'active'}, {tester_id:78,username:'phase_one_only',join_type:'mutual',progress_id:778,current_day:14,status:'active'}],results_summary:{models_count:4,countries_count:2,scenarios_count:3,text_reports:[{id:501,tester_id:77,image_count:1}],video_reports:[{id:502,tester_id:77,image_count:1}]},live_balance_bust:137.5,protection_bust_pool:999,
                     play_store_raw:{title:'Published App'},play_store_synced_at:new Date(Date.now()-3*86400000).toISOString(),live_metrics:{source:'devtesthub_live',as_of:new Date().toISOString(),boundary_available:true,health_score:72,
                     reviews:{total:8,rating:4.3,criteria:[4.7,4.2,4.0],basis:'project_impression',per_day:.5,trend_available:true,trend_percent:-1.2},
                     pace_signals:{trend_percent:-100},installs:{total:12,per_day:3.5,trend_available:true,trend_percent:3},active_users:2,avg_retention_days:23,days_since_update:79,keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]}}];
@@ -108,7 +108,17 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await results.evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.marginLeft)>=12&&parseFloat(s.marginRight)>=12&&parseFloat(s.paddingLeft)>=12&&parseFloat(s.marginBottom)>=14;}),true,'Results keep their outer and inner spacing');
             assert.equal(await results.locator('.pc-results-title').innerText(),language==='ru'?'Покрытие и опыт':'Coverage and experience');
             assert.equal(await results.locator('.pc-results-subtitle').evaluate(el=>getComputedStyle(el).whiteSpace),'normal','The history scope is readable without truncation');
-            assert.equal(await results.locator('.pc-results-tile--experience .pc-results-criteria').count(),1);
+            assert.equal(await results.locator('.pc-results-criteria').count(),0);
+            const strip=results.locator('.pc-results-grid');
+            assert.equal(await strip.evaluate(el=>getComputedStyle(el).display),'flex');
+            assert.equal(await strip.evaluate(el=>el.scrollWidth>el.clientWidth),true);
+            assert.equal(await results.locator('.pc-results-tile').count(),9,'All previous categories plus experience remain');
+            const experience=results.locator('.pc-results-tile--experience');
+            assert.equal(await experience.locator('.pc-results-tile__val').innerText(),'+2');
+            assert.equal(await experience.evaluate(el=>getComputedStyle(el).flexDirection),'column');
+            await page.evaluate(()=>{window.openProjectFeedback=(...args)=>window.experienceOpen=args;});
+            await experience.click();
+            assert.deepEqual(await page.evaluate(()=>window.experienceOpen),[30,false,{preferUnprocessed:true,typeFilter:'project_impression'}]);
             await page.locator('#project-card-30 .pc-dashboard-body [data-smart-ping]').click();
             await page.locator('#smart-ping-modal [data-smart-ping-tester="77"]').waitFor();
             assert.match(await page.locator('#smart-ping-modal .smart-ping-row').innerText(), /D7/);
@@ -135,7 +145,13 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await params.locator('[data-project-param=pace],[data-project-param=admission],[data-project-param=feedback]').count(),3);
             await params.screenshot({path:path.join(artifacts,'project-parameters-'+language+'-'+width+'.png')});
             await params.locator('.pc-project-params__toggle').click();
+            await strip.evaluate(el=>el.scrollLeft=0);
             await results.screenshot({path:path.join(artifacts,'live-results-'+language+'-'+width+'.png')});
+            await strip.evaluate(el=>el.scrollLeft=el.scrollWidth);
+            assert.equal(await strip.evaluate(el=>el.scrollLeft>0),true);
+            await results.screenshot({path:path.join(artifacts,'live-results-end-'+language+'-'+width+'.png')});
+            await strip.evaluate(el=>el.scrollLeft=0);
+            assert.equal(await page.evaluate(()=>{myProjects[0].impressions_new_count=0;LiveProjectMetrics.repaint(30);return document.querySelector('[data-live-experience] .pc-results-tile__val').textContent;}),language==='ru'?'4,3 ★':'4.3 ★');
             await page.locator('#project-card-30 .pc-state-unified').screenshot({path:path.join(artifacts, 'live-metrics-' + language + '-'+width+'.png')});
             assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
             assert.equal(await page.evaluate(()=>collectPipelineProjectsByPhase().live.length),1);

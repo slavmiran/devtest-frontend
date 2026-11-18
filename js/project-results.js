@@ -252,7 +252,8 @@
         var newText = unseenReportCount(summary.text_reports);
         var newVideo = unseenReportCount(summary.video_reports);
 
-        var totalNew = unseenCoverageCount + unseenCountriesCount + newBugs + newIdeas + newReviews + newText + newVideo;
+        var newImpressions=Math.max(0,Number(project.impressions_new_count||0));
+        var totalNew = newImpressions + unseenCoverageCount + unseenCountriesCount + newBugs + newIdeas + newReviews + newText + newVideo;
 
         return {
             newCoverage: unseenCoverageCount,
@@ -260,6 +261,7 @@
             newBugs: newBugs,
             newIdeas: newIdeas,
             newReviews: newReviews,
+            newImpressions: newImpressions,
             newText: newText,
             newVideo: newVideo,
             hasNew: totalNew > 0
@@ -341,6 +343,37 @@
     }
 
     // ── Card Results Block Builder (Expanded Card) ──
+
+    function resultTile(ind,isLastNew,totalWord) {
+        var hasNew = ind.newCount > 0;
+        var isZero = !hasNew && ind.totalCount === 0;
+
+        var valClass = 'pc-results-tile__val';
+        if (hasNew) valClass += ' is-new is-accent';
+        else if (isZero) valClass += ' is-zero';
+
+        var valText = hasNew ? ('+' + ind.newCount) : String(ind.value == null ? ind.totalCount : ind.value);
+        var detailText = hasNew ? (ind.totalCount + ' ' + totalWord) : String(ind.detail || '');
+        var subHtml = detailText
+            ? ('<span class="pc-results-tile__sub">' + window.escapeHTML(detailText) + '</span>')
+            : '<span class="pc-results-tile__sub" aria-hidden="true">&nbsp;</span>';
+
+        return (
+            '<button type="button" class="pc-results-tile pc-results-tile--' + ind.key + ' pc-results-chip--' + ind.type + (isZero ? ' is-zero' : '') + (hasNew ? ' has-new' : '') + (isLastNew ? ' is-new-group-end' : '') + '" ' +
+                'onclick="event.stopPropagation(); ' + ind.action + '" ' +
+                'title="' + window.escapeHTML(ind.title) + '" ' +
+                'aria-label="' + window.escapeHTML(ind.title + ': ' + valText) + '">' +
+                '<span class="pc-results-tile__icon-wrap">' + ind.iconSvg + '</span>' +
+                '<span class="pc-results-tile__copy">' +
+                    '<span class="pc-results-tile__main">' +
+                        '<span class="' + valClass + '">' + window.escapeHTML(valText) + '</span>' +
+                        '<span class="pc-results-tile__label">' + window.escapeHTML(ind.label) + '</span>' +
+                    '</span>' +
+                    subHtml +
+                '</span>' +
+            '</button>'
+        );
+    }
 
     function buildProjectResultsBlock(project) {
         var lang = _getLang();
@@ -492,11 +525,13 @@
         ];
 
         if (project.phase === 'live' || summary.scenarios_count) indicators.push({key:'scenarios',type:'scenario',iconSvg:'🎮',label:window.t('lrScenarios',{},lang),newCount:0,totalCount:Number(summary.scenarios_count||0),detail:'',title:window.t('lrScenarios',{},lang),action:'openProjectResultsFeedback('+appId+', \'scenario\', 0, false);'});
+        var experience=project.phase==='live'&&window.LiveProjectMetrics?LiveProjectMetrics.experienceIndicator(project):null;
+        if(experience)indicators.push(experience);
         var visibleIndicators = indicators.map(function (ind, index) {
             ind._baseOrder = index;
             return ind;
         }).filter(function (ind) {
-            return Number(ind.newCount || 0) > 0 || Number(ind.totalCount || 0) > 0;
+            return ind.always || Number(ind.newCount || 0) > 0 || Number(ind.totalCount || 0) > 0;
         }).sort(function (a, b) {
             var aNew = Number(a.newCount || 0) > 0 ? 1 : 0;
             var bNew = Number(b.newCount || 0) > 0 ? 1 : 0;
@@ -505,41 +540,13 @@
         });
         var newTileCount = visibleIndicators.filter(function (ind) { return Number(ind.newCount || 0) > 0; }).length;
         var hasGroupSplit = newTileCount > 0 && newTileCount < visibleIndicators.length;
-        var experienceHtml=project.phase === 'live' && window.LiveProjectMetrics ? '<div data-live-experience="'+appId+'">'+LiveProjectMetrics.experience(project)+'</div>' : '';
-        var tileCount=visibleIndicators.length+(experienceHtml?1:0);
-        var resultsOverflow = tileCount > 4;
-        var resultsRow = tileCount > 0 && tileCount <= 3;
-        var resultsTrio = tileCount === 3;
+        var tileCount=visibleIndicators.length;
+        var resultsOverflow = tileCount > 4 || !!experience && tileCount>1;
+        var resultsRow = !resultsOverflow && tileCount > 0 && tileCount <= 3;
+        var resultsTrio = !resultsOverflow && tileCount === 3;
         var tilesHtml = visibleIndicators.map(function (ind, index) {
-            var hasNew = ind.newCount > 0;
-            var isZero = !hasNew && ind.totalCount === 0;
-            var isLastNew = hasGroupSplit && index === newTileCount - 1;
-
-            var valClass = 'pc-results-tile__val';
-            if (hasNew) valClass += ' is-new is-accent';
-            else if (isZero) valClass += ' is-zero';
-
-            var valText = hasNew ? ('+' + ind.newCount) : String(ind.totalCount);
-            var detailText = hasNew ? (ind.totalCount + ' ' + totalWord) : String(ind.detail || '');
-            var subHtml = detailText
-                ? ('<span class="pc-results-tile__sub">' + window.escapeHTML(detailText) + '</span>')
-                : '<span class="pc-results-tile__sub" aria-hidden="true">&nbsp;</span>';
-
-            return (
-                '<button type="button" class="pc-results-tile pc-results-tile--' + ind.key + ' pc-results-chip--' + ind.type + (isZero ? ' is-zero' : '') + (hasNew ? ' has-new' : '') + (isLastNew ? ' is-new-group-end' : '') + '" ' +
-                    'onclick="event.stopPropagation(); ' + ind.action + '" ' +
-                    'title="' + window.escapeHTML(ind.title) + '" ' +
-                    'aria-label="' + window.escapeHTML(ind.title + ': ' + valText) + '">' +
-                    '<span class="pc-results-tile__icon-wrap">' + ind.iconSvg + '</span>' +
-                    '<span class="pc-results-tile__copy">' +
-                        '<span class="pc-results-tile__main">' +
-                            '<span class="' + valClass + '">' + window.escapeHTML(valText) + '</span>' +
-                            '<span class="pc-results-tile__label">' + window.escapeHTML(ind.label) + '</span>' +
-                        '</span>' +
-                        subHtml +
-                    '</span>' +
-                '</button>'
-            );
+            var tile=resultTile(ind,hasGroupSplit && index===newTileCount-1,totalWord);
+            return ind.key==='experience'?'<div data-live-experience="'+appId+'">'+tile+'</div>':tile;
         }).join('');
 
         return (
@@ -554,7 +561,7 @@
                     '</span>' +
                 '</div>' +
                 '<div class="pc-results-grid' + (tileCount ? '' : ' is-empty') + (resultsRow ? ' is-row' : '') + (resultsTrio ? ' is-trio' : '') + (resultsOverflow ? ' is-overflow has-more' : '') + '" style="--pc-result-count:' + Math.max(1, tileCount) + '"' + (resultsOverflow ? ' onscroll="pcSyncResultsStripMask(this)"' : '') + '>' +
-                    ((tilesHtml+experienceHtml) || '<button type="button" class="pc-results-grid__empty" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
+                    (tilesHtml || '<button type="button" class="pc-results-grid__empty" onclick="event.stopPropagation(); openProjectCoverage(' + appId + ');">' +
                         '<span>' + window.escapeHTML(lang === 'ru' ? 'Данные появятся после первых отчётов' : 'Data will appear after the first reports') + '</span>' +
                         '<span aria-hidden="true">→</span></button>') +
                 '</div>' +
@@ -613,6 +620,8 @@
             { key: 'video', count: resultsReports(summary, 'video').length, newCount: unseen.newVideo, label: window.t('pcResultsVideo', {}, lang) || (lang === 'ru' ? 'Видео' : 'Video') },
             { key: 'countries', count: countriesCount, newCount: unseen.newCountries, label: window.t('pcResultsCountries', {}, lang) }
         ];
+
+        if(project.phase==='live')metrics.push({key:'reviews',count:Number(project.impressions_total_count)||0,newCount:unseen.newImpressions,label:window.t('lcardExperience',{},lang)});
 
         // Collapsed mode: if no новинки, do NOT display the block at all.
         // If there are новинки, display ONLY the section(s) in which there is a новинка.
@@ -3824,6 +3833,10 @@
     window.closeProjectCoverageModal = closeProjectCoverageModal;
     window.openProjectResultsFeedback = openProjectResultsFeedback;
     window.openProjectResultsReport = openProjectResultsReport;
+    window.buildProjectExperienceTile = function(project) {
+        var appId=Number(project.app_id||project.id),slot=document.querySelector('[data-live-experience="'+appId+'"]');
+        return resultTile(LiveProjectMetrics.experienceIndicator(project),!!slot?.querySelector('.is-new-group-end'),window.t('pcResultsTotalShort',{},_getLang()));
+    };
     window.pcSyncResultsStripMask = function (strip) {
         if (!strip || !strip.classList.contains('is-overflow')) return;
         strip.classList.toggle('has-more', strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 8);
