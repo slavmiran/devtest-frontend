@@ -6,8 +6,9 @@
     var presets = { all: defaults, basic: Object.assign({}, defaults, { reliability: 75, karma: 0 }),
         strict: Object.assign({}, defaults, { reliability: 85, completed_tests: 5, allow_newbies: false }) };
     var choices = { reliability: [null, 60, 75, 85, 95], completed_tests: [null, 1, 5, 15],
-        karma: [null, 0, 10, 30], android: [null, 10, 12, 13] };
+        karma: [null, 0, 10, 30], android: ANDROID_VERSION_PICKER_VALUES.map(function (value) { return value || null; }) };
     var state = { actor: 0, rules: null, projects: [], loading: false, saving: false, draft: null, generation: 0 };
+    var androidInfoOpen = false;
     function t(key, params) { return window.t('autoFilter_' + key, params || {}, lang); }
     function esc(value) { return window.escapeHTML(String(value)); }
     function count(rules) { return Object.keys(defaults).filter(function (key) { return rules[key] !== defaults[key]; }).length; }
@@ -82,6 +83,7 @@
     function open() {
         if (!state.rules || state.saving) return;
         close();
+        androidInfoOpen = false;
         state.draft = Object.assign({}, state.rules);
         var modal = document.createElement('div');
         modal.id = 'auto-filter-modal';
@@ -94,6 +96,12 @@
             '<button type="button" class="btn btn-primary" data-save>' + esc(t('save')) + '</button></footer></section>';
         modal.addEventListener('click', function (event) {
             if (event.target === modal || event.target.closest('[data-close]')) close();
+            var info = event.target.closest('[data-android-info]');
+            if (info) {
+                androidInfoOpen = !androidInfoOpen;
+                info.setAttribute('aria-expanded', String(androidInfoOpen));
+                modal.querySelector('#auto-filter-android-help').hidden = !androidInfoOpen;
+            }
             var chip = event.target.closest('[data-filter-key]');
             if (chip && !state.saving) {
                 state.draft[chip.dataset.filterKey] = chip.dataset.value === '' ? null : Number(chip.dataset.value);
@@ -128,18 +136,19 @@
         var inheritedAndroid = androidLocked && projects.every(function (project) {
             return Number(project.min_android_version) === Number(projects[0].min_android_version);
         }) ? Number(projects[0].min_android_version) : null;
-        var fields = Object.keys(defaults).map(function (key) {
+        var fields = ['reliability', 'karma', 'completed_tests', 'allow_newbies', 'feedback_required', 'android', 'avoid_device_duplicates'].map(function (key) {
             if (!choices[key]) return '<label class="auto-filter-toggle"><span>' + esc(t(key)) + '</span>' +
                 '<input type="checkbox" role="switch" data-toggle="' + key + '"' + (state.draft[key] ? ' checked' : '') + '></label>' +
+                (key === 'feedback_required' ? '<p class="auto-filter-help">' + esc(t('feedbackInfo')) + '</p>' : '') +
                 (key === 'avoid_device_duplicates' ? '<p class="auto-filter-help">' + esc(t('deviceInfo')) + '</p>' : '');
             var android = key === 'android';
-            return '<fieldset><legend>' + esc(t(key)) + '</legend><div class="auto-filter-chips">' +
+            return '<fieldset><legend>' + esc(t(key)) + (android ? ' <button type="button" class="auto-filter-info" data-android-info aria-label="' + esc(t('androidInfoLabel')) + '" aria-controls="auto-filter-android-help" aria-expanded="' + androidInfoOpen + '">ⓘ</button>' : '') + '</legend><div class="auto-filter-chips' + (android ? ' auto-filter-android-chips' : '') + '">' +
                 choices[key].map(function (value) {
                     var label = value == null ? t(android ? 'anyAndroid' : 'any')
                         : android ? t('androidThreshold', { n: value }) : t('threshold', { n: value }) + (key === 'reliability' ? '%' : '');
                     return '<button type="button" data-filter-key="' + key + '" data-value="' + (value == null ? '' : value) +
                         '" aria-pressed="' + ((android && androidLocked ? inheritedAndroid : state.draft[key]) === value) + '"' + (android && androidLocked ? ' disabled' : '') + '>' + esc(label) + '</button>';
-                }).join('') + '</div>' + (android ? '<p class="auto-filter-help">' + esc(t('androidInfo')) + '</p>' +
+                }).join('') + '</div>' + (android ? '<p id="auto-filter-android-help" class="auto-filter-help"' + (androidInfoOpen ? '' : ' hidden') + '>' + esc(t('androidInfo')) + '</p>' +
                     projects.map(function (project) { return '<div class="auto-filter-inherited">🔒 ' + esc(project.name) + ' · Android ' +
                         Number(project.min_android_version) + '+ · ' + esc(t('inherited')) + '</div>'; }).join('') : '') + '</fieldset>';
         }).join('');
