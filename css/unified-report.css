@@ -155,3 +155,14 @@
 .checkin-proof-preview-header { grid-row: 1; }
 .checkin-proof-preview-body { grid-row: 3; }
 .proof-video-open { position: absolute; z-index: 2; inset: 25% 10%; margin: auto; height: fit-content; min-height: 52px; padding: 16px; color: #fff; background: #182435ed; border: 1px solid #34485f; border-radius: 16px; cursor: pointer; }
+.unified-report-catchup {
+    padding: 14px 16px;
+    margin: 8px 0 16px;
+    border: 1px solid rgba(88, 166, 255, .22);
+    border-left: 3px solid var(--button-color, #4b8eff);
+    border-radius: 14px;
+    background: rgba(88, 166, 255, .065);
+}
+.unified-report-catchup strong { display: block; font-size: 14px; line-height: 1.4; }
+.unified-report-catchup p { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--hint-color); }
+.unified-report-catchup small { display: block; margin-top: 8px; line-height: 1.4; color: var(--hint-color); }

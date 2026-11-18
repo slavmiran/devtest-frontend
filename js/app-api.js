@@ -962,7 +962,7 @@ async function loadIncomingOffers(options) {
         }
         _apiStart();
         try {
-            var response = await fetchWithRetry(`${API_BASE}/offers/incoming/${userId}`);
+            var response = await fetchWithRetry(`${API_BASE}/offers/incoming/${userId}?init_data=${encodeURIComponent(getTelegramInitDataRaw())}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             var data = await response.json();
             var nextIncomingOffers = data.offers || [];

@@ -1,6 +1,7 @@
 /* One local-only render path for the frequently used report sheet. */
 (function () {
     'use strict';
+    var inputVisibilityTimer = null;
     var COPY = {
         ru: {
             title: 'Подтверждение теста', formatLabel: 'Формат отчёта',
@@ -46,9 +47,9 @@
             annotate: 'Выделите важное маркером или стрелкой. «Скрыть» закрывает область с личными данными.',
             coverHint: 'Протяните прямоугольник: содержимое будет полностью закрыто непрозрачной маской.',
             catchup: 'Досдача за день {day}',
-            catchupDaily: 'Этот отчёт закроет один дозапрос и подтвердит сегодняшний день. Бонус $BUST за отчёт не начисляется.',
+            catchupDaily: 'Этот отчёт закроет один дозапрос и подтвердит сегодняшний день.',
             catchupBuffer: 'Этот отчёт закроет только один дозапрос. В Buffer нет ежедневного чекина и наград.',
-            catchupDone: 'Сегодняшний день уже подтверждён. Этот отчёт закроет один дозапрос, без повторного чекина и бонуса $BUST.',
+            catchupDone: 'Сегодняшний день уже подтверждён. Этот отчёт закроет один дозапрос.',
             catchupControl: 'Сегодня контрольный день: отчёт подтвердит его, но не закроет прежний дозапрос.',
             more: 'Остальные запросы: {days}. Для каждого нужен отдельный отчёт.',
             series: '{count} фото · бонус сейчас: +{karma} кармы',
@@ -101,9 +102,9 @@
             annotate: 'Highlight with a marker or arrow. Use Redact to cover personal information.',
             coverHint: 'Drag a rectangle: an opaque mask will completely cover its contents.',
             catchup: 'Make-up report for day {day}',
-            catchupDaily: 'This report closes one request and confirms today. No screenshot $BUST bonus is awarded.',
+            catchupDaily: 'This report closes one request and confirms today.',
             catchupBuffer: 'This report closes one request only. Buffer has no daily check-in or rewards.',
-            catchupDone: 'Today is already confirmed. This report closes one request, with no second check-in or screenshot $BUST bonus.',
+            catchupDone: 'Today is already confirmed. This report closes one request.',
             catchupControl: 'Today is a control day: this report confirms today, but does not close an earlier request.',
             more: 'Other requests: {days}. Each needs a separate report.',
             series: '{count} photos · immediate bonus: +{karma} karma',
@@ -400,6 +401,10 @@
         // a valid stable Telegram height also supports a partially expanded app.
         modal.style.top = offset + 'px'; modal.style.height = height + 'px'; modal.style.bottom = 'auto';
         requestAnimationFrame(keepReportInputVisible);
+        // The WebView may scroll to the caret after dispatching viewport resize.
+        // Recheck once after that native adjustment, without following user scrolls.
+        clearTimeout(inputVisibilityTimer);
+        inputVisibilityTimer = setTimeout(keepReportInputVisible, 80);
     }
 
     function renderReviewOption(test, context) {

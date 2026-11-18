@@ -322,6 +322,7 @@ function renderBountyApplications(force) {
                         window.escapeHTML(window.t('bountyAppRejectBtn', {}, lang)) +
                     '</button>' +
                 '</div>' +
+                (window.AutoAcceptFilters ? AutoAcceptFilters.reasonsHtml(app.auto_accept_reasons) : '') +
                 (typeof renderIncomingAccessIssue === 'function' ? renderIncomingAccessIssue(app, lang) : '') +
             '</div>';
     }).join('');

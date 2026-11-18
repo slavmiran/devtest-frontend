@@ -226,6 +226,7 @@ function _showAutoAcceptLockedFeedback() {
 }
 
 function syncAutoAcceptSectionUi() {
+    if (window.AutoAcceptFilters) window.AutoAcceptFilters.sync();
     var sectionLabel = document.getElementById('auto-accept-section-label');
     var sectionMeta = document.getElementById('auto-accept-section-meta');
     var available = _isAutoAcceptSectionAvailable();

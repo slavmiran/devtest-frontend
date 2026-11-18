@@ -973,7 +973,7 @@
         var lang = _getLang();
         var errMsg = error && (error.message || error.statusText || String(error));
         container.innerHTML = (
-            '<div class="coverage-header">' +
+            '<div class="coverage-body"><div class="coverage-header">' +
                 '<div class="coverage-header__top">' +
                     '<div class="coverage-header__brand">' +
                         '<button type="button" class="coverage-header__back-btn" onclick="closeProjectCoverageModal()" aria-label="' + window.escapeHTML(window.t('coverageBackBtnAria', {}, lang) || (lang === 'ru' ? 'Назад' : 'Back')) + '">←</button>' +
@@ -983,7 +983,7 @@
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="coverage-body" style="text-align: center; padding: 40px 16px;">' +
+            '<div class="coverage-error-state">' +
                 '<div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>' +
                 '<div style="font-size: 15px; font-weight: 600; color: #f87171; margin-bottom: 8px;">' +
                     window.escapeHTML(window.t('coverageLoadError', {}, lang) || 'Не удалось загрузить данные покрытия') +
@@ -992,7 +992,7 @@
                 '<button type="button" class="btn btn-secondary" onclick="openProjectCoverage(' + _activeCoverageAppId + ', null, {forceReload: true})">' +
                     window.escapeHTML(window.t('coverageRetry', {}, lang) || 'Повторить') +
                 '</button>' +
-            '</div>'
+            '</div></div>'
         );
     }
 
