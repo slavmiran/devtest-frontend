@@ -50,11 +50,19 @@ const defaults = { reliability: null, allow_newbies: true, completed_tests: null
             await page.waitForSelector('#auto-accept-filter-controls .auto-filter-chips', { state: 'attached' });
             await page.evaluate(() => AutoAcceptFilters.open());
             const sheet = page.locator('.auto-filter-sheet');
+            await page.evaluate(() => document.querySelector('.system-drop-menu').classList.add('active'));
+            assert(await sheet.locator('h3').evaluate(el => { const r=el.getBoundingClientRect(); return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2).closest('#auto-filter-modal'); }), 'Sheet appears above the open settings menu');
             assert(await sheet.isVisible());
             assert(await sheet.evaluate(el => el.scrollWidth <= el.clientWidth));
             const footer = await sheet.locator('footer').boundingBox();
             assert(footer.y >= 0 && footer.y + footer.height <= 900, 'Save and reset stay visible while filters scroll');
-            assert.equal(await sheet.locator('[data-filter-key="android"]:disabled').count(), 4);
+            assert.equal(await sheet.locator('[data-filter-key="android"]:disabled').count(), 9);
+            assert(await sheet.locator('#auto-filter-android-help').isHidden());
+            await sheet.locator('[data-android-info]').click();
+            assert(await sheet.locator('#auto-filter-android-help').isVisible());
+            await sheet.locator('[data-android-info]').click();
+            assert(await sheet.locator('#auto-filter-android-help').isHidden());
+            assert(await sheet.locator('[data-filter-key="android"][data-value="15"]').count());
             assert.match(await sheet.locator('.auto-filter-inherited').innerText(), /Android 12/);
             await sheet.locator('[data-filter-key="reliability"][data-value="75"]').click();
             await sheet.locator('[data-filter-key="karma"][data-value="0"]').click();
@@ -68,6 +76,7 @@ const defaults = { reliability: null, allow_newbies: true, completed_tests: null
             await sheet.locator('[data-save]').click();
             await page.waitForSelector('#auto-filter-modal', { state: 'detached' });
             assert.deepEqual(writes.at(-1), defaults);
+            await page.evaluate(() => document.querySelector(".system-drop-menu").classList.remove("active"));
             await page.evaluate(() => {
                 const host = document.createElement('div'); host.id = 'fixture-reasons'; host.style.padding = '16px';
                 host.innerHTML = AutoAcceptFilters.reasonsHtml([
