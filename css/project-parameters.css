@@ -223,3 +223,13 @@
 @media (prefers-reduced-motion: reduce) {
     .pc-project-params__body, .pc-project-params__chevron { transition: none; }
 }
+
+/* Summary belongs to its own disclosure, with two independent review controls. */
+.pc-project-params__heading{display:grid;gap:6px;min-width:0;flex:1;text-align:start}
+.pc-project-params__summary{display:block;font-size:11px;font-weight:400;color:var(--text-secondary);line-height:1.6;white-space:normal;overflow-wrap:anywhere}
+.pc-project-params__heading .pc-project-params__title{flex:none}.lps-summary-signal{color:var(--warning)}
+.pc-project-param-split{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--border-subtle);border-radius:var(--radius-md,12px);overflow:hidden;background:var(--bg-surface-2)}
+.pc-project-param-split>.pc-project-param{min-width:0;height:100%;border:0!important;border-radius:0!important;background:none!important}
+.pc-project-param-split>.pc-project-param+button{border-inline-start:1px solid var(--border-subtle)!important}
+.pc-project-param-split .pc-project-param__label{align-items:start;white-space:normal;line-height:1.5}
+.pc-project-param-split .pc-project-param__value{white-space:normal;overflow-wrap:anywhere;line-height:1.5}

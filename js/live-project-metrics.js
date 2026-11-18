@@ -86,13 +86,13 @@
         var values = feedback?.criteria || [];
         var count = feedback?.basis === 'legacy' ? 0 : Number(feedback?.total || 0);
         var labels = [['🎨','lrdrUsability'], ['⚡','lrdrStability'], ['💡','lrdrValue']];
-        return '<section class="lc-participant-experience"><header><strong>⭐ '+esc(tr('lcExperienceTitle'))+
-            '</strong><small>'+esc(tr(!metrics?'lmWaiting':count?'lcExperienceCount':'lmNoRatings',{n:num(count)}))+'</small></header>'+
-            (values.some(function(value){return value!=null;})?'<div class="lc-experience-criteria">'+labels.map(function(label,index){
-                return '<div><span>'+label[0]+' '+esc(tr(label[1]))+'</span><b>'+esc(values[index]==null?tr('lcExperienceNoScore'):num(values[index],1)+' ★')+'</b></div>';
-            }).join('')+'</div>':'')+
-            '<button type="button" class="pc-results-feedback-link" onclick="event.stopPropagation(); openProjectFeedback('+id+',false,{preferUnprocessed:false,typeFilter:\'project_impression\'});">'+esc(tr('lcExperienceRead'))+' <span aria-hidden="true">›</span></button></section>';
+        return '<button type="button" class="pc-results-tile pc-results-tile--experience" onclick="event.stopPropagation(); openProjectFeedback('+id+',false,{preferUnprocessed:false,typeFilter:\'project_impression\'});">'+
+            '<span class="pc-results-tile__icon-wrap">'+(window.ProjectParameters?ProjectParameters.icon('reviews'):'⭐')+'</span><span class="pc-results-tile__copy">'+
+            '<span class="pc-results-tile__value">'+esc(count&&feedback.rating?num(feedback.rating,1)+' ★':tr('lcardZeroFeedback'))+'</span>'+
+            '<span class="pc-results-tile__label">'+esc(tr('lcardExperience'))+'</span><span class="pc-results-tile__sub">'+esc(tr('lcExperienceCount',{n:num(count)}))+'</span>'+
+            (count&&values.some(function(value){return value!=null;})?'<span class="pc-results-criteria">'+labels.map(function(label,index){return values[index]!=null?label[0]+num(values[index],1):'';}).filter(Boolean).join(' · ')+'</span>':'')+'</span></button>';
     }
+
     function render(project, failure) {
         var id = Number(project.id || project.app_id), metrics = newer(project.live_metrics, cache.get(id));
         if (metrics && metrics.source !== 'devtesthub_live') metrics = null;

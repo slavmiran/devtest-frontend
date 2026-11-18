@@ -19,8 +19,10 @@ fs.mkdirSync(artifacts, {recursive:true});
                     retention:{days:14,checkpoints:[1,7,14]},activity:{enabled:false}}};
             await page.route('http://fixture.local/**',route => {
                 const pathname = new URL(route.request().url()).pathname;
-                if (pathname.endsWith('/campaigns')) return route.fulfill({json:{status:'success',project_control:{revision:1,pool_available:160,policy:{mode:'auto',paced:true},queue_count:0,parameters:{request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:''},allocations:[]},pace:{quota:5,admitted:2},campaigns:[{kind:'closed_bridge',id:99,app_id:30,status:'active',total_slots:7,occupied_slots:8,free_occupied:7,free_available:0,paid_active:1,next_slot:8,next_slot_price:350,pool_available:160,reserved_bust:40,overlimit_cost:40,affordable_overlimit:4,revision:1,control_days:[1,4,7,10,14],request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:'',additional_reports:[]},custom]}});
-                if (pathname.endsWith('/live-topic')) return route.fulfill({json:{status:'success',result:{post_url:'https://t.me/example/99'}}});
+                if(pathname.endsWith('/priority')){custom.route_priority=route.request().postDataJSON().enabled;return route.fulfill({json:{status:'success',result:{}}});}
+                if (pathname.endsWith('/campaigns')) return route.fulfill({json:{status:'success',project_control:{revision:1,pool_available:160,feedback_settings:{impression:{mode:'voluntary',bonus:50,day:null},bridge_reviews:true,bridge_review_day:7,mutual_campaigns:1,telegram:null},policy:{mode:'auto',paced:true},queue_count:0,parameters:{request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:''},allocations:[]},pace:{quota:5,admitted:2},campaigns:[{kind:'closed_bridge',id:99,app_id:30,status:'active',total_slots:7,occupied_slots:8,free_occupied:7,free_available:0,paid_active:1,next_slot:8,next_slot_price:350,pool_available:160,reserved_bust:40,overlimit_cost:40,affordable_overlimit:4,revision:1,control_days:[1,4,7,10,14],request_reviews:true,target_lang:'ALL',min_android_version:0,instructions:'',additional_reports:[]},custom]}});
+                if (pathname.endsWith('/live-topic')) return route.fulfill({json:{status:'success',result:{post_url:'https://t.me/example/99',post:{showcase_last_update_at:new Date(Date.now()-2*86400000).toISOString()}}}});
+                if (pathname.endsWith('/project-feedback-settings'))return route.fulfill({json:{status:'success',result:{impression:{mode:'voluntary',bonus:50,day:null},mutual_campaigns:1,telegram:null}}});
                 if (pathname.endsWith('/smart-ping/live-candidates')) return route.fulfill({json:{status:'success',items:[
                     {tester_id:77, day:7, control_day:7, scenario_due:true, username:'live_tester'}
                 ]}});
@@ -30,7 +32,7 @@ fs.mkdirSync(artifacts, {recursive:true});
             await page.goto('http://fixture.local/');
             const styles=[...fs.readFileSync(path.join(root,'index.html'),'utf8').matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="\.\/([^"?]+)/g)].map(match=>match[1]);
             for (const file of styles) if(fs.existsSync(path.join(root,file))) await page.addStyleTag({path:path.join(root,file)});
-            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/live-guidance.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/live-market-ui.js','js/live-contracts.js','js/live-topic.js','js/live-admission.js','js/project-feedback.js','js/live-guidance.js','js/play-store-passport.js','js/live-project-metrics.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/smart-ping.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
+            for (const file of ['i18n/ru.js','i18n/en.js','i18n/live-campaigns.js','i18n/live-campaign-wizard.js','i18n/live-campaign-pace.js','i18n/live-campaign-edit.js','i18n/live-project-control.js','i18n/live-guidance.js','i18n/core.js','ui/ui-helpers.js','ui/ui-projects-pipeline-header.js','js/live-market-ui.js','js/live-contracts.js','js/live-topic.js','js/live-admission.js','js/project-feedback.js','js/live-scenario-ui.js','js/live-guidance.js','js/live-pace-signals.js','js/play-store-passport.js','js/live-project-metrics.js','js/project-parameters.js','js/live-campaign-wallet.js','js/live-campaign-controls.js','js/live-project-control.js','js/live-campaign-growth-card.js','js/live-campaigns.js','js/smart-ping.js','ui/ui-projects.js','ui/ui-projects-moderation.js','js/project-results.js','js/project-today.js']) await page.addScriptTag({path:path.join(root,file)});
             await page.evaluate(language => {
                 window.lang = language;
                 window.currentLang = language;
@@ -49,10 +51,10 @@ fs.mkdirSync(artifacts, {recursive:true});
                 window.fetchWithRetry=async()=>({ok:true,json:async()=>({status:'success',items:[]})});
                 window.myProjects=[{id:30,name:'Published App',phase:'live',status:'completed',is_visible:true,
                     created_at:'2026-09-10T12:00:00Z',last_sync_date:'2026-09-24',google_sync_day:14,
-                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',bugs_new_count:1,bugs_total_count:1,testers:[{tester_id:77,username:'live_tester',join_type:'mutual',is_live_tester:true,connection_type:'live',progress_id:777,current_day:4,testing_days:4,last_check_date:'2026-10-07',status:'active'}, {tester_id:78,username:'phase_one_only',join_type:'mutual',progress_id:778,current_day:14,status:'active'}],results_summary:{},live_balance_bust:137.5,protection_bust_pool:999,
-                    play_store_raw:{title:'Published App'},live_metrics:{source:'devtesthub_live',as_of:new Date().toISOString(),boundary_available:true,health_score:72,
+                    mode:'mutual',limit_mutual:12,request_reviews:true,target_lang:'ALL',bugs_new_count:1,bugs_total_count:1,coverage_devices_total:4,coverage_countries_total:2,testers:[{tester_id:77,username:'live_tester',join_type:'mutual',is_live_tester:true,connection_type:'live',progress_id:777,current_day:4,testing_days:4,last_check_date:'2026-10-07',status:'active'}, {tester_id:78,username:'phase_one_only',join_type:'mutual',progress_id:778,current_day:14,status:'active'}],results_summary:{models_count:4,countries_count:2},live_balance_bust:137.5,protection_bust_pool:999,
+                    play_store_raw:{title:'Published App'},play_store_synced_at:new Date(Date.now()-3*86400000).toISOString(),live_metrics:{source:'devtesthub_live',as_of:new Date().toISOString(),boundary_available:true,health_score:72,
                     reviews:{total:8,rating:4.3,criteria:[4.7,4.2,4.0],basis:'project_impression',per_day:.5,trend_available:true,trend_percent:-1.2},
-                    installs:{total:12,per_day:3.5,trend_available:true,trend_percent:3},active_users:2,avg_retention_days:23,days_since_update:79,keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]}}];
+                    pace_signals:{trend_percent:-100},installs:{total:12,per_day:3.5,trend_available:true,trend_percent:3},active_users:2,avg_retention_days:23,days_since_update:79,keywords:[{keyword:'taxi',installs:44},{keyword:'delivery',installs:14}]}}];
                 window.archivedProjects=[{app_id:30,name:'Published App',phase:'live',status:'completed'}];
                 localStorage.setItem('hideDeleteReminder','true');
                 localStorage.setItem('project_card_collapsed_30','false');
@@ -82,7 +84,12 @@ fs.mkdirSync(artifacts, {recursive:true});
             await page.locator('#project-card-30 .project-header-actions .project-icon-btn').click();
             const drawer=page.locator('#settings-drawer-30.active');
             await page.waitForFunction(()=>document.querySelector('[data-mtp-badge="30"]')?.textContent?.startsWith('🟢'));
-            assert.match(await drawer.locator('[data-live-passport-status]').innerText(),language==='ru'?/Загружен/:/Synced/);
+            assert.match(await drawer.locator('[data-live-passport-status]').innerText(),language==='ru'?/Обновлён: 3/:/Updated: 3/);
+            await drawer.locator('[data-mtp-open]').click();
+            await page.locator('.mtp-status').waitFor();
+            await page.keyboard.press('Escape');
+            assert.equal(await drawer.locator('.pc-quick-tile__icon svg').count(),7);
+            await drawer.locator('[data-mtp-open]').evaluate(el=>el.blur());
             await drawer.screenshot({path:path.join(artifacts,'quick-settings-'+language+'-'+width+'.png')});
             await page.locator('#project-card-30 .project-header-actions .project-icon-btn').click();
             assert.deepEqual(errors,[]);
@@ -101,17 +108,29 @@ fs.mkdirSync(artifacts, {recursive:true});
             assert.equal(await results.evaluate(el=>{const s=getComputedStyle(el);return parseFloat(s.marginLeft)>=12&&parseFloat(s.marginRight)>=12&&parseFloat(s.paddingLeft)>=12&&parseFloat(s.marginBottom)>=14;}),true,'Results keep their outer and inner spacing');
             assert.equal(await results.locator('.pc-results-title').innerText(),language==='ru'?'Покрытие и опыт':'Coverage and experience');
             assert.equal(await results.locator('.pc-results-subtitle').evaluate(el=>getComputedStyle(el).whiteSpace),'normal','The history scope is readable without truncation');
-            assert.equal(await results.locator('.lc-experience-criteria b').count(),3);
+            assert.equal(await results.locator('.pc-results-tile--experience .pc-results-criteria').count(),1);
             await page.locator('#project-card-30 .pc-dashboard-body [data-smart-ping]').click();
             await page.locator('#smart-ping-modal [data-smart-ping-tester="77"]').waitFor();
             assert.match(await page.locator('#smart-ping-modal .smart-ping-row').innerText(), /D7/);
             await page.locator('#smart-ping-modal [data-smart-ping-action="close"]').click();
             const example = page.locator('[data-campaign-id="100"]');
+            assert.equal(await example.locator('.lr-add-scenario').isVisible().catch(()=>false),false);
+            assert.equal(await example.locator('.lc-priority svg').count(),1);
+            await example.locator('.lc-priority').click();
+            await example.locator('.lc-priority.is-priority').waitFor();
+            assert.equal(await example.locator('.lc-card-details').getAttribute('open'),null);
+            assert.equal(await example.locator('.lc-priority-label').count(),1);
+            assert.equal(await page.locator('.pc-project-params__summary .lps-summary-signal').count(),1);
+            await page.locator('#project-card-30 .lc-section').screenshot({path:path.join(artifacts,'campaigns-folded-'+language+'-'+width+'.png')});
+            assert.equal(await page.locator('.lg-steps>.lg-step').count(),3);
+            assert.equal(await page.locator('.lg-progress').evaluate(el=>getComputedStyle(el).height),'6px');
+            await page.locator('.lg-start').screenshot({path:path.join(artifacts,'quick-start-'+language+'-'+width+'.png')});
             assert.equal(await example.getByRole('switch').count(),1);
             await example.locator('summary').click();
             await example.locator('[data-lc-action=delete]').waitFor({timeout:5000});
             await page.locator('#project-card-30 .lc-section').screenshot({path:path.join(artifacts,'live-campaign-section-'+language+'-'+width+'.png')});
-            await page.locator('[data-lc-action=show-parameters]').click();
+            assert.equal(await page.locator('.lc-control-summary,[data-lc-action=show-parameters]').count(),0);
+            await page.locator('.pc-project-params__toggle').click();
             const params=page.locator('.lc-section .pc-project-params.is-expanded');
             assert.equal(await params.locator('[data-project-param=pace],[data-project-param=admission],[data-project-param=feedback]').count(),3);
             await params.screenshot({path:path.join(artifacts,'project-parameters-'+language+'-'+width+'.png')});
@@ -138,6 +157,7 @@ fs.mkdirSync(artifacts, {recursive:true});
             await page.evaluate(()=>toggleProjectCard(30));
             assert.equal(await results.isVisible(),true);
             assert.equal(await page.evaluate(()=>localStorage.getItem('pc_participants_collapsed_30')),'0','Card folding preserves participant preferences');
+            assert.equal(await page.evaluate(()=>{const p=myProjects[0];p.run_iteration=2;p.live_metrics.history_import={available:true,imported:false};return /data-live-action="history"/.test(LiveGuidance.quickStart(p,p.live_metrics));}),true);
             // Existing testing cards retain their original team label and section.
             await page.evaluate(()=>{myProjects[0].phase='testing';myProjects[0].status='active';renderProjects(true);});
             assert.equal(await page.locator('#pipeline-section-testing #project-card-30').count(),1);

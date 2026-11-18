@@ -111,3 +111,20 @@
 .pc-quick-tile:is([data-live-passport],[data-mtp-open]) :is(.pc-quick-tile__label,.pc-quick-tile__value){
     white-space:normal;overflow-wrap:normal
 }
+
+/* Collapsed campaigns expose only essential routing controls. */
+.lc-growth .lc-campaign__head{align-items:start;gap:8px}.lc-growth .lc-campaign__head>div:first-child{min-width:0;flex:1}
+.lc-growth .lc-campaign__head strong{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.lc-growth .lc-bridge-channels{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:end;gap:6px;max-width:43%;flex-shrink:0}
+.lc-growth .lc-bridge-channels>.lc-switch:first-of-type>span{display:none}
+.lc-priority{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--border-subtle);border-radius:50%;background:transparent;color:var(--text-secondary);padding:0;cursor:pointer;flex:none}
+.lc-priority:not(.is-priority) svg path:first-child{fill:none}.lc-priority.is-priority{color:var(--accent-primary);background:var(--accent-muted,rgba(59,130,246,.12));border-color:var(--accent-primary)}
+.lc-priority-label{display:block;color:var(--accent-primary);font-size:10px;margin-top:4px}
+.lc-growth .lc-card-tags{font-size:11px;line-height:1.6}.lc-growth .lc-card-disclose{white-space:nowrap;align-self:end}
+.lc-growth .lc-card-expanded>.lr-add-scenario{margin-top:12px;width:100%}
+.lc-campaign-actions>.lc-delete{width:36px;height:36px;min-width:36px;flex:none;padding:0;display:grid;place-items:center;border:1px solid var(--border-subtle);border-radius:10px;color:var(--text-secondary);margin-inline-start:auto}
+.lc-campaign-actions>.lc-delete:hover,.lc-campaign-actions>.lc-delete:active{color:var(--danger);border-color:var(--danger)}
+.pc-quick-settings .pc-quick-tile__icon{width:34px;height:34px;flex:0 0 34px;border:1px solid var(--border-subtle);border-radius:10px;margin:0;color:var(--text-secondary)}
+.pc-quick-tile__icon svg{width:18px;height:18px}.pc-quick-settings .pc-quick-tile,.pc-quick-settings .pc-quick-action{gap:10px}
+.pc-quick-settings .pc-quick-action{justify-content:start;text-align:start;min-width:0}
+.pc-quick-settings .pc-quick-tile__copy{min-width:0}.pc-quick-settings :is(.pc-quick-tile__label,.pc-quick-tile__value){white-space:normal;line-height:1.4;overflow-wrap:anywhere}

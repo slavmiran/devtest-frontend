@@ -8,13 +8,57 @@
     var inbox = {tickets: [], tasks: {}}, inboxActor = '', inboxKey = '', pending, loadedAt = 0;
     var threadState = new WeakMap();
 
+    var settingsCache=new Map(), settingsLoads=new Map();
+    function settingsKey(app){return U.auth()+':'+Number(app);}
+    function cachedSettings(app){return settingsCache.get(settingsKey(app));}
+    function rememberSettings(app,value){
+        if(!value)return;
+        settingsCache.set(settingsKey(app),value);
+        document.querySelectorAll('[data-pf-route-status="'+Number(app)+'"]').forEach(function(node){
+            node.textContent=t(value.telegram?.chat_id?'lcardChatConnected':'lcardChatMissing');
+        });
+    }
+    async function fetchSettings(app){
+        var key=settingsKey(app);
+        if(settingsLoads.has(key))return settingsLoads.get(key);
+        var promise=U.api('/apps/'+Number(app)+'/project-feedback-settings').then(function(response){
+            if(key===settingsKey(app))rememberSettings(app,response.result);
+            return response.result;
+        }).finally(function(){settingsLoads.delete(key);});
+        settingsLoads.set(key,promise);return promise;
+    }
+    function splitSettings(app,supplied,bridge){
+        var cfg=supplied||cachedSettings(app);
+        if(supplied)rememberSettings(app,supplied);
+        var state=cfg?.impression, live=state?t('pfMode_'+state.mode):t('lmWaiting');
+        if(state?.mode==='voluntary'&&state.bonus)live+=' · +'+state.bonus+' $BUST';
+        if(cfg?.mutual_campaigns)live+=' · '+t('lcardMutualCampaigns',{n:cfg.mutual_campaigns});
+        var request=cfg&&typeof cfg.bridge_reviews==='boolean'?cfg.bridge_reviews:bridge;
+        var closed=request?t('lcardBridgeOn',{day:cfg?.bridge_review_day||7}):t('pcParamsOff');
+        return '<section class="pc-project-param-split" data-project-param="feedback">'+
+            '<button type="button" class="pc-project-param" data-pf-settings="'+Number(app)+'"><span class="pc-project-param__label">'+
+            ProjectParameters.icon('reviews')+'<span>'+e(t('lcardLiveFeedback'))+'</span></span><span class="pc-project-param__value">'+e(live)+'</span></button>'+
+            '<button type="button" class="pc-project-param" data-lcard-bridge-reviews="'+Number(app)+'"><span class="pc-project-param__label">'+
+            ProjectParameters.icon('flask')+'<span>'+e(t('lcardBridgeFeedback'))+'</span></span><span class="pc-project-param__value">'+e(closed)+'</span></button></section>';
+    }
+    function campaignFields(draft){
+        var cfg=cachedSettings(draft.appId),state=cfg?.impression;
+        if(!cfg)return '<p role="status">'+e(t('lmLoading'))+'</p>';
+        return '<section class="pf-config pf-campaign-config"><strong>'+e(t('lcardProjectFeedback'))+'</strong><p>'+
+            e(t('pfMode_'+state.mode)+(state.bonus?' · +'+state.bonus+' $BUST':''))+'</p>'+
+            '<label class="pf-inline"><input type="checkbox" data-pf-campaign-mutual'+(draft.impression_mutual?' checked':'')+
+            (state.mode==='off'?' disabled':'')+'> '+e(t('lcardRequireMutual'))+'</label>'+
+            '<p class="pf-muted">'+e(t('lcardProjectFeedbackHint'))+'</p><button type="button" class="lm-action" data-pf-settings="'+
+            Number(draft.appId)+'">'+e(t('lcardOpenProjectFeedback'))+'</button></section>';
+    }
+
     function configFields(value, maxDay, inherit) {
         var current = value || {mode: inherit ? 'inherit' : 'off', day: null, bonus: 0};
         var day = Math.min(maxDay,current.day || Math.max(2, maxDay - 4));
         var jitter = Number(current.jitter_days) || 0;
         return '<fieldset class="pf-config"><legend>⭐ ' + e(t('pfModule')) + '</legend>' +
             '<label>' + e(t('pfMode')) + '<select class="gtw-input" data-pf-field="mode">' +
-            (inherit ? ['inherit'].concat(modes) : modes).map(function (mode) {
+            (inherit ? ['inherit'].concat(modes) : ['off','voluntary']).map(function (mode) {
                 return '<option value="' + mode + '"' + (mode === current.mode ? ' selected' : '') + '>' + e(t('pfMode_' + mode)) + '</option>';
             }).join('') + '</select></label>' +
             '<div data-pf-open-fields' + (modes.indexOf(current.mode) > 0 ? '' : ' hidden') + '>' +
@@ -96,23 +140,33 @@
         var layer = U.sheet(t(routing ? 'pfRoutes' : 'pfModule'), '<p>' + e(t('lmLoading')) + '</p>');
         var host = layer.querySelector('.lm-sheet-body');
         try {
-            var result = (await U.api('/apps/' + app + '/project-feedback-settings')).result;
+            var result = await fetchSettings(app);
             if (!layer.isConnected || actor !== U.auth()) return;
-            var route = result.telegram || {}, topics = route.topics || {};
+            var route = result.telegram || {}, topics = route.topics || {}, defaults=result.profile_telegram||result.suggested_telegram;
+            var usingProfile=!!route.inherited;
             host.innerHTML = '<form class="pf-layout">' + (routing ?
-                '<p>' + e(t('pfRouteGuide')) + '</p><label>' + e(t('pfGroupId')) +
+                '<p>' + e(t('pfRouteGuide')) + '</p>'+
+                (defaults?'<button type="button" class="lm-action" data-pf-use-default>'+e(t(result.profile_telegram?'lcardUseProfile':'lcardUseOtherProject'))+'</button>':'')+
+                '<label>' + e(t('pfGroupId')) +
                 '<input class="gtw-input" name="chat" type="text" inputmode="text" pattern="-?[0-9]+" placeholder="-100…" value="' + e(route.chat_id || '') + '" required></label>' +
                 (route.title ? '<small class="pf-muted">' + e(route.title) + '</small>' : '') +
                 ['reports','private','updates'].map(function (key) {
                     return '<label>' + e(t('pfTopic_' + key)) + '<input class="gtw-input" data-pf-topic name="' + key +
                         '" type="text" value="' + e(topics[key]) +
                         '" placeholder="' + e(t('pfTopicDisabled')) + '"></label>';
-                }).join('') + '<small class="pf-muted">' + e(t('pfTopicGeneral')) + ' ' + e(t('pfTopicPaste')) + '</small>' :
+                }).join('') + '<small class="pf-muted">' + e(t('pfTopicGeneral')) + ' ' + e(t('pfTopicPaste')) + '</small><label class="pf-inline"><input type="checkbox" name="profile_default"> '+
+                e(t('lcardProfileDefault'))+'</label><small class="pf-muted">'+e(t('lcardProfileHint'))+'</small>' :
                 configFields(result.impression, 60, false)) +
                 '<p class="lm-error" role="alert" data-pf-error></p><div class="pf-actions"><button class="lm-action lm-action-primary">' +
                 e(t('pfSave')) + '</button>' + (routing && route.chat_id ? '<button type="button" class="lm-action" data-pf-disconnect>' +
                 e(t('pfDisconnect')) + '</button>' : '') + '</div></form>';
             var form = host.querySelector('form');
+            var useDefault=form.querySelector('[data-pf-use-default]');
+            if(useDefault)useDefault.onclick=function(){
+                form.elements.chat.value=defaults.chat_id;
+                ['reports','private','updates'].forEach(function(key){form.elements[key].value=defaults.topics?.[key]??'';});
+                usingProfile=!!result.profile_telegram;
+            };
             function normalizeTopic(input, replace) {
                 var reference = topicReference(input.value);
                 var group = form.elements.chat;
@@ -123,6 +177,7 @@
                 if (replace && reference.topic != null && !reference.chat) input.value = reference.topic;
             }
             form.addEventListener('input', function (event) {
+                if(event.target.matches('[data-pf-topic],[name="chat"]'))usingProfile=false;
                 if (event.target.dataset.pfField) configValue(event.target);
                 if (event.target.matches('[data-pf-topic]')) normalizeTopic(event.target, false);
                 if (event.target.name === 'chat') form.querySelectorAll('[data-pf-topic]').forEach(function (input) { normalizeTopic(input, false); });
@@ -142,13 +197,18 @@
                     var data = {settings: !routing ? configValue(form.querySelector('[data-pf-field]')) : null};
                     if (routing) {
                         var fields = new FormData(form);
-                        data = {chat_id: remove ? null : Number(fields.get('chat')), topics: {}};
+                        data = {chat_id: remove ? null : Number(fields.get('chat')), topics: {},
+                            set_default:!remove&&form.elements.profile_default.checked,use_profile:!remove&&usingProfile};
                         if (!remove) ['reports','private','updates'].forEach(function (key) {
                             var raw = fields.get(key);
                             data.topics[key] = topicReference(raw).topic;
                         });
                     }
-                    await U.api('/apps/' + app + '/' + path, 'PUT', data);
+                    var saved=(await U.api('/apps/' + app + '/' + path, 'PUT', data)).result;
+                    if(routing)rememberSettings(app,saved);
+                    else rememberSettings(app,Object.assign({},result,{impression:saved}));
+                    window.dispatchEvent(new CustomEvent('project-feedback:settings',{detail:{appId:app}}));
+                    window.dispatchEvent(new CustomEvent('live-campaigns:refresh',{detail:{appId:app}}));
                     U.close(layer);
                     if (window.showToast) window.showToast(t('pfSaved'));
                 } catch (error) { showError(form,error); }
@@ -282,6 +342,8 @@
         return (row.type==='scenario'&&window.LiveScenarioUI?LiveScenarioUI.evidenceSlot(row.id):'')+
             '<div class="pf-chat-log" data-pf-chat-log></div>' +
             (open ? '<form class="pf-layout pf-compose"><small class="pf-muted">' + e(t(['bug','idea'].includes(row.type) ? 'pfPublicMirror' : 'pfPrivateThread')) +
+                (owner && ['scenario','project_impression'].includes(row.type) && row.telegram_connected===false ?
+                    ' · <button type="button" class="pf-connect-link" data-pf-route="'+Number(row.app_id)+'">'+e(t('lcardConnectChat'))+'</button>' : '')+
                 '</small><label>' + e(t('pfReply')) +
                 '<textarea class="gtw-textarea" name="body" maxlength="2000" rows="2"></textarea></label>' +
                 '<label>' + e(t('pfAddScreenshot')) + '<input type="file" name="file" accept="image/png,image/jpeg,image/webp"></label>' +
@@ -379,8 +441,7 @@
             '</summary><section class="pf-thread" data-pf-thread-host><p>' + e(t('lmLoading')) + '</p></section></details>';
     }
     function ownerBanner(app) {
-        return '<aside class="pf-route-banner"><p>' + e(t('pfBanner')) + '</p><button class="lm-action" data-pf-route="' +
-            Number(app) + '" type="button">🏠 ' + e(t('pfRoutes')) + '</button></aside>';
+        return '';
     }
     function mountCard(card,id) {
         if (!card || !Number(id)) return;
@@ -429,6 +490,8 @@
         if(node.hasAttribute('data-pf-history')) thumbnails(node);
     },true);
     document.addEventListener('click',async function (event) {
+        var bridge=event.target.closest('[data-lcard-bridge-reviews]');
+        if(bridge){event.stopPropagation();return LiveCampaigns.openFeedback(Number(bridge.dataset.lcardBridgeReviews));}
         var b=event.target.closest('[data-pf-route],[data-pf-settings],[data-pf-impression],[data-pf-open-ticket],[data-pf-copy],[data-pf-proof],[data-pf-close],[data-pf-share],[data-pf-more]');
         if(!b)return;
         event.stopPropagation();
@@ -479,6 +542,8 @@
         });
     },20000);
     window.ProjectFeedback={configFields:configFields,configValue:configValue,badge:badge,badgeLabel:badgeLabel,embed:embed,ownerTools:ownerTools,
+        settingsFor:cachedSettings,cachedSettings:cachedSettings,rememberSettings:rememberSettings,fetchSettings:fetchSettings,splitSettings:splitSettings,campaignFields:campaignFields,
+        openRoutes:function(id){return settings(Number(id),true);},
         openSettings:function(id){return settings(Number(id),false);},
         ownerBanner:ownerBanner,mountCard:mountCard,refreshCards:refreshCards};
 })();

@@ -9,6 +9,7 @@
     function accessible(s){return session===s && s.actor===actor() && !!project(s.draft.appId);}
     function fingerprint(d){var copy=JSON.parse(JSON.stringify(d));delete copy.appTitle;delete copy.baseline;delete copy.thermalPhase;delete copy.forecastContext;delete copy.paceCampaignCapacity;delete copy.paceOwnCapacity;return JSON.stringify(copy);}
     function dirty(s){return fingerprint(s.draft)!==s.initial || !!s.context.manualKey || !!s.context.allocationEdited;}
+    window.addEventListener('project-feedback:settings',function(event){var s=session;if(s&&accessible(s)&&s.step==='feedback'&&Number(event.detail.appId)===s.draft.appId)render(s,false);});
     window.addEventListener('live-campaigns:data',function(event){var s=session;if(!s||!accessible(s)||Number(event.detail.appId)!==Number(s.draft.appId))return;LiveProjectControl.refreshPhase(s.layer,s.draft,event.detail.control);});
     function toast(key){if(window.showToast)window.showToast(text(key));}
     function dispose(s){
@@ -62,6 +63,9 @@
         if(![1,2,3,'feedback',4].includes(step)||invalid(s))return;
         if(s.step===0)s.returnStep=step;
         s.step=step;
+        if(step==='feedback'&&window.ProjectFeedback){
+            ProjectFeedback.fetchSettings(s.draft.appId).then(function(){if(accessible(s)&&s.step==='feedback')render(s,false);}).catch(function(){toast('lcFailed');});
+        }
         if(step===1){
             if(!s.context.sourceBaseline)readData(s,'sources');
             if(!s.context.market)readData(s,'market');
@@ -161,6 +165,9 @@
         var s=session,el=event.target;if(!s)return;if(!accessible(s)){dispose(s);return;}
         if(s.confirming||s.saving)return;
         if(el.dataset.ctField){var name=el.dataset.ctField,value=Number(el.value),ok=el.value.trim()!==''&&Number.isInteger(value)&&value>=Number(el.min)&&value<=Number(el.max);el.setAttribute('aria-invalid',String(!ok));if(ok){if(name.startsWith('source_'))s.draft.contracts.source_bonus_bust[name.slice(7)]=value;else s.draft.contracts[name]=value;s.edited=true;}refresh(s);return;}
+        if(el.hasAttribute('data-pf-campaign-mutual')){
+            s.draft.impression_mutual=el.checked;s.edited=true;refresh(s);return;
+        }
         if(el.dataset.pfField&&window.ProjectFeedback){
             var config=ProjectFeedback.configValue(el),bonus=el.closest('.pf-config').querySelector('[data-pf-field="bonus"]');
             var validBonus=config?.mode!=='voluntary'||bonus.checkValidity();

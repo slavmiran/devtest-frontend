@@ -2501,13 +2501,14 @@ function renderProjects(force) {
                         <div class="pc-quick-settings__grid">
                             ${phase === 'live' ? `
                                 <button type="button" class="pc-quick-tile" data-live-passport="${project.id}" onclick="openPlayStorePassport(${project.id}, event)">
-                                    <span class="pc-quick-tile__icon" aria-hidden="true">📄</span>
+                                    <span class="pc-quick-tile__icon" aria-hidden="true">${ProjectParameters.icon('document')}</span>
                                     <span class="pc-quick-tile__copy">
                                         <span class="pc-quick-tile__label">${window.escapeHTML(window.t('pcLivePassport', {}, lang))}</span>
-                                        <span class="pc-quick-tile__value" data-live-passport-status>${window.escapeHTML(window.t(project.play_store_raw ? 'pcLivePassportSynced' : 'pcLivePassportPending', {}, lang))}</span>
+                                        <span class="pc-quick-tile__value" data-live-passport-status>${window.escapeHTML(window.t(!project.play_store_raw ? 'pcLivePassportPending' : !project.play_store_synced_at ? 'pcLivePassportSynced' : (Date.now()-Date.parse(project.play_store_synced_at)<86400000 ? 'lcardUpdatedToday' : 'lcardUpdatedAgo'), {n: Math.max(0, Math.floor((Date.now()-Date.parse(project.play_store_synced_at))/86400000))}, lang))}</span>
                                     </span>
                                 </button>
                                 ${window.LiveTopic ? LiveTopic.quickTile(project.id) : ''}
+                                <button type="button" class="pc-quick-tile" data-pf-route="${project.id}"><span class="pc-quick-tile__icon" aria-hidden="true">${ProjectParameters.icon('chat')}</span><span class="pc-quick-tile__copy"><span class="pc-quick-tile__label">${window.escapeHTML(window.t('lcardTelegramTopics',{},lang))}</span><span class="pc-quick-tile__value" data-pf-route-status="${project.id}">${window.escapeHTML(window.t(ProjectFeedback.cachedSettings(project.id)?.telegram?.chat_id?'lcardChatConnected':'lcardChatMissing',{},lang))}</span></span></button>
                             ` : ''}
                             <button type="button" class="pc-quick-tile pc-quick-tile--visibility" onclick="openVisibilityModeModal(${project.id}, event)">
                                 <span class="pc-quick-tile__icon pc-quick-tile__icon--visibility" aria-hidden="true">${visibilitySvg}</span>
@@ -2519,7 +2520,7 @@ function renderProjects(force) {
                             </button>
                             <div class="pc-quick-tile pc-quick-tile--notifications ${proofPingEnabled ? 'is-on' : 'is-off'}" data-pc-ping-drawer="${project.id}">
                                 <button type="button" class="pc-quick-tile__icon pc-quick-tile__icon--notifications pc-quick-tile__explain" aria-haspopup="dialog" aria-expanded="false" aria-controls="proof-ping-explain" aria-label="${window.escapeHTML(window.t('pcPingExplainAria', {}, lang) || 'Что это за уведомления')}" onclick="event.stopPropagation(); pcProofPingOpenExplain(${project.id}, event)">
-                                    <img data-pc-ping-drawer-icon="${project.id}" src="${notificationIconSrc}" alt="">
+                                    ${ProjectParameters.icon('bell')}
                                 </button>
                                 <button type="button" class="pc-quick-tile__toggle" role="switch" aria-checked="${proofPingEnabled ? 'true' : 'false'}" aria-pressed="${proofPingEnabled ? 'true' : 'false'}" aria-label="${window.escapeHTML(window.t('pcPingToggleAria', {}, lang) || 'Уведомления о скриншотах контрольного дня')}" onclick="event.stopPropagation(); pcProofPingToggleDot(${project.id}, this)">
                                     <span class="pc-quick-tile__copy">
@@ -2531,11 +2532,11 @@ function renderProjects(force) {
                         </div>
                         <div class="pc-quick-settings__actions">
                             <button type="button" class="pc-quick-action" onclick="openEditModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                <span class="pc-quick-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span>
                                 <span>${window.escapeHTML(window.t('pcQuickSettingsEdit', {}, lang) || 'Изменить')}</span>
                             </button>
                             <button type="button" class="pc-quick-action pc-quick-action--archive" onclick="openDeleteModal(${project.id}); toggleProjectSettingsDrawer(${project.id}, event);">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                                <span class="pc-quick-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg></span>
                                 <span>${window.escapeHTML(window.t('pcQuickSettingsArchive', {}, lang) || 'В архив')}</span>
                             </button>
                         </div>
@@ -8313,6 +8314,7 @@ function toggleProjectSettingsDrawer(projectId, event) {
     if (!isActive) {
         drawer.classList.add('active');
         if (drawer.querySelector('[data-mtp-open]') && window.LiveTopic) LiveTopic.loadBadge(projectId);
+        if (drawer.querySelector('[data-pf-route]') && window.ProjectFeedback) ProjectFeedback.fetchSettings(projectId).catch(function(){});
         if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.impactOccurred('light');
         setTimeout(() => {
             document.addEventListener('click', closeAllDrawersOnOutsideClick);

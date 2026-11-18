@@ -13,12 +13,20 @@
     var instructionsTrigger = null;
     var CHEVRON = '<svg viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var ICONS = {
+        document:'<path d="M6 3h8l4 4v14H6zM14 3v5h5M9 12h6M9 16h6"/>',
+        market:'<path d="m3 11 18-7v16l-18-6zM7 15l2 6h4l-2-5M7 10v5"/>',
+        chat:'<path d="M21 11a8 8 0 0 1-8 8H7l-5 3 2-6a8 8 0 1 1 17-5z"/>',
+        pin:'<path d="m16 3 5 5-3 1-4 5v4l-2 2-3-7-6-3 2-2h4l5-4zM9 15l-6 6"/>',
+        edit:'<path d="M12 4H4v16h16v-8M17 3l4 4-9 9-5 1 1-5z"/>',
+        archive:'<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v12h14V9M10 13h4"/>',
+        bell:'<path d="M5 17h14l-2-3V8a5 5 0 0 0-10 0v6zM10 21h4"/>',
         reviews: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
         clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
         language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18z"/>',
         android: '<path d="m7 6-2-3m12 3 2-3M4 14v-3a8 8 0 0 1 16 0v3zM8 9h.01M16 9h.01M7 14v6m10-6v6M4 17h16"/>',
         email: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 6 8 7 8-7"/>',
         camera: '<path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/>',
+        flask: '<path d="M9 3h6M10 3v6L4 19a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3M7 15h10"/>',
         instructions: '<path d="M7 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2V6a2 2 0 0 1 2-2z"/><path d="M9 9h7M9 13h7M9 17h4"/>',
     };
 
@@ -157,7 +165,9 @@
             : esc(text('pcParamsBoostNoteInactive'));
         return '<div class="pc-project-params__head">' +
             '<button type="button" class="pc-project-params__toggle" onclick="ProjectParameters.toggle(' + argument + ',event)" aria-expanded="' + open + '" aria-controls="project-parameters-body-' + id + '" title="' + esc(toggleLabel) + '"' + (depleted ? ' aria-description="' + esc(text('pcParamsBoostDepletedHint')) + '"' : '') + '>' +
-                '<span class="pc-project-params__title">' + esc(text(adapter && adapter.titleKey || 'pcParamsTitle')) + '</span>' +
+                '<span class="pc-project-params__heading"><span class="pc-project-params__title">' + esc(text(adapter && adapter.titleKey || 'pcParamsTitle')) + '</span>' +
+                (live ? '<span class="pc-project-params__summary">'+esc(live.summary || '')+
+                 (window.LivePaceSignals ? LivePaceSignals.compact(live.signals,live.paused) : '')+'</span>':'')+'</span>' +
                 (live && !count ? '' : '<span class="pc-project-params__count" title="' + esc(text('pcParamsCountHint')) + '"><i aria-hidden="true"></i>' + esc(countLabel) + '</span>') +
                 '<span class="pc-project-params__boost-cue-slot pc-project-params__boost-cue-slot--head">' + (!open ? cue : '') + '</span>' +
                 '<span class="pc-project-params__chevron" aria-hidden="true">' + CHEVRON + '</span>' +
@@ -172,11 +182,12 @@
             '</span>') +
         '</div>' +
         '<div class="pc-project-params__body" id="project-parameters-body-' + id + '"' + (open ? '' : ' inert aria-hidden="true"') + '><div class="pc-project-params__clip"><div class="pc-project-params__content">' +
+            (live && window.LivePaceSignals ? LivePaceSignals.inline(live.signals,live.paused).panel.replace(' hidden','') : '') +
+            (live && adapter.extraNotices ? adapter.extraNotices() : '')+
             '<div class="pc-project-params__grid">' +
                 (live ? tile(project, 'pace', 'lcPaceTitle', live.pace, 'clock', false, 'event.stopPropagation(); LiveCampaigns.openPace(' + appId + ',this)', false) +
                 tile(project, 'admission', 'lcAdmissionTitle', live.admission, 'email', false, 'event.stopPropagation(); LiveCampaigns.openAdmission(' + appId + ')', false) +
-                tile(project, 'feedback', 'lcFeedbackSettings', text('lcFeedbackValue'), 'reviews', false, 'event.stopPropagation(); LiveCampaigns.openFeedback(' + appId + ')', false) : '') +
-                (live && window.ProjectFeedback ? ProjectFeedback.ownerTools(id, false, 'lcRouteTitle') : '') +
+                (window.ProjectFeedback?ProjectFeedback.splitSettings(appId,live.feedback,project.request_reviews):'') : '') +
                 (project.phase === 'live' ? '' : tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', false)) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + argument + ',event)', false) +
                 (live && window.LiveScenarioUI ? tile(project, 'device_brands', 'lseBrandFilter', text('lseBrandConfigure'), 'android', false, 'event.stopPropagation(); LiveScenarioUI.brandSettings(' + appId + ')', false) : '') +

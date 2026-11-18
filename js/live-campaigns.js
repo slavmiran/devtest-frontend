@@ -62,7 +62,13 @@
             hideActions:true, instructionsMax:5000,
             get:function () { return s.control && Object.assign({},project(s),s.control.parameters,{id:s.id,phase:'live',test_mode:'google_group'}); },
             liveControls:function () { return {pace:paceLabel(s), admission:admissionLabel(s),
-                bridge:!!s.rows?.some(function(row){return row.kind==='closed_bridge'&&row.status==='active';})}; },
+                summary:tr('lcardParametersSummary',{pace:paceLabel(s),admission:admissionLabel(s)}),
+                signals:project(s).live_metrics?.pace_signals, paused:!!(s.pace?.pause_until&&Date.parse(s.pace.pause_until)>Date.now()),
+                feedback:s.control.feedback_settings, bridge:!!s.rows?.some(function(row){return row.kind==='closed_bridge';})}; },
+            extraNotices:function(){var c=s.control||{};return (window.LiveQueueUI&&Number(c.queue_count)>0?
+             '<button type="button" class="lm-action lc-queue-summary" data-lq-owner-queue="'+s.id+'">'+esc(tr('lcQueueSummary',{n:c.queue_count}))+' ›</button>':'')+
+             (c.keyword_assist_count?'<button type="button" class="lm-action" data-lr-assist="'+s.id+'">'+esc(tr('lrAssistTitle'))+' · '+c.keyword_assist_count+'</button>':'')+
+             (window.LiveRetentionUI?LiveRetentionUI.alerts(c):'');},
             busy:function () { return s.pending.has(-1); },
             save:function (field,value) { if(!s.control)return false;var payload=Object.assign({revision:s.control.revision},s.control.parameters);payload[field]=value;return projectChange(s,'parameters','PATCH',payload); },
             openBoost:function (event) { return window.openScreenshotBoostSettings(s.id,event); },
@@ -100,11 +106,12 @@
             button('toggle-list',tr(s.compactExpanded?'lcCollapseList':'lcExpandList')+' '+(s.compactExpanded?'▴':'▾'),null,false,'lc-compact-toggle','aria-expanded="'+!!s.compactExpanded+'" aria-controls="lc-full-'+s.id+'"')+create('create-compact')+'</div>';
         return compact+'<div class="lc-full" id="lc-full-'+s.id+'"><div class="lc-section-head"><div class="lc-section-heading"><h3>'+esc(tr('lcTitle'))+'</h3>'+projectBudget(s)+'</div><div class="lc-section-actions"><small data-lc-capacity data-slot-total="'+Number(capacity.limit)+'">'+esc(s.rows ? tr('lcgActiveCapacity',{n:active.length,limit:capacity.limit}) : '')+'</small>'+
             create('create')+'</div></div>'+
-            projectBar(s)+(s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
+            (s.rows&&active.length>=capacity.limit?button('buy-active',tr('lcgExpandSlots',{price:(capacity.limit-1)*1000}),null,s.pending.has(0),'lc-buy-active'):'')+
             (!s.rows ? (s.error ? '<p class="lc-error" role="alert">'+esc(tr('lcError'))+' '+button('retry',tr('lcRetry'))+'</p>' : '<p class="lc-note" role="status">'+esc(tr('lcLoading'))+'</p>') : visible.filter(function(c){return !c.parent_campaign_id;}).map(function(c){return family(c,s,visible);}).join('')+
                 (paused.length ? '<details class="lc-paused"><summary>'+esc(tr('lcPaused',{n:paused.length}))+'</summary>'+paused.map(function(c){return campaign(c,s);}).join('')+'</details>' : '')+(s.control?parameters(null,s):''))+'</div>';
     }
-    function family(c,s,rows){if(c.kind==='closed_bridge')return campaign(c,s);var children=rows.filter(function(r){return Number(r.parent_campaign_id)===Number(c.id);});return '<section class="lr-family">'+campaign(c,s)+(window.LiveScenarioUI?LiveScenarioUI.info(c):'')+children.map(function(child,index){return '<div class="lr-family-branch"><span class="lr-slot">'+esc(tr('lrScenarioSlot',{n:index+2}))+'</span>'+(window.LiveScenarioUI?LiveScenarioUI.info(child):'')+campaign(child,s)+'</div>';}).join('')+'<button type="button" class="lm-action lr-add-scenario" data-lrs-add="'+c.id+'" data-lrs-max-day="'+Number(c.definition?.retention?.min_days||c.definition?.retention?.days||14)+'" data-lrs-app="'+s.id+'">'+esc(tr('lrAddScenario'))+'</button></section>';}
+    function family(c,s,rows){if(c.kind==='closed_bridge')return campaign(c,s);var children=rows.filter(function(r){return Number(r.parent_campaign_id)===Number(c.id);});return '<section class="lr-family">'+campaign(c,s)+(window.LiveScenarioUI?LiveScenarioUI.info(c):'')+children.map(function(child,index){return '<div class="lr-family-branch"><span class="lr-slot">'+esc(tr('lrScenarioSlot',{n:index+2}))+'</span>'+(window.LiveScenarioUI?LiveScenarioUI.info(child):'')+campaign(child,s)+'</div>';}).join('')+'</section>';}
+
     function plusIcon(){return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';}
     function projectBudget(s){
         if(!s.control)return '';var c=s.control;
@@ -121,19 +128,7 @@
     function admissionLabel(s) {
         return tr(s.control?.admission_mode==='instant_install'?'lcAdmissionInstant':'lcAdmissionRequest');
     }
-    function projectBar(s){
-        if(!s.control)return '';var c=s.control,p=s.pace||{};
-        var signals=project(s).live_metrics&&project(s).live_metrics.pace_signals,paused=!!(p.pause_until&&Date.parse(p.pause_until)>Date.now());
-        var pace=window.LivePaceSignals?LivePaceSignals.inline(signals,paused):{badge:'',panel:''};
-        return '<div class="lc-project-controls"><div class="lc-control-summary">'+
-            button('project-pace','🤖 '+tr('lcPaceSummary',{pace:paceLabel(s)}),null,s.pending.has(-1),'lc-control-shortcut')+
-            (window.LiveAdmission?button('project-admission','📥 '+tr('lcAdmissionSummary',{mode:admissionLabel(s)}),null,false,'lc-control-shortcut'):'')+
-            button('show-parameters',tr('lcConfigure')+' ▾',null,false,'lc-control-configure','aria-controls="project-parameters-campaign-'+s.id+'-0"')+
-            '</div>'+pace.badge+pace.panel+
-            (window.LiveQueueUI&&Number(c.queue_count)>0?'<button type="button" class="lm-action lc-queue-summary" data-lq-owner-queue="'+s.id+'">'+esc(tr('lcQueueSummary',{n:c.queue_count}))+' ›</button>':'')+
-            (c.keyword_assist_count?'<button type="button" class="lm-action" data-lr-assist="'+s.id+'">'+esc(tr('lrAssistTitle'))+' · '+c.keyword_assist_count+'</button>':'')+
-            (window.LiveRetentionUI?LiveRetentionUI.alerts(c):'')+'</div>';
-    }
+
     function build(p) { var s=state(p.id||p.app_id);s.project=p;return '<section class="lc-section'+(s.compactExpanded?' is-list-open':'')+'" data-live-campaigns="'+s.id+'">'+content(s)+'</section>'; }
     function controlSelector(node){return node&&node.dataset.lcAction&&node.dataset.campaign?'[data-campaign-id="'+Number(node.dataset.campaign)+'"] [data-lc-action="'+node.dataset.lcAction+'"]'+(node.dataset.keyword?'[data-keyword="'+Number(node.dataset.keyword)+'"]':''):null;}
     function repaint(s, preserveContractDrafts) {
@@ -318,18 +313,8 @@
  async function openAdmission(id){var s=await ready(id);if(s&&window.LiveAdmission)LiveAdmission.open(s.id,s.control);}
  async function openParameters(id){var s=await ready(id);if(!s)return false;return window.ProjectFeedback?.openSettings(s.id);}
  async function openFeedback(id){
-     var s=await ready(id);if(!s||!window.LiveMarketUI)return;
-     var ref='campaign-'+s.id+'-0';
-     var bridge=s.rows.some(function(row){return row.kind==='closed_bridge'&&row.status==='active';});
-     var layer=LiveMarketUI.sheet(tr('lcFeedbackSettings'),
-         '<div class="lc-feedback-choices"><button type="button" class="lc-feedback-choice" data-lc-feedback="live"><strong>⭐ '+esc(tr('lcLiveImpression'))+'</strong><small>'+esc(tr('lcLiveImpressionHint'))+'</small></button>'+
-         '<button type="button" class="lc-feedback-choice" data-lc-feedback="bridge"'+(bridge?'':' disabled')+'><strong>🧪 '+esc(tr('lcBridgeReviews'))+'</strong><small>'+esc(tr(bridge?(s.control.parameters.request_reviews?'pcParamsOn':'pcParamsOff'):'lcBridgeDisabled'))+'</small></button></div>');
-     layer.addEventListener('click',function(event){
-         var action=event.target.closest('[data-lc-feedback]');if(!action)return;
-         LiveMarketUI.close(layer);
-         if(action.dataset.lcFeedback==='live')window.ProjectFeedback?.openSettings(s.id);
-         else if(bridge)ProjectParameters.openBridgeReviews(ref);
-     });
+     var s=await ready(id);if(!s)return;
+     return ProjectParameters.openBridgeReviews('campaign-'+s.id+'-0');
  }
  function collapse(card){var panel=card.querySelector('[data-live-campaigns]');if(!panel)return;var s=state(panel.dataset.liveCampaigns);s.compactExpanded=false;repaint(s,true);}
  window.addEventListener('blur',function(){states.forEach(function(s){if(!s.keyboardAction)return;s.keyboardAction=false;if(s.repaintAfterKey){s.repaintAfterKey=false;repaint(s,true);}});});

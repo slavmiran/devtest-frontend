@@ -18,6 +18,13 @@
   return {badge:'<span class="lps-inline-toggle" role="button" tabindex="0" data-lps-toggle>⚠️ '+e(parts.join(' · '))+' ▾</span>',
    panel:'<div class="lps-inline-body" data-lps-detail hidden><p>'+e(body)+'</p><div class="lps-actions"><button type="button" class="lm-action" data-lc-action="showcase">'+e(t('lpsMarket'))+'</button><button type="button" class="lm-action" data-lc-action="guests">'+e(t('lpsGuests'))+'</button></div></div>'};
  }
+ function compact(p,paused){
+  var parts=[];
+  if(paused)parts.push(t('lpsPauseBadge'));
+  if(p?.below_floor)parts.push(t('lpsBadgeShort',{count:p.deficit_installs||0}));
+  if(p?.trend_percent<0)parts.push(t('lpsBadgeDrop',{n:Math.abs(Number(p.trend_percent)).toFixed(0)}));
+  return parts.length?'<span class="lps-summary-signal"> · ⚠️ '+e(parts.join(' · '))+'</span>':'';
+ }
  function html(){return '';}
- window.LivePaceSignals={html:html,inline:inline};
+ window.LivePaceSignals={html:html,inline:inline,compact:compact};
 })();

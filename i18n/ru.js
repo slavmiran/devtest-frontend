@@ -6034,3 +6034,39 @@ Object.assign(window.I18NRU, {
  lseInheritedBrands: 'Фильтр устройств проекта: {brands}'
 });
 Object.assign(window.I18NRU, {lseExplanation:'Пояснение',lseActionHint:'Что сделать (до 90 символов)'});
+
+Object.assign(window.I18NRU, {
+ "lcardPulseReady": "✓ 5 уст. · Базовый Пульс открыт",
+ "lcardPulseGoal": "5 уст. · Базовый Пульс",
+ "lcardCalibration": "Цель: {target} уст. · Калибровка ({n}/{target})",
+ "lcardPassportDone": "1. Паспорт Google Play подключён",
+ "lcardPassportConnect": "1. Подключить Паспорт Google Play",
+ "lcardHistoryDone": "2. База закрытого теста учтена",
+ "lcardHistoryImport": "2. Перенести историю закрытого теста",
+ "lcardHistoryMissing": "2. Нет истории закрытого теста для переноса",
+ "lcardRoutes": "3. Запустите маршруты привлечения:",
+ "lcardParametersSummary": "🤖 Темп: {pace} · 📥 {admission}",
+ "lcardPriority": "Приоритет",
+ "lcardLiveFeedback": "Оценка опыта · Live в Хабе",
+ "lcardBridgeFeedback": "Тест-отзывы GP · Мост ЗТ",
+ "lcardMutualCampaigns": "взаимно: {n} камп.",
+ "lcardBridgeOn": "Вкл · с D{day}",
+ "lcardProjectFeedback": "Настройка оценки опыта проекта",
+ "lcardRequireMutual": "Требовать взаимный текстовый отклик в сделках этой кампании",
+ "lcardProjectFeedbackHint": "Режим, день открытия и бонус едины для проекта. Включите оценку опыта проекта, чтобы требовать взаимный отклик.",
+ "lcardOpenProjectFeedback": "Настроить оценку опыта проекта ›",
+ "lcardTelegramTopics": "Топики Telegram",
+ "lcardChatConnected": "Подключён чат",
+ "lcardChatMissing": "Не подключены",
+ "lcardDaysAgo": "{n} дн. назад",
+ "lcardToday": "сегодня",
+ "lcardUpdatedToday": "Обновлён сегодня",
+ "lcardUpdatedAgo": "Обновлён: {n} дн. назад",
+ "lcardProfileDefault": "Использовать эту группу и топики по умолчанию для всех моих проектов",
+ "lcardUseProfile": "Подставить настройки из профиля",
+ "lcardUseOtherProject": "Подставить настройки другого проекта",
+ "lcardProfileHint": "Проекты без отдельного чата наследуют настройки профиля. Уже настроенные чаты сохраняются.",
+ "lcardConnectChat": "Подключить свой ТГ-чат ›",
+ "lcardZeroFeedback": "0 откликов",
+ "lcardExperience": "Оценка опыта"
+});

@@ -19,7 +19,7 @@
   }).join('')+'</div>';
  }
  function opening(d){
-  var config=d.impression, end=d.retention.days;
+  var config=window.ProjectFeedback?.cachedSettings(d.appId)?.impression, end=d.retention.days;
   return config&&config.mode!=='off'?Math.min(end,config.day||Math.max(2,end-4)):null;
  }
  function timeline(d, compact){
@@ -81,7 +81,8 @@
   }).join('');
  }
  function feedbackSummary(d){
-  var v=d.impression, day=opening(d);
+  var v=window.ProjectFeedback?.cachedSettings(d.appId)?.impression, day=opening(d);
+  if(v&&v.mode!=='off'&&d.impression_mutual)v=Object.assign({},v,{mode:'mutual',bonus:0});
   if(!v)return t('bpLocalDefault');
   return (window.ProjectFeedback&&ProjectFeedback.badgeLabel(v)||t('pfMode_'+v.mode))+(day?' · '+t('bpWithDay',{day:day}):'');
  }
@@ -112,7 +113,7 @@
  function title(step){return t({1:'bpSource',2:'bpTrack',3:'growthScenario',feedback:'pfModule',4:'bpLaunch'}[step]||'bpTitle');}
  function body(d,step,c){
   if(d.parentCampaignId&&(step===1||step===2))return '<section class="lcw-panel"><p>'+e(t('lrInherited'))+'</p>'+LiveRouteUI.route(d)+'</section>';
-  if(step==='feedback')return window.ProjectFeedback?ProjectFeedback.configFields(d.impression,d.retention.max_days||d.retention.days,true):'';
+  if(step==='feedback')return window.ProjectFeedback?ProjectFeedback.campaignFields(d):'';
   return [blueprint,LiveCampaignSourcesView.body,retention,scenarios,campaignVolume][step](d,c);
  }
  function header(){return '<h1 id="lcw-title" class="gtw-header-title">'+e(t('bpTitle'))+'</h1>';}

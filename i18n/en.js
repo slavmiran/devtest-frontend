@@ -6019,3 +6019,39 @@ Object.assign(window.I18NEN, {
  lseInheritedBrands: 'Inherited device filter: {brands}'
 });
 Object.assign(window.I18NEN, {lseExplanation:'Note',lseActionHint:'Action (up to 90 characters)'});
+
+Object.assign(window.I18NEN, {
+ "lcardPulseReady": "✓ 5 installs · Basic Pulse unlocked",
+ "lcardPulseGoal": "5 installs · Basic Pulse",
+ "lcardCalibration": "Goal: {target} installs · Calibration ({n}/{target})",
+ "lcardPassportDone": "1. Google Play Passport connected",
+ "lcardPassportConnect": "1. Connect Google Play Passport",
+ "lcardHistoryDone": "2. Closed test history accounted for",
+ "lcardHistoryImport": "2. Import closed test history",
+ "lcardHistoryMissing": "2. No closed test history to import",
+ "lcardRoutes": "3. Launch participant routes:",
+ "lcardParametersSummary": "🤖 Pace: {pace} · 📥 {admission}",
+ "lcardPriority": "Priority",
+ "lcardLiveFeedback": "Experience ratings · Live in Hub",
+ "lcardBridgeFeedback": "Google Play test reviews · Bridge",
+ "lcardMutualCampaigns": "mutual feedback: {n} campaigns",
+ "lcardBridgeOn": "On · from D{day}",
+ "lcardProjectFeedback": "Project experience settings",
+ "lcardRequireMutual": "Require mutual written feedback in this campaign’s exchanges",
+ "lcardProjectFeedbackHint": "Mode, opening day and bonus apply to the project. Enable project experience ratings to require mutual feedback.",
+ "lcardOpenProjectFeedback": "Set up project experience ratings ›",
+ "lcardTelegramTopics": "Telegram topics",
+ "lcardChatConnected": "Chat connected",
+ "lcardChatMissing": "Not connected",
+ "lcardDaysAgo": "{n}d ago",
+ "lcardToday": "today",
+ "lcardUpdatedToday": "Updated today",
+ "lcardUpdatedAgo": "Updated: {n}d ago",
+ "lcardProfileDefault": "Use this group and topics as defaults for all my projects",
+ "lcardUseProfile": "Use profile settings",
+ "lcardUseOtherProject": "Use another project’s settings",
+ "lcardProfileHint": "Projects without a separate chat inherit these defaults. Existing project chats stay as configured.",
+ "lcardConnectChat": "Connect your Telegram chat ›",
+ "lcardZeroFeedback": "0 responses",
+ "lcardExperience": "Experience rating"
+});

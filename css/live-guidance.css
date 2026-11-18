@@ -2,3 +2,20 @@
 .lg-action.is-done{color:var(--success,#34d399);border-color:rgba(52,211,153,.3)}
 .lg-route-list{display:grid;gap:8px}.lg-route-list button{display:grid;text-align:left;gap:5px}.lg-route-list small{color:var(--text-muted,#94a3b8)}.lg-target{outline:2px solid var(--accent,#3b82f6);outline-offset:3px;animation:lg-target 1s ease-in-out 3}.lmp-range{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}.lmp-field{display:grid;min-width:0;gap:7px;font-size:12px;color:var(--text-secondary,#bac8dc)}.lmp-field .lcw-counter{width:100%;min-width:0}.lmp-field input{min-width:0;width:40px}.lmp-field .lcw-counter>button{padding-inline:6px;min-width:27px}.lpc-global-policy>h3{margin:14px 0 8px}@keyframes lg-target{50%{outline-color:transparent}}@media(prefers-reduced-motion:reduce){.lg-target{animation:none}}
 .lpc-pace-sheet{--gt-radius-section:16px;--gt-radius-control:12px;--gt-radius-chip:10px}.lmp-field .lcw-quantity.gtw-input{flex:1 1 40px;width:40px;min-width:0}.lmp-field .lcw-counter>button{min-height:38px;min-width:30px;padding:4px;border-radius:var(--gt-radius-chip,10px)}
+
+/* Live onboarding: stable checklist and discreet milestones. */
+.lg-start .lg-progress{height:6px;background:var(--bg-surface-2,rgba(148,163,184,.15));margin:8px 0 16px}
+.lg-start .lg-progress i{background:linear-gradient(90deg,var(--accent-primary),var(--success));transition:width .25s ease}
+.lg-mark-labels{display:flex;justify-content:space-between;align-items:start;gap:16px;margin-top:12px}
+.lg-mark-label{padding:0;border:0;background:none;color:var(--text-secondary);font:inherit;font-size:10px;line-height:1.5;flex:1;text-align:start;cursor:pointer}
+.lg-mark-label:last-child{text-align:end}.lg-mark-label.is-reached{color:var(--success)}
+.lg-mark-note{font-size:12px;color:var(--text-secondary);line-height:1.5}
+.lg-steps{list-style:none;padding:0;margin:0;display:grid;gap:12px}.lg-step{display:flex;align-items:center;gap:8px;min-width:0}
+.lg-step-badge{width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--bg-surface-2);color:var(--text-secondary)}
+.lg-step.is-done .lg-step-badge{color:var(--success);background:rgba(52,211,153,.12)}
+.lg-step-action{border:0;padding:2px 0;background:none;color:var(--accent-primary);text-align:start;font:inherit;font-size:12px;line-height:1.5;cursor:pointer}
+.lg-step.is-done .lg-step-action{color:var(--text-secondary)}.lg-step--routes{align-items:start}.lg-step--routes>div{flex:1;min-width:0}.lg-step--routes strong{font-size:12px;line-height:1.5}
+.lg-start .lg-choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+.lg-start .lg-choice button{display:grid;align-content:center;gap:3px;border:1px solid var(--border-subtle);padding:8px;border-radius:var(--radius-sm,10px);background:var(--bg-surface-2);color:var(--text-primary);font-size:11px;min-height:44px;overflow-wrap:anywhere}
+.lg-choice small{color:var(--text-secondary)}
+.lg-start .lg-steps>.lg-step.is-done>.lg-step-action{min-height:28px;padding:2px 0;border:0;border-radius:0;background:none}

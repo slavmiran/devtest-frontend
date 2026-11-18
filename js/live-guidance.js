@@ -30,8 +30,27 @@
   var run=Number(p.run_iteration||1),history=run>=2&&h.available&&!h.imported;
   var bridge=(p.live_campaign_rows||[]).find(function(c){return c.kind==='closed_bridge';});
   var slots=bridge?text('lgBridgeSlots',{used:bridge.free_occupied||0,total:bridge.total_slots||0}):'';
-  var basic=n>=5,mark=function(kind,reached){return '<button type="button" class="lg-mark-label'+(reached?' is-reached':'')+'" data-lg-mark="'+kind+'">'+e(text(kind==='basic'?'lgMarkBasic':'lgMarkFull'))+'</button>';};
-  return '<aside class="lg-start" data-live-start="'+id+'"><header><div><strong>'+e(text('lgStart'))+'</strong><p class="lg-calibration">'+e(text('lgCalibration',{n:n,target:goal}))+'</p></div><button type="button" class="meta-chip" data-live-start-hide="'+id+'" aria-label="'+e(text('lgHide'))+'">×</button></header><div class="lg-track"><div class="lg-progress" role="progressbar" aria-label="'+e(text('lgCalibration',{n:n,target:goal}))+'" aria-valuemin="0" aria-valuemax="'+goal+'" aria-valuenow="'+n+'"><i style="width:'+Math.min(100,n/goal*100)+'%"></i></div><button type="button" class="lg-mark'+(basic?' is-reached':'')+'" data-lg-mark="basic" style="left:'+(Math.min(1,5/goal)*100)+'%" aria-label="'+e(text('lgMarkBasic'))+'">5</button><button type="button" class="lg-mark" data-lg-mark="full" style="left:100%" aria-label="'+e(text('lgMarkFull'))+'">'+goal+'</button></div><div class="lg-mark-labels">'+mark('basic',basic)+mark('full',false)+'</div><p class="lg-mark-note" data-lg-mark-note hidden></p><ol class="lg-steps">'+(history?'<li class="lg-step"><span class="lg-step-badge" aria-hidden="true">1</span><div><button type="button" class="lg-step-action" data-live-action="history" data-live-app="'+id+'">'+e(text('lgImportCompact'))+'</button></div></li>':'')+'<li class="lg-step"><span class="lg-step-badge" aria-hidden="true">'+(history?'2':'1')+'</span><div><strong>'+e(text('lgChooseFlow'))+'</strong><div class="lg-choice"><button type="button" class="lg-step-action" data-live-action="bridge-focus" data-live-app="'+id+'"><span>'+e(text('lgBridgeAction'))+'</span>'+(slots?'<small>'+e(slots)+'</small>':'')+'</button><button type="button" class="lg-step-action" data-live-action="live-create" data-live-app="'+id+'">'+e(text('lgLiveCreate'))+'</button></div></div></li></ol></aside>';
+  var basic=n>=5,passport=!!p.play_store_raw;
+  var doneHistory=run===1||h.imported===true;
+  function step(number,done,action,label){
+   return '<li class="lg-step'+(done?' is-done':'')+'"><span class="lg-step-badge" aria-hidden="true">'+(done?'✓':number)+'</span>'+
+    '<button type="button" class="lg-step-action" data-live-action="'+action+'" data-live-app="'+id+'">'+e(text(label,{n:number}))+'</button></li>';
+  }
+  return '<aside class="lg-start" data-live-start="'+id+'"><header><strong>'+e(text('lgStart'))+'</strong>'+
+   '<button type="button" class="meta-chip" data-live-start-hide="'+id+'" aria-label="'+e(text('lgHide'))+'">×</button></header>'+
+   '<div class="lg-mark-labels"><button type="button" class="lg-mark-label'+(basic?' is-reached':'')+'" data-lg-mark="basic">'+
+   e(text(basic?'lcardPulseReady':'lcardPulseGoal'))+'</button><button type="button" class="lg-mark-label" data-lg-mark="full">'+
+   e(text('lcardCalibration',{n:n,target:goal}))+'</button></div>'+
+   '<div class="lg-progress" role="progressbar" aria-label="'+e(text('lgCalibration',{n:n,target:goal}))+
+   '" aria-valuemin="0" aria-valuemax="'+goal+'" aria-valuenow="'+Math.min(n,goal)+'"><i style="width:'+Math.min(100,n/goal*100)+'%"></i></div>'+
+   '<p class="lg-mark-note" data-lg-mark-note hidden></p><ol class="lg-steps">'+
+   step(1,passport,passport?'passport':'passport-load',passport?'lcardPassportDone':'lcardPassportConnect')+
+   step(2,doneHistory,history?'history':'history-status',doneHistory?'lcardHistoryDone':history?'lcardHistoryImport':'lcardHistoryMissing')+
+   '<li class="lg-step lg-step--routes"><span class="lg-step-badge" aria-hidden="true">3</span><div><strong>'+e(text('lcardRoutes'))+
+   '</strong><div class="lg-choice"><button type="button" class="lg-step-action" data-live-action="bridge-focus" data-live-app="'+id+'"><span>'+
+   e(text('lgBridgeAction'))+'</span>'+(slots?'<small>'+e(slots)+'</small>':'')+'</button>'+
+   '<button type="button" class="lg-step-action" data-live-action="live-create" data-live-app="'+id+'">'+e(text('lgLiveCreate'))+'</button></div></div></li></ol></aside>';
+
  }
  function leave(){if(window.LiveMetricsAnalytics)LiveMetricsAnalytics.close();}
  async function run(id,action,trigger){
@@ -52,6 +71,7 @@
    return opened;
   }
   if(action==='people'){if(window.switchTab)switchTab('projects');if(!window.pcSelectSpecialTabAndExpand)return false;pcSelectSpecialTabAndExpand(id,'attention');var people=document.getElementById('pc-today-'+id);if(people)people.scrollIntoView({block:'start',behavior:'smooth'});return true;}
+  if(action==='history-status'){if(window.showToast)showToast(text(Number(p.run_iteration||1)===1||p.live_metrics?.history_import?.imported?'lcardHistoryDone':'lcardHistoryMissing'));return true;}
   if(action==='history'){if(window.LiveHistoryImport)LiveHistoryImport.open(id);return true;}
   if(action==='bridge-focus'){var bridge=(p.live_campaign_rows||[]).find(function(c){return c.kind==='closed_bridge';});return coach(bridge?'[data-campaign-id="'+bridge.id+'"]':'[data-live-campaigns="'+id+'"]');}
   if(action==='live-create')return coach('[data-live-campaigns="'+id+'"] [data-lc-action="create"]');

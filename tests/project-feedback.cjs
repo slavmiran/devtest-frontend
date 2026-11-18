@@ -22,7 +22,7 @@ fs.mkdirSync(out, {recursive:true});
         for (const lang of ['ru','en']) for (const width of [360,390,430]) {
             const page = await browser.newPage({viewport:{width,height:1430}});
             let tester = true, request, routePayload;
-            let ticket = {id:7,app_id:42,type:'project_impression',status:'pending',role:'tester',body:'Onboarding was clear, but the large-text layout hid an action.',scores:[5,4,5],comments:[
+            let ticket = {id:7,app_id:42,telegram_connected:false,type:'project_impression',status:'pending',role:'tester',body:'Onboarding was clear, but the large-text layout hid an action.',scores:[5,4,5],comments:[
                 {id:8,author_role:'owner',body:'Could you share which screen hid the action?',has_media:false},
                 {id:9,author_role:'tester',body:'The review settings screen, with the largest Android font size.',has_media:false},
             ]};
@@ -56,7 +56,7 @@ fs.mkdirSync(out, {recursive:true});
                     return ok({...ticket,role:tester?'tester':'owner'});
                 }
                 if (p==='/api/apps/42/project-feedback-settings')return ok({
-                    impression:{mode:'voluntary',bonus:75,day:null},
+                    impression:{mode:'voluntary',bonus:75,day:null},profile_telegram:{chat_id:-1001234567890,topics:{reports:71,private:72,updates:0}},
                     telegram:{chat_id:-1001234567890,title:'Orbit Notes QA',topics:{reports:71,private:72,updates:0}}
                 });
                 if (p==='/api/apps/42/feedback-telegram-route'){routePayload=req.postDataJSON();return ok({});}
@@ -138,12 +138,13 @@ fs.mkdirSync(out, {recursive:true});
             assert.equal(await owner.locator('.fb-toolbar-utils .fb-icon-btn').count(),0);
             await fits();
             await owner.locator('.fb-card').screenshot({path:path.join(out,`owner-inbox-${lang}-${width}.png`)});
-            await page.evaluate(()=>{
-                document.querySelector('#project-feedback-body').innerHTML=ProjectFeedback.ownerBanner(42);
-            });
-            await owner.locator('[data-pf-route]').click();
+            assert.equal(await page.evaluate(()=>ProjectFeedback.ownerBanner(42)),'');
+            await owner.locator('.pf-compose [data-pf-route]').click();
             await page.locator('input[name=updates]').waitFor();
             assert.equal(await page.locator('input[name=updates]').inputValue(),'0');
+            await page.locator('[data-pf-use-default]').click();
+            assert.equal(await page.locator('input[name=chat]').inputValue(),'-1001234567890');
+            await page.locator('input[name=profile_default]').check();
             await fits();
             await page.locator('.lm-sheet').last().screenshot({path:path.join(out,`telegram-routing-${lang}-${width}.png`)});
             await page.locator('input[name=chat]').fill('');
@@ -156,6 +157,8 @@ fs.mkdirSync(out, {recursive:true});
             await page.locator('input[name=updates]').waitFor({state:'detached'});
             assert.deepEqual(routePayload.topics,{reports:71,private:72,updates:0});
             assert.equal(routePayload.init_data,'signed-fixture');
+            assert.equal(routePayload.set_default,true);
+            assert.equal(routePayload.use_profile,false,'Editing copied values creates an explicit, newly verified choice');
             assert.deepEqual(errors,[]);
             await page.close();
         }

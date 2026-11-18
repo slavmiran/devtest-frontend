@@ -17,6 +17,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
    const url=new URL(route.request().url()),request=route.request(),method=request.method(),body=method==='GET'?null:request.postDataJSON();
    const ok=json=>route.fulfill({json:{status:'success',...json}});
    if(url.pathname.endsWith('/live-community/snapshot'))throw Error('Campaign builder must not load community metrics');
+   if(url.pathname.endsWith('/project-feedback-settings'))return ok({result:{impression:{mode:'voluntary',bonus:50,day:null},mutual_campaigns:0}});
    if(url.pathname.endsWith('/review-credits'))return ok({wallet:{available:22.25}});
    if(url.pathname.endsWith('/priority')){const c=campaigns.find(c=>url.pathname.includes('/'+c.id+'/'));assert.ok(c);c.route_priority=body.enabled;return ok({});}
    if(url.pathname.endsWith('/stats/countries'))return geoFailure?route.fulfill({status:503,json:{status:'error'}}):ok({countries:[{country_code:'RU',name_ru:'Россия',name_en:'Russia',flag:'🇷🇺',total_count:100,active_count:40},{country_code:'KZ',name_ru:'Казахстан',name_en:'Kazakhstan',flag:'🇰🇿',total_count:6,active_count:2},{country_code:'TH',name_ru:'Таиланд',name_en:'Thailand',flag:'🇹🇭',total_count:20,active_count:0},{country_code:'US',name_ru:'США',name_en:'United States',flag:'🇺🇸',total_count:10,active_count:1},{country_code:'VN',name_ru:'Вьетнам',name_en:'Vietnam',flag:'🇻🇳',total_count:9,active_count:2}],total_registered:145,total_active:45});
@@ -122,10 +123,8 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await drawer.locator('[data-lse-field="text"]').first().fill(language==='ru'?'Создать семейный бюджет':'Create a family budget');
   await fit();await screenshot('blueprint_scenario');
   await drawer.locator('[data-lcw-action="next"]').click();
-  await drawer.locator('[data-pf-field="mode"]').selectOption('voluntary');
-  await drawer.locator('[data-pf-field="jitter"]').selectOption('2');
-  await drawer.locator('[data-pf-field="bonus"]').fill('17');
-  assert.match(await drawer.locator('[data-pf-window]').innerText(),/D8.*D12/);
+  await drawer.locator('[data-pf-campaign-mutual]').check();
+  assert.equal(await drawer.locator('[data-pf-field]').count(),0,'Campaigns cannot override project mode, bonus or opening day');
   await done();
 
   await block(2);
@@ -156,7 +155,8 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   assert.equal(posts[0].request_key,posts[1].request_key);
   const d=posts[1].definition;
   assert.deepEqual(d.preferred_track,{source:'keywords',days:28});
-  assert.deepEqual(d.impression,{mode:'voluntary',day:null,bonus:17,jitter_days:2});
+  assert.equal(d.impression_mutual,true);
+  assert.equal(d.impression,undefined);
   assert.equal(d.reviews.enabled,false);
   assert.equal(d.activity.title,language==='ru'?'Проверка бюджета':'Budget workflow');
   assert.equal(d.activity.execution_limit,8);
