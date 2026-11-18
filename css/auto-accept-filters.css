@@ -6,7 +6,7 @@
 .auto-filter-chips button[aria-pressed="true"] { color: #79b7ff; border-color: #418be0; background: rgba(65,139,224,.14); }
 .auto-filter-chips button:disabled { opacity: .5; cursor: default; }
 .auto-filter-configure { margin-top: 8px; width: 100%; text-align: left; }
-.auto-filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex !important; align-items: flex-end; justify-content: center; z-index: 1200; padding: 0 !important; }
+.auto-filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex !important; align-items: flex-end; justify-content: center; z-index: 100100; padding: 0 !important; }
 .auto-filter-sheet { width: min(100%, 520px); max-height: 90dvh; overflow: auto; box-sizing: border-box; border-radius: 22px 22px 0 0; padding: 18px 16px max(18px, env(safe-area-inset-bottom)); background: var(--bg-color, #141a22); color: var(--text-color); }
 .auto-filter-sheet header { display: flex; gap: 12px; align-items: start; justify-content: space-between; }
 .auto-filter-sheet h3 { font-size: 18px; margin: 0; }
@@ -29,3 +29,10 @@
 .auto-filter-reasons li + li { margin-top: 5px; }
 @keyframes auto-filter-reveal { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .auto-filter-controls { animation: none; } }
+
+.auto-filter-android-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; overscroll-behavior-x: contain; }
+.auto-filter-android-chips button { flex-shrink: 0; white-space: nowrap; }
+.auto-filter-info { border: 0; padding: 4px 7px; background: transparent; color: #79b7ff; font: inherit; font-size: 16px; cursor: pointer; }
+.auto-filter-help[hidden] { display: none; }
+.auto-filter-sheet footer { z-index: 1; }
+#auto-filter-modal.auto-filter-overlay { z-index: 100100 !important; }
