@@ -240,3 +240,31 @@
 .lr-scenario-funnel { margin: 8px 0; padding: 0 8px; font-size: .83rem; }
 .lr-funnel-hint { color: #f5c77b; }
 .lr-task small { display: block; margin-top: 6px; }
+.lse-step { gap: 8px; padding: 10px; background: var(--bg-surface-2); border-radius: 12px; }
+.lse-step > header { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 6px; }
+.lse-step > header label { margin: 0; }
+.lse-step > header :is(input,button) { min-height: 36px; }
+.lse-options, .lse-editor .lcw-chips, .lse-import-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.lse-option { max-width: 100%; padding: 5px 8px; text-align: start; }
+.lse-option[aria-pressed="true"] { color: var(--accent-primary); }
+.lse-editor > header { flex-wrap: wrap; gap: 8px; }
+.lse-settings > label, .lse-question > label, .lse-bonus > label, .lse-field { display: grid; gap: 5px; }
+.lse-question, .lse-bonus, .lse-import { display: grid; gap: 8px; min-width: 0; }
+.lse-question input, .lse-import textarea { width: 100%; }
+.lse-editor [hidden] { display: none !important; }
+.lr-round, .lr-round-step, .lr-round-answer, .lr-round-evidence { display: grid; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.lr-round fieldset { display: grid; gap: 6px; min-inline-size: 0; }
+.lr-round-answer textarea { box-sizing: border-box; width: 100%; }
+.lr-round-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lr-round-evidence figure { margin: 0; }
+.lse-editor .gtw-input, .lse-editor .gtw-textarea, .lr-round .gtw-input, [data-lrs-brands] .gtw-input {
+  box-sizing: border-box; min-width: 0; max-width: 100%; min-height: 40px;
+  border: 1px solid var(--border-subtle); border-radius: 10px;
+  padding: 9px 10px; background: var(--bg-surface-2); color: var(--text-primary); font: inherit;
+}
+.lse-editor .gtw-textarea, .lr-round textarea { min-height: 72px; resize: vertical; }
+.lse-editor :is(.lse-import,.lse-step,.lse-meta-fields) { margin-block: 0; }
+.lr-round-answer { margin: 0; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px; }
+.lr-round-answer legend { padding-inline: 4px; }
+.lr-round-answer label { display: flex; align-items: center; gap: 8px; }
+.lr-round-answer input[type="radio"] { margin: 0; flex: 0 0 auto; }

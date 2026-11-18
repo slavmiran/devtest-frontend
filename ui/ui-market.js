@@ -5624,6 +5624,8 @@ function renderProjectFeedbackCards(project, items) {
                         '" aria-label="' + window.escapeHTML(window.t('growthOpenVideo', {}, lang)) + '"></video>'
                     : '<img class="growth-proof-video" loading="lazy" src="' + source + '" alt="' +
                         window.escapeHTML(window.t('growthScreenshot', {}, lang)) + '">';
+            } else if (item.type === 'scenario' && item.scenario_economy_version === 2 && window.LiveScenarioUI) {
+                mediaHtml = LiveScenarioUI.evidenceSlot(item.id);
             } else if (item.report_has_video && Number(item.report_proof_id) > 0) {
                 window.feedbackMediaRegistry[item.id] = [];
                 var videoLabel = lang === 'ru' ? 'Видео и вложения · Смотреть в Telegram' : 'Video and attachments · Watch in Telegram';

@@ -80,7 +80,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
    }),true,'Sheet header stays above the canvas header');
   };
 
-  await page.locator('.lc-create').click();
+  await page.locator('[data-lc-action=create]').click();
   await layer.locator('[data-bp-wallet]').getByText(/22[.,]3|22[.,]25/).waitFor();
   assert.equal(await canvas.locator('.bp-node').count(),4);
   assert.equal(await canvas.locator('.lc-community').count(),0);

@@ -5516,6 +5516,10 @@ function showCheckinRewardToasts(result) {
         return;
     }
 
+    if (result.checkpoint_reward_bust > 0) {
+        showPrimaryCheckinToast(window.t('lseCheckpointReward', {n:result.checkpoint_reward_bust}, lang));
+        return;
+    }
     var earnedBust = Number(result.earned_bust != null ? result.earned_bust : result.bust_earned || 0);
     if(result.live_contract&&window.LiveContracts){var contractToast=LiveContracts.receipt(result);if(contractToast){showPrimaryCheckinToast(contractToast);LiveContracts.load();return;}}
     var baseEarnedBust = Math.max(0, earnedBust - screenshotBoostEarned);

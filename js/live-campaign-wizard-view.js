@@ -27,10 +27,11 @@
   function mark(at,label,kind){if(!entries.has(at))entries.set(at,[]);entries.get(at).push([label,kind]);}
   r.checkpoints.forEach(function(at){mark(at,at===1?'bpStart':at===r.days?'bpFinal':'bpCheck',at===1?'start':at===r.days?'final':'check');});
   var scenario=d.activity.enabled?Math.min(r.days,d.activity.open_day||1):null;
-  if(scenario)mark(scenario,'bpScenarioMarker','scenario');
+  var scenarioDays=new Set();
+  if(scenario)Array.from({length:d.activity.iterations_count||1},(_,i)=>scenario+i*(d.activity.iterations_interval_days||1)).filter(value=>value<=r.days).forEach(function(value){scenarioDays.add(value);mark(value,'bpScenarioMarker','scenario');});
   if(day)mark(day,'bpFeedbackMarker','feedback');
   var nodes=Array.from(entries).sort(function(a,b){return a[0]-b[0];});
-  if(compact&&nodes.length>5)nodes=nodes.filter(function(node,i){return i<2||i===nodes.length-1||node[0]===scenario||node[0]===day;});
+  if(compact&&nodes.length>5)nodes=nodes.filter(function(node,i){return i<2||i===nodes.length-1||scenarioDays.has(node[0])||node[0]===day;});
   return '<ol class="bp-timeline'+(compact?' is-mini':'')+'">'+nodes.map(function([at,markers]){
     return '<li><b>D'+at+'</b>'+markers.map(function([label,kind]){
       return '<span class="bp-mark is-'+kind+'">'+e(t(label))+'</span>';

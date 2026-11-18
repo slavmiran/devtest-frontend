@@ -87,7 +87,7 @@
         if(!accessible(s)){dispose(s);return;}
         var canvas=s.layer.querySelector('.lcw-scroll'),panel=s.layer.querySelector('.bp-sheet-body');
         var body=s.step===0?canvas:panel,position=body.scrollTop,focused=document.activeElement;
-        var attrs=['lcwFocus','lcwInput','lcwAction','lcwField','value','step','keyword','lseKey','lseSetting','pfField'];
+        var attrs=['lcwFocus','lcwInput','lcwAction','lcwField','value','step','keyword','lseKey','lseField','lseQuestion','lseOption','lseSetting','pfField'];
         var identity=attrs.map(function(k){return focused&&focused.dataset[k];});
         var start=focused&&focused.selectionStart,end=focused&&focused.selectionEnd;
         s.context.descriptionOpen=!!panel.querySelector('.lcw-description[open]');
@@ -96,6 +96,7 @@
         panel.innerHTML=s.step===0?'':LiveCampaignWizardView.body(s.draft,s.step,s.context);
         if(interval&&s.step===2)panel.querySelector('[data-bp-checkpoint-interval]').open=true;
         if(window.LiveScenarioEditor)LiveScenarioEditor.refresh(s.draft.activity,panel);
+        if(window.LiveScenarioUI&&panel.querySelector('.lse-editor'))LiveScenarioUI.addInherited(panel.querySelector('.lse-editor'),s.draft.appId);
         shell(s);
         body.scrollTop=changedStep&&s.step!==0?0:position;
         if(changedStep&&s.step!==0){s.layer.querySelector('.bp-sheet h2').focus({preventScroll:true});return;}
@@ -167,7 +168,7 @@
             if(validBonus){s.draft.impression=config;s.edited=true;}
             refresh(s);return;
         }
-        if(window.LiveScenarioEditor&&LiveScenarioEditor.input(s.draft.activity,el)){s.edited=true;if(el.dataset.lseSetting&&el.dataset.lseSetting!=='scenario_share_pct')render(s,false);else refresh(s);return;}var field=el.dataset.lcwInput;if(!field)return;
+        if(window.LiveScenarioEditor&&LiveScenarioEditor.input(s.draft.activity,el)){s.edited=true;if(el.tagName==='SELECT'||el.type==='checkbox')render(s,false);else refresh(s);return;}var field=el.dataset.lcwInput;if(!field)return;
         if(field==='scenarioLimit'){var limit=el.value===''?null:Number(el.value),valid=limit===null||Number.isInteger(limit)&&limit>=1&&limit<=100000;el.setAttribute('aria-invalid',String(!valid));if(valid){s.draft=LiveCampaignDraft.change(s.draft,field,limit);s.edited=true;}refresh(s);return;}
         if(field==='scenarioTitle'){s.draft=LiveCampaignDraft.change(s.draft,field,el.value);s.edited=true;refresh(s);return;}
         if(field==='manualKey'){s.context.manualKey=el.value;return;}

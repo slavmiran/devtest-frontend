@@ -279,14 +279,15 @@
     function threadControls(row) {
         var open = ['pending','needs_reply','new','processing'].includes(row.status);
         var owner = row.role === 'owner';
-        return '<div class="pf-chat-log" data-pf-chat-log></div>' +
+        return (row.type==='scenario'&&window.LiveScenarioUI?LiveScenarioUI.evidenceSlot(row.id):'')+
+            '<div class="pf-chat-log" data-pf-chat-log></div>' +
             (open ? '<form class="pf-layout pf-compose"><small class="pf-muted">' + e(t(['bug','idea'].includes(row.type) ? 'pfPublicMirror' : 'pfPrivateThread')) +
                 '</small><label>' + e(t('pfReply')) +
                 '<textarea class="gtw-textarea" name="body" maxlength="2000" rows="2"></textarea></label>' +
                 '<label>' + e(t('pfAddScreenshot')) + '<input type="file" name="file" accept="image/png,image/jpeg,image/webp"></label>' +
                 '<button class="lm-action lm-action-primary" disabled>' + e(t(owner ? 'pfAsk' : 'pfSend')) + '</button></form>' : '') +
             (owner && open ? '<div class="pf-actions"><button type="button" class="lm-action" data-pf-close="accepted">' + e(t('pfAccept')) +
-                '</button>' + (row.type === 'project_impression' ? '<button type="button" class="lm-action" data-pf-close="rejected">' +
+                '</button>' + (['project_impression','scenario'].includes(row.type) ? '<button type="button" class="lm-action" data-pf-close="rejected">' +
                 e(t('pfDecline')) + '</button>' : '') + '</div>' : '') +
             (owner && row.type === 'project_impression' && row.status === 'accepted' && row.scores && !row.shared_at ?
                 '<div class="pf-share">' + (row.share_text ? '<label class="pf-inline"><input data-pf-share-text type="checkbox"> ' +

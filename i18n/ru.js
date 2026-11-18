@@ -5984,3 +5984,53 @@ Object.assign(window.I18NRU, {
     smartPingLiveLoading: "Проверяем контрольные дни и сценарии…",
     smartPingLiveLoadError: "Не удалось проверить задания. Откройте Smart Ping ещё раз."
 });
+Object.assign(window.I18NRU, {
+    lseImport: 'Вставить списком', lseImportHint: 'Вставьте готовый список, по одному действию на строке',
+    lseImportAdd: 'Добавить из списка', lseImportLimit: 'Нужен непустой список, всего до 12 шагов',
+    lseCopy: 'Копирование', lseSample: 'Образец', lseStepProof: 'Скриншот шага', lseQuestion: 'Вопрос',
+    lseAnswerType: 'Формат ответа', lseFreeText: 'Свободный текст', lseChoice: 'Вариант',
+    lseChoiceNumber: 'Вариант {n}', lseCorrect: 'Проверочный вариант', lseSurvey: 'Опрос мнений',
+    lseIterations: 'График выполнения', lseOnce: 'Однократно', lseRepeat: 'Серия из {n} повторов',
+    lseInterval: 'Интервал между повторами', lseEveryDays: 'Через {n} дн.',
+    lseCalendar: 'Последний повтор по плану: D{day}', lseOutsideRetention: 'D{day} выходит за срок D{limit}',
+    lseBonus: 'Премия за сложность, $BUST', lseSuggested: '💡 Рекомендуемая премия: +{n} $BUST',
+    lseReward: 'Тестеру: {n} $BUST · обязательная часть: {artifacts} $BUST',
+    lseIterationNumber: 'Повтор {n} из {total} · D{day}', lseProofSaved: 'Файл загружен',
+    lseFinalProof: 'Финальное подтверждение', lseSendIteration: 'Отправить отчёт',
+    lseAnswer: 'Ваш ответ', lseIterationSent: 'Отчёт повтора сохранён',
+    lseAwaitNext: 'Следующий повтор откроется в D{day}', lseStepProofLabel: 'Скриншот · Шаг {n}',
+    lseAnswerRequired: 'Ответьте на все вопросы и загрузите подтверждения.',
+    lseBrandFilter: 'Бренды устройств', lseBrandAny: 'Любое устройство',
+    lseBrandExclude: 'Исключить бренды', lseBrandOnly: 'Только выбранные бренды',
+    lseBrandHint: 'При режиме «Только выбранные» проверьте, что бренд устройства указан в профиле.',
+    lseBrandBlocked: 'Бренд устройства не соответствует фильтру проекта.',
+    lseInheritedBrands: 'Фильтр устройств проекта: {brands}',
+    lseLanguageHint: 'Язык общения указан в параметрах проекта.',
+    lseCheckpointReward: '📸 За контрольный отчёт +{n} $BUST',
+    lseScenarioClearing: 'Разница за сценарии: {n} $BUST · платит {payer}',
+    lseScenarioNoClearing: 'Сценарии равноценны · доплата 0 $BUST',
+    lsePayerTarget: 'целевой проект', lsePayerProposer: 'встречный проект'
+});
+Object.assign(window.I18NRU, {
+  lseBrandConfigure: 'Настроить фильтр',
+  lseMissingProof: 'Прикрепите все скриншоты шагов и финальный отчёт.',
+  lseEvidence: '📎 Отчёты и ответы по шагам',
+  lseRoundEvidence: 'Прохождение {n} · День {day}',
+  lseAnswerCorrect: 'Правильный ответ',
+  lseAnswerIncorrect: 'Ответ отличается от проверочного',
+  lseContractReward: '+{n} $BUST за принятый сценарий',
+  lseScenarioPays: '💎 Разница за сценарии: вы доплачиваете {n} $BUST',
+  lseScenarioReceives: '💎 Разница за сценарии: вам доплатят {n} $BUST',
+  ldErr_scenario_bonus_direction: 'Доплату за сценарий вносит владелец маршрута со сценарием.',
+  ldErr_campaign_device_brand_mismatch: 'Устройство партнёра не подходит под фильтр проекта.',
+  ctErr_campaign_device_brand_mismatch: 'Бренд вашего устройства не подходит под фильтр проекта.',
+  ctPriceFormula: 'Дни × дневная ставка + контрольные дни после D1 × ставка КД + источник. Награда за сценарий выплачивается после его принятия.'
+});
+Object.assign(window.I18NRU, {
+ lseBonusOnce: 'Премия выплачивается один раз за всю серию.',
+ lseCostDetails: 'Как рассчитана стоимость',
+ lseQuotaBreakdown: '(0,50 + {proofs} скрин. × 0,20 + {questions} вопр. × 0,15 + видео {video}) × {rounds} прохожд. = {quota} ⚡',
+ lseStepProof: 'Скриншот шага',
+ lseInheritedBrands: 'Фильтр устройств проекта: {brands}'
+});
+Object.assign(window.I18NRU, {lseExplanation:'Пояснение',lseActionHint:'Что сделать (до 90 символов)'});

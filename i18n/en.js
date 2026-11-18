@@ -5970,3 +5970,52 @@ Object.assign(window.I18NEN, {
     smartPingLiveLoading: "Checking milestone and scenario reports…",
     smartPingLiveLoadError: "Could not check the tasks. Open Smart Ping again to retry."
 });
+Object.assign(window.I18NEN, {
+    lseImport: 'Paste a list', lseImportHint: 'Paste your list, one action per line',
+    lseImportAdd: 'Add from list', lseImportLimit: 'Enter a list with up to 12 steps in total',
+    lseCopy: 'Quick copy', lseSample: 'Example', lseStepProof: 'Step screenshot', lseQuestion: 'Question',
+    lseAnswerType: 'Answer format', lseFreeText: 'Free text', lseChoice: 'Option',
+    lseChoiceNumber: 'Option {n}', lseCorrect: 'Correct option', lseSurvey: 'Opinion survey',
+    lseIterations: 'Schedule', lseOnce: 'Once', lseRepeat: '{n} rounds',
+    lseInterval: 'Interval between rounds', lseEveryDays: 'Every {n} days',
+    lseCalendar: 'Last scheduled round: D{day}', lseOutsideRetention: 'D{day} exceeds retention D{limit}',
+    lseBonus: 'Tester bonus for complexity, $BUST', lseSuggested: '💡 Suggested bonus: +{n} $BUST',
+    lseReward: 'Tester reward: {n} $BUST · required portion: {artifacts} $BUST',
+    lseIterationNumber: 'Round {n} of {total} · D{day}', lseProofSaved: 'File uploaded',
+    lseFinalProof: 'Final proof', lseSendIteration: 'Submit report',
+    lseAnswer: 'Your answer', lseIterationSent: 'Round report saved',
+    lseAwaitNext: 'The next round opens on D{day}', lseStepProofLabel: 'Screenshot · Step {n}',
+    lseAnswerRequired: 'Answer all questions and upload the required proofs.',
+    lseBrandFilter: 'Device brands', lseBrandAny: 'Any device',
+    lseBrandExclude: 'Exclude brands', lseBrandOnly: 'Only selected brands',
+    lseBrandHint: 'For “Only selected brands”, make sure your device brand is set in your profile.',
+    lseBrandBlocked: 'Your device brand does not match this project’s filter.',
+    lseInheritedBrands: 'Inherited device filter: {brands}',
+    lseLanguageHint: 'The communication language is listed in project settings.',
+    lseCheckpointReward: '📸 Checkpoint report reward +{n} $BUST',
+    lseScenarioClearing: 'Scenario difference: {n} $BUST · paid by the {payer}',
+    lseScenarioNoClearing: 'Equal scenario rewards · 0 $BUST difference',
+    lsePayerTarget: 'target project', lsePayerProposer: 'partner project'
+});
+Object.assign(window.I18NEN, {
+  lseBrandConfigure: 'Configure filter',
+  lseMissingProof: 'Attach each required step screenshot and the final proof.',
+  lseEvidence: '📎 Proofs and answers by step',
+  lseRoundEvidence: 'Run {n} · Day {day}',
+  lseAnswerCorrect: 'Correct answer',
+  lseAnswerIncorrect: 'Answer differs from the expected choice',
+  lseContractReward: '+{n} $BUST when the scenario is accepted',
+  lseScenarioPays: '💎 Scenario difference: you pay {n} $BUST',
+  lseScenarioReceives: '💎 Scenario difference: you receive {n} $BUST',
+  ldErr_scenario_bonus_direction: 'The owner of the route with the scenario pays this amount.',
+  ldErr_campaign_device_brand_mismatch: 'The partner’s device does not match the project filter.',
+  ctErr_campaign_device_brand_mismatch: 'Your device brand does not match the project filter.',
+  ctPriceFormula: 'Days × daily rate + checkpoints after D1 × checkpoint rate + source. Scenario rewards are paid after acceptance.'
+});
+Object.assign(window.I18NEN, {
+ lseBonusOnce: 'The bonus is paid once for the whole series.',
+ lseCostDetails: 'Cost breakdown',
+ lseQuotaBreakdown: '(0.50 + {proofs} screenshots × 0.20 + {questions} questions × 0.15 + video {video}) × {rounds} rounds = {quota} ⚡',
+ lseInheritedBrands: 'Inherited device filter: {brands}'
+});
+Object.assign(window.I18NEN, {lseExplanation:'Note',lseActionHint:'Action (up to 90 characters)'});

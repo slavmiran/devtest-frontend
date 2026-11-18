@@ -179,6 +179,7 @@
                 (live && window.ProjectFeedback ? ProjectFeedback.ownerTools(id, false, 'lcRouteTitle') : '') +
                 (project.phase === 'live' ? '' : tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + argument + ',event)', false)) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + argument + ',event)', false) +
+                (live && window.LiveScenarioUI ? tile(project, 'device_brands', 'lseBrandFilter', text('lseBrandConfigure'), 'android', false, 'event.stopPropagation(); LiveScenarioUI.brandSettings(' + appId + ')', false) : '') +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + argument + ',event)', false) +
                 tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + argument + ',event)', false) +
                 (adapter && adapter.extraHtml ? adapter.extraHtml(project) : '') +
