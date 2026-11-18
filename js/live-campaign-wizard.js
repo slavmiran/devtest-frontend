@@ -44,6 +44,7 @@
         drawer.hidden=s.step===0;
         page.inert=s.step!==0;
         drawer.querySelector('h2').textContent=view.title(s.step);
+        drawer.querySelector('[data-bp-progress]').innerHTML=s.step===0?'':view.progress(s.step);
         drawer.querySelector('footer').innerHTML=s.step===0?'':view.footer(s.draft,s.step,false,s.context);
         page.querySelector('.lcw-footer').innerHTML=view.footer(s.draft,0,s.estimateOpen,s.context);
         var wallet=window.ReviewCredits&&ReviewCredits.get(),quota=page.querySelector('[data-bp-wallet]');
@@ -60,8 +61,8 @@
         s.layer.querySelector('.bp-route [data-step="'+ref+'"]')?.focus({preventScroll:true});
     }
     function showSheet(s,step){
-        if(![1,2,3,'feedback',4].includes(step)||invalid(s))return;
-        if(s.step===0)s.returnStep=step;
+        if(!LiveCampaignWizardView.order.includes(step)||invalid(s))return;
+        s.returnStep=step;
         s.step=step;
         if(step==='feedback'&&window.ProjectFeedback){
             ProjectFeedback.fetchSettings(s.draft.appId).then(function(){if(accessible(s)&&s.step==='feedback')render(s,false);}).catch(function(){toast('lcFailed');});
@@ -69,8 +70,8 @@
         if(step===1){
             if(!s.context.sourceBaseline)readData(s,'sources');
             if(!s.context.market)readData(s,'market');
-            if(!s.context.geoStats&&!s.context.geoError)readGeo(s,false);
         }
+        if(step==='geo'&&!s.context.geoStats&&!s.context.geoError)readGeo(s,false);
         render(s,true);
     }
     function refresh(s){
@@ -83,6 +84,7 @@
         var displayError=s.layer.querySelector('[data-lpc-display-error]');if(displayError)displayError.textContent=!s.draft.icon&&!s.draft.name.trim()?text('lpcDisplayRequired'):'';
         var balance=s.layer.querySelector('[data-lcw-balance]');if(balance)balance.innerHTML=LiveCampaignSourcesView.balance(s.draft,s.context);
         var timeline=s.layer.querySelector('.bp-sheet-body .bp-timeline');if(timeline)timeline.outerHTML=LiveCampaignWizardView.timeline(s.draft,false);
+        LiveCampaignWizardView.syncRanges(s.layer,s.draft);
         var checkpoints=s.layer.querySelector('[data-bp-timeline] > p');if(checkpoints){var n=s.draft.retention.checkpoints.length;checkpoints.textContent=text('bpSummaryKD',{n:n,price:(n-1)*10});}
         var validation=s.layer.querySelector('[data-lcw-validation]');
         if(validation)validation.textContent=invalid(s)?text('lcwInvalidCount'):!LiveCampaignDraft.valid(s.draft,1)?text(LiveCampaignDraft.allowed(s.draft).includes('keywords')&&!s.draft.keywords.length?'lcgNeedKey':'lcwQueryRequired'):'';
@@ -151,7 +153,7 @@
         if(s.context.geoLoading||!window.ShowcaseGeo)return;s.context.geoLoading=true;s.context.geoError=false;
         try{var data=await ShowcaseGeo.getStats(force);if(accessible(s))s.context.geoStats=data;}
         catch(_){if(accessible(s))s.context.geoError=true;}
-        finally{if(accessible(s)){s.context.geoLoading=false;if(s.step===1)render(s,false);}}
+        finally{if(accessible(s)){s.context.geoLoading=false;if(s.step==='geo')render(s,false);}}
     }
     function mediaExists(s,key){return key==='web' || /^scenario:[0-4]$/.test(key) || (key.startsWith('step:')&&(s.draft.activity.steps||[]).some(function(x){return 'step:'+x._key===key;})) || s.draft.keywords.some(function(k){return 'keyword:'+k.id===key;});}
     async function fileInput(s,input){
@@ -188,8 +190,14 @@
             if(!ok){refresh(s);return;}
             if(field.indexOf('cap:')===0){LiveProjectControl.change(s.context.projectControl,field.slice(4),value);s.context.allocationEdited=true;}else s.draft=LiveCampaignDraft.change(s.draft,field,value);
             // Keep adjacent +/- buttons current while typing without replacing the input/keyboard.
-            var buttons=el.parentElement.querySelectorAll('button');
-            buttons[0].dataset.value=Math.max(min,value-Number(el.parentElement.dataset.increment||1));buttons[0].disabled=value<=min;buttons[1].dataset.value=Math.min(max,value+Number(el.parentElement.dataset.increment||1));buttons[1].disabled=value>=max;
+            if(el.type!=='range'&&el.parentElement){
+                var buttons=el.parentElement.querySelectorAll('button');
+                if(buttons.length===2){
+                    var step=Number(el.parentElement.dataset.increment||1);
+                    buttons[0].dataset.value=Math.max(min,value-step);buttons[0].disabled=value<=min;
+                    buttons[1].dataset.value=Math.min(max,value+step);buttons[1].disabled=value>=max;
+                }
+            }
         }else if(field==='webQuery'){s.draft=LiveCampaignDraft.change(s.draft,field,el.value);s.webEdited=true;}
         else if(field==='name'||field==='instructions')s.draft=LiveCampaignDraft.change(s.draft,field,el.value);
         else if(field==='position')s.draft=LiveCampaignDraft.keyword(s.draft,el.dataset.keyword,'position',el.value);
@@ -217,7 +225,7 @@
         if(action==='close')return close();if(action==='back')return back();
         if(action==='wallet'){if(window.ReviewCredits)ReviewCredits.openBalance().finally(function(){if(accessible(s))shell(s);});return;}
         if(action==='estimate'){s.estimateOpen=!s.estimateOpen;shell(s);s.layer.querySelector('[data-lcw-action="estimate"]').focus();return;}
-        if(action==='step'||action==='next')return showSheet(s,button.dataset.step==='feedback'?'feedback':Number(button.dataset.step));
+        if(action==='step'||action==='next')return showSheet(s,['feedback','geo'].includes(button.dataset.step)?button.dataset.step:Number(button.dataset.step));
         if(action==='done')return finishSheet(s);
         if(button.dataset.lcwRange){
             var range=button.dataset.lcwRange==='fixed'?[s.draft.retention.days,s.draft.retention.days]:button.dataset.lcwRange.split(':').map(Number);
@@ -306,7 +314,7 @@
         if(event)event.stopPropagation();if(session){if(!accessible(session))dispose(session);else return;}
         var p=project(id),signed=actor();if(!p || !signed){toast('lcwNoAccess');return;}
         var layer=document.createElement('div');layer.id='live-campaign-wizard';layer.className='modal-overlay active gtw-overlay';
-        layer.innerHTML='<section class="lcw-page" role="dialog" aria-modal="true" aria-labelledby="lcw-title"><header class="gtw-header"><button type="button" class="gtw-back-btn" data-lcw-action="back" aria-label="'+text('lcwBack')+'">‹</button><div class="lcw-header-center">'+LiveCampaignWizardView.header()+'</div><div class="lcw-header-actions"><button type="button" class="meta-chip bp-wallet" data-lcw-action="wallet" data-bp-wallet aria-label="'+text('growthWallet')+'"></button><button type="button" class="gtw-forward-btn lcw-learn-btn" data-lcw-action="learn" data-topic="spikes" aria-haspopup="dialog" aria-label="'+text('lcpLearn')+'" title="'+text('lcpLearn')+'"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16M12 5C9 3 5 3 2 4v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-3-1-7-1-10 1Z"/></svg></button><button type="button" class="gtw-forward-btn" data-lcw-action="close" aria-label="'+text('lcwClose')+'">×</button></div></header><main class="lcw-scroll gtw-body"></main><footer class="lcw-footer"></footer></section><div class="bp-sheet" hidden><section role="dialog" aria-modal="true" aria-labelledby="bp-sheet-title" class="bp-sheet-dialog"><header><h2 id="bp-sheet-title" tabindex="-1"></h2><button type="button" class="meta-chip" data-lcw-action="done" aria-label="'+text('lcwClose')+'">×</button></header><div class="bp-sheet-body"></div><footer></footer></section></div>';
+        layer.innerHTML='<section class="lcw-page" role="dialog" aria-modal="true" aria-labelledby="lcw-title"><header class="gtw-header"><button type="button" class="gtw-back-btn" data-lcw-action="back" aria-label="'+text('lcwBack')+'">‹</button><div class="lcw-header-center">'+LiveCampaignWizardView.header()+'</div><div class="lcw-header-actions"><button type="button" class="meta-chip bp-wallet" data-lcw-action="wallet" data-bp-wallet aria-label="'+text('growthWallet')+'"></button><button type="button" class="gtw-forward-btn lcw-learn-btn" data-lcw-action="learn" data-topic="spikes" aria-haspopup="dialog" aria-label="'+text('lcpLearn')+'" title="'+text('lcpLearn')+'"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16M12 5C9 3 5 3 2 4v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-3-1-7-1-10 1Z"/></svg></button><button type="button" class="gtw-forward-btn" data-lcw-action="close" aria-label="'+text('lcwClose')+'">×</button></div></header><main class="lcw-scroll gtw-body"></main><footer class="lcw-footer"></footer></section><div class="bp-sheet" hidden><section role="dialog" aria-modal="true" aria-labelledby="bp-sheet-title" class="bp-sheet-dialog"><header><div class="bp-sheet-heading"><div data-bp-progress></div><h2 id="bp-sheet-title" tabindex="-1"></h2></div><button type="button" class="bp-sheet-close" data-lcw-action="done" aria-label="'+text('lcwClose')+'">×</button></header><div class="bp-sheet-body"></div><footer></footer></section></div>';
         function asset(assetId){return assetId?{assetId:assetId,name:text('lcwReference'),url:String(window.API_BASE||'/api').replace(/\/$/,'')+'/apps/'+Number(id)+'/campaigns/'+Number(campaign.id)+'/assets/'+Number(assetId)+'?init_data='+encodeURIComponent(signed)}:null;}
         var draft=campaign?LiveCampaignDraft.fromCampaign(p,campaign,asset):LiveCampaignDraft.create(p);
         session={draft:draft,editing:campaign||null,step:0,actor:signed,layer:layer,initial:fingerprint(draft),edited:false,webEdited:!!campaign,confirming:false,estimateOpen:false,

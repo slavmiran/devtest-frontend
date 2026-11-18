@@ -89,5 +89,47 @@
         lcgSavePaused:'The active campaign limit has been reached. This campaign will be saved as paused.',lcgCreatePaused:'Create as paused',lcgSaving:'Saving…',lcgCreatedPaused:'Campaign added as paused',lcgCreated:'Campaign created',lcgSaveFailed:'Could not save the campaign. Please retry.',lcgLimitReached:'Active campaign limit reached. Pause another campaign or buy a slot.',lcgLastKey:'An active campaign needs at least one enabled keyword.',
         lcgActiveCapacity:'Active: {n} / {limit}',lcgExpandSlots:'+ Slot · {price} $BUST',lcgBuyConfirm:'Buy permanent active campaign slot {slot} for this project for {price} $BUST?',lcgProgress:'Installs',lcgCheckpointDays:'Checkpoints: {days}',lcgPerInstall:'Checkpoint plan: {n} $BUST / tester',lcgCampaignKeys:'Campaign keywords'
     });
+    Object.assign(ru,{
+        bpTemplates:'⚡ Быстрое заполнение',bpTemplatesHint:'Шаблон заполнит схему. Любой блок можно изменить.',
+        bpTpl_aso:'Поиск по ключам',bpTplHint_aso:'Ключи Google Play · плавный разгон',bpTpl_retention:'Долгое удержание',bpTplHint_retention:'14–35 дней · 4 КД',
+        bpTpl_deep:'Сценарий фич',bpTplHint_deep:'7–14 дней · сценарий со скриншотом',bpTpl_custom:'С чистого листа',bpTplHint_custom:'Сбросить все настройки',
+        bpStepOf:'Шаг {n} из {total}',bpNextTo:'Далее: {name} →',
+        bpShort_1:'Источники',bpShort_geo:'ГЕО',bpShort_2:'Удержание',bpShort_3:'Сценарий',bpShort_feedback:'Отклик',bpShort_4:'Запуск',
+        bpStatusOk:'Настроено',bpStatusWarn:'Требует внимания',bpSourcesCard:'Источники трафика',
+        bpTrackSummary:'{range} · по умолчанию {days} дн. · КД: {n}',
+        bpSourcesTitle:'Как тестер найдёт приложение',bpSourcesLead:'Можно разрешить несколько источников. Каждый тестер выберет один, квот по источникам нет.',
+        bpSrcHint_keywords:'Находит приложение в Google Play по вашему ключу',bpSrcHint_web:'Находит приложение через поиск в браузере',bpSrcHint_link:'Открывает приложение по прямой ссылке',
+        bpFree:'Бесплатно',bpPerInstall:'{n} ⚡ / уст.',
+        bpDefaultTrack:'Источник по умолчанию',bpDefaultTrackHint:'Его первым увидят кандидаты. По нему считается смета взаимки.',
+        bpWebTitle:'Настройка веб-поиска',bpWebBrand:'По названию',bpWebCustom:'Свой запрос',
+        bpKeysTitle:'Ключи Google Play',bpKeysCount:'{n} из {max}',
+        bpGeoCountry:'Страна установок',bpGeoAudience:'Аудитория',bpGeoAnyNote:'Установки принимаются из любой страны. Выберите страну, чтобы увидеть её аудиторию.',
+        bpDurationTitle:'Срок удержания',bpPresets:'Быстрый выбор',bpPreferredTitle:'Срок по умолчанию',
+        bpByCount:'По количеству',bpByInterval:'По интервалу',bpEveryDays:'каждые {n} дн.',bpCountValue:'{n} КД',
+        bpLegendStart:'D1 · бесплатно',bpLegendCheck:'КД · 10 $BUST',
+        bpCardTitle:'Карточка кампании',bpScenarioHint:'Тестер проходит шаги и присылает подтверждения.',
+        bpRoutePriorityHint:'Маркет показывает этот маршрут первым среди маршрутов проекта.'
+    });
+    Object.assign(en,{
+        bpTemplates:'⚡ Quick fill',bpTemplatesHint:'A template fills the route. You can change any block.',
+        bpTpl_aso:'Keyword search',bpTplHint_aso:'Google Play keywords · gentle ramp-up',bpTpl_retention:'Long retention',bpTplHint_retention:'14–35 days · 4 checkpoints',
+        bpTpl_deep:'Feature scenario',bpTplHint_deep:'7–14 days · scenario with screenshot',bpTpl_custom:'Start from scratch',bpTplHint_custom:'Reset every setting',
+        bpStepOf:'Step {n} of {total}',bpNextTo:'Next: {name} →',
+        bpShort_1:'Sources',bpShort_geo:'GEO',bpShort_2:'Retention',bpShort_3:'Scenario',bpShort_feedback:'Feedback',bpShort_4:'Launch',
+        bpStatusOk:'Configured',bpStatusWarn:'Needs attention',bpSourcesCard:'Traffic sources',
+        bpTrackSummary:'{range} · default {days} d · checkpoints: {n}',
+        bpSourcesTitle:'How testers find your app',bpSourcesLead:'You can allow several sources. Each tester picks one; sources have no quotas.',
+        bpSrcHint_keywords:'Finds the app in Google Play with your keyword',bpSrcHint_web:'Finds the app through browser search',bpSrcHint_link:'Opens the app from a direct link',
+        bpFree:'Free',bpPerInstall:'{n} ⚡ / install',
+        bpDefaultTrack:'Default source',bpDefaultTrackHint:'Candidates see it first. The exchange estimate uses it.',
+        bpWebTitle:'Web search setup',bpWebBrand:'By app name',bpWebCustom:'Custom query',
+        bpKeysTitle:'Google Play keywords',bpKeysCount:'{n} of {max}',
+        bpGeoCountry:'Install country',bpGeoAudience:'Audience',bpGeoAnyNote:'Installs are accepted from any country. Choose a country to see its audience.',
+        bpDurationTitle:'Retention period',bpPresets:'Presets',bpPreferredTitle:'Default duration',
+        bpByCount:'By count',bpByInterval:'By interval',bpEveryDays:'every {n} d',bpCountValue:'{n} checkpoints',
+        bpLegendStart:'D1 · free',bpLegendCheck:'Checkpoint · 10 $BUST',
+        bpCardTitle:'Campaign card',bpScenarioHint:'Testers complete the steps and send proof.',
+        bpRoutePriorityHint:'The Market shows this route first among the project routes.'
+    });
     Object.assign(window.I18NRU, ru); Object.assign(window.I18NEN, en);
 })();

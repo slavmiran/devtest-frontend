@@ -107,15 +107,18 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   assert.equal(await drawer.locator('[data-keyword-row]').count(),1);
   await drawer.locator('[data-lcw-file="keyword:k1"]').setInputFiles({name:'reference.png',mimeType:'image/png',buffer:png});
   await drawer.locator('.lcw-attachment figure').waitFor();
+  const keywordDefault=drawer.locator('[data-lcw-field="preferredSource"][data-value="keywords"]');
+  await keywordDefault.click();
+  assert.equal(await keywordDefault.getAttribute('aria-pressed'),'true');
+  await done();
+
+  await block('geo');
   await drawer.locator('[data-lcw-action="geo"]').click();
   await page.locator('#showcase-geo-picker-modal.active').waitFor();
   await page.locator('#showcase-geo-search').fill('KZ');
   await page.locator('#showcase-geo-options [data-geo-code="KZ"]').click();
   await done();
   assert.match(await canvas.innerText(),/Казахстан|Kazakhstan/);
-  const keywordDefault=canvas.locator('[data-lcw-field="preferredSource"][data-value="keywords"]');
-  await keywordDefault.click();
-  assert.equal(await keywordDefault.getAttribute('aria-pressed'),'true');
 
   await block(3);
   await field('scenarioTitle').fill(language==='ru'?'Проверка бюджета':'Budget workflow');
@@ -129,7 +132,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
 
   await block(2);
   await drawer.locator('[data-lcw-range="7:28"]').click();
-  await drawer.locator('[data-lcw-field="retention"][data-value="21"]').click();
+  await field('retention').fill('21');
   assert.equal(await field('retention').inputValue(),'21');
   assert.match(await drawer.locator('[data-bp-timeline]').innerText(),/D17.*|D21/);
   await fit();
@@ -138,7 +141,8 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   await page.evaluate(()=>tg.BackButton.callback());
   await drawer.waitFor({state:'hidden'});
   await canvas.locator('[data-lcw-field="retention"][data-value="28"]').click();
-  assert.match(await canvas.locator('.bp-timeline').innerText(),/D24[\s\S]*D28/);
+  assert.match(await canvas.locator('.bp-timeline').getAttribute('aria-label'),/D1.*D28/);
+  assert.match(await canvas.locator('.bp-timeline').innerText(),/D1[\s\S]*D28/);
 
   await block(4);
   await field('name').fill('Orbit QA');
@@ -164,8 +168,10 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   assert.equal(campaigns.find(row=>row.name==='Orbit QA').route_priority,true);
   await page.evaluate(()=>LiveCampaignWizard.edit(42,myProjects[0].live_campaign_rows.find(c=>c.name==='Orbit QA')));
   await layer.waitFor();
-  assert.equal(await canvas.locator('.bp-template-rail').count(),0);
-  assert.equal(await canvas.locator('[data-lcw-field="preferredSource"][data-value="keywords"]').getAttribute('aria-pressed'),'true');
+  assert.equal(await canvas.locator('.bp-template-grid,.bp-template-rail').count(),0);
+  await block(1);
+  assert.equal(await drawer.locator('[data-lcw-field="preferredSource"][data-value="keywords"]').getAttribute('aria-pressed'),'true');
+  await done();
   await canvas.locator('[data-lcw-field="routePriority"]').click();
   await save();await layer.waitFor({state:'detached'});
   assert.equal(edits.length,1);
