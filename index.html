@@ -36,17 +36,17 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20261122-owner-note-v3"></script>
-<script src="./i18n/en.js?v=20261122-owner-note-v3"></script>
+<script src="./i18n/ru.js?v=20261122-owner-note-v4"></script>
+<script src="./i18n/en.js?v=20261122-owner-note-v4"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
-    <script src="./ui/ui-tests.js?v=20261122-owner-note-v3"></script>
-<script src="./js/paid-app.js?v=20261122-owner-note-v3"></script>
-    <script src="./ui/ui-projects.js?v=20261122-owner-note-v3"></script>
+    <script src="./ui/ui-tests.js?v=20261122-owner-note-v4"></script>
+<script src="./js/paid-app.js?v=20261122-owner-note-v4"></script>
+    <script src="./ui/ui-projects.js?v=20261122-owner-note-v4"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
-    <script src="./js/project-parameters.js?v=20261122-owner-note-v3"></script>
-    <script src="./ui/ui-market.js?v=20261122-owner-note-v3"></script>
+    <script src="./js/project-parameters.js?v=20261122-owner-note-v4"></script>
+    <script src="./ui/ui-market.js?v=20261122-owner-note-v4"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261012-geo-radar-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -54,12 +54,12 @@
     <script src="./js/env-config.js?v=20261105-transfer-v1"></script>
     <script src="./js/app-config.js?v=20261023-private-entry-v1"></script>
     <script src="./js/app-navigation.js?v=20260917-back-navigation-v1"></script>
-    <script src="./js/app-api.js?v=20261122-owner-note-v3"></script>
+    <script src="./js/app-api.js?v=20261122-owner-note-v4"></script>
     <script src="./js/deploy-status.js?v=20261023-advisory-v1"></script>
     <script src="./js/checkin-recovery.js?v=20261022-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20261122-owner-note-v3"></script>
+    <script src="./js/app-actions.js?v=20261122-owner-note-v4"></script>
     <script src="./js/checkin-proof-upload.js?v=20261121-report-recovery-v1"></script>
     <script src="./js/unified-report.js?v=20261118-auto-filters-v1"></script>
     <link rel="stylesheet" href="./css/unified-report.css?v=20261118-auto-filters-v1">
@@ -91,7 +91,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261031-content-match-v1">
     <link rel="stylesheet" href="./css/testing-control.css?v=20261107-comm-viewer-v1">
-    <link rel="stylesheet" href="./css/wizard.css?v=20261122-owner-note-v3">
+    <link rel="stylesheet" href="./css/wizard.css?v=20261122-owner-note-v4">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20261107-report-ping-d1-v1">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20261026-grant-media-v1">
@@ -113,7 +113,7 @@
     <link rel="stylesheet" href="./css/deploy-status.css?v=20261023-advisory-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260917-scroll-smooth-v2">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
-    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20261122-owner-note-v3">
+    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20261122-owner-note-v4">
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20261107-report-ping-d1-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20261001-coverage-polish-v2">
@@ -122,7 +122,7 @@
     <link rel="stylesheet" href="./css/showcase-geo.css?v=20261012-geo-radar-v2">
 <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261025-fullset-karma-v1">
     <link rel="stylesheet" href="./css/project-activity-history.css?v=20261022-v1">
-    <link rel="stylesheet" href="./css/project-parameters.css?v=20261122-owner-note-v3">
+    <link rel="stylesheet" href="./css/project-parameters.css?v=20261122-owner-note-v4">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20261108-smart-ping-results-v1">
     <link rel="stylesheet" href="./css/project-results.css?v=20261118-auto-filters-v1">
 </head>
@@ -902,28 +902,31 @@
                         </span>
                     </label>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" id="t-instructions" data-i18n="instructions">Комментарий</label>
-                        <label class="owner-note-switch">
-                            <span><strong data-i18n="ownerCommentToggle">Показывать тестерам</strong></span>
-                            <input type="checkbox" id="owner-comment-visible" checked>
-                            <i aria-hidden="true"></i>
-                        </label>
+                <section class="owner-note-block">
+                    <div class="owner-note-block__head">
+                        <h3 data-i18n="instructions">Комментарий</h3>
+                        <p data-i18n="ownerNoteBlockHint">Заметка для тестеров и, если нужно, данные для входа в аккаунт.</p>
+                    </div>
+                    <label class="owner-note-switch">
+                        <span><strong data-i18n="ownerCommentToggle">Показывать тестерам</strong></span>
+                        <input type="checkbox" id="owner-comment-visible" checked>
+                        <i aria-hidden="true"></i>
+                    </label>
                     <textarea id="app-instructions" class="form-input" rows="3" style="resize: none;" maxlength="1000" placeholder="" data-i18n-placeholder="instPlaceholder"></textarea>
                     <div id="chips-instructions" class="chip-scroll"></div>
                     <section class="account-access-card">
-                        <div class="account-access-card__head">
+                        <button type="button" class="account-access-card__toggle" id="credentials-toggle" aria-expanded="false" aria-controls="credentials-body" onclick="PaidAppSetup.toggleCredentials('add')">
                             <span class="account-access-card__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9"/><path d="M16 7l2 2"/><path d="M18 5l2 2"/></svg></span>
-                            <div>
-                                <strong data-i18n="credentialsTitle">Вход в аккаунт</strong>
-                                <p data-i18n="credentialsHint">Необязательно. Тестер увидит логин вместе с комментарием, если показ включён.</p>
-                            </div>
+                            <span class="account-access-card__copy"><strong data-i18n="credentialsTitle">Вход в аккаунт</strong><small data-i18n="credentialsHint">Тестер увидит данные для входа с быстрыми кнопками копирования.</small></span>
+                            <span class="account-access-card__chev" aria-hidden="true"></span>
+                        </button>
+                        <div class="account-access-card__body" id="credentials-body" hidden>
+                            <label class="account-access-field"><span data-i18n="testLoginLabel">Логин</span><input id="test-login" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
+                            <label class="account-access-field"><span data-i18n="testPasswordLabel">Пароль</span><input id="test-password" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
+                            <label class="account-access-field"><span data-i18n="testCredentialsNoteLabel">Дополнительно</span><textarea id="test-credentials-note" class="form-input" maxlength="300" rows="2" data-i18n-placeholder="testCredentialsPlaceholder"></textarea></label>
                         </div>
-                        <label class="account-access-field"><span data-i18n="testLoginLabel">Логин</span><input id="test-login" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
-                        <label class="account-access-field"><span data-i18n="testPasswordLabel">Пароль</span><input id="test-password" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
-                        <label class="account-access-field"><span data-i18n="testCredentialsNoteLabel">Дополнительно</span><textarea id="test-credentials-note" class="form-input" maxlength="300" rows="2" data-i18n-placeholder="testCredentialsPlaceholder"></textarea></label>
                     </section>
-                </div>
+                </section>
                 </div>
             </div>
             <!-- Email-test consent is account-wide and is configured in Settings / the project parameters sheet. -->
@@ -1660,8 +1663,11 @@
                         </button>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label" id="t-editDescription" data-i18n="instructions">Комментарий</label>
+                    <section class="owner-note-block">
+                        <div class="owner-note-block__head">
+                            <h3 id="t-editDescription" data-i18n="instructions">Комментарий</h3>
+                            <p data-i18n="ownerNoteBlockHint">Заметка для тестеров и, если нужно, данные для входа в аккаунт.</p>
+                        </div>
                         <label class="owner-note-switch">
                             <span><strong data-i18n="ownerCommentToggle">Показывать тестерам</strong></span>
                             <input type="checkbox" id="edit-owner-comment-visible" checked>
@@ -1670,18 +1676,18 @@
                         <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
                         <div id="chips-edit-instructions" class="chip-scroll"></div>
                         <section class="account-access-card">
-                            <div class="account-access-card__head">
+                            <button type="button" class="account-access-card__toggle" id="edit-credentials-toggle" aria-expanded="false" aria-controls="edit-credentials-body" onclick="PaidAppSetup.toggleCredentials('edit')">
                                 <span class="account-access-card__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9"/><path d="M16 7l2 2"/><path d="M18 5l2 2"/></svg></span>
-                                <div>
-                                    <strong data-i18n="credentialsTitle">Вход в аккаунт</strong>
-                                    <p data-i18n="credentialsHint">Необязательно. Тестер увидит логин вместе с комментарием, если показ включён.</p>
-                                </div>
+                                <span class="account-access-card__copy"><strong data-i18n="credentialsTitle">Вход в аккаунт</strong><small data-i18n="credentialsHint">Тестер увидит данные для входа с быстрыми кнопками копирования.</small></span>
+                                <span class="account-access-card__chev" aria-hidden="true"></span>
+                            </button>
+                            <div class="account-access-card__body" id="edit-credentials-body" hidden>
+                                <label class="account-access-field"><span data-i18n="testLoginLabel">Логин</span><input id="edit-test-login" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
+                                <label class="account-access-field"><span data-i18n="testPasswordLabel">Пароль</span><input id="edit-test-password" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
+                                <label class="account-access-field"><span data-i18n="testCredentialsNoteLabel">Дополнительно</span><textarea id="edit-test-credentials-note" class="form-input" maxlength="300" rows="2" data-i18n-placeholder="testCredentialsPlaceholder"></textarea></label>
                             </div>
-                            <label class="account-access-field"><span data-i18n="testLoginLabel">Логин</span><input id="edit-test-login" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
-                            <label class="account-access-field"><span data-i18n="testPasswordLabel">Пароль</span><input id="edit-test-password" class="form-input" maxlength="150" autocomplete="off" spellcheck="false"></label>
-                            <label class="account-access-field"><span data-i18n="testCredentialsNoteLabel">Дополнительно</span><textarea id="edit-test-credentials-note" class="form-input" maxlength="300" rows="2" data-i18n-placeholder="testCredentialsPlaceholder"></textarea></label>
                         </section>
-                    </div>
+                    </section>
                 </div>
 
                 <!-- Card 6: Email Testers Outreach -->

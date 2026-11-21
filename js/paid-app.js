@@ -45,7 +45,7 @@
         };
     }
     var licenseScope = 'add';
-    var LICENSE_GUIDE_URL = 'https://t.me/googleplay_console_12testers/31/2885';
+    var LICENSE_GUIDE_URL = 'https://t.me/googleplay_console_12testers/31/82651';
     var TESTER_GROUP_EMAIL = 'google-play-dev-test@googlegroups.com';
     function paintType(scope) {
         var type = appType(scope);
@@ -92,6 +92,22 @@
         var box = field(scope, 'check-license');
         if (box) box.checked = data.app_type === 'paid';
         paintType(scope);
+        foldCredentials(scope, !hasScopeCredentials(scope));
+    }
+    function hasScopeCredentials(scope) {
+        return !!(clip(field(scope, 'test-login') && field(scope, 'test-login').value, 150)
+            || clip(field(scope, 'test-password') && field(scope, 'test-password').value, 150)
+            || clip(field(scope, 'test-credentials-note') && field(scope, 'test-credentials-note').value, 300));
+    }
+    function foldCredentials(scope, folded) {
+        var body = document.getElementById(idFor(scope, 'credentials-body'));
+        var toggle = document.getElementById(idFor(scope, 'credentials-toggle'));
+        if (body) body.hidden = !!folded;
+        if (toggle) toggle.setAttribute('aria-expanded', String(!folded));
+    }
+    function toggleCredentials(scope) {
+        var body = document.getElementById(idFor(scope, 'credentials-body'));
+        foldCredentials(scope, !(body && body.hidden));
     }
     function resetAdd() {
         fill('add', { app_type: 'free', owner_comment_visible: true });
@@ -264,6 +280,7 @@
         hasComment: hasComment,
         publicNote: publicNote,
         chips: chips,
+        toggleCredentials: toggleCredentials,
         openLicenseGuide: openLicenseGuide,
         confirmLicense: confirmLicense,
         cancelLicense: cancelLicense,

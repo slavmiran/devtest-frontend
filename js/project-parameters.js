@@ -345,10 +345,13 @@
                     '<label class="project-instructions-field" for="project-instructions-input"><span id="project-instructions-label"></span><textarea id="project-instructions-input" rows="5" maxlength="1000" oninput="ProjectParameters.onInstructionsInput()"></textarea></label>' +
                     '<div id="chips-project-instructions" class="chip-scroll"></div>' +
                     '<div class="project-instructions-meta"><span id="project-instructions-note"></span><output id="project-instructions-count" for="project-instructions-input"></output></div>' +
-                    '<section class="project-instructions-login"><h4 id="project-instructions-login-title"></h4><p id="project-instructions-login-hint"></p>' +
-                        '<label class="project-instructions-field"><span id="project-instructions-login-label"></span><input id="project-instructions-login" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
-                        '<label class="project-instructions-field"><span id="project-instructions-password-label"></span><input id="project-instructions-password" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
-                        '<label class="project-instructions-field"><span id="project-instructions-extra-label"></span><textarea id="project-instructions-extra" rows="2" maxlength="300"></textarea></label>' +
+                    '<section class="project-instructions-login">' +
+                        '<button type="button" class="project-instructions-login__toggle" id="project-instructions-login-toggle" aria-expanded="false" aria-controls="project-instructions-login-body" onclick="ProjectParameters.toggleLogin()"><span><strong id="project-instructions-login-title"></strong><small id="project-instructions-login-hint"></small></span><i aria-hidden="true"></i></button>' +
+                        '<div id="project-instructions-login-body" hidden>' +
+                            '<label class="project-instructions-field"><span id="project-instructions-login-label"></span><input id="project-instructions-login" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
+                            '<label class="project-instructions-field"><span id="project-instructions-password-label"></span><input id="project-instructions-password" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
+                            '<label class="project-instructions-field"><span id="project-instructions-extra-label"></span><textarea id="project-instructions-extra" rows="2" maxlength="300"></textarea></label>' +
+                        '</div>' +
                     '</section>' +
                     '<p id="project-instructions-error" class="project-instructions-error" role="alert" hidden></p>' +
                     '<button id="project-instructions-save" type="button" class="project-instructions-save" onclick="ProjectParameters.saveInstructions()"></button>' +
@@ -384,6 +387,11 @@
         document.getElementById('project-instructions-password').value = String(project.test_password || '');
         document.getElementById('project-instructions-extra').value = String(project.test_credentials_note || '');
         document.getElementById('project-instructions-extra').placeholder = text('testCredentialsPlaceholder');
+        var hasLogin = !!(String(project.test_login || '').trim() || String(project.test_password || '').trim() || String(project.test_credentials_note || '').trim());
+        var loginBody = document.getElementById('project-instructions-login-body');
+        var loginToggle = document.getElementById('project-instructions-login-toggle');
+        if (loginBody) loginBody.hidden = !hasLogin;
+        if (loginToggle) loginToggle.setAttribute('aria-expanded', String(hasLogin));
         renderInstructionChips();
         setInstructionsError('');
         onInstructionsInput();
@@ -479,6 +487,13 @@
             cache();
             projects().forEach(update);
         }
+    }
+    function toggleLogin() {
+        var body = document.getElementById('project-instructions-login-body');
+        var toggle = document.getElementById('project-instructions-login-toggle');
+        if (!body) return;
+        body.hidden = !body.hidden;
+        if (toggle) toggle.setAttribute('aria-expanded', String(!body.hidden));
     }
     function toggleComment(id, event) {
         if (event) event.stopPropagation();
@@ -666,5 +681,5 @@
             }
         }
     });
-    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, toggleComment: toggleComment, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
+    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, toggleComment: toggleComment, toggleLogin: toggleLogin, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
 })();

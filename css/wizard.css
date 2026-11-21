@@ -2198,7 +2198,18 @@ body.wizard-open .bottom-nav {
 .owner-note-switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.28); transition: transform .16s ease; }
 .owner-note-switch input:checked + i { background: #3978d6; }
 .owner-note-switch input:checked + i::after { transform: translateX(16px); }
-.account-access-card { margin-top: 14px; padding: 12px; border-radius: 16px; border: 1px solid rgba(174, 195, 226, .14); background: linear-gradient(180deg, rgba(83, 146, 244, .08), rgba(8, 14, 24, .2)); }
+.owner-note-block { margin-top: 6px; padding: 14px; border: 1px solid rgba(174, 195, 226, .14); border-radius: 16px; background: rgba(180, 202, 233, .045); }
+.owner-note-block__head h3 { margin: 0; font-size: 15px; line-height: 1.3; }
+.owner-note-block__head p { margin: 4px 0 12px; color: var(--hint-color); font-size: 12px; line-height: 1.4; }
+.owner-note-block .owner-note-switch { margin-bottom: 10px; }
+.account-access-card { margin-top: 12px; padding: 0; overflow: hidden; border-radius: 16px; border: 1px solid rgba(174, 195, 226, .14); background: linear-gradient(180deg, rgba(83, 146, 244, .08), rgba(8, 14, 24, .2)); }
+.account-access-card__toggle { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 12px; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.account-access-card__copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.account-access-card__copy strong { font-size: 14px; line-height: 1.3; }
+.account-access-card__copy small { color: var(--hint-color); font-size: 12px; line-height: 1.35; }
+.account-access-card__chev { flex: 0 0 8px; width: 8px; height: 8px; margin-right: 4px; border-right: 1.6px solid #8ea2bd; border-bottom: 1.6px solid #8ea2bd; transform: rotate(45deg); transition: transform .16s ease; }
+.account-access-card__toggle[aria-expanded="true"] .account-access-card__chev { transform: rotate(225deg); margin-top: 4px; }
+.account-access-card__body { padding: 0 12px 12px; }
 .account-access-card__head { display: flex; gap: 10px; align-items: flex-start; }
 .account-access-card__mark { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border-radius: 12px; color: #9ebef0; background: rgba(83, 146, 244, .16); }
 .account-access-card__mark svg { width: 18px; height: 18px; }
