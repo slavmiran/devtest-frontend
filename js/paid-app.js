@@ -44,12 +44,17 @@
             owner_comment_visible: commentVisible(scope)
         };
     }
+    var licenseScope = 'add';
+    var LICENSE_GUIDE_URL = 'https://t.me/googleplay_console_12testers/31/2885';
+    var TESTER_GROUP_EMAIL = 'google-play-dev-test@googlegroups.com';
     function paintType(scope) {
         var type = appType(scope);
         document.querySelectorAll('[data-app-type-scope="' + scope + '"]').forEach(function (button) {
             var on = button.dataset.appType === type;
             button.setAttribute('aria-pressed', String(on));
             button.classList.toggle('active', on);
+            button.classList.toggle('selected-free', on && type === 'free');
+            button.classList.toggle('selected-paid', on && type === 'paid');
         });
         var panel = document.getElementById(idFor(scope, 'paid-license-panel'));
         if (panel) panel.hidden = type !== 'paid';
@@ -63,9 +68,12 @@
         var previous = input ? input.value : 'free';
         var next = type === 'paid' ? 'paid' : 'free';
         if (input) input.value = next;
+        if (fromUser && next !== 'paid') {
+            var box = field(scope, 'check-license');
+            if (box) box.checked = false;
+        }
         paintType(scope);
-        var guide = document.getElementById(idFor(scope, 'paid-license-guide'));
-        if (fromUser && previous !== 'paid' && next === 'paid' && guide) guide.open = true;
+        if (fromUser && previous !== 'paid' && next === 'paid') openLicenseModal(scope);
         if (fromUser && window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
         if (scope === 'add' && typeof evaluateAddStages === 'function') evaluateAddStages();
         if (scope === 'edit' && typeof updateEditSaveButtonState === 'function') updateEditSaveButtonState();
@@ -84,8 +92,6 @@
         var box = field(scope, 'check-license');
         if (box) box.checked = data.app_type === 'paid';
         paintType(scope);
-        var guide = document.getElementById(idFor(scope, 'paid-license-guide'));
-        if (guide) guide.open = data.app_type === 'paid';
     }
     function resetAdd() {
         fill('add', { app_type: 'free', owner_comment_visible: true });
@@ -187,6 +193,46 @@
         if (event && event.target !== modal) return;
         modal.classList.remove('active');
     }
+    function openLicenseModal(scope) {
+        licenseScope = scope === 'edit' ? 'edit' : 'add';
+        var modal = document.getElementById('mutual-license-modal');
+        if (modal) modal.classList.add('is-open');
+    }
+    function closeLicenseModal() {
+        var modal = document.getElementById('mutual-license-modal');
+        if (modal) modal.classList.remove('is-open');
+    }
+    function confirmLicense() {
+        var box = field(licenseScope, 'check-license');
+        if (box) {
+            box.checked = true;
+            box.dispatchEvent(new Event('change'));
+        }
+        closeLicenseModal();
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
+    }
+    function cancelLicense(event) {
+        if (event && event.target && event.target.id !== 'mutual-license-modal') return;
+        closeLicenseModal();
+        setType(licenseScope, 'free', false);
+        var box = field(licenseScope, 'check-license');
+        if (box) box.checked = false;
+    }
+    function openLicenseGuide() {
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg && typeof tg.openTelegramLink === 'function') tg.openTelegramLink(LICENSE_GUIDE_URL);
+        else if (tg && typeof tg.openLink === 'function') tg.openLink(LICENSE_GUIDE_URL);
+        else window.open(LICENSE_GUIDE_URL, '_blank');
+    }
+    function copyEmail(button) {
+        var done = function () {
+            if (window.tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            if (typeof showToast === 'function') showToast(t('credentialCopied'));
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(TESTER_GROUP_EMAIL).then(done).catch(done);
+        else done();
+        if (button) button.blur();
+    }
     function reportPaid(appId) {
         close('paid-app-modal');
         if (typeof window.openIssueReportModal === 'function') window.openIssueReportModal(appId, 'paid_license_misconfigured');
@@ -218,6 +264,10 @@
         hasComment: hasComment,
         publicNote: publicNote,
         chips: chips,
+        openLicenseGuide: openLicenseGuide,
+        confirmLicense: confirmLicense,
+        cancelLicense: cancelLicense,
+        copyEmail: copyEmail,
         openPaidGuide: openPaidGuide,
         openCredentials: openCredentials,
         report: reportPaid,

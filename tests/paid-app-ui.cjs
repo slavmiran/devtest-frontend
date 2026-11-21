@@ -28,10 +28,10 @@ const modals = index.match(/<div id="paid-app-modal"[\s\S]*?(?=\s*<div id="googl
             });
             assert.equal(await page.locator('#paid-license-panel').isHidden(), true);
             await page.evaluate(() => document.querySelector('[data-app-type="paid"]').click());
-            assert.equal(await page.locator('#paid-license-panel').isVisible(), true, 'Paid button toggles the license panel');
+            assert.equal(await page.locator('#paid-license-panel').isVisible(), true, 'Paid button shows the license card');
             assert.equal(await page.locator('[data-app-type="paid"]').getAttribute('aria-pressed'), 'true');
             assert.equal(await page.locator('[data-app-type="free"]').getAttribute('aria-pressed'), 'false');
-            assert.equal(await page.locator('#paid-license-guide').evaluate((node) => node.open), true, 'Switching to paid opens the license guide');
+            assert.equal(await page.locator('#mutual-license-modal').evaluate((node) => node.classList.contains('is-open')), true, 'Switching to paid opens the license modal');
             assert.equal(await page.locator('#check-license').isVisible(), true);
             await page.evaluate(() => PaidAppSetup.openPaidGuide(42));
             const src = await page.locator('#paid-app-example').getAttribute('src');

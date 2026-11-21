@@ -2178,6 +2178,12 @@ body.wizard-open .bottom-nav {
     vertical-align: middle;
 }
 
+.paid-app-type { margin: 2px 0 20px; }
+.paid-app-type .gtw-type-card { width: 100%; font: inherit; }
+.paid-app-type .gtw-inline-card { margin-top: 14px; }
+.paid-app-type .setup-note { margin-top: 12px; }
+#mutual-license-modal.gtw-modal-overlay { display: none; }
+#mutual-license-modal.gtw-modal-overlay.is-open { display: flex; }
 .paid-type-switch { margin: 0 0 14px; }
 .paid-license-panel { margin: 0 0 14px; }
 .paid-license-guide { border: 1px solid var(--border-subtle, rgba(255,255,255,.12)); border-radius: 14px; padding: 10px 12px; background: rgba(8, 14, 24, .28); }

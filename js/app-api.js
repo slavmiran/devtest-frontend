@@ -1176,7 +1176,8 @@ function getApiErrorMessage(payload, fallbackKey = 'genericError') {
         return t[fallbackKey] || t.genericError;
     }
     if (typeof payload === 'string' && payload.trim() !== '') {
-        if (isNotFoundLike(payload)) {
+        const normalized = payload.trim().toLowerCase();
+        if (isNotFoundLike(payload) || normalized === 'failed to fetch' || normalized === 'networkerror' || normalized === 'load failed') {
             return t.networkError || t.genericError;
         }
         return payload;

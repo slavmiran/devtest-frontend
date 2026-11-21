@@ -17,7 +17,7 @@
         android: '<path d="m7 6-2-3m12 3 2-3M4 14v-3a8 8 0 0 1 16 0v3zM8 9h.01M16 9h.01M7 14v6m10-6v6M4 17h16"/>',
         email: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 6 8 7 8-7"/>',
         camera: '<path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/>',
-        instructions: '<path d="M8 18.5 5 21v-2.2A8 8 0 1 1 12 20H8.2"/>',
+        instructions: '<path d="M7 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2V6a2 2 0 0 1 2-2z"/><path d="M9 9h7M9 13h7M9 17h4"/>',
     };
 
     function text(key, params) {
@@ -169,7 +169,7 @@
                 tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + id + ',event)', true) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + id + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
-                commentTile(project, id) +
+                tile(project, 'instructions', 'pcParamsInstructions', commentValue(project), 'instructions', commentShown(project), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
                 '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
                     '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
                     '<span class="pc-project-param__value">' + boostValueHtml + '</span>' +
@@ -178,18 +178,6 @@
             '</div>' +
             (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email', 'pc-project-params__access-icon') + '<span>' + esc(text('pcParamsEmailAccess')) + '</span>' + CHEVRON + '</button>' : '') +
         '</div></div></div>';
-    }
-    function commentTile(project, id) {
-        var busy = pending(project, 'instructions') || pending(project, 'owner_comment_visible') || pending(project, 'test_login');
-        var on = commentShown(project);
-        var enabled = project.owner_comment_visible !== false;
-        return '<div class="pc-project-param pc-project-param--comment' + (on ? ' is-active' : '') + '" data-project-param="instructions"' + (busy ? ' aria-busy="true"' : '') + '>' +
-            '<button type="button" class="pc-comment-open" onclick="ProjectParameters.openInstructions(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsInstructions') + ': ' + commentValue(project)) + '"' + (busy ? ' disabled' : '') + '>' +
-                '<span class="pc-project-param__label">' + icon('instructions') + '<span>' + esc(text('pcParamsInstructions')) + '</span></span>' +
-                '<span class="pc-project-param__value pc-project-param__value--state">' + esc(commentValue(project)) + '</span>' +
-            '</button>' +
-            '<label class="pc-comment-switch"><input type="checkbox"' + (enabled ? ' checked' : '') + (busy ? ' disabled' : '') + ' aria-label="' + esc(text('ownerCommentToggle')) + '" onchange="ProjectParameters.toggleComment(' + id + ',event)"><i aria-hidden="true"></i></label>' +
-        '</div>';
     }
     function isEmailList(project) {
         return String(project && project.test_mode || '').toLowerCase() === 'email_list';
@@ -353,7 +341,7 @@
                 '<section class="project-instructions-sheet" role="dialog" aria-modal="true" aria-labelledby="project-instructions-title" aria-describedby="project-instructions-description" onclick="event.stopPropagation()">' +
                     '<div class="project-instructions-sheet__handle" aria-hidden="true"></div>' +
                     '<header class="project-instructions-sheet__head"><div><h3 id="project-instructions-title"></h3><p id="project-instructions-description"></p></div></header>' +
-                    '<label class="project-email-settings-switch"><span><strong id="project-instructions-toggle-label"></strong><small id="project-instructions-toggle-hint"></small></span><input id="project-instructions-visible" type="checkbox"><i aria-hidden="true"></i></label>' +
+                    '<label class="project-email-settings-switch"><span><strong id="project-instructions-toggle-label"></strong></span><input id="project-instructions-visible" type="checkbox"><i aria-hidden="true"></i></label>' +
                     '<label class="project-instructions-field" for="project-instructions-input"><span id="project-instructions-label"></span><textarea id="project-instructions-input" rows="5" maxlength="1000" oninput="ProjectParameters.onInstructionsInput()"></textarea></label>' +
                     '<div id="chips-project-instructions" class="chip-scroll"></div>' +
                     '<div class="project-instructions-meta"><span id="project-instructions-note"></span><output id="project-instructions-count" for="project-instructions-input"></output></div>' +
@@ -381,7 +369,6 @@
         document.getElementById('project-instructions-title').textContent = text('pcParamsInstructionsModalTitle');
         document.getElementById('project-instructions-description').textContent = text('pcParamsInstructionsModalDescription');
         document.getElementById('project-instructions-toggle-label').textContent = text('ownerCommentToggle');
-        document.getElementById('project-instructions-toggle-hint').textContent = text('ownerCommentToggleHint');
         document.getElementById('project-instructions-visible').checked = project.owner_comment_visible !== false;
         document.getElementById('project-instructions-label').textContent = text('pcParamsInstructionsModalLabel');
         document.getElementById('project-instructions-note').textContent = text('pcParamsInstructionsModalNote');

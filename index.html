@@ -36,17 +36,17 @@
         } catch (e) {}
     })();
     </script>
-<script src="./i18n/ru.js?v=20261122-owner-note-v2"></script>
-<script src="./i18n/en.js?v=20261122-owner-note-v2"></script>
+<script src="./i18n/ru.js?v=20261122-owner-note-v3"></script>
+<script src="./i18n/en.js?v=20261122-owner-note-v3"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
-    <script src="./ui/ui-tests.js?v=20261122-owner-note-v2"></script>
-<script src="./js/paid-app.js?v=20261122-owner-note-v2"></script>
-    <script src="./ui/ui-projects.js?v=20261122-owner-note-v2"></script>
+    <script src="./ui/ui-tests.js?v=20261122-owner-note-v3"></script>
+<script src="./js/paid-app.js?v=20261122-owner-note-v3"></script>
+    <script src="./ui/ui-projects.js?v=20261122-owner-note-v3"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
-    <script src="./js/project-parameters.js?v=20261122-owner-note-v2"></script>
-    <script src="./ui/ui-market.js?v=20261122-owner-note-v2"></script>
+    <script src="./js/project-parameters.js?v=20261122-owner-note-v3"></script>
+    <script src="./ui/ui-market.js?v=20261122-owner-note-v3"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261012-geo-radar-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -54,12 +54,12 @@
     <script src="./js/env-config.js?v=20261105-transfer-v1"></script>
     <script src="./js/app-config.js?v=20261023-private-entry-v1"></script>
     <script src="./js/app-navigation.js?v=20260917-back-navigation-v1"></script>
-    <script src="./js/app-api.js?v=20261122-owner-note-v2"></script>
+    <script src="./js/app-api.js?v=20261122-owner-note-v3"></script>
     <script src="./js/deploy-status.js?v=20261023-advisory-v1"></script>
     <script src="./js/checkin-recovery.js?v=20261022-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20261122-owner-note-v2"></script>
+    <script src="./js/app-actions.js?v=20261122-owner-note-v3"></script>
     <script src="./js/checkin-proof-upload.js?v=20261121-report-recovery-v1"></script>
     <script src="./js/unified-report.js?v=20261118-auto-filters-v1"></script>
     <link rel="stylesheet" href="./css/unified-report.css?v=20261118-auto-filters-v1">
@@ -91,7 +91,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261031-content-match-v1">
     <link rel="stylesheet" href="./css/testing-control.css?v=20261107-comm-viewer-v1">
-    <link rel="stylesheet" href="./css/wizard.css?v=20261122-owner-note-v2">
+    <link rel="stylesheet" href="./css/wizard.css?v=20261122-owner-note-v3">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20261107-report-ping-d1-v1">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20261026-grant-media-v1">
@@ -113,7 +113,7 @@
     <link rel="stylesheet" href="./css/deploy-status.css?v=20261023-advisory-v1">
     <link rel="stylesheet" href="./css/projects-scroll.css?v=20260917-scroll-smooth-v2">
     <link rel="stylesheet" href="./css/guaranteed-test-offer.css?v=20260802-gt-draft-v1">
-    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20261023-private-order-identity-v1">
+    <link rel="stylesheet" href="./css/guaranteed-test-wizard.css?v=20261122-owner-note-v3">
     <link rel="stylesheet" href="./css/my-tests-refresh.css?v=20261107-report-ping-d1-v1">
     <link rel="stylesheet" href="./css/states-overrides.css?v=20260706-phase4">
 <link rel="stylesheet" href="./css/project-card-dashboard.css?v=20261001-coverage-polish-v2">
@@ -122,7 +122,7 @@
     <link rel="stylesheet" href="./css/showcase-geo.css?v=20261012-geo-radar-v2">
 <link rel="stylesheet" href="./css/project-activity-workspace.css?v=20261025-fullset-karma-v1">
     <link rel="stylesheet" href="./css/project-activity-history.css?v=20261022-v1">
-    <link rel="stylesheet" href="./css/project-parameters.css?v=20261122-owner-note-v2">
+    <link rel="stylesheet" href="./css/project-parameters.css?v=20261122-owner-note-v3">
     <link rel="stylesheet" href="./css/smart-ping.css?v=20261108-smart-ping-results-v1">
     <link rel="stylesheet" href="./css/project-results.css?v=20261118-auto-filters-v1">
 </head>
@@ -688,14 +688,42 @@
 
             <div id="add-stage-2" class="stage-panel wizard-section">
                 <div class="wizard-section-card">
+                    <div class="paid-app-type">
+                        <input type="hidden" id="app-type" value="free">
+                        <div class="gtw-type-grid" role="group" aria-label="App price">
+                            <button type="button" class="gtw-type-card selected-free" data-app-type-scope="add" data-app-type="free" aria-pressed="true" onclick="PaidAppSetup.setType('add','free',true)">
+                                <svg class="gtw-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="9 12 11.5 14.5 15.5 9.5"></polyline></svg>
+                                <span class="gtw-type-title" data-i18n="freeAppType">Бесплатное</span>
+                            </button>
+                            <button type="button" class="gtw-type-card" data-app-type-scope="add" data-app-type="paid" aria-pressed="false" onclick="PaidAppSetup.setType('add','paid',true)">
+                                <svg class="gtw-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                <span class="gtw-type-title" data-i18n="paidAppType">Платное</span>
+                            </button>
+                        </div>
+                        <div id="paid-license-panel" class="gtw-inline-card" hidden>
+                            <h3 class="gtw-inline-title" data-i18n="licenseGuideTitle">Настройка License Testing</h3>
+                            <p class="gtw-inline-subtitle" data-i18n="licenseSubtitle">Позволяет тестировщикам установить платное приложение без покупки.</p>
+                            <p class="gtw-inline-desc" data-i18n-html="licenseDesc">Без добавления в <strong>License Testing</strong> тестировщики не смогут бесплатно установить платное приложение. Эта настройка позволяет команде скачать и протестировать приложение без реальной покупки.</p>
+                            <ul class="gtw-inline-list">
+                                <li data-i18n-html="licenseStep1">Откройте <strong>Settings → License testing</strong></li>
+                                <li data-i18n-html="licenseStep2">Выберите тип тестировщиков <strong>Google Groups</strong></li>
+                                <li data-i18n-html="licenseStep3">Добавьте <strong>google-play-dev-test@googlegroups.com</strong></li>
+                                <li data-i18n-html="licenseStep4">Оставьте <strong>RESPOND_NORMALLY</strong> и сохраните</li>
+                            </ul>
+                            <button type="button" class="gtw-inline-guide-btn" onclick="PaidAppSetup.openLicenseGuide()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                                <span data-i18n="licenseSetupGuide">Инструкция по настройке</span>
+                            </button>
+                            <p id="paid-license-note" class="setup-note" hidden data-i18n="licenseCustomNote">Добавьте тестерские адреса или свою группу также в License Testing.</p>
+                            <label class="gtw-confirm-row gtw-confirm-row--inside">
+                                <input type="checkbox" id="check-license" onchange="onAddChecklistChange()">
+                                <span class="gtw-confirm-label" data-i18n="licenseChecklist">Я настроил Тестирование лицензий (License Testing + RESPOND_NORMALLY)</span>
+                            </label>
+                        </div>
+                    </div>
                     <div class="wizard-section-head">
                         <h3 class="wizard-section-title" data-i18n="googleGroup">Настройка доступа</h3>
                         <p class="wizard-section-desc" data-i18n="wizardAccessDesc">Выберите способ тестирования и настройте Play Console.</p>
-                    </div>
-                    <div class="seg-control paid-type-switch" role="group" aria-label="App price">
-                        <input type="hidden" id="app-type" value="free">
-                        <button type="button" class="seg-btn active" data-app-type-scope="add" data-app-type="free" aria-pressed="true" onclick="PaidAppSetup.setType('add','free',true)" data-i18n="freeAppType">Бесплатное</button>
-                        <button type="button" class="seg-btn" data-app-type-scope="add" data-app-type="paid" aria-pressed="false" onclick="PaidAppSetup.setType('add','paid',true)" data-i18n="paidAppType">Платное</button>
                     </div>
                     <div class="seg-control seg-control--triple" id="group-seg-control">
                         <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">DevTestHub</button>
@@ -786,19 +814,6 @@
                         <p class="email-mode-card__accent" data-i18n="emailTestingAlertAccent">Рекомендуется использовать Google Groups.</p>
                     </div>
 
-                    <div id="paid-license-panel" class="paid-license-panel" hidden>
-                        <details id="paid-license-guide" class="paid-license-guide">
-                            <summary data-i18n="licenseGuideTitle">Настройка License Testing</summary>
-                            <p data-i18n="licenseGuideLead">Добавьте google-play-dev-test@googlegroups.com в License Testing и оставьте RESPOND_NORMALLY.</p>
-                            <img src="images/Settings_l.png" alt="License testing" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                            <img src="images/RESPOND_NORMALY_l.png" alt="RESPOND_NORMALLY" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                        </details>
-                        <p id="paid-license-note" class="setup-note" hidden data-i18n="licenseCustomNote">Добавьте тестерские адреса или свою группу также в License Testing.</p>
-                        <label class="review-checkbox-row checklist-item">
-                            <input type="checkbox" id="check-license" onchange="onAddChecklistChange()">
-                            <span><strong data-i18n="licenseChecklist">Я настроил Тестирование лицензий (License Testing + RESPOND_NORMALLY)</strong></span>
-                        </label>
-                    </div>
                     <div id="email-mode-banner" class="email-mode-banner visually-hidden" style="display: none;" aria-hidden="true">
                         <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
                         <button type="button" class="email-mode-change" onclick="exitEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
@@ -889,14 +904,11 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label" id="t-instructions" data-i18n="instructions">Комментарий</label>
-                    <label class="owner-note-switch">
-                        <span>
-                            <strong data-i18n="ownerCommentToggle">Показывать тестерам</strong>
-                            <small data-i18n="ownerCommentToggleHint">Выключено — текст и вход сохраняются, но не появляются на карточке и не считаются активным параметром.</small>
-                        </span>
-                        <input type="checkbox" id="owner-comment-visible" checked>
-                        <i aria-hidden="true"></i>
-                    </label>
+                        <label class="owner-note-switch">
+                            <span><strong data-i18n="ownerCommentToggle">Показывать тестерам</strong></span>
+                            <input type="checkbox" id="owner-comment-visible" checked>
+                            <i aria-hidden="true"></i>
+                        </label>
                     <textarea id="app-instructions" class="form-input" rows="3" style="resize: none;" maxlength="1000" placeholder="" data-i18n-placeholder="instPlaceholder"></textarea>
                     <div id="chips-instructions" class="chip-scroll"></div>
                     <section class="account-access-card">
@@ -1421,27 +1433,42 @@
 
                 <!-- Card 2: Access Setup -->
                 <div class="wizard-section-card">
+                    <div class="paid-app-type">
+                        <input type="hidden" id="edit-app-type" value="free">
+                        <div class="gtw-type-grid" role="group" aria-label="App price">
+                            <button type="button" class="gtw-type-card selected-free" data-app-type-scope="edit" data-app-type="free" aria-pressed="true" onclick="PaidAppSetup.setType('edit','free',true)">
+                                <svg class="gtw-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="9 12 11.5 14.5 15.5 9.5"></polyline></svg>
+                                <span class="gtw-type-title" data-i18n="freeAppType">Бесплатное</span>
+                            </button>
+                            <button type="button" class="gtw-type-card" data-app-type-scope="edit" data-app-type="paid" aria-pressed="false" onclick="PaidAppSetup.setType('edit','paid',true)">
+                                <svg class="gtw-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                <span class="gtw-type-title" data-i18n="paidAppType">Платное</span>
+                            </button>
+                        </div>
+                        <div id="edit-paid-license-panel" class="gtw-inline-card" hidden>
+                            <h3 class="gtw-inline-title" data-i18n="licenseGuideTitle">Настройка License Testing</h3>
+                            <p class="gtw-inline-subtitle" data-i18n="licenseSubtitle">Позволяет тестировщикам установить платное приложение без покупки.</p>
+                            <p class="gtw-inline-desc" data-i18n-html="licenseDesc">Без добавления в <strong>License Testing</strong> тестировщики не смогут бесплатно установить платное приложение. Эта настройка позволяет команде скачать и протестировать приложение без реальной покупки.</p>
+                            <ul class="gtw-inline-list">
+                                <li data-i18n-html="licenseStep1">Откройте <strong>Settings → License testing</strong></li>
+                                <li data-i18n-html="licenseStep2">Выберите тип тестировщиков <strong>Google Groups</strong></li>
+                                <li data-i18n-html="licenseStep3">Добавьте <strong>google-play-dev-test@googlegroups.com</strong></li>
+                                <li data-i18n-html="licenseStep4">Оставьте <strong>RESPOND_NORMALLY</strong> и сохраните</li>
+                            </ul>
+                            <button type="button" class="gtw-inline-guide-btn" onclick="PaidAppSetup.openLicenseGuide()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                                <span data-i18n="licenseSetupGuide">Инструкция по настройке</span>
+                            </button>
+                            <p id="edit-paid-license-note" class="setup-note" hidden data-i18n="licenseCustomNote">Добавьте тестерские адреса или свою группу также в License Testing.</p>
+                            <label class="gtw-confirm-row gtw-confirm-row--inside">
+                                <input type="checkbox" id="edit-check-license" onchange="if(window.PaidAppSetup)PaidAppSetup.sync('edit')">
+                                <span class="gtw-confirm-label" data-i18n="licenseChecklist">Я настроил Тестирование лицензий (License Testing + RESPOND_NORMALLY)</span>
+                            </label>
+                        </div>
+                    </div>
                     <div class="wizard-section-head">
                         <h3 class="wizard-section-title" id="t-editGroup" data-i18n="googleGroup">Настройка доступа</h3>
                         <p class="wizard-section-desc">Google Group или E-mail для закрытого тестирования в Play Console.</p>
-                    </div>
-                    <div class="seg-control paid-type-switch" role="group" aria-label="App price">
-                        <input type="hidden" id="edit-app-type" value="free">
-                        <button type="button" class="seg-btn active" data-app-type-scope="edit" data-app-type="free" aria-pressed="true" onclick="PaidAppSetup.setType('edit','free',true)" data-i18n="freeAppType">Бесплатное</button>
-                        <button type="button" class="seg-btn" data-app-type-scope="edit" data-app-type="paid" aria-pressed="false" onclick="PaidAppSetup.setType('edit','paid',true)" data-i18n="paidAppType">Платное</button>
-                    </div>
-                    <div id="edit-paid-license-panel" class="paid-license-panel" hidden>
-                        <details id="edit-paid-license-guide" class="paid-license-guide">
-                            <summary data-i18n="licenseGuideTitle">Настройка License Testing</summary>
-                            <p data-i18n="licenseGuideLead">Добавьте google-play-dev-test@googlegroups.com в License Testing и оставьте RESPOND_NORMALLY.</p>
-                            <img src="images/Settings_l.png" alt="License testing" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                            <img src="images/RESPOND_NORMALY_l.png" alt="RESPOND_NORMALLY" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
-                        </details>
-                        <p id="edit-paid-license-note" class="setup-note" hidden data-i18n="licenseCustomNote">Добавьте тестерские адреса или свою группу также в License Testing.</p>
-                        <label class="review-checkbox-row checklist-item">
-                            <input type="checkbox" id="edit-check-license" onchange="if(window.PaidAppSetup)PaidAppSetup.sync('edit')">
-                            <span><strong data-i18n="licenseChecklist">Я настроил Тестирование лицензий (License Testing + RESPOND_NORMALLY)</strong></span>
-                        </label>
                     </div>
 
                     <div id="edit-access-view-card" class="access-view-card">
@@ -1636,10 +1663,7 @@
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label" id="t-editDescription" data-i18n="instructions">Комментарий</label>
                         <label class="owner-note-switch">
-                            <span>
-                                <strong data-i18n="ownerCommentToggle">Показывать тестерам</strong>
-                                <small data-i18n="ownerCommentToggleHint">Выключено — текст и вход сохраняются, но не появляются на карточке и не считаются активным параметром.</small>
-                            </span>
+                            <span><strong data-i18n="ownerCommentToggle">Показывать тестерам</strong></span>
                             <input type="checkbox" id="edit-owner-comment-visible" checked>
                             <i aria-hidden="true"></i>
                         </label>
@@ -3258,6 +3282,37 @@
             <section id="paid-credentials-secrets" class="owner-note-secrets"></section>
             <button type="button" class="owner-note-close" onclick="PaidAppSetup.close('paid-credentials-modal')" data-i18n="paidModalClose">Закрыть</button>
         </section>
+    </div>
+    <div id="mutual-license-modal" class="gtw-modal-overlay" onclick="PaidAppSetup.cancelLicense(event)">
+        <div class="gtw-modal-card" onclick="event.stopPropagation()">
+            <h3 class="gtw-modal-title" data-i18n="licenseGuideTitle">Настройка License Testing</h3>
+            <p class="gtw-modal-desc" data-i18n="licenseSubtitle">Позволяет тестировщикам установить платное приложение без покупки.</p>
+            <div class="gtw-modal-steps">
+                <div class="gtw-modal-step"><span class="gtw-step-num">1</span><span class="gtw-step-text" data-i18n-html="licenseStep1">Откройте <strong>Settings → License testing</strong></span></div>
+                <div class="gtw-modal-step"><span class="gtw-step-num">2</span><span class="gtw-step-text" data-i18n-html="licenseStep2">Выберите тип тестировщиков <strong>Google Groups</strong></span></div>
+                <div class="gtw-modal-step">
+                    <span class="gtw-step-num">3</span>
+                    <div class="gtw-step-content">
+                        <span class="gtw-step-text" data-i18n="licenseStep3Short">Добавьте почту нашей группы тестировщиков:</span>
+                        <div class="gtw-copy-box">
+                            <span class="gtw-copy-email">google-play-dev-test@googlegroups.com</span>
+                            <button type="button" class="gtw-copy-btn" onclick="PaidAppSetup.copyEmail(this)" data-i18n-title="copyCredential" title="Копировать">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="gtw-modal-step"><span class="gtw-step-num">4</span><span class="gtw-step-text" data-i18n-html="licenseStep4">Оставьте <strong>RESPOND_NORMALLY</strong> и сохраните</span></div>
+            </div>
+            <button type="button" class="gtw-guide-btn" onclick="PaidAppSetup.openLicenseGuide()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                <span data-i18n="licenseSetupGuide">Инструкция по настройке</span>
+            </button>
+            <div class="gtw-modal-actions">
+                <button type="button" class="gtw-modal-cancel-btn" onclick="PaidAppSetup.cancelLicense()" data-i18n="licenseModalCancel">Отмена</button>
+                <button type="button" class="gtw-modal-confirm-btn" onclick="PaidAppSetup.confirmLicense()" data-i18n="licenseModalOk">Понятно</button>
+            </div>
+        </div>
     </div>
     <div id="google_translate_element" style="display:none;"></div>
     <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
