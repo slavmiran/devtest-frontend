@@ -3119,6 +3119,7 @@ function renderTests(force) {
                                     <span class="apstep__label">${window.escapeHTML(freezeBtnText)}</span>
                                 </button>
                             </div>
+                            ${String(test.app_type || '') === 'paid' ? `<div class="apstep"><button type="button" class="apstep__row" onclick="event.stopPropagation(); openIssueReportModal(${test.id}, 'paid_license_misconfigured')" ${isIssueBlocked ? 'disabled' : ''}><span class="apstep__label">${window.escapeHTML(window.t('paidSetupReport', {}, lang))}</span></button></div>` : ''}
                         </div>
                     </div>
                 </div>
@@ -3457,7 +3458,7 @@ function renderTests(force) {
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;" onclick="event.stopPropagation()">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips.concat(controlProofCatchupChipHtml ? [controlProofCatchupChipHtml] : []) })}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips.concat(controlProofCatchupChipHtml ? [controlProofCatchupChipHtml] : []).concat(window.PaidAppSetup ? PaidAppSetup.chips(test) : []) })}
             ${reportRetryHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}

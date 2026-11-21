@@ -3182,6 +3182,7 @@ async function submitIssueReport(appId) {
                 email: email,
                 account_match_confirmed: true,
                 screenshot_file_id: screenshotFileId,
+                issue_kind: window._issueReportKind === 'paid_license_misconfigured' ? 'paid_license_misconfigured' : '',
             }))
         });
         var result = await response.json();

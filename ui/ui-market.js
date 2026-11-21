@@ -819,6 +819,14 @@ function openMarketAccessIssue(appId, isOwnProject, ownerUsername, accessMode, e
         }
         return false;
     }
+    if (String(accessMode || '') === 'paid_license') {
+        const paidText = window.t('paidSetupIssueHint', {}, lang);
+        const contact = String(ownerUsername || '').replace(/^@+/, '');
+        const html = '<p>' + window.escapeHTML(paidText) + '</p>' + (contact ? '<p><a href="https://t.me/' + window.escapeHTML(contact) + '" target="_blank" rel="noopener">@' + window.escapeHTML(contact) + '</a></p>' : '');
+        if (typeof window.showCustomAlert === 'function') window.showCustomAlert(html, { html: true, variant: 'market-access' });
+        else if (typeof showToast === 'function') showToast(paidText);
+        return false;
+    }
 
     const issueContext = {
         access_issue: true,
@@ -931,8 +939,9 @@ function renderFeedCard(item, kind) {
                 ? 'custom_google_group'
                 : 'google_group')
     ));
+    const paidSetupIssue = String(item.access_issue_kind || '') === 'paid_license_misconfigured';
     const accessIssueChip = hasAccessIssue
-        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🔒 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
+        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t(paidSetupIssue ? 'paidSetupIssueHint' : 'accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(paidSetupIssue ? 'paid_license' : accessIssueMode)}', event)">${paidSetupIssue ? '⚠️' : '🔒'} ${window.escapeHTML(window.t(paidSetupIssue ? 'paidSetupIssueBadge' : 'accessIssueBadge', {}, lang))}</button>`
         : '';
     const blockedByMe = !!item.blocked_by_me;
     const blockedByOwner = !!item.blocked_by_owner;
@@ -4233,7 +4242,8 @@ function openIssueChecklistAppPlay() {
     _openIssueChecklistLink(url || ISSUE_CHECKLIST_PLAY_STORE_HOME);
 }
 
-function openIssueReportModal(appId) {
+function openIssueReportModal(appId, kind) {
+    window._issueReportKind = kind === 'paid_license_misconfigured' ? kind : '';
     _issueReportAppId = appId;
     const modal = document.getElementById('issue-report-modal');
     if (!modal) return;
@@ -4247,8 +4257,8 @@ function openIssueReportModal(appId) {
         const node = document.getElementById(id);
         if (node) node.innerText = window.t(key, {}, lang);
     };
-    if (title) title.innerText = window.t('reportIssueModalTitle', {}, lang);
-    if (hint) hint.innerText = window.t('reportIssueModalInfo', {}, lang);
+    if (title) title.innerText = window.t(window._issueReportKind === 'paid_license_misconfigured' ? 'paidIssueModalTitle' : 'reportIssueModalTitle', {}, lang);
+    if (hint) hint.innerText = window.t(window._issueReportKind === 'paid_license_misconfigured' ? 'paidIssueModalInfo' : 'reportIssueModalInfo', {}, lang);
     if (emailLabel) emailLabel.innerText = window.t('reportIssueEmailLabel', {}, lang);
     if (sendBtn) sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
     if (cancelBtn) cancelBtn.innerText = window.t('reportIssueCancelBtn', {}, lang);
@@ -4309,6 +4319,7 @@ function closeIssueReportModal(event) {
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
     _clearIssueReportVerificationTimer();
+    window._issueReportKind = '';
     _issueReportAppId = null;
     _issueReportStep = 1;
     _setIssueChecklistChecked(false);

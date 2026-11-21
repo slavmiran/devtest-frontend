@@ -5425,6 +5425,7 @@ function resetAddFlow() {
     const testerEmailInput = document.getElementById('app-tester-email');
     if (testerEmailInput) testerEmailInput.classList.remove('input-valid');
 
+    if (window.PaidAppSetup) PaidAppSetup.resetAdd();
     ['check-email', 'check-countries', 'check-review'].forEach((id) => {
         const box = document.getElementById(id);
         if (box) {
@@ -5511,21 +5512,23 @@ function isAddPlayLinkValid() {
 }
 
 function isAddChecklistComplete() {
-    return ['check-email', 'check-countries', 'check-review'].every((id) => {
+    const ready = ['check-email', 'check-countries', 'check-review'].every((id) => {
         const box = document.getElementById(id);
         return box && box.checked;
     });
+    return ready && (!window.PaidAppSetup || PaidAppSetup.licenseReady('add'));
 }
 
 function isAddStage2Complete() {
-    if (window.addProjectFlow && window.addProjectFlow.emailMode) return true;
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
+    const licenseReady = !window.PaidAppSetup || PaidAppSetup.licenseReady('add');
     if (isStandard) {
         const isEmailCopied = !!(window.addProjectFlow && window.addProjectFlow.isEmailCopied);
         if (!isEmailCopied) return false;
         return isAddChecklistComplete();
     }
-    return isValidGoogleGroupUrl((document.getElementById('app-group').value || '').trim());
+    if (window.addProjectFlow && window.addProjectFlow.emailMode) return licenseReady;
+    return licenseReady && isValidGoogleGroupUrl((document.getElementById('app-group').value || '').trim());
 }
 
 function isAddStage3Valid() {
@@ -5601,6 +5604,7 @@ function evaluateAddStages() {
     stage2.classList.toggle('wizard-section--locked', unlocked < 2);
     stage3.classList.toggle('wizard-section--locked', unlocked < 3);
 
+    if (window.PaidAppSetup) PaidAppSetup.sync('add');
     syncAppIconPickerUi();
     _syncAddEmailTestersBoxVisibility();
     updateWizardProgress();
@@ -5990,6 +5994,7 @@ function openEditModal(projectId, options) {
     projectToEdit = projectId;
     document.getElementById('edit-name').value = project.name || '';
     document.getElementById('edit-description').value = project.instructions || '';
+    if (window.PaidAppSetup) PaidAppSetup.fill('edit', project);
     document.getElementById('edit-icon').value = project.icon_url || '';
     document.getElementById('edit-package').value = project.package || '';
     if (window.AccessSetupManager && typeof window.AccessSetupManager.initEdit === 'function') {

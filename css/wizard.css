@@ -2177,3 +2177,20 @@ body.wizard-open .bottom-nav {
     padding: 1.5px 7px;
     vertical-align: middle;
 }
+
+.paid-type-switch { display: flex; gap: 6px; margin: 10px 0 12px; }
+.paid-type-switch button { flex: 1; min-height: 36px; border-radius: 10px; border: 1px solid var(--border-strong, rgba(255,255,255,.16)); background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 650; }
+.paid-type-switch button[aria-pressed="true"] { background: rgba(83,146,244,.18); border-color: rgba(83,146,244,.7); }
+.paid-license-panel { margin: 10px 0; }
+.paid-license-guide { border: 1px solid var(--border-subtle, rgba(255,255,255,.12)); border-radius: 12px; padding: 8px 10px; }
+.paid-license-guide summary { cursor: pointer; font-weight: 700; }
+.paid-license-guide img, .paid-example { display: block; width: 100%; max-height: 240px; object-fit: contain; margin-top: 8px; border-radius: 10px; background: #0e141b; }
+.paid-credentials { margin-top: 10px; }
+.paid-credentials summary { cursor: pointer; font-weight: 650; margin-bottom: 8px; }
+.paid-credentials label { display: block; margin: 8px 0 4px; font-size: 12px; }
+.paid-modal { max-width: 420px; }
+.paid-modal p { font-size: 13px; line-height: 1.45; }
+.paid-secret-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.paid-secret-row > div { flex: 1; min-width: 0; }
+.paid-secret-row span, .paid-secret-row strong { display: block; overflow-wrap: anywhere; }
+.paid-secret-row button { flex: 0 0 auto; width: auto; min-height: 32px; }

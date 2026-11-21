@@ -1701,6 +1701,10 @@ function _mapTestsFromApi(data) {
             icon_url: app.icon_url,
             google_group_url: app.google_group_url,
             instructions: app.instructions,
+            app_type: app.app_type === 'paid' ? 'paid' : 'free',
+            test_login: app.test_login || '',
+            test_password: app.test_password || '',
+            test_credentials_note: app.test_credentials_note || '',
             status: status,
             confirmed_checkin_view_date: sameParticipation ? (existingTest.confirmed_checkin_view_date || '') : '',
             start_date: app.start_date,
@@ -2377,6 +2381,10 @@ function _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision) 
             icon_url: project.icon_url,
             google_group_url: project.google_group_url,
             instructions: project.instructions || '',
+            app_type: project.app_type === 'paid' ? 'paid' : 'free',
+            test_login: project.test_login || '',
+            test_password: project.test_password || '',
+            test_credentials_note: project.test_credentials_note || '',
             testers: mappedTesters,
             is_visible: project.is_visible !== false,
             is_accepting_new_testers: isAcceptingNewTesters,
@@ -3439,6 +3447,7 @@ async function saveProject() {
         accepts_email_testers: acceptsEmailTesters,
         tester_email: acceptsEmailTesters ? testerEmailInput : null,
         min_android_version: minAndroidVersion,
+        ...(window.PaidAppSetup ? PaidAppSetup.payload('add') : { app_type: 'free' }),
         ...pricingPayload
     });
 }
@@ -3597,6 +3606,10 @@ async function saveProjectEdit() {
         return;
     }
 
+    if (window.PaidAppSetup && !PaidAppSetup.licenseReady('edit')) {
+        _saveProjectAlert(window.t('completeChecklistError', {}, lang));
+        return;
+    }
     if (accessPayload && !accessPayload.canSave) {
         _saveProjectAlert(window.t('completeChecklistError', {}, lang));
         if (typeof window.updateEditSaveButtonState === 'function') {
@@ -3690,6 +3703,7 @@ async function saveProjectEdit() {
                 tester_email: acceptsEmailTesters ? testerEmailInput : null,
                 min_android_version: minAndroidVersion,
                 is_setup_completed: isSetupCompleted,
+                ...(window.PaidAppSetup ? PaidAppSetup.payload('edit') : {}),
                 init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                 ...pricingPayload
             })

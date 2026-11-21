@@ -36,16 +36,17 @@
         } catch (e) {}
     })();
     </script>
-    <script src="./i18n/ru.js?v=20261121-report-recovery-v1"></script>
-    <script src="./i18n/en.js?v=20261121-report-recovery-v1"></script>
+<script src="./i18n/ru.js?v=20261122-paid-app-v1"></script>
+<script src="./i18n/en.js?v=20261122-paid-app-v1"></script>
     <script src="./i18n/core.js?v=20260804-chooser-v4"></script>
     <script src="./js/app-state.js?v=20260916-earn-karma-v1"></script>
     <script src="./ui/ui-helpers.js?v=20261012-project-day-proof-retry-v1"></script>
-    <script src="./ui/ui-tests.js?v=20261121-report-recovery-v1"></script>
-    <script src="./ui/ui-projects.js?v=20261108-grant-sync-v1"></script>
+    <script src="./ui/ui-tests.js?v=20261122-paid-app-v1"></script>
+<script src="./js/paid-app.js?v=20261122-paid-app-v1"></script>
+    <script src="./ui/ui-projects.js?v=20261122-paid-app-v1"></script>
     <script src="./js/project-activity-history.js?v=20261022-v1"></script>
     <script src="./js/project-parameters.js?v=20261014-single-email-v1"></script>
-    <script src="./ui/ui-market.js?v=20261102-offer-authority-v1"></script>
+    <script src="./ui/ui-market.js?v=20261122-paid-app-v1"></script>
     <script src="./js/country-catalog.js?v=20261003-geo-v1"></script>
     <script src="./js/showcase-geo.js?v=20261012-geo-radar-v2"></script>
     <script src="./ui/ui-mass-invite.js?v=20260917-mi-run-context-v1"></script>
@@ -53,12 +54,12 @@
     <script src="./js/env-config.js?v=20261105-transfer-v1"></script>
     <script src="./js/app-config.js?v=20261023-private-entry-v1"></script>
     <script src="./js/app-navigation.js?v=20260917-back-navigation-v1"></script>
-    <script src="./js/app-api.js?v=20261118-auto-filters-v1"></script>
+    <script src="./js/app-api.js?v=20261122-paid-app-v1"></script>
     <script src="./js/deploy-status.js?v=20261023-advisory-v1"></script>
     <script src="./js/checkin-recovery.js?v=20261022-v1"></script>
     <script src="./js/app-device-info.js?v=20260916-tester-profile-gate-v1"></script>
     <script src="./js/app-homescreen.js?v=20260802-homescreen-v3"></script>
-    <script src="./js/app-actions.js?v=20261118-auto-filters-v1"></script>
+    <script src="./js/app-actions.js?v=20261122-paid-app-v1"></script>
     <script src="./js/checkin-proof-upload.js?v=20261121-report-recovery-v1"></script>
     <script src="./js/unified-report.js?v=20261118-auto-filters-v1"></script>
     <link rel="stylesheet" href="./css/unified-report.css?v=20261118-auto-filters-v1">
@@ -90,7 +91,7 @@
     <link rel="stylesheet" href="./css/play-review-modal.css?v=20260706-phase2">
     <link rel="stylesheet" href="./css/checkin-proof-upload.css?v=20261031-content-match-v1">
     <link rel="stylesheet" href="./css/testing-control.css?v=20261107-comm-viewer-v1">
-    <link rel="stylesheet" href="./css/wizard.css?v=20261023-restart-buttons-v1">
+    <link rel="stylesheet" href="./css/wizard.css?v=20261122-paid-app-v1">
     <link rel="stylesheet" href="./css/market-external-tests.css?v=20260827-guest-v11">
     <link rel="stylesheet" href="./css/mutual-balance-modal.css?v=20261107-report-ping-d1-v1">
     <link rel="stylesheet" href="./css/feedback-center.css?v=20261026-grant-media-v1">
@@ -691,6 +692,11 @@
                         <h3 class="wizard-section-title" data-i18n="googleGroup">Настройка доступа</h3>
                         <p class="wizard-section-desc" data-i18n="wizardAccessDesc">Выберите способ тестирования и настройте Play Console.</p>
                     </div>
+                    <div class="paid-type-switch" role="group" aria-label="App price">
+                        <input type="hidden" id="app-type" value="free">
+                        <button type="button" data-app-type-scope="add" data-app-type="free" aria-pressed="true" data-i18n="freeAppType">Бесплатное</button>
+                        <button type="button" data-app-type-scope="add" data-app-type="paid" aria-pressed="false" data-i18n="paidAppType">Платное</button>
+                    </div>
                     <div class="seg-control seg-control--triple" id="group-seg-control">
                         <button type="button" class="seg-btn active" id="seg-standard" onclick="switchGroupTab('standard')" data-i18n="groupStandard">DevTestHub</button>
                         <button type="button" class="seg-btn" id="seg-custom" onclick="switchGroupTab('custom')" data-i18n="groupCustom">Своя группа</button>
@@ -780,6 +786,19 @@
                         <p class="email-mode-card__accent" data-i18n="emailTestingAlertAccent">Рекомендуется использовать Google Groups.</p>
                     </div>
 
+                    <div id="paid-license-panel" class="paid-license-panel" hidden>
+                        <details id="paid-license-guide" class="paid-license-guide">
+                            <summary data-i18n="licenseGuideTitle">Настройка License Testing</summary>
+                            <p data-i18n="licenseGuideLead">Добавьте google-play-dev-test@googlegroups.com в License Testing и оставьте RESPOND_NORMALLY.</p>
+                            <img src="images/Settings_l.png" alt="License testing" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                            <img src="images/RESPOND_NORMALY_l.png" alt="RESPOND_NORMALLY" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                        </details>
+                        <p id="paid-license-note" class="setup-note" hidden data-i18n="licenseCustomNote">Добавьте тестерские адреса или свою группу также в License Testing.</p>
+                        <label class="review-checkbox-row checklist-item">
+                            <input type="checkbox" id="check-license" onchange="onAddChecklistChange()">
+                            <span><strong data-i18n="licenseChecklist">Я настроил Тестирование лицензий (License Testing + RESPOND_NORMALLY)</strong></span>
+                        </label>
+                    </div>
                     <div id="email-mode-banner" class="email-mode-banner visually-hidden" style="display: none;" aria-hidden="true">
                         <span data-i18n="emailModeActive">✉️ Выбрано тестирование по email</span>
                         <button type="button" class="email-mode-change" onclick="exitEmailTestingMode()" data-i18n="emailModeChange">Изменить</button>
@@ -872,6 +891,15 @@
                     <label class="form-label" id="t-instructions" data-i18n="instructions">Инструкции</label>
                     <textarea id="app-instructions" class="form-input" rows="3" style="resize: none;" maxlength="1000" placeholder="" data-i18n-placeholder="instPlaceholder"></textarea>
                     <div id="chips-instructions" class="chip-scroll"></div>
+                    <details class="paid-credentials">
+                        <summary data-i18n="credentialsTitle">🔑 Данные для входа в ЛК (если требуется авторизация)</summary>
+                        <label data-i18n="testLoginLabel">Логин</label>
+                        <input id="test-login" class="form-input" maxlength="150" autocomplete="off">
+                        <label data-i18n="testPasswordLabel">Пароль</label>
+                        <input id="test-password" class="form-input" maxlength="150" autocomplete="off">
+                        <label data-i18n="testCredentialsNoteLabel">Дополнительное поле</label>
+                        <textarea id="test-credentials-note" class="form-input" maxlength="300" rows="2" data-i18n-placeholder="testCredentialsPlaceholder"></textarea>
+                    </details>
                 </div>
                 </div>
             </div>
@@ -1580,6 +1608,33 @@
                         <label class="form-label" id="t-editDescription" data-i18n="instructions">Инструкции для тестеров</label>
                         <textarea id="edit-description" class="form-input" rows="3" style="resize: none;" maxlength="1000" data-i18n-placeholder="instPlaceholder"></textarea>
                         <div id="chips-edit-instructions" class="chip-scroll"></div>
+                        <div class="paid-type-switch" role="group">
+                            <input type="hidden" id="edit-app-type" value="free">
+                            <button type="button" data-app-type-scope="edit" data-app-type="free" aria-pressed="true" data-i18n="freeAppType">Бесплатное</button>
+                            <button type="button" data-app-type-scope="edit" data-app-type="paid" aria-pressed="false" data-i18n="paidAppType">Платное</button>
+                        </div>
+                        <div id="edit-paid-license-panel" class="paid-license-panel" hidden>
+                            <details id="edit-paid-license-guide" class="paid-license-guide">
+                                <summary data-i18n="licenseGuideTitle">Настройка License Testing</summary>
+                                <p data-i18n="licenseGuideLead">Добавьте google-play-dev-test@googlegroups.com в License Testing и оставьте RESPOND_NORMALLY.</p>
+                                <img src="images/Settings_l.png" alt="License testing" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                                <img src="images/RESPOND_NORMALY_l.png" alt="RESPOND_NORMALLY" class="zoomable-img" onclick="openImageZoom(this.src, this.alt)">
+                            </details>
+                            <p id="edit-paid-license-note" class="setup-note" hidden data-i18n="licenseCustomNote">Добавьте тестерские адреса или свою группу также в License Testing.</p>
+                            <label class="review-checkbox-row checklist-item">
+                                <input type="checkbox" id="edit-check-license" onchange="if(window.PaidAppSetup)PaidAppSetup.sync('edit')">
+                                <span><strong data-i18n="licenseChecklist">Я настроил Тестирование лицензий (License Testing + RESPOND_NORMALLY)</strong></span>
+                            </label>
+                        </div>
+                        <details class="paid-credentials">
+                            <summary data-i18n="credentialsTitle">🔑 Данные для входа в ЛК (если требуется авторизация)</summary>
+                            <label data-i18n="testLoginLabel">Логин</label>
+                            <input id="edit-test-login" class="form-input" maxlength="150" autocomplete="off">
+                            <label data-i18n="testPasswordLabel">Пароль</label>
+                            <input id="edit-test-password" class="form-input" maxlength="150" autocomplete="off">
+                            <label data-i18n="testCredentialsNoteLabel">Дополнительное поле</label>
+                            <textarea id="edit-test-credentials-note" class="form-input" maxlength="300" rows="2"></textarea>
+                        </details>
                     </div>
                 </div>
 
@@ -3155,6 +3210,26 @@
         </div>
     </div>
 
+    <div id="paid-app-modal" class="wizard-overlay modal-overlay" onclick="PaidAppSetup.close('paid-app-modal', event)">
+        <div class="modal-content paid-modal" onclick="event.stopPropagation()">
+            <h3 data-i18n="paidAppGuideTitle">💳 Инструкция для платного приложения</h3>
+            <p id="paid-app-modal-body"></p>
+            <img id="paid-app-example" class="paid-example zoomable-img" alt="" onclick="openImageZoom(this.src, this.alt)">
+            <button type="button" id="paid-app-report" class="btn btn-secondary" data-i18n="paidSetupReport" onclick="PaidAppSetup.report(Number(this.dataset.appId || 0))">⚠️ Консоль не настроена (требует реальную оплату)</button>
+            <button type="button" class="btn" onclick="PaidAppSetup.close('paid-app-modal')" data-i18n="paidModalClose">Закрыть</button>
+        </div>
+    </div>
+    <div id="paid-credentials-modal" class="wizard-overlay modal-overlay" onclick="PaidAppSetup.close('paid-credentials-modal', event)">
+        <div class="modal-content paid-modal" onclick="event.stopPropagation()">
+            <h3 data-i18n="credentialsModalTitle">Инструкция и вход</h3>
+            <section id="paid-credentials-instructions" hidden>
+                <strong data-i18n="ownerInstructionTitle">Инструкция от владельца</strong>
+                <p></p>
+            </section>
+            <section id="paid-credentials-secrets" class="paid-secrets"></section>
+            <button type="button" class="btn" onclick="PaidAppSetup.close('paid-credentials-modal')" data-i18n="paidModalClose">Закрыть</button>
+        </div>
+    </div>
     <div id="google_translate_element" style="display:none;"></div>
     <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 </body>
