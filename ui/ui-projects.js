@@ -7332,8 +7332,9 @@ function openProjectDetailsModal(appId) {
         progressFooterHtml +
     '</div>';
 
+    var ownerNote = window.PaidAppSetup && PaidAppSetup.publicNote ? PaidAppSetup.publicNote(test) : (test.owner_comment_visible === false ? '' : String(test.instructions || '').trim());
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
-        '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
+        '<div class="detail-instruction-body">' + (ownerNote ? escapeHtmlWithBreaks(ownerNote) : '—') + '</div></div>';
 
     var googleGroupHtml = '';
     var _groupUrl = test.google_group_url || '';

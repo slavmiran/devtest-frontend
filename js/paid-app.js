@@ -1,4 +1,4 @@
-/* Paid closed-test apps and account credentials. Reuses the access-issue freeze. */
+/* Paid closed-test apps, owner comments, and account login details. */
 (function () {
     'use strict';
 
@@ -21,6 +21,10 @@
         var input = field(scope, 'app-type');
         return input && input.value === 'paid' ? 'paid' : 'free';
     }
+    function commentVisible(scope) {
+        var box = field(scope, 'owner-comment-visible');
+        return !box || !!box.checked;
+    }
     function standardMode(scope) {
         if (scope === 'edit') {
             var flow = window.AccessSetupManager && AccessSetupManager.getEditFlow && AccessSetupManager.getEditFlow();
@@ -36,13 +40,16 @@
             app_type: appType(scope),
             test_login: clip(field(scope, 'test-login') && field(scope, 'test-login').value, 150),
             test_password: clip(field(scope, 'test-password') && field(scope, 'test-password').value, 150),
-            test_credentials_note: clip(field(scope, 'test-credentials-note') && field(scope, 'test-credentials-note').value, 300)
+            test_credentials_note: clip(field(scope, 'test-credentials-note') && field(scope, 'test-credentials-note').value, 300),
+            owner_comment_visible: commentVisible(scope)
         };
     }
     function paintType(scope) {
         var type = appType(scope);
         document.querySelectorAll('[data-app-type-scope="' + scope + '"]').forEach(function (button) {
-            button.setAttribute('aria-pressed', String(button.dataset.appType === type));
+            var on = button.dataset.appType === type;
+            button.setAttribute('aria-pressed', String(on));
+            button.classList.toggle('active', on);
         });
         var panel = document.getElementById(idFor(scope, 'paid-license-panel'));
         if (panel) panel.hidden = type !== 'paid';
@@ -54,10 +61,12 @@
     function setType(scope, type, fromUser) {
         var input = field(scope, 'app-type');
         var previous = input ? input.value : 'free';
-        if (input) input.value = type === 'paid' ? 'paid' : 'free';
+        var next = type === 'paid' ? 'paid' : 'free';
+        if (input) input.value = next;
         paintType(scope);
         var guide = document.getElementById(idFor(scope, 'paid-license-guide'));
-        if (fromUser && previous !== 'paid' && type === 'paid' && guide) guide.open = true;
+        if (fromUser && previous !== 'paid' && next === 'paid' && guide) guide.open = true;
+        if (fromUser && window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.selectionChanged();
         if (scope === 'add' && typeof evaluateAddStages === 'function') evaluateAddStages();
         if (scope === 'edit' && typeof updateEditSaveButtonState === 'function') updateEditSaveButtonState();
     }
@@ -70,6 +79,8 @@
             var key = name.replace(/-/g, '_');
             if (node) node.value = data[key] || '';
         });
+        var visible = field(scope, 'owner-comment-visible');
+        if (visible) visible.checked = data.owner_comment_visible !== false;
         var box = field(scope, 'check-license');
         if (box) box.checked = data.app_type === 'paid';
         paintType(scope);
@@ -77,7 +88,7 @@
         if (guide) guide.open = data.app_type === 'paid';
     }
     function resetAdd() {
-        fill('add', { app_type: 'free' });
+        fill('add', { app_type: 'free', owner_comment_visible: true });
         var box = document.getElementById('check-license');
         if (box) box.checked = false;
     }
@@ -91,23 +102,35 @@
             return Number(item && (item.id || item.app_id) || 0) === Number(appId || 0);
         }) || null;
     }
+    function hasCredentials(item) {
+        return !!(item && (String(item.test_login || '').trim() || String(item.test_password || '').trim() || String(item.test_credentials_note || '').trim()));
+    }
+    function hasComment(item) {
+        return !!(item && (String(item.instructions || '').trim() || hasCredentials(item)));
+    }
+    function shown(item) {
+        return !!(item && item.owner_comment_visible !== false && hasComment(item));
+    }
+    function publicNote(item) {
+        if (!item || item.owner_comment_visible === false) return '';
+        return String(item.instructions || '').trim();
+    }
     function chips(test) {
         if (!test || test.is_external) return [];
         var parts = [];
         if (String(test.app_type || '') === 'paid') {
             parts.push('<button type="button" class="meta-chip paid-app-chip" onclick="event.stopPropagation(); PaidAppSetup.openPaidGuide(' + Number(test.id) + ')">' + esc(t('paidAppChip')) + '</button>');
         }
-        var instructions = String(test.instructions || '').trim();
-        var hasCredentials = !!(String(test.test_login || '').trim() || String(test.test_password || '').trim() || String(test.test_credentials_note || '').trim());
-        if (instructions || hasCredentials) {
-            var key = hasCredentials ? (instructions ? 'credentialAndGuideChip' : 'credentialChip') : 'instructionChip';
+        if (shown(test)) {
+            var instructions = String(test.instructions || '').trim();
+            var secrets = hasCredentials(test);
+            var key = secrets ? (instructions ? 'credentialAndGuideChip' : 'credentialChip') : 'instructionChip';
             parts.push('<button type="button" class="meta-chip paid-credential-chip" onclick="event.stopPropagation(); PaidAppSetup.openCredentials(' + Number(test.id) + ')">' + esc(t(key)) + '</button>');
         }
         return parts;
     }
-    function row(label, value) {
-        if (!String(value || '').trim()) return '';
-        return '<div class="paid-secret-row"><div><span>' + esc(label) + '</span><strong></strong></div><button type="button" onclick="PaidAppSetup.copy(this)">' + esc(t('copyCredential')) + '</button></div>';
+    function row(label) {
+        return '<div class="owner-note-secret"><div><span>' + esc(label) + '</span><strong></strong></div><button type="button" onclick="PaidAppSetup.copy(this)">' + esc(t('copyCredential')) + '</button></div>';
     }
     function fillRow(node, value) {
         var strong = node.querySelector('strong');
@@ -131,21 +154,30 @@
     function openCredentials(appId) {
         var test = testById(appId);
         var modal = document.getElementById('paid-credentials-modal');
+        var title = document.getElementById('paid-credentials-title');
+        var caption = document.getElementById('paid-credentials-caption');
         var instructions = document.getElementById('paid-credentials-instructions');
         var secrets = document.getElementById('paid-credentials-secrets');
-        if (!test || !modal || !secrets) return;
+        if (!test || !modal || !secrets || !shown(test)) return;
         var text = String(test.instructions || '').trim();
-        if (instructions) {
-            instructions.hidden = !text;
-            instructions.querySelector('p').textContent = text;
-        }
         var values = [
             [t('testLoginLabel'), test.test_login],
             [t('testPasswordLabel'), test.test_password],
             [t('testCredentialsNoteLabel'), test.test_credentials_note]
         ].filter(function (item) { return String(item[1] || '').trim(); });
+        if (title) {
+            title.textContent = values.length
+                ? (text ? t('credentialsModalTitle') : t('credentialsOnlyTitle'))
+                : t('ownerCommentTitle');
+        }
+        if (caption) caption.hidden = !(text && values.length);
+        if (instructions) {
+            instructions.hidden = !text;
+            var paragraph = instructions.querySelector('.owner-note-copy__text');
+            if (paragraph) paragraph.textContent = text;
+        }
         secrets.hidden = !values.length;
-        secrets.innerHTML = values.map(function (item) { return row(item[0], item[1]); }).join('');
+        secrets.innerHTML = values.map(function (item) { return row(item[0]); }).join('');
         Array.from(secrets.children).forEach(function (node, index) { fillRow(node, values[index][1]); });
         modal.classList.add('active');
     }
@@ -159,25 +191,20 @@
         close('paid-app-modal');
         if (typeof window.openIssueReportModal === 'function') window.openIssueReportModal(appId, 'paid_license_misconfigured');
     }
+    function copyValue(button) {
+        var value = button && button.parentElement && button.parentElement.dataset.copyValue || '';
+        var done = function () {
+            if (window.tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            if (typeof showToast === 'function') showToast(t('credentialCopied'));
+        };
+        if (value && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(value).then(done).catch(done);
+        else done();
+    }
     document.addEventListener('click', function (event) {
         var typeButton = event.target.closest('[data-app-type-scope]');
-        if (typeButton) {
+        if (typeButton && !typeButton.getAttribute('onclick')) {
             setType(typeButton.dataset.appTypeScope, typeButton.dataset.appType, true);
-            return;
         }
-        var copy = event.target.closest('[data-paid-copy]');
-        if (copy) {
-            var value = copy.parentElement && copy.parentElement.dataset.copyValue || '';
-            var done = function () {
-                if (window.tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                if (typeof showToast === 'function') showToast(t('credentialCopied'));
-            };
-            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(value).then(done).catch(done);
-            else done();
-            return;
-        }
-        var report = event.target.closest('#paid-app-report');
-        if (report && !report.onclick) reportPaid(Number(report.dataset.appId || 0));
     });
 
     window.PaidAppSetup = {
@@ -187,19 +214,14 @@
         payload: payload,
         licenseReady: licenseReady,
         sync: paintType,
+        shown: shown,
+        hasComment: hasComment,
+        publicNote: publicNote,
         chips: chips,
         openPaidGuide: openPaidGuide,
         openCredentials: openCredentials,
         report: reportPaid,
-        copy: function (button) {
-            var value = button && button.parentElement && button.parentElement.dataset.copyValue || '';
-            var done = function () {
-                if (window.tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                if (typeof showToast === 'function') showToast(t('credentialCopied'));
-            };
-            if (value && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(value).then(done).catch(done);
-            else done();
-        },
+        copy: copyValue,
         close: close
     };
 })();

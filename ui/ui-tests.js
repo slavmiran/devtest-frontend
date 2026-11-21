@@ -3667,11 +3667,12 @@ function renderCompletedTests(completedTests) {
         const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`;
 
         let devInfoHtml = '';
-        if (test.instructions) {
+        var ownerNote = window.PaidAppSetup && PaidAppSetup.publicNote ? PaidAppSetup.publicNote(test) : (test.owner_comment_visible === false ? '' : String(test.instructions || '').trim());
+        if (ownerNote) {
             devInfoHtml = `
                 <details class="dev-instruction" onclick="event.stopPropagation();">
                     <summary>${t.devInfo} <span class="details-arrow">▼</span></summary>
-                    <div class="dev-instruction-body">${escapeHtmlWithBreaks(test.instructions)}</div>
+                    <div class="dev-instruction-body">${escapeHtmlWithBreaks(ownerNote)}</div>
                 </details>
             `;
         }

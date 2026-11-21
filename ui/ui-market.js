@@ -9120,7 +9120,8 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         '</div>'
         : '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('syncBtn', {}, lang)) + '</div><div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('dossierOwnedProjectSyncMissing', {}, lang)) + '</div></div>';
 
-    var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('devInfo', {}, lang)) + '</div><div class="detail-instruction-body">' + (project.instructions ? escapeHtmlWithBreaks(project.instructions) : '—') + '</div></div>';
+    var ownerNote = window.PaidAppSetup && PaidAppSetup.publicNote ? PaidAppSetup.publicNote(project) : (project.owner_comment_visible === false ? '' : String(project.instructions || '').trim());
+    var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('devInfo', {}, lang)) + '</div><div class="detail-instruction-body">' + (ownerNote ? escapeHtmlWithBreaks(ownerNote) : '—') + '</div></div>';
     var economicsHtml = '';
     if (Number(project.bounty_per_tester || 0) > 0) {
         var perTester = Number(project.bounty_per_tester || 0);

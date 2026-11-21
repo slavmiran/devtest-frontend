@@ -1702,6 +1702,7 @@ function _mapTestsFromApi(data) {
             google_group_url: app.google_group_url,
             instructions: app.instructions,
             app_type: app.app_type === 'paid' ? 'paid' : 'free',
+            owner_comment_visible: app.owner_comment_visible !== false,
             test_login: app.test_login || '',
             test_password: app.test_password || '',
             test_credentials_note: app.test_credentials_note || '',
@@ -2382,6 +2383,7 @@ function _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision) 
             google_group_url: project.google_group_url,
             instructions: project.instructions || '',
             app_type: project.app_type === 'paid' ? 'paid' : 'free',
+            owner_comment_visible: project.owner_comment_visible !== false,
             test_login: project.test_login || '',
             test_password: project.test_password || '',
             test_credentials_note: project.test_credentials_note || '',
@@ -3710,6 +3712,12 @@ async function saveProjectEdit() {
         });
         const result = await response.json();
         if (result.status === 'success') {
+            var savedProject = (myProjects || []).find(function (item) { return Number(item.id) === Number(projectToEdit); });
+            if (savedProject) {
+                Object.assign(savedProject, window.PaidAppSetup ? PaidAppSetup.payload('edit') : {}, { instructions: instructions || '' });
+                if (window.ProjectParameters && typeof window.ProjectParameters.update === 'function') window.ProjectParameters.update(savedProject);
+            }
+            if (typeof showToast === 'function') showToast(window.t('projectSaved', {}, lang));
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             if (typeof window.markEditModalSavedState === 'function') {
                 window.markEditModalSavedState();
