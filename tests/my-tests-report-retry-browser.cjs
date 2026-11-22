@@ -26,7 +26,7 @@ function multipart(request) {
         for (const [language, width] of [['ru', 360], ['en', 390]]) {
             const page = await browser.newPage({ viewport: { width, height: 850 }, hasTouch: true, serviceWorkers: 'block' });
             const errors = [], requests = [], heldReports = [], heldTasks = [];
-            let mode = 'offline', payload = saved, status = 200, holdTasks = true;
+            let mode = 'offline', payload = saved, status = 200, holdTasks = true, receiptMode = 'unknown', receiptReads = 0;
             page.on('pageerror', error => errors.push(error.message));
             await page.addInitScript(language => {
                 window.__API_BASE__ = 'http://fixture.local/api'; localStorage.setItem('lang', language);
@@ -38,6 +38,13 @@ function multipart(request) {
                 const url = new URL(route.request().url());
                 // Exercise the real UI modules, without delayed app bootstrap overwriting fixtures.
                 if (url.pathname === '/app.js') return route.fulfill({ body: '', contentType: 'application/javascript' });
+                if (url.pathname.endsWith('/checkin-proof/report-status')) {
+                    const body = route.request().postDataJSON();
+                    assert.equal(body.init_data, 'fixture');
+                    assert.equal(body.app_id, 30);
+                    receiptReads++;
+                    return route.fulfill({ json: { status: 'success', report_state: receiptMode === 'saved' ? 'attached' : receiptMode === 'delayed' ? (receiptReads === 1 ? 'processing' : 'attached') : 'unknown', daily_confirmed: receiptMode !== 'unknown', proof: saved.proof } });
+                }
                 if (url.pathname.endsWith('/checkin-proof/report')) {
                     requests.push(multipart(route.request()));
                     if (mode === 'offline') return route.abort('failed');
@@ -115,11 +122,12 @@ function multipart(request) {
             assert.deepEqual(requests[0], requests[1], 'Automatic retry preserves UUID, metadata and file bytes');
             const retry = activeCard().locator('.test-report-retry');
             assert(await retry.isVisible());
-            assert.equal((await retry.innerText()).replace(/\s+/g, ' '), language === 'ru' ? '↻ Отчёт не отправлен · Повторить' : '↻ Report not sent · Retry');
+            assert.equal((await retry.innerText()).replace(/\s+/g, ' '), language === 'ru' ? '↻ Отправка не подтверждена · Проверить' : '↻ Sending unconfirmed · Check status');
             const box = await retry.boundingBox();
             assert(box.height <= 48 && box.x >= 0 && box.x + box.width <= width, 'Quiet mark fits one small mobile row');
             assert.equal(await retry.evaluate(el => getComputedStyle(el).animationName), 'none');
             await retry.tap();
+            await page.waitForSelector('#report-modal.active');
             assert.deepEqual(await page.evaluate(() => ({ sameFile: _checkinProofUploadState.files[0] === __originalFile,
                 uuid: _checkinProofUploadState.idempotencyKey, note: document.getElementById('unified-report-note').value })),
             { sameFile: true, uuid: original, note: 'Keep this report note' });
@@ -141,6 +149,75 @@ function multipart(request) {
             // The mapper/refresh has been exercised above. Keep subsequent isolation cases
             // independent of scheduled refreshes from previously completed jobs.
             await page.evaluate(() => { window.loadTasks = () => new Promise(() => {}); });
+
+            // A disconnected HTTP reply can still be processing server-side while another project is open.
+            await page.evaluate(() => __reset({})); await prepare();
+            receiptMode = 'delayed'; receiptReads = 0; mode = 'offline';
+            const beforeDelayed = requests.length;
+            await submit();
+            await page.waitForFunction(() => _checkinProofActiveJobs === 1);
+            await page.evaluate(() => { document.getElementById('tab-tests').classList.remove('active'); });
+            await settled();
+            await page.evaluate(() => { document.getElementById('tab-tests').classList.add('active'); renderTests(true); });
+            assert.equal(requests.length, beforeDelayed + 1, 'Processing receipt is checked instead of reposting the media');
+            assert.equal(await doneCard().count(), 1);
+            assert.equal(await page.locator('.test-report-retry').count(), 0);
+            assert.equal(await page.evaluate(() => _checkinProofRetryDrafts.size), 0);
+            assert.doesNotMatch(await page.evaluate(() => __messages.join('\n')), /не отправлен|Report not sent/);
+            receiptMode = 'unknown'; mode = 'success';
+
+            // A later status check recovers the receipt without uploading the draft again.
+            await page.evaluate(() => __reset({})); await prepare();
+            mode = 'offline';
+            await submit(); await settled();
+            const beforeStatusCheck = requests.length;
+            receiptMode = 'saved';
+            await activeCard().locator('.test-report-retry').tap();
+            await page.waitForFunction(() => myTests[0].status === 'done');
+            assert.equal(requests.length, beforeStatusCheck);
+            assert.equal(await doneCard().count(), 1);
+            assert.equal(await page.locator('#report-modal.active').count(), 0);
+            assert.equal(await page.evaluate(() => _checkinProofRetryDrafts.size), 0);
+            receiptMode = 'unknown'; mode = 'success';
+
+            // A rendering failure after receipt recovery is still a confirmed save.
+            await page.evaluate(() => __reset({})); await prepare();
+            receiptMode = 'delayed'; receiptReads = 0; mode = 'offline';
+            await page.evaluate(() => {
+                window.__realRender = renderTests;
+                window.renderTests = function(force) {
+                    if (myTests[0].status === 'done') { window.renderTests = __realRender; throw new Error('fixture recovered render failure'); }
+                    return __realRender(force);
+                };
+            });
+            const beforeRecoveredRender = requests.length;
+            await submit(); await settled();
+            assert.equal(requests.length, beforeRecoveredRender + 1);
+            assert.equal(await doneCard().count(), 1);
+            assert.equal(await page.evaluate(() => _checkinProofRetryDrafts.size), 0);
+            assert.match(await page.evaluate(() => __messages.join('\n')), language === 'ru' ? /Отчёт сохранён/ : /Report saved/);
+            receiptMode = 'unknown'; mode = 'success';
+
+            for (const code of ['report_image_unreadable', 'report_image_processing_failed']) {
+                await page.evaluate(() => __reset({})); await prepare();
+                status = 422; payload = { status: 'error', code, details: { invalid_indices: [0] } };
+                const beforeRejected = requests.length;
+                await submit(); await settled();
+                assert.equal(requests.length, beforeRejected + 1, 'Explicit image rejection is not retried automatically');
+                await activeCard().locator('.test-report-retry').tap();
+                await page.waitForSelector('#report-modal.active');
+                if (code === 'report_image_unreadable') {
+                    const label = page.locator('.checkin-proof-preview-error');
+                    assert(await label.isVisible());
+                    assert.doesNotMatch(await label.innerText(), /использов|used/);
+                    assert.doesNotMatch(await page.locator('#checkin-proof-upload-alert').innerText(), /использов|used/);
+                } else {
+                    assert.equal(await page.locator('.checkin-proof-preview-error').count(), 0, 'Telegram failure alone does not prove that the file is invalid');
+                    assert(await page.locator('#checkin-proof-submit').isEnabled());
+                }
+                await page.evaluate(() => closeReportModal());
+            }
+            status = 200; payload = saved;
 
             // A confirmed server save survives a local render failure without asking to resend.
             await page.evaluate(() => __reset({}));

@@ -3040,7 +3040,7 @@ function renderTests(force) {
         const reportRetryDraft = typeof window.getCheckinProofRetryDraft === 'function'
             ? window.getCheckinProofRetryDraft(test) : null;
         const reportRetryHtml = reportRetryDraft
-            ? `<button type="button" class="test-report-retry" onclick="retryCheckinProofUpload(${Number(test.id)}); event.stopPropagation();"><span aria-hidden="true">↻</span> ${window.escapeHTML(window.t('checkinProofCardRetry', {}, lang))}</button>`
+            ? `<button type="button" class="test-report-retry" onclick="retryCheckinProofUpload(${Number(test.id)}); event.stopPropagation();"><span aria-hidden="true">↻</span> ${window.escapeHTML(window.t(reportRetryDraft.deliveryUncertain ? 'checkinProofCardUnconfirmed' : 'checkinProofCardRetry', {}, lang))}</button>`
             : '';
         card.id = `test-card-${test.id}`;
         const safePackage = escapeInlineJsString(test.package || test.external_package_name || '');
@@ -3120,6 +3120,7 @@ function renderTests(force) {
                                 </button>
                             </div>
                         </div>
+                        ${String(test.app_type || '') === 'paid' ? `<div class="apstep-aside"><button type="button" class="apstep__row apstep__row--paid" onclick="event.stopPropagation(); openIssueReportModal(${test.id}, 'paid_license_misconfigured')" ${isIssueBlocked ? 'disabled' : ''}><span class="apstep__glyph" aria-hidden="true">⚠️</span><span class="apstep__label">${window.escapeHTML(window.t('paidSetupReport', {}, lang))}</span></button></div>` : ''}
                     </div>
                 </div>
             </div>
@@ -3457,7 +3458,7 @@ function renderTests(force) {
                 ${langBadge ? `<div style="display:flex; align-items:center; gap:6px; margin-left: 8px;" onclick="event.stopPropagation()">${langBadge}</div>` : ''}
                 ${trailingHtml}
             </div>
-            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips.concat(controlProofCatchupChipHtml ? [controlProofCatchupChipHtml] : []) })}
+            ${renderCompactMeta(null, test.active_testers_count, false, userTestingDay, test, { showTestersCount: false, extraParts: externalMetaChips.concat(controlProofCatchupChipHtml ? [controlProofCatchupChipHtml] : []).concat(window.PaidAppSetup ? PaidAppSetup.chips(test) : []) })}
             ${reportRetryHtml}
             <div id="actions-${test.id}">
                 ${actionsHtml}
@@ -3666,11 +3667,12 @@ function renderCompletedTests(completedTests) {
         const ownerBtnHtml = `<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;" onclick="event.stopPropagation();">${headerActions.join('')}</div>`;
 
         let devInfoHtml = '';
-        if (test.instructions) {
+        var ownerNote = window.PaidAppSetup && PaidAppSetup.publicNote ? PaidAppSetup.publicNote(test) : (test.owner_comment_visible === false ? '' : String(test.instructions || '').trim());
+        if (ownerNote) {
             devInfoHtml = `
                 <details class="dev-instruction" onclick="event.stopPropagation();">
                     <summary>${t.devInfo} <span class="details-arrow">▼</span></summary>
-                    <div class="dev-instruction-body">${escapeHtmlWithBreaks(test.instructions)}</div>
+                    <div class="dev-instruction-body">${escapeHtmlWithBreaks(ownerNote)}</div>
                 </details>
             `;
         }

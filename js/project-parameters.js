@@ -88,9 +88,36 @@
         var mod10 = count % 10;
         return text(mod100 >= 11 && mod100 <= 19 ? many : mod10 === 1 ? one : mod10 >= 2 && mod10 <= 4 ? few : many, { count: count });
     }
+    function commentContent(project) {
+        return !!(String(project && project.instructions || '').trim()
+            || String(project && project.test_login || '').trim()
+            || String(project && project.test_password || '').trim()
+            || String(project && project.test_credentials_note || '').trim());
+    }
+    function commentShown(project) {
+        return !!(project && project.owner_comment_visible !== false && commentContent(project));
+    }
+    function hasCredentials(project) {
+        return !!(String(project && project.test_login || '').trim()
+            || String(project && project.test_password || '').trim()
+            || String(project && project.test_credentials_note || '').trim());
+    }
+    function commentValue(project) {
+        if (commentShown(project)) return text('pcParamsOn');
+        if (project && project.owner_comment_visible === false && commentContent(project)) return text('pcParamsOff');
+        return text('pcParamsInstructionsEmpty');
+    }
+    function commentValueHtml(project) {
+        var value = commentValue(project);
+        if (!(commentShown(project) && hasCredentials(project))) return esc(value);
+        var icon = (window.PaidAppSetup && typeof window.PaidAppSetup.keyIcon === 'function')
+            ? window.PaidAppSetup.keyIcon('pc-project-param__key')
+            : '';
+        return '<span class="pc-project-param__on">' + esc(value) + '</span><span class="pc-project-param__plus" aria-hidden="true">+</span>' + icon;
+    }
     function activeCount(project) {
         return Number(project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
-            + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list');
+            + Number(boostMeta(project).on) + Number(project.test_mode === 'email_list') + Number(commentShown(project));
     }
     function icon(name, className) {
         return '<svg' + (className ? ' class="' + className + '"' : '') + ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
@@ -106,6 +133,16 @@
             '<span class="pc-project-param__label">' + icon(iconName) + '<span>' + esc(text(label)) + '</span></span>' +
             '<span class="pc-project-param__value' + (toggle ? ' pc-project-param__value--state' : '') + '">' + esc(value) + '</span>' +
             (!toggle ? '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' : '') + '</button>';
+    }
+    function commentTile(project, id) {
+        var busy = pending(project, 'instructions');
+        var on = commentShown(project);
+        var value = commentValue(project);
+        var ariaExtra = (on && hasCredentials(project)) ? (' + ' + text('credentialsTitle')) : '';
+        return '<button type="button" class="pc-project-param' + (on ? ' is-active' : '') + (on && hasCredentials(project) ? ' has-key' : '') + '" data-project-param="instructions" onclick="ProjectParameters.openInstructions(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsInstructions') + ': ' + value + ariaExtra) + '"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
+            '<span class="pc-project-param__label">' + icon('instructions') + '<span>' + esc(text('pcParamsInstructions')) + '</span></span>' +
+            '<span class="pc-project-param__value">' + commentValueHtml(project) + '</span>' +
+            '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span></button>';
     }
     function content(project) {
         var id = Number(project.id || project.app_id);
@@ -155,7 +192,7 @@
                 tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + id + ',event)', true) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + id + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
-                tile(project, 'instructions', 'pcParamsInstructions', String(project.instructions || '').trim() ? text('pcParamsInstructionsSet') : text('pcParamsInstructionsEmpty'), 'instructions', !!String(project.instructions || '').trim(), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
+                commentTile(project, id) +
                 '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
                     '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
                     '<span class="pc-project-param__value">' + boostValueHtml + '</span>' +
@@ -327,9 +364,18 @@
                 '<section class="project-instructions-sheet" role="dialog" aria-modal="true" aria-labelledby="project-instructions-title" aria-describedby="project-instructions-description" onclick="event.stopPropagation()">' +
                     '<div class="project-instructions-sheet__handle" aria-hidden="true"></div>' +
                     '<header class="project-instructions-sheet__head"><div><h3 id="project-instructions-title"></h3><p id="project-instructions-description"></p></div></header>' +
-                    '<label class="project-instructions-field" for="project-instructions-input"><span id="project-instructions-label"></span><textarea id="project-instructions-input" rows="6" maxlength="1000" oninput="ProjectParameters.onInstructionsInput()"></textarea></label>' +
+                    '<label class="project-email-settings-switch"><span><strong id="project-instructions-toggle-label"></strong></span><input id="project-instructions-visible" type="checkbox"><i aria-hidden="true"></i></label>' +
+                    '<label class="project-instructions-field" for="project-instructions-input"><span id="project-instructions-label"></span><textarea id="project-instructions-input" rows="5" maxlength="1000" oninput="ProjectParameters.onInstructionsInput()"></textarea></label>' +
                     '<div id="chips-project-instructions" class="chip-scroll"></div>' +
                     '<div class="project-instructions-meta"><span id="project-instructions-note"></span><output id="project-instructions-count" for="project-instructions-input"></output></div>' +
+                    '<section class="project-instructions-login">' +
+                        '<button type="button" class="project-instructions-login__toggle" id="project-instructions-login-toggle" aria-expanded="false" aria-controls="project-instructions-login-body" onclick="ProjectParameters.toggleLogin()"><span class="project-instructions-login__mark" aria-hidden="true">' + ((window.PaidAppSetup && window.PaidAppSetup.keyIcon) ? window.PaidAppSetup.keyIcon('project-instructions-login__key') : '') + '</span><span><strong id="project-instructions-login-title"></strong><small id="project-instructions-login-hint"></small></span><i aria-hidden="true"></i></button>' +
+                        '<div id="project-instructions-login-body" hidden>' +
+                            '<label class="project-instructions-field"><span id="project-instructions-login-label"></span><input id="project-instructions-login" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
+                            '<label class="project-instructions-field"><span id="project-instructions-password-label"></span><input id="project-instructions-password" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
+                            '<label class="project-instructions-field"><span id="project-instructions-extra-label"></span><textarea id="project-instructions-extra" rows="2" maxlength="300"></textarea></label>' +
+                        '</div>' +
+                    '</section>' +
                     '<p id="project-instructions-error" class="project-instructions-error" role="alert" hidden></p>' +
                     '<button id="project-instructions-save" type="button" class="project-instructions-save" onclick="ProjectParameters.saveInstructions()"></button>' +
                 '</section>' +
@@ -348,11 +394,27 @@
         if (!input) return;
         document.getElementById('project-instructions-title').textContent = text('pcParamsInstructionsModalTitle');
         document.getElementById('project-instructions-description').textContent = text('pcParamsInstructionsModalDescription');
+        document.getElementById('project-instructions-toggle-label').textContent = text('ownerCommentToggle');
+        document.getElementById('project-instructions-visible').checked = project.owner_comment_visible !== false;
         document.getElementById('project-instructions-label').textContent = text('pcParamsInstructionsModalLabel');
         document.getElementById('project-instructions-note').textContent = text('pcParamsInstructionsModalNote');
+        document.getElementById('project-instructions-login-title').textContent = text('credentialsTitle');
+        document.getElementById('project-instructions-login-hint').textContent = text('credentialsHint');
+        document.getElementById('project-instructions-login-label').textContent = text('testLoginLabel');
+        document.getElementById('project-instructions-password-label').textContent = text('testPasswordLabel');
+        document.getElementById('project-instructions-extra-label').textContent = text('testCredentialsNoteLabel');
         document.getElementById('project-instructions-save').textContent = text('pcParamsInstructionsSave');
         input.placeholder = text('instPlaceholder');
         input.value = String(project.instructions || '');
+        document.getElementById('project-instructions-login').value = String(project.test_login || '');
+        document.getElementById('project-instructions-password').value = String(project.test_password || '');
+        document.getElementById('project-instructions-extra').value = String(project.test_credentials_note || '');
+        document.getElementById('project-instructions-extra').placeholder = text('testCredentialsPlaceholder');
+        var hasLogin = !!(String(project.test_login || '').trim() || String(project.test_password || '').trim() || String(project.test_credentials_note || '').trim());
+        var loginBody = document.getElementById('project-instructions-login-body');
+        var loginToggle = document.getElementById('project-instructions-login-toggle');
+        if (loginBody) loginBody.hidden = !hasLogin;
+        if (loginToggle) loginToggle.setAttribute('aria-expanded', String(hasLogin));
         renderInstructionChips();
         setInstructionsError('');
         onInstructionsInput();
@@ -402,14 +464,81 @@
         instructionsTrigger = null;
         if (typeof syncTelegramBackButton === 'function') syncTelegramBackButton();
     }
+    function clipField(id, max) {
+        var node = document.getElementById(id);
+        return String(node && node.value || '').trim().slice(0, max);
+    }
+    async function saveMany(id, values) {
+        var project = projectById(id);
+        if (!project) return false;
+        var fields = Object.keys(values);
+        if (fields.some(function (field) { return pending(project, field); })) return false;
+        var key = projectKey(project);
+        var previous = {};
+        fields.forEach(function (field) {
+            previous[field] = project[field];
+            remember(project, field, values[field], true);
+            project[field] = values[field];
+        });
+        projects().forEach(update);
+        try {
+            var apiBase = (window.App && window.App.API_BASE) || window.API_BASE || (typeof API_BASE !== 'undefined' ? API_BASE : '');
+            var initData = typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : ((window.tg && window.tg.initData) || '');
+            var response = await fetch(String(apiBase).replace(/\/+$/, '') + '/projects/' + Number(id), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(Object.assign({ init_data: initData }, values))
+            });
+            var result = await response.json().catch(function () { return {}; });
+            if (!response.ok || result.status !== 'success') throw new Error(result.code || result.message || 'save_failed');
+            var current = projectByKey(key);
+            if (current) {
+                fields.forEach(function (field) {
+                    current[field] = values[field];
+                    remember(current, field, values[field], false);
+                });
+            }
+            return true;
+        } catch (_) {
+            var current = projectByKey(key);
+            fields.forEach(function (field) {
+                changes.delete(key + ':' + field);
+                if (current) current[field] = previous[field];
+            });
+            return false;
+        } finally {
+            cache();
+            projects().forEach(update);
+        }
+    }
+    function toggleLogin() {
+        var body = document.getElementById('project-instructions-login-body');
+        var toggle = document.getElementById('project-instructions-login-toggle');
+        if (!body) return;
+        body.hidden = !body.hidden;
+        if (toggle) toggle.setAttribute('aria-expanded', String(!body.hidden));
+    }
+    function toggleComment(id, event) {
+        if (event) event.stopPropagation();
+        var project = projectById(id);
+        var input = event && event.target;
+        if (!project || !input || pending(project, 'owner_comment_visible')) return;
+        return save(id, 'owner_comment_visible', !!input.checked);
+    }
     async function saveInstructions() {
         var project = projectByKey(instructionsProjectKey);
         var input = document.getElementById('project-instructions-input');
         var button = document.getElementById('project-instructions-save');
-        if (!project || !input || !button || pending(project, 'instructions')) return;
-        var value = String(input.value || '').trim();
+        var visible = document.getElementById('project-instructions-visible');
+        if (!project || !input || !button || !visible || pending(project, 'instructions')) return;
         button.disabled = true;
-        var saved = await save(project.id || project.app_id, 'instructions', value);
+        var saved = await saveMany(project.id || project.app_id, {
+            instructions: String(input.value || '').trim(),
+            test_login: clipField('project-instructions-login', 150),
+            test_password: clipField('project-instructions-password', 150),
+            test_credentials_note: clipField('project-instructions-extra', 300),
+            owner_comment_visible: !!visible.checked
+        });
         button.disabled = false;
         if (!saved) {
             setInstructionsError(text('pcParamsSaveError'));
@@ -417,6 +546,7 @@
         }
         closeInstructions();
         if (typeof showToast === 'function') showToast(text('pcParamsInstructionsSaved'));
+        if (window.tg && window.tg.HapticFeedback) window.tg.HapticFeedback.notificationOccurred('success');
     }
     function syncEmailPreference(email, enabled) {
         var effective = !!enabled;
@@ -574,5 +704,5 @@
             }
         }
     });
-    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
+    window.ProjectParameters = { build: build, update: update, recordSaved: recordSaved, toggle: toggle, toggleReviews: toggleReviews, toggleComment: toggleComment, toggleLogin: toggleLogin, openAndroid: openAndroid, openLanguage: openLanguage, closeLanguage: closeLanguage, selectLanguage: selectLanguage, openInstructions: openInstructions, closeInstructions: closeInstructions, onInstructionsInput: onInstructionsInput, renderInstructionChips: renderInstructionChips, insertInstructionChip: insertInstructionChip, saveInstructions: saveInstructions, openEmailSettings: openEmailSettings, closeEmailSettings: closeEmailSettings, onEmailSettingsToggle: onEmailSettingsToggle, clearEmailSettingsError: clearEmailSettingsError, saveEmailSettings: saveEmailSettings, reconcile: reconcile };
 })();

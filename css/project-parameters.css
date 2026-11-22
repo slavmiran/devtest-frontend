@@ -212,6 +212,22 @@
 .project-instructions-meta span { max-width: 78%; }
 .project-instructions-meta output { flex: 0 0 auto; color: #8295ae; font-variant-numeric: tabular-nums; }
 .project-instructions-error { margin: 8px 2px 0; color: #e98a8d; font-size: 11px; line-height: 1.35; }
+.project-instructions-login { margin-top: 14px; padding: 0; overflow: hidden; border-radius: 14px; border: 1px solid rgba(174,195,226,.12); background: rgba(8,14,24,.28); }
+.project-instructions-login__toggle { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 12px; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.project-instructions-login__toggle span { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.project-instructions-login__toggle strong { color: #e8effb; font-size: 14px; line-height: 1.3; }
+.project-instructions-login__toggle small { color: #8394ac; font-size: 12px; line-height: 1.35; }
+.project-instructions-login__toggle i { flex: 0 0 8px; width: 8px; height: 8px; border-right: 1.6px solid #8ea2bd; border-bottom: 1.6px solid #8ea2bd; transform: rotate(45deg); transition: transform .16s ease; }
+.project-instructions-login__toggle[aria-expanded="true"] i { transform: rotate(225deg); }
+.project-instructions-login h4 { margin: 0; color: #e8effb; font-size: 14px; line-height: 1.3; }
+.project-instructions-login > p { margin: 4px 0 2px; color: #8394ac; font-size: 12px; line-height: 1.4; }
+#project-instructions-login-body { padding: 0 12px 12px; }
+.project-instructions-login .project-instructions-field { margin-top: 10px; }
+.project-instructions-login input, .project-instructions-login textarea { width: 100%; box-sizing: border-box; border: 1px solid rgba(174,195,226,.13); border-radius: 10px; outline: none; color: #dce7f8; background: rgba(4,10,19,.42); font: inherit; font-size: 13px; }
+.project-instructions-login input { min-height: 42px; padding: 0 11px; }
+.project-instructions-login textarea { min-height: 64px; padding: 10px 11px; resize: vertical; }
+.project-instructions-login input:focus, .project-instructions-login textarea:focus { border-color: rgba(102,158,235,.66); box-shadow: 0 0 0 3px rgba(80,142,229,.12); }
+.project-instructions-sheet .project-email-settings-switch { margin-bottom: 12px; }
 .project-instructions-save { width: 100%; min-height: 43px; margin-top: 14px; border: 1px solid rgba(106,163,240,.4); border-radius: 11px; color: #e8f1ff; background: rgba(55,119,211,.7); font: 650 13px/1 inherit; cursor: pointer; }
 .project-instructions-save:disabled { opacity: .58; cursor: wait; }
 @media (max-width: 360px) {
@@ -223,3 +239,20 @@
 @media (prefers-reduced-motion: reduce) {
     .pc-project-params__body, .pc-project-params__chevron { transition: none; }
 }
+
+
+.project-instructions-login__toggle { gap: 10px; }
+.project-instructions-login__mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    color: #9ebef0;
+    background: rgba(83, 146, 244, .16);
+}
+.project-instructions-login__key { width: 16px; height: 16px; display: block; }
+.pc-project-param.has-key .pc-project-param__value { gap: 4px; }
+.pc-project-param__plus { opacity: .75; font-weight: 700; }
+.pc-project-param__key { width: 13px; height: 13px; color: #9ebef0; flex: 0 0 auto; }
