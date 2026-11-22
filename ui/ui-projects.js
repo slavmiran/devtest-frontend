@@ -2008,6 +2008,11 @@ function renderProjects(force) {
             .filter(function(progressId) {
                 return progressId > 0;
             });
+        const isPaidAccessIssue = pendingIssueTesters.some(function(tester) {
+            return String(tester.issue_kind || '') === 'paid_license_misconfigured'
+                || String(tester.issue_reason || '').startsWith('paid_license_misconfigured');
+        }) || String(project.access_issue_kind || '') === 'paid_license_misconfigured';
+        const accessOverlayTesterMetaKey = isPaidAccessIssue ? 'accessOverlayPaidTesterReported' : 'accessOverlayTesterReported';
         const affectedCount = pendingIssueTesters.length;
         const affectedCountKey = affectedCount === 1
             ? 'accessOverlayAffectedOne'
@@ -2026,7 +2031,7 @@ function renderProjects(force) {
                 <div class="access-error-tester-row">
                     <div class="access-error-tester-main">
                         <div class="access-error-tester-name notranslate">${window.escapeHTML(testerLabel)}</div>
-                        <div class="access-error-tester-meta">${window.escapeHTML(window.t('accessOverlayTesterReported', {}, lang))}</div>
+                        <div class="access-error-tester-meta">${window.escapeHTML(window.t(accessOverlayTesterMetaKey, {}, lang))}</div>
                     </div>
                     <div class="access-error-tester-actions">
                         <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
@@ -2036,14 +2041,19 @@ function renderProjects(force) {
                 </div>
             `;
         }).join('');
-        const accessGuideUrl = 'https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04';
+        const accessGuideUrl = isPaidAccessIssue
+            ? 'https://t.me/googleplay_console_12testers/31/82650'
+            : 'https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04';
+        const accessOverlayTitleKey = isPaidAccessIssue ? 'accessOverlayPaidTitle' : 'accessOverlayTitle';
+        const accessOverlayGuideLinkKey = isPaidAccessIssue ? 'accessOverlayPaidGuideLink' : 'accessOverlayGuideLink';
+        const accessOverlayGuideHintKey = isPaidAccessIssue ? 'accessOverlayPaidGuideHint' : 'accessOverlayGuideHint';
         const accessOverlayHtml = hasAccessOverlay ? `
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
                     <div class="access-error-head">
                         <span class="access-error-head__icon">!</span>
                         <div>
-                            <div class="access-error-title">${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</div>
+                            <div class="access-error-title">${window.escapeHTML(window.t(accessOverlayTitleKey, {}, lang))}</div>
                             <div class="access-error-subtitle">${window.escapeHTML(window.t(affectedCountKey, { count: affectedCount }, lang))}</div>
                         </div>
                     </div>
@@ -2059,8 +2069,8 @@ function renderProjects(force) {
                     <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">
                         <span class="access-error-link__icon">📖</span>
                         <span>
-                            <strong>${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</strong>
-                            <small>${window.escapeHTML(window.t('accessOverlayGuideHint', {}, lang))}</small>
+                            <strong>${window.escapeHTML(window.t(accessOverlayGuideLinkKey, {}, lang))}</strong>
+                            <small>${window.escapeHTML(window.t(accessOverlayGuideHintKey, {}, lang))}</small>
                         </span>
                         <span class="access-error-link__arrow">›</span>
                     </a>
@@ -5612,6 +5622,7 @@ function resetAddFlow() {
     const testerEmailInput = document.getElementById('app-tester-email');
     if (testerEmailInput) testerEmailInput.classList.remove('input-valid');
 
+    if (window.PaidAppSetup) PaidAppSetup.resetAdd();
     ['check-email', 'check-countries', 'check-review'].forEach((id) => {
         const box = document.getElementById(id);
         if (box) {
@@ -5698,21 +5709,23 @@ function isAddPlayLinkValid() {
 }
 
 function isAddChecklistComplete() {
-    return ['check-email', 'check-countries', 'check-review'].every((id) => {
+    const ready = ['check-email', 'check-countries', 'check-review'].every((id) => {
         const box = document.getElementById(id);
         return box && box.checked;
     });
+    return ready && (!window.PaidAppSetup || PaidAppSetup.licenseReady('add'));
 }
 
 function isAddStage2Complete() {
-    if (window.addProjectFlow && window.addProjectFlow.emailMode) return true;
     const isStandard = document.getElementById('seg-standard').classList.contains('active');
+    const licenseReady = !window.PaidAppSetup || PaidAppSetup.licenseReady('add');
     if (isStandard) {
         const isEmailCopied = !!(window.addProjectFlow && window.addProjectFlow.isEmailCopied);
         if (!isEmailCopied) return false;
         return isAddChecklistComplete();
     }
-    return isValidGoogleGroupUrl((document.getElementById('app-group').value || '').trim());
+    if (window.addProjectFlow && window.addProjectFlow.emailMode) return licenseReady;
+    return licenseReady && isValidGoogleGroupUrl((document.getElementById('app-group').value || '').trim());
 }
 
 function isAddStage3Valid() {
@@ -5788,6 +5801,7 @@ function evaluateAddStages() {
     stage2.classList.toggle('wizard-section--locked', unlocked < 2);
     stage3.classList.toggle('wizard-section--locked', unlocked < 3);
 
+    if (window.PaidAppSetup) PaidAppSetup.sync('add');
     syncAppIconPickerUi();
     _syncAddEmailTestersBoxVisibility();
     updateWizardProgress();
@@ -6191,6 +6205,7 @@ function openEditModal(projectId, options) {
     projectToEdit = projectId;
     document.getElementById('edit-name').value = project.name || '';
     document.getElementById('edit-description').value = project.instructions || '';
+    if (window.PaidAppSetup) PaidAppSetup.fill('edit', project);
     document.getElementById('edit-icon').value = project.icon_url || '';
     document.getElementById('edit-package').value = project.package || '';
     if (window.AccessSetupManager && typeof window.AccessSetupManager.initEdit === 'function') {
@@ -7530,8 +7545,9 @@ function openProjectDetailsModal(appId) {
         progressFooterHtml +
     '</div>';
 
+    var ownerNote = window.PaidAppSetup && PaidAppSetup.publicNote ? PaidAppSetup.publicNote(test) : (test.owner_comment_visible === false ? '' : String(test.instructions || '').trim());
     var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.t('devInfo', {}, lang) + '</div>' +
-        '<div class="detail-instruction-body">' + (test.instructions ? escapeHtmlWithBreaks(test.instructions) : '—') + '</div></div>';
+        '<div class="detail-instruction-body">' + (ownerNote ? escapeHtmlWithBreaks(ownerNote) : '—') + '</div></div>';
 
     var googleGroupHtml = '';
     var _groupUrl = test.google_group_url || '';

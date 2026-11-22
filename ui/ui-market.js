@@ -711,6 +711,14 @@ function openMarketAccessIssue(appId, isOwnProject, ownerUsername, accessMode, e
         }
         return false;
     }
+    if (String(accessMode || '') === 'paid_license') {
+        const paidText = window.t('paidSetupIssueHint', {}, lang);
+        const contact = String(ownerUsername || '').replace(/^@+/, '');
+        const html = '<p>' + window.escapeHTML(paidText) + '</p>' + (contact ? '<p><a href="https://t.me/' + window.escapeHTML(contact) + '" target="_blank" rel="noopener">@' + window.escapeHTML(contact) + '</a></p>' : '');
+        if (typeof window.showCustomAlert === 'function') window.showCustomAlert(html, { html: true, variant: 'market-access' });
+        else if (typeof showToast === 'function') showToast(paidText);
+        return false;
+    }
 
     const issueContext = {
         access_issue: true,
@@ -826,8 +834,9 @@ function renderFeedCard(item, kind) {
                 ? 'custom_google_group'
                 : 'google_group')
     ));
+    const paidSetupIssue = String(item.access_issue_kind || '') === 'paid_license_misconfigured';
     const accessIssueChip = hasAccessIssue
-        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t('accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(accessIssueMode)}', event)">🚨 ${window.escapeHTML(window.t('accessIssueBadge', {}, lang))}</button>`
+        ? `<button type="button" class="meta-chip accent-red market-access-issue-chip" title="${window.escapeHTML(window.t(paidSetupIssue ? 'paidSetupIssueHint' : 'accessIssueBadgeHint', {}, lang))}" onclick="openMarketAccessIssue(${Number(item.app_id || 0)}, ${isOwnProject ? 'true' : 'false'}, '${escapeInlineJsString(issueOwnerUsername)}', '${escapeInlineJsString(paidSetupIssue ? 'paid_license' : accessIssueMode)}', event)">${paidSetupIssue ? '⚠️' : '🔒'} ${window.escapeHTML(window.t(paidSetupIssue ? 'paidSetupIssueBadge' : 'accessIssueBadge', {}, lang))}</button>`
         : '';
     const blockedByMe = !!item.blocked_by_me;
     const blockedByOwner = !!item.blocked_by_owner;
@@ -4141,6 +4150,16 @@ function openIssueChecklistGooglePlay() {
     _openIssueChecklistLink(ISSUE_CHECKLIST_PLAY_STORE_HOME);
 }
 
+
+function previewPaidLicenseExample() {
+    var alt = window.t('paidAppExampleAlt', {}, lang);
+    if (typeof openImageZoom === 'function') {
+        openImageZoom('images/Test%20card.png', alt);
+        return;
+    }
+    window.open('images/Test%20card.png', '_blank');
+}
+
 function openIssueChecklistAppPlay() {
     var url = '';
     if (typeof getPlayReviewUrl === 'function') {
@@ -4154,7 +4173,8 @@ function openIssueChecklistAppPlay() {
     _openIssueChecklistLink(url || ISSUE_CHECKLIST_PLAY_STORE_HOME);
 }
 
-function openIssueReportModal(appId) {
+function openIssueReportModal(appId, kind) {
+    window._issueReportKind = kind === 'paid_license_misconfigured' ? kind : '';
     _issueReportAppId = appId;
     const modal = document.getElementById('issue-report-modal');
     if (!modal) return;
@@ -4168,8 +4188,8 @@ function openIssueReportModal(appId) {
         const node = document.getElementById(id);
         if (node) node.innerText = window.t(key, {}, lang);
     };
-    if (title) title.innerText = window.t('reportIssueModalTitle', {}, lang);
-    if (hint) hint.innerText = window.t('reportIssueModalInfo', {}, lang);
+    if (title) title.innerText = window.t(window._issueReportKind === 'paid_license_misconfigured' ? 'paidIssueModalTitle' : 'reportIssueModalTitle', {}, lang);
+    if (hint) hint.innerText = window.t(window._issueReportKind === 'paid_license_misconfigured' ? 'paidIssueModalInfo' : 'reportIssueModalInfo', {}, lang);
     if (emailLabel) emailLabel.innerText = window.t('reportIssueEmailLabel', {}, lang);
     if (sendBtn) sendBtn.innerText = window.t('reportIssueSendBtn', {}, lang);
     if (cancelBtn) cancelBtn.innerText = window.t('reportIssueCancelBtn', {}, lang);
@@ -4198,13 +4218,34 @@ function openIssueReportModal(appId) {
     const checkPlay = document.getElementById('t-issueCheckPlay');
     const checkMatch = document.getElementById('t-issueCheckMatch');
     const checkStill = document.getElementById('t-issueCheckStill');
+    var isPaidIssue = window._issueReportKind === 'paid_license_misconfigured';
     if (openGroupBtn) openGroupBtn.innerText = window.t('reportIssueOpenGroupBtn', {}, lang);
     if (openPlayBtn) openPlayBtn.innerText = window.t('reportIssueOpenPlayBtn', {}, lang);
-    if (openAppPlayBtn) openAppPlayBtn.innerText = window.t('reportIssueOpenAppPlayBtn', {}, lang);
+    var openAppPlayLabel = document.getElementById('t-issueOpenAppPlayLabel');
+    var openAppPlayHint = document.getElementById('t-issueOpenAppPlayHint');
+    if (openAppPlayLabel) {
+        openAppPlayLabel.innerText = window.t(isPaidIssue ? 'paidIssueOpenPlayBtn' : 'reportIssueOpenAppPlayBtn', {}, lang);
+    } else if (openAppPlayBtn) {
+        openAppPlayBtn.innerText = window.t(isPaidIssue ? 'paidIssueOpenPlayBtn' : 'reportIssueOpenAppPlayBtn', {}, lang);
+    }
+    if (openAppPlayHint) {
+        openAppPlayHint.hidden = !isPaidIssue;
+        openAppPlayHint.innerText = isPaidIssue ? window.t('paidIssueOpenPlayHint', {}, lang) : '';
+    }
+    if (openAppPlayBtn) openAppPlayBtn.classList.toggle('issue-check-link--stack', isPaidIssue);
     if (checkGroup) checkGroup.innerText = window.t('reportIssueCheckGroup', {}, lang);
     if (checkPlay) checkPlay.innerText = window.t('reportIssueCheckPlay', {}, lang);
     if (checkMatch) checkMatch.innerText = window.t('reportIssueCheckMatch', {}, lang);
-    if (checkStill) checkStill.innerText = window.t('reportIssueCheckStill', {}, lang);
+    if (checkStill) checkStill.innerText = window.t(isPaidIssue ? 'paidIssueCheckStill' : 'reportIssueCheckStill', {}, lang);
+    setText('t-issueScreenshotUpload', isPaidIssue ? 'paidIssueScreenshotUpload' : 'reportIssueScreenshotUpload');
+    var paidExample = document.getElementById('issue-paid-example');
+    if (paidExample) {
+        paidExample.hidden = !isPaidIssue;
+        var paidTitle = document.getElementById('t-issuePaidExampleTitle');
+        var paidHint = document.getElementById('t-issuePaidExampleHint');
+        if (paidTitle) paidTitle.innerText = window.t('paidIssueExampleTitle', {}, lang);
+        if (paidHint) paidHint.innerText = window.t('paidIssueExampleHint', {}, lang);
+    }
 
     _setIssueChecklistChecked(false);
     _resetIssueReportScreenshot();
@@ -4230,6 +4271,7 @@ function closeIssueReportModal(event) {
     if (event && event.target !== modal) return;
     modal.classList.remove('active');
     _clearIssueReportVerificationTimer();
+    window._issueReportKind = '';
     _issueReportAppId = null;
     _issueReportStep = 1;
     _setIssueChecklistChecked(false);
@@ -8530,14 +8572,25 @@ function showToast(message, duration) {
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'custom-toast';
-        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 100000; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; text-align: center; max-width: 85%; white-space: pre-line; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
+        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 100000; opacity: 0; transition: opacity 0.18s ease, transform 0.18s ease; pointer-events: none; text-align: center; max-width: 85%; white-space: pre-line; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
         document.body.appendChild(toast);
     }
-    toast.innerText = message;
-    toast.style.opacity = '1';
     clearTimeout(toast._timeout);
+    clearTimeout(toast._reshowTimeout);
+    // Restart the enter animation so successive identical toasts are visible.
+    toast.style.transition = 'none';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translate3d(0, 8px, 0) scale(.98)';
+    toast.innerText = message;
+    void toast.offsetWidth;
+    toast.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+    toast._reshowTimeout = setTimeout(function () {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(-50%) translate3d(0, 0, 0) scale(1)';
+    }, 16);
     toast._timeout = setTimeout(() => {
         toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translate3d(0, 6px, 0) scale(.98)';
     }, duration || 3000);
 }
 
@@ -9155,7 +9208,8 @@ function openTesterOwnedProjectPreviewModal(project, profile, testerId) {
         '</div>'
         : '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('syncBtn', {}, lang)) + '</div><div style="font-size:13px;color:var(--hint-color);">' + window.escapeHTML(window.t('dossierOwnedProjectSyncMissing', {}, lang)) + '</div></div>';
 
-    var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('devInfo', {}, lang)) + '</div><div class="detail-instruction-body">' + (project.instructions ? escapeHtmlWithBreaks(project.instructions) : '—') + '</div></div>';
+    var ownerNote = window.PaidAppSetup && PaidAppSetup.publicNote ? PaidAppSetup.publicNote(project) : (project.owner_comment_visible === false ? '' : String(project.instructions || '').trim());
+    var instructionsHtml = '<div class="details-block"><div class="detail-section-title">' + window.escapeHTML(window.t('devInfo', {}, lang)) + '</div><div class="detail-instruction-body">' + (ownerNote ? escapeHtmlWithBreaks(ownerNote) : '—') + '</div></div>';
     var economicsHtml = '';
     if (Number(project.bounty_per_tester || 0) > 0) {
         var perTester = Number(project.bounty_per_tester || 0);

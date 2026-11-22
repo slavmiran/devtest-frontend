@@ -471,3 +471,21 @@
     flex-shrink: 0;
     accent-color: var(--link-color, #3390ec);
 }
+
+
+.apstep-aside {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.14);
+}
+
+.apstep__row--paid {
+    border-color: rgba(255, 196, 72, 0.38);
+    background: rgba(255, 170, 40, 0.10);
+    color: #ffd27a;
+}
+
+.apstep__row--paid:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}

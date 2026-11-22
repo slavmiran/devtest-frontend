@@ -397,7 +397,8 @@ fs.mkdirSync(path.join(artifactDir, 'proof-reader-20261030'), { recursive: true 
                     closeReportModal(); await _runCheckinProofUploadJob(job); openReportModal(30, 'developer');
                     return { count: s.files.length, sameKey: s.idempotencyKey === job.idempotencyKey,
                         sameBytes: s.files[0] === job.files[0], note: document.getElementById('unified-report-note').value,
-                        message: messages[0], expected: window.t('report_server_response_invalid', {}, lang) };
+                        message: messages[0], expected: window.t('checkinProofConfirmationPending', {}, lang),
+                        uncertain: getCheckinProofRetryDraft(myTests[0]).deliveryUncertain };
                 } finally {
                     _postCheckinProofScreenshot = originalPost; window.showToast = originalToast;
                     _checkinProofRetryDrafts.clear(); _resetCheckinProofSelection(); initUnifiedReport(myTests[0], {});
@@ -405,6 +406,7 @@ fs.mkdirSync(path.join(artifactDir, 'proof-reader-20261030'), { recursive: true 
             });
             assert.equal(draftRecovery.count, 1); assert(draftRecovery.sameKey && draftRecovery.sameBytes);
             assert.equal(draftRecovery.note, 'Keep my note'); assert(draftRecovery.message.includes(draftRecovery.expected));
+            assert.equal(draftRecovery.uncertain, true, 'A lost response preserves files without declaring that the report failed');
 
             await pick(images.slice(0, 7).map((_, index) => file(index)));
             assert.deepEqual(await names(), [0, 1, 2, 3, 4].map(index => file(index).name));

@@ -544,3 +544,62 @@
     font-weight: 700;
     cursor: pointer;
 }
+
+
+.issue-check-link--stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+    line-height: 1.25;
+}
+
+.issue-check-link--stack small {
+    color: var(--hint-color, #8e9bb0);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.issue-paid-example {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(120, 168, 255, 0.28);
+    background: rgba(76, 141, 255, 0.08);
+    color: inherit;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.issue-paid-example img {
+    width: 54px;
+    height: 54px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #0e141b;
+    flex: 0 0 auto;
+}
+
+.issue-paid-example span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.issue-paid-example strong {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.issue-paid-example small {
+    color: var(--hint-color, #8e9bb0);
+    font-size: 12px;
+    line-height: 1.35;
+}

@@ -70,7 +70,9 @@ function restoreCheckinProofRetryDraft() {
     _renderCheckinProofPreviews();
     _refreshCheckinProofReuse();
     _syncCheckinProofControls();
-    _setCheckinProofAlert(window.t(_checkinProofHasInvalidFiles() ? 'checkinProofUsedFilesHint' : 'checkinProofDraftRestored', {}, lang));
+    _setCheckinProofAlert(window.t(_checkinProofHasInvalidFiles()
+        ? (state.invalidFileReason === 'report_image_unreadable' ? 'report_image_unreadable' : 'checkinProofUsedFilesHint')
+        : 'checkinProofDraftRestored', {}, lang));
     return true;
 }
 
@@ -314,7 +316,7 @@ function _renderCheckinProofPreviews() {
             item.setAttribute('aria-invalid', 'true');
             var label = document.createElement('span');
             label.className = 'checkin-proof-preview-error';
-            label.textContent = window.t(_checkinProofUploadState.invalidFileReason === 'duplicate_screenshot_selected'
+            label.textContent = window.t(/^report_image_/.test(_checkinProofUploadState.invalidFileReason) ? 'checkinProofImageInvalid' : _checkinProofUploadState.invalidFileReason === 'duplicate_screenshot_selected'
                 ? 'checkinProofRepeatedFile' : 'checkinProofAlreadyUsed', {}, lang);
             item.title = label.textContent;
             item.appendChild(label);
@@ -468,9 +470,19 @@ function getCheckinProofRetryDraft(test) {
     return null;
 }
 
-function retryCheckinProofUpload(appId) {
+async function retryCheckinProofUpload(appId) {
     var draft = getCheckinProofRetryDraft(_checkinProofTest(appId));
     if (!draft) return false;
+    if (draft.deliveryUncertain) {
+        _checkinProofPendingAppIds[Number(appId)] = draft;
+        if (typeof renderTests === 'function') renderTests(true);
+        var receipt = await _waitForReportReceipt(draft);
+        if (!_isCheckinProofContextCurrent(draft)) { _releaseCheckinProofJob(draft); return false; }
+        if (_finishRecoveredReport(draft, receipt)) return true;
+        _releaseCheckinProofJob(draft);
+        if (typeof renderTests === 'function') renderTests(true);
+        if (receipt && ['processing', 'staged'].indexOf(receipt.report_state) >= 0) return false;
+    }
     return openCheckinProofUploadModal(appId, {
         submissionMode: draft.submissionMode,
         catchupRequested: draft.catchupRequested,
@@ -743,6 +755,7 @@ function removeCheckinProofFile(index) {
 }
 
 function _checkinProofErrorMessage(result) {
+    if (result && /^report_image_/.test(result.code || '')) return window.t(result.code, {}, lang);
     if (result && result.code === 'telegram_rate_limited') {
         return window.t('telegram_rate_limited', { seconds: Math.max(1, Math.ceil(Number((result.details || {}).retry_after) || 1)) }, lang);
     }
@@ -824,13 +837,74 @@ function _applyBufferCatchupProofResult(appId, result) {
     }, 250);
 }
 
-async function _postCheckinProofScreenshot(url, form, onProgress) {
+async function _readReportReceipt(job) {
+    if (!job || !_isCheckinProofContextCurrent(job)) return null;
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, 8000);
+    try {
+        var response = await fetch(API_BASE + '/testing/' + job.progressId + '/checkin-proof/report-status', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store', signal: controller.signal,
+            body: JSON.stringify({ init_data: job.initData, idempotency_key: job.idempotencyKey,
+                app_id: job.appId, report_kind: job.reportKind || 'screenshot', expected_day: job.expectedDay,
+                expected_run: job.expectedRun, expected_start: job.expectedStart }),
+        });
+        if (!response.ok) return null;
+        var receipt = await response.json();
+        return receipt && receipt.status === 'success' && ['attached', 'orphaned', 'processing', 'staged', 'ready_to_retry', 'unknown'].indexOf(receipt.report_state) >= 0 ? receipt : null;
+    } catch (_) { return null; }
+    finally { clearTimeout(timer); }
+}
+
+async function _waitForReportReceipt(job) {
+    var receipt;
+    for (var attempt = 0; attempt < 16; attempt++) {
+        receipt = await _readReportReceipt(job);
+        if (!_isCheckinProofContextCurrent(job) || !receipt
+            || ['processing', 'staged'].indexOf(receipt.report_state) < 0) return receipt;
+        if (attempt < 15) await new Promise(function(resolve) { setTimeout(resolve, 2000); });
+    }
+    return receipt;
+}
+
+function _finishRecoveredReport(job, receipt) {
+    if (!receipt || ['attached', 'orphaned'].indexOf(receipt.report_state) < 0 || !_isCheckinProofContextCurrent(job)) return false;
+    _checkinProofRetryDrafts.delete(job.draftKey || _proofDraftKey(job.progressId, job.submissionMode));
+    _clearCheckinProofKey(job.progressId);
+    _releaseCheckinProofJob(job);
+    try {
+        if (receipt.daily_confirmed && job.submissionMode !== 'buffer_catchup') {
+            var test = _checkinProofTest(job.appId);
+            _applyScreenshotCheckinResult(job.appId, { proof: receipt.proof,
+                checkin: { already_checked_today: true, earned_bust: 0, earned_karma: 0,
+                    skips_count: Number(test && test.skips_count || 0) } }, 0);
+        } else {
+            if (typeof renderTests === 'function') renderTests(true);
+            if (typeof loadTasks === 'function') loadTasks(true).catch(function() {});
+        }
+    } catch (error) {
+        // Receipt is definitive even if updating the local UI fails.
+        console.error('Screenshot proof recovered; local UI update failed:', error);
+        try { if (typeof renderTests === 'function') renderTests(true); } catch (_) {}
+        if (typeof showToast === 'function') showToast(window.t('checkinProofSavedRefreshing', {}, lang));
+        setTimeout(function() { if (typeof loadTasks === 'function') loadTasks(true).catch(function() {}); }, 150);
+    }
+    return true;
+}
+
+async function _postCheckinProofScreenshot(url, form, onProgress, job) {
     function invalidResponse(status) {
         return { status: 'error', code: status === 413 ? 'file_too_large' : 'report_server_response_invalid' };
     }
     // Replay the SAME UUID and files, once. The endpoint resolves the existing
     // proof first and uses the same-day check-in winner to prevent double credit.
     for (var attempt = 0; attempt < 2; attempt += 1) {
+        if (attempt && job) {
+            var receipt = await _waitForReportReceipt(job);
+            if (receipt && ['attached', 'orphaned'].indexOf(receipt.report_state) >= 0) return { recoveredReceipt: receipt };
+            if (!receipt || ['processing', 'staged'].indexOf(receipt.report_state) >= 0) {
+                throw { isApiError: true, retryable: true, payload: { code: 'report_confirmation_pending' } };
+            }
+        }
         var response;
         var result;
         try {
@@ -923,7 +997,8 @@ async function _runCheckinProofUploadJob(job) {
             if (!label && card) label = card.querySelector('.test-screenshot-proof-upload-status');
             if (label) label.textContent = reportCopy(percent >= 99 ? 'processing' : 'progress', { percent: percent });
             job.uploadPercent = percent;
-        });
+        }, job);
+        if (sent.recoveredReceipt) { if (!_finishRecoveredReport(job, sent.recoveredReceipt)) _releaseCheckinProofJob(job); return; }
         var response = sent.response;
         var result = sent.result;
         if (!_isCheckinProofContextCurrent(job)) {
@@ -990,8 +1065,16 @@ async function _runCheckinProofUploadJob(job) {
             return;
         }
         var payload = error && error.isApiError ? error.payload : { code: error && error.message === 'report_upload_timeout' ? 'report_upload_timeout' : 'network_error' };
-        if (['duplicate_screenshot_in_run', 'duplicate_screenshot_selected'].indexOf(payload.code) >= 0) {
-            var indices = payload.details && payload.details.duplicate_indices;
+        var ambiguous = !(error && error.isApiError) || ['report_upload_failed', 'report_server_response_invalid',
+            'report_confirmation_pending', 'proof_attach_incomplete', 'network_error', 'report_upload_timeout'].indexOf(payload.code) >= 0;
+        if (ambiguous) {
+            var receipt = payload.code === 'report_confirmation_pending' ? null : await _waitForReportReceipt(job);
+            if (!_isCheckinProofContextCurrent(job)) { _releaseCheckinProofJob(job); return; }
+            if (_finishRecoveredReport(job, receipt)) return;
+        }
+        job.deliveryUncertain = ambiguous;
+        if (['duplicate_screenshot_in_run', 'duplicate_screenshot_selected', 'report_image_unreadable'].indexOf(payload.code) >= 0) {
+            var indices = payload.details && (payload.details.duplicate_indices || payload.details.invalid_indices);
             // Older servers cannot identify an album member. Never mark good
             // files as used on a guess; a one-file request is unambiguous.
             if (!Array.isArray(indices) || !indices.length) indices = job.files.length === 1 ? [0] : [];
@@ -1002,7 +1085,7 @@ async function _runCheckinProofUploadJob(job) {
         }
         var retryable = !(error && error.isApiError) || (error && error.retryable === true) || payload.code === 'proof_attach_incomplete'
             || payload.code === 'network_error' || (payload.details && payload.details.retryable === true);
-        if ((retryable || ['duplicate_screenshot_in_run', 'duplicate_screenshot_selected', 'report_description_too_short', 'report_storage_unavailable', 'catchup_request_changed'].indexOf(payload.code) >= 0)
+        if ((retryable || ['duplicate_screenshot_in_run', 'duplicate_screenshot_selected', 'report_image_unreadable', 'report_image_processing_failed', 'report_description_too_short', 'report_storage_unavailable', 'catchup_request_changed'].indexOf(payload.code) >= 0)
             && draftKey === _proofDraftKey(job.progressId, job.submissionMode)) {
             // Bounded memory even if many different projects fail offline.
             if (_checkinProofRetryDrafts.size >= 5) _checkinProofRetryDrafts.delete(_checkinProofRetryDrafts.keys().next().value);
@@ -1012,10 +1095,11 @@ async function _runCheckinProofUploadJob(job) {
         }
         _setCheckinProofBackgroundCard(job.appId, false);
         if (typeof showToast === 'function') {
-            showToast(_checkinProofErrorMessage(payload) + '\n' + window.t('checkinProofBackgroundRetry', {}, lang), 5000);
+            showToast(job.deliveryUncertain ? window.t('checkinProofConfirmationPending', {}, lang)
+                : _checkinProofErrorMessage(payload) + '\n' + window.t('checkinProofBackgroundRetry', {}, lang), 5000);
         }
         setTimeout(function() { if (typeof loadTasks === 'function') loadTasks(true).catch(function() {}); }, 300);
-        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        if (!job.deliveryUncertain && tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     }
 }
 

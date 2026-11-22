@@ -1178,7 +1178,8 @@ function getApiErrorMessage(payload, fallbackKey = 'genericError') {
         return t[fallbackKey] || t.genericError;
     }
     if (typeof payload === 'string' && payload.trim() !== '') {
-        if (isNotFoundLike(payload)) {
+        const normalized = payload.trim().toLowerCase();
+        if (isNotFoundLike(payload) || normalized === 'failed to fetch' || normalized === 'networkerror' || normalized === 'load failed') {
             return t.networkError || t.genericError;
         }
         return payload;
@@ -1706,6 +1707,11 @@ function _mapTestsFromApi(data) {
             icon_url: app.icon_url,
             google_group_url: app.google_group_url,
             instructions: app.instructions,
+            app_type: app.app_type === 'paid' ? 'paid' : 'free',
+            owner_comment_visible: app.owner_comment_visible !== false,
+            test_login: app.test_login || '',
+            test_password: app.test_password || '',
+            test_credentials_note: app.test_credentials_note || '',
             status: status,
             confirmed_checkin_view_date: sameParticipation ? (existingTest.confirmed_checkin_view_date || '') : '',
             start_date: app.start_date,
@@ -2389,6 +2395,21 @@ function _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision) 
             icon_url: project.icon_url,
             google_group_url: project.google_group_url,
             instructions: project.instructions || '',
+            app_type: project.app_type === 'paid' ? 'paid' : 'free',
+            owner_comment_visible: project.owner_comment_visible !== false,
+            test_login: project.test_login || '',
+            test_password: project.test_password || '',
+            test_credentials_note: project.test_credentials_note || '',
+            access_issue_kind: (function() {
+                if (String(project.access_issue_kind || '') === 'paid_license_misconfigured') return 'paid_license_misconfigured';
+                var paid = mappedTesters.some(function(tester) {
+                    return !!tester.issue_reported_at && !tester.issue_fixed_at && (
+                        String(tester.issue_kind || '') === 'paid_license_misconfigured'
+                        || String(tester.issue_reason || '').startsWith('paid_license_misconfigured')
+                    );
+                });
+                return paid ? 'paid_license_misconfigured' : '';
+            })(),
             testers: mappedTesters,
             is_visible: project.is_visible !== false,
             is_accepting_new_testers: isAcceptingNewTesters,
@@ -3482,6 +3503,7 @@ async function saveProject() {
         accepts_email_testers: acceptsEmailTesters,
         tester_email: acceptsEmailTesters ? testerEmailInput : null,
         min_android_version: minAndroidVersion,
+        ...(window.PaidAppSetup ? PaidAppSetup.payload('add') : { app_type: 'free' }),
         ...pricingPayload
     });
 }
@@ -3641,6 +3663,10 @@ async function saveProjectEdit() {
         return;
     }
 
+    if (window.PaidAppSetup && !PaidAppSetup.licenseReady('edit')) {
+        _saveProjectAlert(window.t('completeChecklistError', {}, lang));
+        return;
+    }
     if (accessPayload && !accessPayload.canSave) {
         _saveProjectAlert(window.t('completeChecklistError', {}, lang));
         if (typeof window.updateEditSaveButtonState === 'function') {
@@ -3734,12 +3760,19 @@ async function saveProjectEdit() {
                 tester_email: acceptsEmailTesters ? testerEmailInput : null,
                 min_android_version: minAndroidVersion,
                 is_setup_completed: isSetupCompleted,
+                ...(window.PaidAppSetup ? PaidAppSetup.payload('edit') : {}),
                 init_data: (typeof getTelegramInitDataRaw === 'function') ? getTelegramInitDataRaw() : ((tg && tg.initData) || ''),
                 ...pricingPayload
             })
         });
         const result = await response.json();
         if (result.status === 'success') {
+            var savedProject = (myProjects || []).find(function (item) { return Number(item.id) === Number(projectToEdit); });
+            if (savedProject) {
+                Object.assign(savedProject, window.PaidAppSetup ? PaidAppSetup.payload('edit') : {}, { instructions: instructions || '' });
+                if (window.ProjectParameters && typeof window.ProjectParameters.update === 'function') window.ProjectParameters.update(savedProject);
+            }
+            if (typeof showToast === 'function') showToast(window.t('projectSaved', {}, lang));
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             if (typeof window.markEditModalSavedState === 'function') {
                 window.markEditModalSavedState();

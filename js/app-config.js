@@ -74,7 +74,7 @@ function _applyResolvedApiBase(nextBase) {
     API_BASE = _normalizeApiBase(nextBase) || '';
     window.API_BASE = API_BASE;
     if (window.App) window.App.API_BASE = API_BASE;
-    window.API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
+    window.API_USES_TUNNEL = /trycloudflare\.com|ngrok|devtesthub\.app/i.test(API_BASE);
     window.API_USES_NGROK = window.API_USES_TUNNEL;
     console.info('[DevTest] API_BASE =', API_BASE || '(empty)', _isTestFrontendHost() ? '(test)' : '(production)');
     return API_BASE;
@@ -91,7 +91,7 @@ function _resolveApiBaseSync() {
 }
 
 let API_BASE = _resolveApiBaseSync();
-window.API_USES_TUNNEL = /trycloudflare\.com|ngrok/i.test(API_BASE);
+window.API_USES_TUNNEL = /trycloudflare\.com|ngrok|devtesthub\.app/i.test(API_BASE);
 window.API_USES_NGROK = window.API_USES_TUNNEL;
 window.API_BASE = API_BASE;
 if (window.App) window.App.API_BASE = API_BASE;
