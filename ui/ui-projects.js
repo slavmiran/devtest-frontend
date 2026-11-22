@@ -1860,6 +1860,11 @@ function renderProjects(force) {
             .filter(function(progressId) {
                 return progressId > 0;
             });
+        const isPaidAccessIssue = pendingIssueTesters.some(function(tester) {
+            return String(tester.issue_kind || '') === 'paid_license_misconfigured'
+                || String(tester.issue_reason || '').startsWith('paid_license_misconfigured');
+        }) || String(project.access_issue_kind || '') === 'paid_license_misconfigured';
+        const accessOverlayTesterMetaKey = isPaidAccessIssue ? 'accessOverlayPaidTesterReported' : 'accessOverlayTesterReported';
         const affectedCount = pendingIssueTesters.length;
         const affectedCountKey = affectedCount === 1
             ? 'accessOverlayAffectedOne'
@@ -1878,7 +1883,7 @@ function renderProjects(force) {
                 <div class="access-error-tester-row">
                     <div class="access-error-tester-main">
                         <div class="access-error-tester-name notranslate">${window.escapeHTML(testerLabel)}</div>
-                        <div class="access-error-tester-meta">${window.escapeHTML(window.t('accessOverlayTesterReported', {}, lang))}</div>
+                        <div class="access-error-tester-meta">${window.escapeHTML(window.t(accessOverlayTesterMetaKey, {}, lang))}</div>
                     </div>
                     <div class="access-error-tester-actions">
                         <button type="button" class="btn btn-secondary" onclick="if(window.tg&&window.tg.HapticFeedback)window.tg.HapticFeedback.impactOccurred('light'); contactAccessTester('${safeTesterUsernameInline}'); event.stopPropagation();">${window.escapeHTML(window.t('accessOverlayWriteBtn', {}, lang))}</button>
@@ -1888,14 +1893,19 @@ function renderProjects(force) {
                 </div>
             `;
         }).join('');
-        const accessGuideUrl = 'https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04';
+        const accessGuideUrl = isPaidAccessIssue
+            ? 'https://t.me/googleplay_console_12testers/31/82650'
+            : 'https://telegra.ph/Action-Required-Add-Testing-Group-to-Start-Closed-Testing-06-04';
+        const accessOverlayTitleKey = isPaidAccessIssue ? 'accessOverlayPaidTitle' : 'accessOverlayTitle';
+        const accessOverlayGuideLinkKey = isPaidAccessIssue ? 'accessOverlayPaidGuideLink' : 'accessOverlayGuideLink';
+        const accessOverlayGuideHintKey = isPaidAccessIssue ? 'accessOverlayPaidGuideHint' : 'accessOverlayGuideHint';
         const accessOverlayHtml = hasAccessOverlay ? `
             <div class="access-error-overlay" onclick="event.stopPropagation();">
                 <div class="access-error-panel" onclick="event.stopPropagation();">
                     <div class="access-error-head">
                         <span class="access-error-head__icon">!</span>
                         <div>
-                            <div class="access-error-title">${window.escapeHTML(window.t('accessOverlayTitle', {}, lang))}</div>
+                            <div class="access-error-title">${window.escapeHTML(window.t(accessOverlayTitleKey, {}, lang))}</div>
                             <div class="access-error-subtitle">${window.escapeHTML(window.t(affectedCountKey, { count: affectedCount }, lang))}</div>
                         </div>
                     </div>
@@ -1911,8 +1921,8 @@ function renderProjects(force) {
                     <a class="access-error-link" href="${accessGuideUrl}" onclick="event.stopPropagation(); window.open('${accessGuideUrl}', '_blank'); return false;">
                         <span class="access-error-link__icon">📖</span>
                         <span>
-                            <strong>${window.escapeHTML(window.t('accessOverlayGuideLink', {}, lang))}</strong>
-                            <small>${window.escapeHTML(window.t('accessOverlayGuideHint', {}, lang))}</small>
+                            <strong>${window.escapeHTML(window.t(accessOverlayGuideLinkKey, {}, lang))}</strong>
+                            <small>${window.escapeHTML(window.t(accessOverlayGuideHintKey, {}, lang))}</small>
                         </span>
                         <span class="access-error-link__arrow">›</span>
                     </a>

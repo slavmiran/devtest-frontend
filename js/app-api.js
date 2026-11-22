@@ -2388,6 +2388,16 @@ function _mapProjectsFromApi(data, proofPingReadRevision, feedbackReadRevision) 
             test_login: project.test_login || '',
             test_password: project.test_password || '',
             test_credentials_note: project.test_credentials_note || '',
+            access_issue_kind: (function() {
+                if (String(project.access_issue_kind || '') === 'paid_license_misconfigured') return 'paid_license_misconfigured';
+                var paid = mappedTesters.some(function(tester) {
+                    return !!tester.issue_reported_at && !tester.issue_fixed_at && (
+                        String(tester.issue_kind || '') === 'paid_license_misconfigured'
+                        || String(tester.issue_reason || '').startsWith('paid_license_misconfigured')
+                    );
+                });
+                return paid ? 'paid_license_misconfigured' : '';
+            })(),
             testers: mappedTesters,
             is_visible: project.is_visible !== false,
             is_accepting_new_testers: isAcceptingNewTesters,

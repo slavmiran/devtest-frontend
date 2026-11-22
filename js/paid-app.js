@@ -2,6 +2,14 @@
 (function () {
     'use strict';
 
+    var KEY_ICON_PATHS = '<path d="M12.4 2.7a2.5 2.5 0 0 1 3.4 0l5.5 5.5a2.5 2.5 0 0 1 0 3.4l-3.7 3.7a2.5 2.5 0 0 1-3.4 0L8.7 9.8a2.5 2.5 0 0 1 0-3.4z"/><path d="m14 7 3 3"/><path d="m9.4 10.6-6.814 6.814A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814"/>';
+    function keyIcon(className) {
+        return '<svg class="' + (className || 'key-square-icon') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + KEY_ICON_PATHS + '</svg>';
+    }
+    function keyMarkHtml() {
+        return '<span class="account-access-card__mark" aria-hidden="true">' + keyIcon('account-access-card__key') + '</span>';
+    }
+
     function t(key) {
         return window.t(key, {}, window.lang || (typeof lang !== 'undefined' ? lang : 'ru'));
     }
@@ -146,8 +154,11 @@
         if (shown(test)) {
             var instructions = String(test.instructions || '').trim();
             var secrets = hasCredentials(test);
-            var key = secrets ? (instructions ? 'credentialAndGuideChip' : 'credentialChip') : 'instructionChip';
-            parts.push('<button type="button" class="meta-chip paid-credential-chip" onclick="event.stopPropagation(); PaidAppSetup.openCredentials(' + Number(test.id) + ')">' + esc(t(key)) + '</button>');
+            var label = secrets
+                ? (instructions ? t('credentialAndGuideChip') : t('credentialChip'))
+                : t('instructionChip');
+            var prefix = secrets ? ('<span class="meta-chip__key">' + keyIcon('meta-chip__key-icon') + '</span>') : '';
+            parts.push('<button type="button" class="meta-chip paid-credential-chip' + (secrets ? ' has-key' : '') + '" onclick="event.stopPropagation(); PaidAppSetup.openCredentials(' + Number(test.id) + ')">' + prefix + esc(label) + '</button>');
         }
         return parts;
     }
@@ -164,13 +175,22 @@
         var body = document.getElementById('paid-app-modal-body');
         var image = document.getElementById('paid-app-example');
         if (!modal || !body) return;
-        body.textContent = t('paidAppGuideBody');
+        body.innerHTML =
+            '<div class="paid-guide-block">' +
+                '<p class="paid-guide-block__lead">' + esc(t('paidAppGuideBodyLead')) + '</p>' +
+                '<p class="paid-guide-block__card">' + esc(t('paidAppGuideBodyCard')) + '</p>' +
+                '<p class="paid-guide-block__ok">' + esc(t('paidAppGuideBodyOk')) + '</p>' +
+                '<p class="paid-guide-block__fail">' + esc(t('paidAppGuideBodyFail')) + '</p>' +
+            '</div>';
         if (image) {
             image.src = 'images/Test%20card.png';
             image.alt = t('paidAppExampleAlt');
         }
         var report = document.getElementById('paid-app-report');
-        if (report) report.dataset.appId = String(appId || '');
+        if (report) {
+            report.dataset.appId = String(appId || '');
+            report.innerHTML = '<span class="paid-app-report__icon" aria-hidden="true">⚠️</span><span class="paid-app-report__copy"><strong>' + esc(t('paidSetupReportTitle')) + '</strong><small>' + esc(t('paidSetupReportHint')) + '</small></span>';
+        }
         modal.classList.add('active');
     }
     function openCredentials(appId) {
@@ -278,7 +298,10 @@
         sync: paintType,
         shown: shown,
         hasComment: hasComment,
+        hasCredentials: hasCredentials,
         publicNote: publicNote,
+        keyIcon: keyIcon,
+        keyMarkHtml: keyMarkHtml,
         chips: chips,
         toggleCredentials: toggleCredentials,
         openLicenseGuide: openLicenseGuide,

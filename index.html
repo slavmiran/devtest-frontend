@@ -916,7 +916,7 @@
                     <div id="chips-instructions" class="chip-scroll"></div>
                     <section class="account-access-card">
                         <button type="button" class="account-access-card__toggle" id="credentials-toggle" aria-expanded="false" aria-controls="credentials-body" onclick="PaidAppSetup.toggleCredentials('add')">
-                            <span class="account-access-card__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9"/><path d="M16 7l2 2"/><path d="M18 5l2 2"/></svg></span>
+                            <span class="account-access-card__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.4 2.7a2.5 2.5 0 0 1 3.4 0l5.5 5.5a2.5 2.5 0 0 1 0 3.4l-3.7 3.7a2.5 2.5 0 0 1-3.4 0L8.7 9.8a2.5 2.5 0 0 1 0-3.4z"/><path d="m14 7 3 3"/><path d="m9.4 10.6-6.814 6.814A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814"/></svg></span>
                             <span class="account-access-card__copy"><strong data-i18n="credentialsTitle">Вход в аккаунт</strong><small data-i18n="credentialsHint">Тестер увидит данные для входа с быстрыми кнопками копирования.</small></span>
                             <span class="account-access-card__chev" aria-hidden="true"></span>
                         </button>
@@ -1677,7 +1677,7 @@
                         <div id="chips-edit-instructions" class="chip-scroll"></div>
                         <section class="account-access-card">
                             <button type="button" class="account-access-card__toggle" id="edit-credentials-toggle" aria-expanded="false" aria-controls="edit-credentials-body" onclick="PaidAppSetup.toggleCredentials('edit')">
-                                <span class="account-access-card__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9"/><path d="M16 7l2 2"/><path d="M18 5l2 2"/></svg></span>
+                                <span class="account-access-card__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.4 2.7a2.5 2.5 0 0 1 3.4 0l5.5 5.5a2.5 2.5 0 0 1 0 3.4l-3.7 3.7a2.5 2.5 0 0 1-3.4 0L8.7 9.8a2.5 2.5 0 0 1 0-3.4z"/><path d="m14 7 3 3"/><path d="m9.4 10.6-6.814 6.814A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814"/></svg></span>
                                 <span class="account-access-card__copy"><strong data-i18n="credentialsTitle">Вход в аккаунт</strong><small data-i18n="credentialsHint">Тестер увидит данные для входа с быстрыми кнопками копирования.</small></span>
                                 <span class="account-access-card__chev" aria-hidden="true"></span>
                             </button>
@@ -2100,7 +2100,17 @@
                         </label>
                         <div class="issue-still-proof">
                             <div class="issue-still-proof__title" id="t-issueCheckStill" data-i18n="reportIssueCheckStill">После проверки приложение всё ещё нельзя установить</div>
-                            <button type="button" class="btn btn-secondary issue-check-link" id="t-issueOpenAppPlay" onclick="openIssueChecklistAppPlay()" data-i18n="reportIssueOpenAppPlayBtn">Открыть приложение в Google Play</button>
+                            <button type="button" class="btn btn-secondary issue-check-link issue-check-link--stack" id="t-issueOpenAppPlay" onclick="openIssueChecklistAppPlay()">
+                                <span id="t-issueOpenAppPlayLabel" data-i18n="reportIssueOpenAppPlayBtn">Открыть приложение в Google Play</span>
+                                <small id="t-issueOpenAppPlayHint" hidden></small>
+                            </button>
+                            <button type="button" class="issue-paid-example" id="issue-paid-example" hidden onclick="previewPaidLicenseExample()">
+                                <img src="images/Test%20card.png" alt="" aria-hidden="true">
+                                <span>
+                                    <strong id="t-issuePaidExampleTitle"></strong>
+                                    <small id="t-issuePaidExampleHint"></small>
+                                </span>
+                            </button>
                             <input type="file" id="issue-report-file" accept="image/*" hidden onchange="handleIssueScreenshotUpload(this)">
                             <button type="button" class="issue-screenshot-zone" id="issue-screenshot-zone" onclick="document.getElementById('issue-report-file').click()">
                                 <svg class="upload-zone-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -3269,9 +3279,18 @@
                 <h3 data-i18n="paidAppGuideTitle">Платное приложение</h3>
                 <p data-i18n="paidAppGuideLead">Как выглядит тестовая оплата, если консоль настроена.</p>
             </header>
-            <p id="paid-app-modal-body" class="owner-note-copy__text"></p>
-            <img id="paid-app-example" class="paid-example zoomable-img" alt="" onclick="openImageZoom(this.src, this.alt)">
-            <button type="button" id="paid-app-report" class="owner-note-secondary" data-i18n="paidSetupReport" onclick="PaidAppSetup.report(Number(this.dataset.appId || 0))">Консоль не настроена</button>
+            <div id="paid-app-modal-body" class="paid-guide-body"></div>
+            <figure class="paid-guide-figure">
+                <img id="paid-app-example" class="paid-example zoomable-img" alt="" onclick="openImageZoom(this.src, this.alt)">
+                <figcaption data-i18n="paidAppExampleCaption">Так выглядит тестовая оплата при правильной настройке.</figcaption>
+            </figure>
+            <button type="button" id="paid-app-report" class="owner-note-secondary paid-app-report" onclick="PaidAppSetup.report(Number(this.dataset.appId || 0))">
+                <span class="paid-app-report__icon" aria-hidden="true">⚠️</span>
+                <span class="paid-app-report__copy">
+                    <strong data-i18n="paidSetupReportTitle">Требует реальную оплату (Консоль не настроена)</strong>
+                    <small data-i18n="paidSetupReportHint">Нажмите, если Test card не отображается</small>
+                </span>
+            </button>
             <button type="button" class="owner-note-close" onclick="PaidAppSetup.close('paid-app-modal')" data-i18n="paidModalClose">Закрыть</button>
         </section>
     </div>

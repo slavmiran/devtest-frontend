@@ -239,3 +239,20 @@
 @media (prefers-reduced-motion: reduce) {
     .pc-project-params__body, .pc-project-params__chevron { transition: none; }
 }
+
+
+.project-instructions-login__toggle { gap: 10px; }
+.project-instructions-login__mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    color: #9ebef0;
+    background: rgba(83, 146, 244, .16);
+}
+.project-instructions-login__key { width: 16px; height: 16px; display: block; }
+.pc-project-param.has-key .pc-project-param__value { gap: 4px; }
+.pc-project-param__plus { opacity: .75; font-weight: 700; }
+.pc-project-param__key { width: 13px; height: 13px; color: #9ebef0; flex: 0 0 auto; }

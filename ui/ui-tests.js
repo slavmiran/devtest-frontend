@@ -3119,8 +3119,8 @@ function renderTests(force) {
                                     <span class="apstep__label">${window.escapeHTML(freezeBtnText)}</span>
                                 </button>
                             </div>
-                            ${String(test.app_type || '') === 'paid' ? `<div class="apstep"><button type="button" class="apstep__row" onclick="event.stopPropagation(); openIssueReportModal(${test.id}, 'paid_license_misconfigured')" ${isIssueBlocked ? 'disabled' : ''}><span class="apstep__label">${window.escapeHTML(window.t('paidSetupReport', {}, lang))}</span></button></div>` : ''}
                         </div>
+                        ${String(test.app_type || '') === 'paid' ? `<div class="apstep-aside"><button type="button" class="apstep__row apstep__row--paid" onclick="event.stopPropagation(); openIssueReportModal(${test.id}, 'paid_license_misconfigured')" ${isIssueBlocked ? 'disabled' : ''}><span class="apstep__glyph" aria-hidden="true">⚠️</span><span class="apstep__label">${window.escapeHTML(window.t('paidSetupReport', {}, lang))}</span></button></div>` : ''}
                     </div>
                 </div>
             </div>

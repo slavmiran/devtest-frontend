@@ -4229,6 +4229,16 @@ function openIssueChecklistGooglePlay() {
     _openIssueChecklistLink(ISSUE_CHECKLIST_PLAY_STORE_HOME);
 }
 
+
+function previewPaidLicenseExample() {
+    var alt = window.t('paidAppExampleAlt', {}, lang);
+    if (typeof openImageZoom === 'function') {
+        openImageZoom('images/Test%20card.png', alt);
+        return;
+    }
+    window.open('images/Test%20card.png', '_blank');
+}
+
 function openIssueChecklistAppPlay() {
     var url = '';
     if (typeof getPlayReviewUrl === 'function') {
@@ -4287,13 +4297,34 @@ function openIssueReportModal(appId, kind) {
     const checkPlay = document.getElementById('t-issueCheckPlay');
     const checkMatch = document.getElementById('t-issueCheckMatch');
     const checkStill = document.getElementById('t-issueCheckStill');
+    var isPaidIssue = window._issueReportKind === 'paid_license_misconfigured';
     if (openGroupBtn) openGroupBtn.innerText = window.t('reportIssueOpenGroupBtn', {}, lang);
     if (openPlayBtn) openPlayBtn.innerText = window.t('reportIssueOpenPlayBtn', {}, lang);
-    if (openAppPlayBtn) openAppPlayBtn.innerText = window.t('reportIssueOpenAppPlayBtn', {}, lang);
+    var openAppPlayLabel = document.getElementById('t-issueOpenAppPlayLabel');
+    var openAppPlayHint = document.getElementById('t-issueOpenAppPlayHint');
+    if (openAppPlayLabel) {
+        openAppPlayLabel.innerText = window.t(isPaidIssue ? 'paidIssueOpenPlayBtn' : 'reportIssueOpenAppPlayBtn', {}, lang);
+    } else if (openAppPlayBtn) {
+        openAppPlayBtn.innerText = window.t(isPaidIssue ? 'paidIssueOpenPlayBtn' : 'reportIssueOpenAppPlayBtn', {}, lang);
+    }
+    if (openAppPlayHint) {
+        openAppPlayHint.hidden = !isPaidIssue;
+        openAppPlayHint.innerText = isPaidIssue ? window.t('paidIssueOpenPlayHint', {}, lang) : '';
+    }
+    if (openAppPlayBtn) openAppPlayBtn.classList.toggle('issue-check-link--stack', isPaidIssue);
     if (checkGroup) checkGroup.innerText = window.t('reportIssueCheckGroup', {}, lang);
     if (checkPlay) checkPlay.innerText = window.t('reportIssueCheckPlay', {}, lang);
     if (checkMatch) checkMatch.innerText = window.t('reportIssueCheckMatch', {}, lang);
-    if (checkStill) checkStill.innerText = window.t('reportIssueCheckStill', {}, lang);
+    if (checkStill) checkStill.innerText = window.t(isPaidIssue ? 'paidIssueCheckStill' : 'reportIssueCheckStill', {}, lang);
+    setText('t-issueScreenshotUpload', isPaidIssue ? 'paidIssueScreenshotUpload' : 'reportIssueScreenshotUpload');
+    var paidExample = document.getElementById('issue-paid-example');
+    if (paidExample) {
+        paidExample.hidden = !isPaidIssue;
+        var paidTitle = document.getElementById('t-issuePaidExampleTitle');
+        var paidHint = document.getElementById('t-issuePaidExampleHint');
+        if (paidTitle) paidTitle.innerText = window.t('paidIssueExampleTitle', {}, lang);
+        if (paidHint) paidHint.innerText = window.t('paidIssueExampleHint', {}, lang);
+    }
 
     _setIssueChecklistChecked(false);
     _resetIssueReportScreenshot();
@@ -8507,14 +8538,25 @@ function showToast(message, duration) {
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'custom-toast';
-        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 100000; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; text-align: center; max-width: 85%; white-space: pre-line; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
+        toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translate3d(0,0,0); background: var(--text-color); color: var(--bg-color); padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 100000; opacity: 0; transition: opacity 0.18s ease, transform 0.18s ease; pointer-events: none; text-align: center; max-width: 85%; white-space: pre-line; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,0.4);';
         document.body.appendChild(toast);
     }
-    toast.innerText = message;
-    toast.style.opacity = '1';
     clearTimeout(toast._timeout);
+    clearTimeout(toast._reshowTimeout);
+    // Restart the enter animation so successive identical toasts are visible.
+    toast.style.transition = 'none';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translate3d(0, 8px, 0) scale(.98)';
+    toast.innerText = message;
+    void toast.offsetWidth;
+    toast.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+    toast._reshowTimeout = setTimeout(function () {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(-50%) translate3d(0, 0, 0) scale(1)';
+    }, 16);
     toast._timeout = setTimeout(() => {
         toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translate3d(0, 6px, 0) scale(.98)';
     }, duration || 3000);
 }
 

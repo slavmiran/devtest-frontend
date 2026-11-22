@@ -2237,3 +2237,55 @@ body.wizard-open .bottom-nav {
 .owner-note-secondary, .owner-note-close { width: 100%; min-height: 46px; margin-top: 12px; border-radius: 14px; }
 .owner-note-secondary { border: 1px solid rgba(255, 159, 10, .35); color: #ffd7a1; background: rgba(255, 149, 0, .12); }
 .owner-note-close { border: 1px solid rgba(106, 163, 240, .4); color: #e8f1ff; background: rgba(55, 119, 211, .78); }
+
+
+.paid-guide-body { margin-top: 8px; }
+.paid-guide-block { display: grid; gap: 10px; }
+.paid-guide-block__lead,
+.paid-guide-block__ok,
+.paid-guide-block__fail { margin: 0; color: #c9d5e8; font-size: 14px; line-height: 1.45; }
+.paid-guide-block__card {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(90, 184, 120, .28);
+    background: rgba(52, 199, 89, .08);
+    color: #d7f5df;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+.paid-guide-block__fail { color: #f0d2a4; }
+.paid-guide-figure { margin: 14px 0 0; }
+.paid-guide-figure figcaption { margin-top: 8px; color: #8394ac; font-size: 12px; line-height: 1.4; }
+.paid-app-report {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    text-align: left;
+}
+.paid-app-report__icon { flex: 0 0 auto; font-size: 18px; line-height: 1; }
+.paid-app-report__copy { display: grid; gap: 3px; min-width: 0; }
+.paid-app-report__copy strong { font-size: 13.5px; line-height: 1.3; font-weight: 750; }
+.paid-app-report__copy small { color: #c9b28a; font-size: 12px; font-weight: 500; line-height: 1.35; }
+.meta-chip.paid-credential-chip.has-key,
+.meta-chip.paid-credential-chip { display: inline-flex; align-items: center; gap: 5px; }
+.meta-chip__key { display: inline-flex; }
+.meta-chip__key-icon { width: 12px; height: 12px; display: block; }
+.account-access-card__key,
+.project-instructions-login__key,
+.pc-project-param__key { width: 16px; height: 16px; display: block; }
+.project-instructions-login__mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    color: #9ebef0;
+    background: rgba(83, 146, 244, .16);
+}
+.pc-project-param__value { display: inline-flex; align-items: center; gap: 4px; }
+.pc-project-param__plus { opacity: .75; font-weight: 700; }
+.pc-project-param__key { width: 13px; height: 13px; color: #9ebef0; }

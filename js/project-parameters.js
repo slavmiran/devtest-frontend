@@ -97,10 +97,23 @@
     function commentShown(project) {
         return !!(project && project.owner_comment_visible !== false && commentContent(project));
     }
+    function hasCredentials(project) {
+        return !!(String(project && project.test_login || '').trim()
+            || String(project && project.test_password || '').trim()
+            || String(project && project.test_credentials_note || '').trim());
+    }
     function commentValue(project) {
         if (commentShown(project)) return text('pcParamsOn');
         if (project && project.owner_comment_visible === false && commentContent(project)) return text('pcParamsOff');
         return text('pcParamsInstructionsEmpty');
+    }
+    function commentValueHtml(project) {
+        var value = commentValue(project);
+        if (!(commentShown(project) && hasCredentials(project))) return esc(value);
+        var icon = (window.PaidAppSetup && typeof window.PaidAppSetup.keyIcon === 'function')
+            ? window.PaidAppSetup.keyIcon('pc-project-param__key')
+            : '';
+        return '<span class="pc-project-param__on">' + esc(value) + '</span><span class="pc-project-param__plus" aria-hidden="true">+</span>' + icon;
     }
     function activeCount(project) {
         return Number(project.request_reviews !== false) + Number(language(project) !== 'ALL') + Number(androidVersion(project) > 0)
@@ -120,6 +133,16 @@
             '<span class="pc-project-param__label">' + icon(iconName) + '<span>' + esc(text(label)) + '</span></span>' +
             '<span class="pc-project-param__value' + (toggle ? ' pc-project-param__value--state' : '') + '">' + esc(value) + '</span>' +
             (!toggle ? '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' : '') + '</button>';
+    }
+    function commentTile(project, id) {
+        var busy = pending(project, 'instructions');
+        var on = commentShown(project);
+        var value = commentValue(project);
+        var ariaExtra = (on && hasCredentials(project)) ? (' + ' + text('credentialsTitle')) : '';
+        return '<button type="button" class="pc-project-param' + (on ? ' is-active' : '') + (on && hasCredentials(project) ? ' has-key' : '') + '" data-project-param="instructions" onclick="ProjectParameters.openInstructions(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsInstructions') + ': ' + value + ariaExtra) + '"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
+            '<span class="pc-project-param__label">' + icon('instructions') + '<span>' + esc(text('pcParamsInstructions')) + '</span></span>' +
+            '<span class="pc-project-param__value">' + commentValueHtml(project) + '</span>' +
+            '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span></button>';
     }
     function content(project) {
         var id = Number(project.id || project.app_id);
@@ -169,7 +192,7 @@
                 tile(project, 'request_reviews', 'pcParamsReviews', project.request_reviews !== false ? onLabel : offLabel, 'reviews', project.request_reviews !== false, 'ProjectParameters.toggleReviews(' + id + ',event)', true) +
                 tile(project, 'target_lang', 'pcParamsLanguage', languageValue, 'language', code !== 'ALL', 'ProjectParameters.openLanguage(' + id + ',event)', false) +
                 tile(project, 'min_android_version', 'pcParamsAndroid', version > 0 ? 'Android ' + version + '+' : text('pcParamsAndroidAny'), 'android', version > 0, 'ProjectParameters.openAndroid(' + id + ',event)', false) +
-                tile(project, 'instructions', 'pcParamsInstructions', commentValue(project), 'instructions', commentShown(project), 'ProjectParameters.openInstructions(' + id + ',event)', false) +
+                commentTile(project, id) +
                 '<button type="button" class="pc-project-param pc-project-param--boost" data-project-param="screenshot_boost_campaign" onclick="openScreenshotBoostSettings(' + id + ',event)" aria-haspopup="dialog" aria-label="' + esc(text('pcParamsBoost') + ': ' + boostAriaValue) + '">' +
                     '<span class="pc-project-param__label">' + icon('camera') + '<span>' + esc(text('pcParamsBoost')) + '</span></span>' +
                     '<span class="pc-project-param__value">' + boostValueHtml + '</span>' +
@@ -346,7 +369,7 @@
                     '<div id="chips-project-instructions" class="chip-scroll"></div>' +
                     '<div class="project-instructions-meta"><span id="project-instructions-note"></span><output id="project-instructions-count" for="project-instructions-input"></output></div>' +
                     '<section class="project-instructions-login">' +
-                        '<button type="button" class="project-instructions-login__toggle" id="project-instructions-login-toggle" aria-expanded="false" aria-controls="project-instructions-login-body" onclick="ProjectParameters.toggleLogin()"><span><strong id="project-instructions-login-title"></strong><small id="project-instructions-login-hint"></small></span><i aria-hidden="true"></i></button>' +
+                        '<button type="button" class="project-instructions-login__toggle" id="project-instructions-login-toggle" aria-expanded="false" aria-controls="project-instructions-login-body" onclick="ProjectParameters.toggleLogin()"><span class="project-instructions-login__mark" aria-hidden="true">' + ((window.PaidAppSetup && window.PaidAppSetup.keyIcon) ? window.PaidAppSetup.keyIcon('project-instructions-login__key') : '') + '</span><span><strong id="project-instructions-login-title"></strong><small id="project-instructions-login-hint"></small></span><i aria-hidden="true"></i></button>' +
                         '<div id="project-instructions-login-body" hidden>' +
                             '<label class="project-instructions-field"><span id="project-instructions-login-label"></span><input id="project-instructions-login" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
                             '<label class="project-instructions-field"><span id="project-instructions-password-label"></span><input id="project-instructions-password" maxlength="150" autocomplete="off" spellcheck="false"></label>' +
