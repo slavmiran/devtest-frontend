@@ -901,11 +901,6 @@ function showOwnerLastSeenToast(lastOwnerActivity) {
     showToast(getOwnerLastSeenToastText(lastOwnerActivity));
 }
 
-function getProjectSyncStartDay(test) {
-    var syncDay = Number(test && test.google_sync_day || 0);
-    return Number.isFinite(syncDay) && syncDay >= 1 ? syncDay : 0;
-}
-
 function hasManualProjectSync(test) {
     var lastSyncDate = parseLocalDateOnly(test && test.last_sync_date);
     if (!(lastSyncDate && !Number.isNaN(lastSyncDate.getTime()))) {
@@ -955,31 +950,40 @@ function buildTestOwnerSubtitle(test) {
     return fullName;
 }
 
-function getProjectCurrentGoogleDay(test, fallbackDay) {
-    var syncDay = getProjectSyncStartDay(test);
-    if (!syncDay) {
-        var fallback = Number(fallbackDay || 0);
-        return Number.isFinite(fallback) ? Math.max(0, fallback) : 0;
+function isProjectUpdateTipDismissed(appId) {
+    const key = 'update_tip_dismissed_' + String(Number(appId) || 0);
+    if (key.endsWith('_0')) {
+        return true;
     }
+    try {
+        return localStorage.getItem(key) === 'true';
+    } catch (error) {
+        return false;
+    }
+}
 
-    // Match backend `_calculate_project_cycle_day`: a day-1 sync does not tick from
-    // last_sync_date — use platform age since created_at instead. Only sync_day > 1
-    // advances as syncDay + calendar days since last_sync.
-    if (syncDay <= 1) {
-        var platformDay = typeof getProjectPlatformDay === 'function'
-            ? getProjectPlatformDay(test)
-            : Number(fallbackDay || 0);
-        if (Number.isFinite(platformDay) && platformDay > 0) {
-            return Math.max(1, platformDay);
+function dismissProjectUpdateTip(appId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const normalizedId = Number(appId) || 0;
+    if (!normalizedId) {
+        return false;
+    }
+    try {
+        localStorage.setItem('update_tip_dismissed_' + String(normalizedId), 'true');
+    } catch (error) {}
+    const banner = document.getElementById('update-tip-' + normalizedId);
+    if (banner) {
+        banner.remove();
+    }
+    try {
+        if (window.tg && window.tg.HapticFeedback && typeof window.tg.HapticFeedback.impactOccurred === 'function') {
+            window.tg.HapticFeedback.impactOccurred('light');
         }
-        return 1;
-    }
-
-    var syncDiffDays = test && test.last_sync_date
-        ? (typeof getProjectCalendarDayDiff === 'function'
-            ? getProjectCalendarDayDiff(test.last_sync_date) : getDayDiffFromToday(test.last_sync_date))
-        : 0;
-    return syncDay + Math.max(0, syncDiffDays);
+    } catch (error) {}
+    return false;
 }
 
 function toggleCheckpointAccordion(element, event) {

@@ -6247,6 +6247,17 @@ function openEditModal(projectId, options) {
             }
         }, 300);
     }
+    if (options && options.focusPaid) {
+        setTimeout(function() {
+            var paidBlock = document.getElementById('edit-paid-app-type');
+            if (!paidBlock) return;
+            paidBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            paidBlock.classList.add('highlight-pulse');
+            setTimeout(function() {
+                paidBlock.classList.remove('highlight-pulse');
+            }, 4000);
+        }, 300);
+    }
     if (options && options.focusRecruitment) {
         setTimeout(function() {
             var recruitCard = document.getElementById('edit-recruitment-card');

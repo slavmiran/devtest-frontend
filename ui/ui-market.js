@@ -3280,7 +3280,7 @@ function renderPlayReviewModal() {
                             <div class="review-step-num">${step2NumHtml}</div>
                         </div>
                         <div class="review-step-content">
-                            <div class="review-step-title">${window.escapeHTML(lang === 'ru' ? 'Загрузить скриншот отзыва' : 'Upload review screenshot')}</div>
+                            <div class="review-step-title">${window.escapeHTML(lang === 'ru' ? 'Загрузить скриншот тест-отзыва' : 'Upload test-review screenshot')}</div>
                             <div class="review-step-desc">${window.escapeHTML(lang === 'ru' ? 'Подтвердите публикацию скриншотом.' : 'Confirm your publication with a screenshot.')}</div>
                             ${uploadOrPreviewHtml}
                         </div>
@@ -4992,7 +4992,7 @@ function isFeedbackScreenshotPlaceholder(text) {
 
 function getFeedbackPreviewText(item, isReviewTicket) {
     if (isReviewTicket) {
-        return window.t('projectFeedbackReviewTicketText', {}, lang) || 'Google Play review';
+        return window.t('projectFeedbackReviewTicketText', {}, lang) || 'Google Play test review';
     }
     const text = String((item && item.message_text) || '').replace(/\s+/g, ' ').trim();
     if (text && !isFeedbackScreenshotPlaceholder(text)) return text;
