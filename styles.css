@@ -3413,6 +3413,27 @@ input::placeholder,
     background: rgba(255, 204, 0, 0.1);
     color: var(--text-color);
 }
+.delete-info-block.obligation {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(255, 149, 0, 0.14);
+    border: 1px solid rgba(255, 176, 32, 0.38);
+    color: #ffd7a1;
+}
+.delete-obligation__icon {
+    flex: 0 0 auto;
+    font-size: 16px;
+    line-height: 1.35;
+}
+.delete-info-block.obligation p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: inherit;
+}
 
 /* ══════════════════════════════════════════════════════════════
    PROJECT-CARD STAGE SYSTEM (My Projects)

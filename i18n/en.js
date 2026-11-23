@@ -354,6 +354,7 @@
             deleteModalTitleFinal: "Finish testing?",
             deleteModalDescEarly: "The project will move to the archive and active testing will stop. You can restart the cycle at any time.",
             deleteModalDescFinal: "Congratulations on completing 14 days! The project will move to the archive. You can restart the cycle at any time.",
+            deleteModalObligation: "Platform rules require you to finish every mutual obligation you accepted. If users file complaints, restrictions may be applied to your profile.",
             deleteMessageLabel: "A few words of thanks to the testers (optional)...",
             deleteMessageLabelEarly: "Message for testers (optional)...",
             deleteMessageLabelFinal: "A few words of thanks to the testers (optional)...",
