@@ -18,6 +18,15 @@ const root = path.resolve(__dirname, '..');
                 };
                 window.fixture = { created_at: '2026-10-11 21:58:51.747329+00', google_sync_day: 1, last_sync_date: '2026-10-11T21:58:51.857384' };
             });
+            // Same check-in and observation instant, but Almaty crossed midnight.
+            await page.clock.setFixedTime(new Date('2026-10-11T19:07:00Z'));
+            const rosterAge = await page.evaluate(() => rosterCheckinDaysAgo({
+                roster_checkin_at: '2026-10-11T18:57:00+00:00',
+                last_check_date: '2026-10-11', actor_local_date: '2026-10-12'
+            }, getLocalDate()));
+            assert.equal(rosterAge, timezoneId === 'Asia/Almaty' ? 1 : 0, timezoneId);
+            assert.equal(await page.evaluate(() => rosterCheckinDaysAgo({}, getLocalDate())), null);
+            await page.clock.setFixedTime(new Date('2026-10-11T23:16:00Z'));
             assert.equal(await page.evaluate(() => getProjectPlatformDay(fixture)), 1, timezoneId);
             assert.equal(await page.evaluate(() => getProjectCurrentGoogleDay(fixture, 2)), 1, timezoneId);
             assert.equal(await page.evaluate(() => parseLocalDateOnly('2026-10-12').getDate()), 12, 'Tester date-only records must retain their local day');

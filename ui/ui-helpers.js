@@ -123,6 +123,21 @@ function getDayDiffFromToday(dateValue) {
     return Math.max(0, Math.floor((today - source) / (1000 * 60 * 60 * 24)));
 }
 
+function rosterCheckinDaysAgo(tester, ownerToday) {
+    const instant = new Date(tester.roster_checkin_at || NaN);
+    let day, today;
+    if (Number.isFinite(instant.getTime())) {
+        day = Date.UTC(instant.getFullYear(), instant.getMonth(), instant.getDate());
+        today = Date.parse(ownerToday);
+    } else {
+        // Older rows only record a tester-local calendar date.
+        day = Date.parse(tester.last_check_date);
+        today = Date.parse(tester.actor_local_date || ownerToday);
+    }
+    return Number.isFinite(day) && Number.isFinite(today)
+        ? Math.max(0, Math.floor((today - day) / 86400000)) : null;
+}
+
 function getProjectCalendarDayDiff(dateValue) {
     // Project lifecycle uses UTC calendar days on the backend. Do not compare
     // the UTC date prefix of a timestamp to the phone's local calendar date.

@@ -1567,13 +1567,6 @@ function renderProjects(force) {
     const today = getLocalDate();
     const todayDate = new Date(today);
 
-    function getDaysDiff(dateStr) {
-        if (!dateStr) return null;
-        const checkDate = new Date(dateStr);
-        const diffTime = Math.abs(todayDate - checkDate);
-        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    }
-
     function resolveProjectPhaseForRender(project) {
         if (typeof resolvePipelineProjectPhase === 'function') return resolvePipelineProjectPhase(project);
         var phase = String(project.phase || 'testing').trim().toLowerCase();
@@ -1838,23 +1831,20 @@ function renderProjects(force) {
                 }
 
                 let statusHtml = '';
-                const testerToday = String(tester.actor_local_date || today).slice(0, 10);
+                const daysDiff = rosterCheckinDaysAgo(tester, today);
                 if (isLeftSoft) {
                     statusHtml = `<span class="tester-status is-left-soft">${window.escapeHTML(window.t('testerLeftSoftStatus', {}, lang))}</span>`;
                 } else {
                     let testerStatusClass = 'is-red';
                     let testerStatusIcon = '🔴';
                     let testerStatusText = t.statusNotOpened;
-                    if (!tester.last_check_date) {
+                    if (daysDiff == null) {
                         // keep default red / not opened
-                    } else if (tester.last_check_date === testerToday) {
+                    } else if (daysDiff === 0) {
                         testerStatusClass = 'is-green';
                         testerStatusIcon = '🟢';
                         testerStatusText = t.statusToday;
                     } else {
-                        const daysDiff = tester.actor_local_date
-                            ? Math.max(0, Math.floor((Date.parse(testerToday) - Date.parse(String(tester.last_check_date).slice(0, 10))) / 86400000))
-                            : getDaysDiff(tester.last_check_date);
                         if (daysDiff === 1) {
                             testerStatusClass = 'is-yellow';
                             testerStatusIcon = '🟡';
