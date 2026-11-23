@@ -199,14 +199,52 @@
                     '<span class="pc-project-param__edit" aria-hidden="true">' + CHEVRON + '</span>' +
                 '</button>' +
             '</div>' +
-            (project.test_mode === 'email_list' ? '<button type="button" class="pc-project-params__access" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' + icon('email', 'pc-project-params__access-icon') + '<span>' + esc(text('pcParamsEmailAccess')) + '</span>' + CHEVRON + '</button>' : '') +
+            accessFooter(project, id) +
         '</div></div></div>';
     }
     function isEmailList(project) {
         return String(project && project.test_mode || '').toLowerCase() === 'email_list';
     }
+    function isPaid(project) {
+        return String(project && project.app_type || '') === 'paid';
+    }
+    function paidDollarIcon() {
+        return '<svg class="pc-project-params__access-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>';
+    }
+    function accessFooter(project, id) {
+        var email = isEmailList(project);
+        var paid = isPaid(project);
+        if (!email && !paid) return '';
+        var both = email && paid;
+        var parts = [];
+        if (email) {
+            parts.push(
+                '<button type="button" class="pc-project-params__access' + (both ? ' pc-project-params__access--split' : '') + '" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusSetup:true})">' +
+                    icon('email', 'pc-project-params__access-icon') +
+                    '<span>' + esc(text(both ? 'pcParamsEmailAccessShort' : 'pcParamsEmailAccess')) + '</span>' +
+                    CHEVRON +
+                '</button>'
+            );
+        }
+        if (paid) {
+            parts.push(
+                '<button type="button" class="pc-project-params__access pc-project-params__access--paid' + (both ? ' pc-project-params__access--split' : '') + '" onclick="event.stopPropagation(); openEditModal(' + id + ',{focusPaid:true})">' +
+                    paidDollarIcon() +
+                    '<span>' + esc(text(both ? 'pcParamsPaidAccessShort' : 'pcParamsPaidAccess')) + '</span>' +
+                    CHEVRON +
+                '</button>'
+            );
+        }
+        if (!both) return parts[0];
+        return '<div class="pc-project-params__access-row" role="group" aria-label="' + esc(text('pcParamsAccessRowAria')) + '">' + parts.join('') + '</div>';
+    }
     function build(project) {
-        return '<section class="pc-project-params' + (expanded.has(projectKey(project)) ? ' is-expanded' : '') + (isEmailList(project) ? ' is-email-list' : '') + (boostMeta(project).depleted ? ' has-boost-depleted' : '') + '" id="project-parameters-' + Number(project.id || project.app_id) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
+        return '<section class="pc-project-params' +
+            (expanded.has(projectKey(project)) ? ' is-expanded' : '') +
+            (isEmailList(project) ? ' is-email-list' : '') +
+            (isPaid(project) ? ' is-paid' : '') +
+            (boostMeta(project).depleted ? ' has-boost-depleted' : '') +
+            '" id="project-parameters-' + Number(project.id || project.app_id) + '" aria-label="' + esc(text('pcParamsTitle')) + '">' + content(project) + '</section>';
     }
     function stop(event) { if (event) { event.preventDefault(); event.stopPropagation(); } }
     function toggle(id, event) {
@@ -232,6 +270,7 @@
         var focusKey = panel.contains(document.activeElement) ? document.activeElement.getAttribute('data-project-param') : null;
         panel.classList.toggle('is-expanded', expanded.has(projectKey(project)));
         panel.classList.toggle('is-email-list', isEmailList(project));
+        panel.classList.toggle('is-paid', isPaid(project));
         panel.classList.toggle('has-boost-depleted', boostMeta(project).depleted);
         panel.innerHTML = content(project);
         if (focusKey) {
