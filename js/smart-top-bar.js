@@ -70,11 +70,11 @@
   var s=stats(),c=s.contribution||{},score=number(s.contribution_score!=null?s.contribution_score:(c.contribution_score!=null?c.contribution_score:(s.contribution_season||{}).score));
   var primary=[{icon:'🐞',label:t('hudBugs'),count:c.bugs_count||0},{icon:'💡',label:t('hudIdeas'),count:c.ideas_count||0},{icon:'⭐',label:t('hudReviewsShort'),count:c.play_reviews_count||0}];
   var extra=[{icon:'📸',count:c.five_screens_count||0},{icon:'📝',count:c.text_reports_count||0},{icon:'🎬',count:c.video_reports_count||0}].filter(function(item){return Number(item.count)>0;});
-  var word=t('hudContribWord'),lead='⚡ '+word+' '+score;
+  var word=t('hudContribWord'),lead='✦ '+word+' '+score;
   var words=primary.map(function(item){return item.icon+' '+item.label+': '+number(item.count);}).join(' · ');
   var icons=primary.map(function(item){return item.icon+' '+number(item.count);}).join(' · ');
   return {
-   variants:[lead+' — '+words,lead+' — '+icons,'⚡ '+score+' — '+icons],
+   variants:[lead+' — '+words,lead+' — '+icons,'✦ '+score+' — '+icons],
    extra:extra.map(function(item){return item.icon+' '+number(item.count);}).join(' · '),
    title:lead+' — '+words+(extra.length?' · '+extra.map(function(item){return item.icon+' '+number(item.count);}).join(' · '):'')
   };

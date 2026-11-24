@@ -447,7 +447,9 @@
         if (mediaCount > (s.seriesMediaCount || 0)) s.seriesExpanded = true;
         else if (!mediaCount && s.seriesMediaCount) s.seriesExpanded = false;
         s.seriesMediaCount = mediaCount;
-        var key = [s.reportKind, images, videos, eligible, s.qualityPercent, !!s.seriesExpanded, typeof lang === 'undefined' ? 'en' : lang].join(':');
+        var noteLength = (el('unified-report-note') && el('unified-report-note').value || '').trim().length >= 14 ? 1 : 0;
+        var previewKey = window.ReportEconomy && ReportEconomy.current() ? ReportEconomy.current().total_multiplier : '';
+        var key = [s.reportKind, images, videos, eligible, noteLength, previewKey, typeof lang === 'undefined' ? 'en' : lang].join(':');
         if (info.dataset.renderKey === key) return;
         info.dataset.renderKey = key;
         var series = el('unified-report-series'), quality = el('unified-report-quality');
@@ -455,21 +457,30 @@
         series.hidden = false;
         quality.hidden = true;
         var escape = window.escapeHTML;
-        var mediaBonus = eligible ? Math.min(5, Math.max(0, Math.min(5, images) - 2) + (videos ? 3 : 0)) / 10 : 0;
-        var total = mediaBonus + (screenshot ? 0 : .5);
-        var amount = (total || .1).toFixed(1).replace('.', typeof lang !== 'undefined' && lang === 'ru' ? ',' : '.');
-        var chip = 'checkin-proof-bonus-chip ' + (total ? 'is-active' : 'is-inactive');
-        if (eligible && (images >= 4 || videos)) chip += ' is-boosted';
-        if (eligible && (videos ? mediaBonus >= .5 : mediaBonus >= .3)) chip += ' is-boosted is-max';
-        var icon = typeof CHECKIN_PROOF_KARMA_ICON_HTML !== 'undefined' ? CHECKIN_PROOF_KARMA_ICON_HTML : '';
-        var label = !eligible && screenshot ? t('noDailyBonus') : t('bonusLabel', {amount:amount});
-        series.innerHTML = '<button type="button" class="report-info-top report-info-toggle" aria-expanded="' + !!s.seriesExpanded + '" aria-controls="unified-report-info-details" onclick="toggleUnifiedReportSeries()"><span>' + escape(t(videos ? 'mediaCount' : images ? 'seriesCount' : 'seriesTitle', {count:mediaCount})) + '</span>'
-            + '<span class="' + chip + '">' + escape(label) + (eligible || !screenshot ? ' ' + icon : '') + '</span></button>'
-            + '<div id="unified-report-info-details"' + (s.seriesExpanded ? '' : ' hidden') + '>'
-            + '<div class="report-info-progress" aria-hidden="true">' + [1,2,3,4,5].map(function (n) { return '<i class="' + (images + videos >= n ? 'is-filled' : '') + '"></i>'; }).join('') + '</div>'
-            + '<p class="report-info-detail">' + (screenshot ? escape(t('privacy')) : escape(t('qualityHint'))
-                + ' <span class="report-quality-value">' + escape(s.qualityPercent == null ? '—' : s.qualityPercent) + '</span>') + '</p></div>';
+        var note = el('unified-report-note');
+        var score = window.ReportEconomy ? ReportEconomy.pointsOf(images, videos, note ? note.value : '', s.reportKind) : { total: 0, pending: 0 };
+        var chip = 'checkin-proof-bonus-chip ' + (score.total ? 'is-active' : 'is-inactive');
+        if (images >= 5 || videos) chip += ' is-boosted is-max';
+        else if (images >= 3) chip += ' is-boosted';
+        var label = !eligible && screenshot ? t('noDailyBonus') : (window.ReportEconomy ? ReportEconomy.chipLabel(score, s.reportKind) : '✦');
+        var preview = window.ReportEconomy ? ReportEconomy.current() : null;
+        var pace = window.ReportEconomy ? ReportEconomy.paceLabel(preview, score) : '';
+        s.photoCount = images;
+        s.videoCount = videos;
+        var appId = s.appId || (typeof currentReportAppId !== 'undefined' ? currentReportAppId : 0);
+        if (window.ReportEconomy && appId) ReportEconomy.refresh(appId, !!(s.checkpoint || s.control));
+        series.innerHTML = '<div class="report-info-top"><span>' + escape(t(videos ? 'mediaCount' : images ? 'seriesCount' : 'seriesTitle', {count:images})) + '</span>'
+            + '<button type="button" class="' + chip + '" onclick="openReportEconomySheet()">' + escape(label) + '</button></div>'
+            + '<div class="report-info-progress" aria-hidden="true">' + [1,2,3,4,5].map(function (n) { return '<i class="' + (images >= n ? 'is-filled' : '') + '"></i>'; }).join('') + '</div>'
+            + '<button type="button" class="report-pace-line' + (preview && preview.is_slowed_down ? ' is-slow' : '') + '" onclick="openReportEconomySheet()">' + escape(pace) + '</button>'
+            + (!screenshot ? '<p class="report-info-detail">' + escape(t('qualityHint')) + '</p>' : '');
     }
+    window.openReportEconomySheet = function () {
+        var s = state();
+        var note = el('unified-report-note');
+        var score = window.ReportEconomy ? ReportEconomy.pointsOf(s.photoCount || 0, s.videoCount || 0, note ? note.value : '', s.reportKind) : { total: 0 };
+        if (window.ReportEconomy) ReportEconomy.openSheet(score);
+    };
     window.toggleUnifiedReportSeries = function () {
         state().seriesExpanded = !state().seriesExpanded;
         window.syncUnifiedReport();

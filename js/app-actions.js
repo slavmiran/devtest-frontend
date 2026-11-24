@@ -4208,25 +4208,25 @@ function setFeedbackRewardKarma(amount, options) {
     var alreadySpecial = !!gate.alreadySpecial;
     var syncLimits = !!(options && options.syncLimits);
 
-    if ((Number(amount) === 1.5 && (!thanksAvailable || alreadyThanked)) ||
-        (Number(amount) === 3 && (!specialAvailable || alreadySpecial))) {
+    if ((Number(amount) === 1 && (!thanksAvailable || alreadyThanked)) ||
+        (Number(amount) === 2 && (!specialAvailable || alreadySpecial))) {
         amount = 0;
     }
 
     var next = Number(amount || 0);
     if (next === _feedbackRewardKarma && !syncLimits) return;
     _feedbackRewardKarma = next;
-    var mapping = { 0: '0', 1.5: '15', 3: '30' };
-    ['0', '15', '30'].forEach(function(code) {
+    var mapping = { 0: '0', 1: '10', 2: '20' };
+    ['0', '10', '20'].forEach(function(code) {
         var chip = document.getElementById('feedback-karma-chip-' + code);
         if (!chip) return;
         chip.classList.toggle('is-active', code === mapping[_feedbackRewardKarma]);
         if (!syncLimits) return;
-        if (code === '15') {
+        if (code === '10') {
             var disabledThanks = !thanksAvailable || alreadyThanked;
             chip.classList.toggle('is-disabled', disabledThanks);
             chip.disabled = disabledThanks;
-        } else if (code === '30') {
+        } else if (code === '20') {
             var disabledSpecial = !specialAvailable || alreadySpecial;
             chip.classList.toggle('is-disabled', disabledSpecial);
             chip.disabled = disabledSpecial;
@@ -5457,7 +5457,7 @@ async function sendKarmaReward(appId, testerId, rewardType) {
                 const reward = result.reward || {
                     id: 'local:' + Date.now(), tester_id: Number(testerId), app_id: Number(appId),
                     run_iteration: Number(project.run_iteration || 1), kind: 'general', type: rewardType,
-                    karma_amount: rewardType === 'bug' ? 3 : (rewardType === 'overtime' ? 2 : 1.5), bust_amount: 0,
+                    karma_amount: rewardType === 'bug' ? 2 : (rewardType === 'overtime' ? 1.5 : 1), bust_amount: 0,
                     created_at: new Date().toISOString(), reward_local_date: project.reward_owner_local_date || null, is_today: true,
                 };
                 project.likes.push({ tester_id: testerId, type: rewardType, created_at: reward.created_at, reward_local_date: reward.reward_local_date, run_iteration: reward.run_iteration });

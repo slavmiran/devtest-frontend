@@ -63,7 +63,8 @@
     row(ru?'1 место':'1st place','+100%'),
     row(ru?'2–3 места':'2–3 places','+50%'),
     row(ru?'4–10 места':'4–10 places','+30%'),
-    row(ru?'Остальные места':'Other places','+0%')
+    row(ru?'5+ ✦ вне Топ-10':'5+ ✦ outside the top 10','+15% (×1.15)'),
+    row(ru?'Меньше 5 ✦':'Under 5 ✦','+0% (×1.00)')
   ].join('');
   var trust=[
     row(ru?'Надёжность от 80%':'Reliability from 80%','+20%'),

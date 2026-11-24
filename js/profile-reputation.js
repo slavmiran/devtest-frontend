@@ -122,7 +122,7 @@
             : '';
         return {
             badge: badge,
-            body: '<div class="metric-value">' + esc(formatScore(m.score)) + ' <span class="metric-value-mark">⚡</span></div>' +
+            body: '<div class="metric-value">' + esc(formatScore(m.score)) + ' <span class="metric-value-mark">✦</span></div>' +
                 '<div class="metric-sprint-timer">' + esc(line) + '</div>'
         };
     }
@@ -516,7 +516,7 @@
             '<div class="contrib-dash-hero">' +
             '<div class="contrib-dash-top">' +
             '<div><span class="contrib-dash-kicker">' + esc(t('contribLifetime', {}, 'Вклад за всё время')) + '</span>' +
-            '<strong>' + esc(formatScore(score)) + ' ⚡</strong></div>' +
+            '<strong>' + esc(formatScore(score)) + ' ✦</strong></div>' +
             '<span class="contrib-quality-pill">' + esc(t('contribAcceptQuality', { n: rate == null ? '—' : formatScore(rate) }, '✓ Качество отчётов (принято): ' + (rate == null ? '—' : formatScore(rate) + '%'))) + '</span>' +
             '</div>' +
             '<div class="contrib-prices">' + prices.map(function (row) {
@@ -527,10 +527,10 @@
             }).join('') + '</div></div>' +
             '<details class="contrib-influence-acc"' + (contribInfOpen ? ' open' : '') + '>' +
             '<summary class="ri-rules-btn contrib-influence-btn">' +
-            '<span class="ri-rules-btn-left">⚡ ' + esc(t('contribInfluenceTitle', {}, 'Влияние на Профиль')) + '</span>' +
+            '<span class="ri-rules-btn-left">✦ ' + esc(t('contribInfluenceTitle', {}, 'Влияние на Профиль')) + '</span>' +
             '<span class="ri-rules-chevron">▼</span></summary>' +
             '<div class="contrib-cards">' +
-            '<article class="is-bonus"><div class="contrib-card-head"><b>⭐ ' + esc(t('contribInfSprint', { n: formatScore(m.sprintM) }, 'Ускоритель отзывов ×' + formatScore(m.sprintM))) + '</b></div><p>' + esc(t('contribInfSprintText', {}, 'Место прошлого Спринта умножает скорость набора квоты отзывов, максимум ×2.')) + '</p></article>' +
+            '<article class="is-bonus"><div class="contrib-card-head"><b>⚡ ' + esc(t('contribInfSprint', { n: formatScore(m.sprintM) }, 'Темп квот ×' + formatScore(m.sprintM))) + '</b></div><p>' + esc(t('contribInfSprintText', {}, 'Берётся лучший из прошлого и текущего спринта. От 5 ✦ вне топа +15%, топ-10 +30%, топ-3 +50%, первое место +100%.')) + '</p></article>' +
             '<article class="is-bonus"><div class="contrib-card-head"><b>🏆 ' + esc(t('contribInfPool', {}, 'Призовой пул 2 000 $BUST / 10 дней')) + '</b></div><p>' + esc(t('contribInfPoolText', {}, 'Топ-10 получает от 60 до 450 $BUST.')) + '</p></article>' +
             '<article class="is-bonus"><div class="contrib-card-head"><b>🔍 ' + esc(t('contribInfMarket', {}, 'Фильтр Маркета по вкладу')) + '</b></div><p>' + esc(t('contribInfMarketText', {}, 'В подборе контрагентов выше те, у кого вклад больше, при выставлении фильтра.')) + '</p></article>' +
             '<article class="is-bonus"><div class="contrib-card-head"><b>📨 ' + esc(t('contribInfSlots', { n: m.contribMod }, 'Слоты рассылки +' + m.contribMod)) + '</b></div><p>' + esc(t('contribInfSlotsText', {}, '10+ даёт +2 места, 50+ даёт +4, 100+ даёт +6 — навсегда.')) + '</p></article>' +

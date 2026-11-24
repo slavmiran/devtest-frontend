@@ -6493,15 +6493,6 @@ function renderKarmaHowList() {
         {
             title: label('karmaHowPlatformTitle', '🟢 От Платформы'),
             rows: [
-                { label: label('karmaHowOvertimeCheckin', 'Чекин в овертайме'), value: '+0.1' },
-                { label: label('karmaHowScreenshots', 'Серия скриншотов x3'), value: '+0.1' },
-                { label: label('karmaHowScreenshots4', 'Серия скриншотов x4'), value: '+0.2' },
-                { label: label('karmaHowScreenshots5', 'Серия скриншотов x5'), value: '+0.3' },
-                { label: label('karmaHowVideoReport', 'Видеоотчёт за день'), note: label('karmaHowVideoReportNote', 'один раз; с фото — до +0.5 за дневной отчёт'), value: '+0.3' },
-                { label: label('karmaHowBugAccepted', 'Подтверждённый баг'), value: '+0.5' },
-                { label: label('karmaHowIdeaAccepted', 'Подтверждённая рекомендация'), value: '+0.5' },
-                { label: label('karmaHowPlayReviewAccepted', 'Подтверждённый отзыв Google Play'), value: '+0.5' },
-                { label: label('karmaHowOwnerFinish', 'Завершение проекта владельцем'), value: '+1.0' },
                 { label: label('karmaHowPlatformFeedback', 'Фидбэк саппорту / Платформе'), value: label('karmaHowValueUpTo30', 'до +3.0') },
                 { label: label('karmaHowAdmin', 'Награда от администратора'), value: label('karmaHowValueCustom', 'индивидуально') },
             ],
@@ -6509,10 +6500,9 @@ function renderKarmaHowList() {
         {
             title: label('karmaHowDevTitle', '🤝 От Разработчиков'),
             rows: [
-                { label: label('karmaHowThanks', 'Спасибо'), note: label('karmaHowThanksNote', '2 в первую неделю, ещё 2 со второй'), value: '+1.5' },
-                { label: label('karmaHowSpecial', 'Особая благодарность от авторов'), note: label('karmaHowSpecialNote', '1 в первую неделю, ещё 1 со второй'), value: '+3.0' },
-                { label: label('karmaHowOvertimeReward', 'Овертайм-награда (одному тестеру)'), value: '+2.0' },
-                { label: label('karmaHowPlayReviewReward', 'Награда за отзыв в Google Play'), value: '+1.5 / +3.0' },
+                { label: label('karmaHowThanks', '🤍 Спасибо'), note: label('karmaHowThanksNote', '2 в первую неделю, ещё 2 со второй'), value: '+1.0' },
+                { label: label('karmaHowSpecial', '❤️‍🔥 Особая благодарность от авторов'), note: label('karmaHowSpecialNote', '1 в первую неделю, ещё 1 со второй'), value: '+2.0' },
+                { label: label('karmaHowOvertimeReward', 'Овертайм-награда (одному тестеру)'), value: '+1.5' },
             ],
         },
         {
