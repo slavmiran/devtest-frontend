@@ -1025,7 +1025,8 @@
             remainingBounty: 0,
             hasReciprocal: false,
             projectName: '',
-            ownerId: 0,
+            ownerId: Number(options.ownerId || (options.testSnapshot && options.testSnapshot.owner_id) || 0),
+            progressId: Number(options.progressId || (options.testSnapshot && options.testSnapshot.progress_id) || 0),
             contractTotal: 0,
             earnedBounty: 0,
             grantTotal: 0,
@@ -1151,6 +1152,7 @@
         _setTypeBadge(_termState.joinType);
         _hideDropUnlinkBox();
         body.innerHTML = _renderDropBody(test);
+        _mountTermPeer();
         _setPreserveSlot((_termState && _termState.preserveHtml) || '');
     }
 
@@ -1192,6 +1194,7 @@
             }
             window._leaveMutualStats = data;
             body.innerHTML = _renderLeaveBody(data);
+            _mountTermPeer();
         } catch (error) {
             if (_termState !== requestState) return;
             console.error('Termination leave stats error:', error);
@@ -1324,6 +1327,21 @@
             testerFullName: tester.full_name || options.testerFullName || '',
         });
         _updateUnlinkGrantNote();
+        _mountTermPeer();
+    }
+
+    function _mountTermPeer() {
+        if (!window.PeerReviews || !_termState) return;
+        var body = document.getElementById('term-body');
+        if (!body) return;
+        var host = document.getElementById('term-peer-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'term-peer-host';
+            body.appendChild(host);
+        }
+        var targetId = _termState.mode === 'kick' ? Number(_termState.testerId || 0) : Number(_termState.ownerId || 0);
+        PeerReviews.mount(host, { targetId: targetId, progressId: Number(_termState.progressId || 0) });
     }
 
     function closeTerminationSheet(event) {

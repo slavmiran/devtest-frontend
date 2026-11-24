@@ -2748,6 +2748,7 @@ function syncCheckinDeveloperAccordion(appId, fallbackUsername, prefix) {
         body.innerHTML = '<p class="checkin-dev-accordion__empty">' +
             window.escapeHTML(window.t('checkinDevEmpty', {}, lang)) +
             '</p>';
+        attachDeveloperPeer(body, test);
         return root;
     }
 
@@ -2769,7 +2770,18 @@ function syncCheckinDeveloperAccordion(appId, fallbackUsername, prefix) {
             infoIcon +
             '<span>' + window.escapeHTML(window.t('checkinDevHint', {}, lang)) + '</span>' +
         '</p>';
+    attachDeveloperPeer(body, test);
     return root;
+}
+
+function attachDeveloperPeer(body, test) {
+    if (!body || !window.PeerReviews || !test) return;
+    var slot = document.createElement('div');
+    body.appendChild(slot);
+    PeerReviews.mount(slot, {
+        targetId: Number(test.owner_id || 0),
+        progressId: Number(test.progress_id || 0)
+    });
 }
 
 function syncCheckinCatchupNoteUi(appId) {

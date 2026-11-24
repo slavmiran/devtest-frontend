@@ -7077,7 +7077,8 @@
                 '</div>' +
                 projectContributionsHtml +
             '</section>' +
-            dossierRewardHistoryHtml(project, safeTesterId, opts.rewardFocus);
+            dossierRewardHistoryHtml(project, safeTesterId, opts.rewardFocus) +
+            '<div class="peer-slot" data-peer-target="' + safeTesterId + '" data-peer-progress="' + Number(tester.progress_id || tester.id || 0) + '"></div>';
     }
 
     window.closeContributorDossierModal = function (event) {
@@ -7139,6 +7140,7 @@
             isLoading: !cachedProfile,
             rewardFocus: options.rewardFocus,
         });
+        if (window.PeerReviews) PeerReviews.scan(bodyEl);
 
         if (options.rewardFocus) window.pcFocusContributorRewards(options.rewardFocus);
 
@@ -7164,6 +7166,7 @@
                     isLoading: false,
                     rewardFocus: options.rewardFocus,
                 });
+                if (window.PeerReviews) PeerReviews.scan(bodyEl);
                 if (options.rewardFocus) window.pcFocusContributorRewards(options.rewardFocus);
             }
         } catch (fetchErr) {

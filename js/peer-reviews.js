@@ -76,6 +76,7 @@
                 if (event.target.closest('[data-peer-delete]') && ctx.my_review) api('/peer-reviews/' + ctx.my_review.id, {method: 'DELETE'}).then(function () { layer.remove(); });
             });
             layer.querySelector('[data-visibility]') && layer.querySelector('[data-visibility]').addEventListener('change', function () { layer.dataset.modeTouched = '1'; });
+            layer.dataset.rating = String(preset);
             document.body.appendChild(layer);
         }).catch(function () {});
     }
@@ -120,12 +121,60 @@
     function openAppealModal(reviewId) {
         var layer = document.createElement('div');
         layer.className = 'peer-layer';
-        layer.innerHTML = '<div class="peer-sheet" role="dialog"><header><strong>' + e(ru() ? 'Апелляция' : 'Appeal') + '</strong><button type="button" data-peer-close>×</button></header><div class="peer-body"><p class="peer-muted">1. ' + e(ru() ? 'Подать' : 'Submit') + ' → 2. ' + e(ru() ? 'Рассмотрение' : 'Review') + ' → 3. ' + e(ru() ? 'Завершено' : 'Done') + '</p><textarea maxlength="500" data-appeal-text></textarea><button type="button" class="btn btn-primary" data-appeal-send>' + e(ru() ? 'Подать апелляцию' : 'Submit appeal') + '</button></div></div>';
+        layer.innerHTML = '<div class="peer-sheet" role="dialog"><header><strong>' + e(ru() ? 'Апелляция' : 'Appeal') + '</strong><button type="button" data-peer-close>×</button></header><div class="peer-body"><p class="peer-muted">1. ' + e(ru() ? 'Подать' : 'Submit') + ' → 2. ' + e(ru() ? 'Рассмотрение' : 'Review') + ' → 3. ' + e(ru() ? 'Завершено' : 'Done') + '</p><label class="peer-muted"><input type="checkbox" data-reason value="facts"> ' + e(ru() ? 'Противоречит фактам теста' : 'Contradicts the test') + '</label><label class="peer-muted"><input type="checkbox" data-reason value="abuse"> ' + e(ru() ? 'Оскорбления или спам' : 'Insults or spam') + '</label><textarea maxlength="500" data-appeal-text></textarea><label class="peer-link">' + e(ru() ? 'Доказательства 0/5' : 'Evidence 0/5') + '<input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden data-appeal-files></label><div data-appeal-previews></div><button type="button" class="btn btn-primary" data-appeal-send>' + e(ru() ? 'Подать апелляцию' : 'Submit appeal') + '</button></div></div>';
+        var files = [];
+        layer.querySelector('[data-appeal-files]').addEventListener('change', function (event) {
+            [].forEach.call(event.target.files || [], function (file) {
+                if (files.length >= 5 || file.size > 5 * 1024 * 1024) return;
+                files.push(file);
+            });
+            layer.querySelector('[data-appeal-previews]').textContent = files.map(function (file) { return file.name; }).join(', ');
+        });
         layer.addEventListener('click', function (event) {
             if (event.target === layer || event.target.closest('[data-peer-close]')) { layer.remove(); return; }
-            if (event.target.closest('[data-appeal-send]')) api('/peer-reviews/' + reviewId + '/appeal', {method: 'POST', body: JSON.stringify({description: layer.querySelector('[data-appeal-text]').value, reasons: [ru() ? 'Противоречит фактам теста' : 'Contradicts the test'], evidence_urls: []})}).then(function () { layer.remove(); });
+            if (event.target.closest('[data-appeal-send]')) {
+                var reasons = [].map.call(layer.querySelectorAll('[data-reason]:checked'), function (node) { return node.value; });
+                Promise.all(files.map(uploadEvidence)).then(function (urls) {
+                    return api('/peer-reviews/' + reviewId + '/appeal', {method: 'POST', body: JSON.stringify({
+                        description: layer.querySelector('[data-appeal-text]').value,
+                        reasons: reasons,
+                        evidence_urls: urls.filter(Boolean)
+                    })});
+                }).then(function () { layer.remove(); });
+            }
         });
         document.body.appendChild(layer);
+    }
+    function uploadEvidence(file) {
+        var data = new FormData();
+        data.append('file', file);
+        data.append('init_data', typeof getTelegramInitDataRaw === 'function' ? getTelegramInitDataRaw() : '');
+        data.append('upload_kind', 'appeal_evidence');
+        return fetch((window.API_BASE || '/api') + '/upload-icon', {method: 'POST', body: data}).then(function (response) { return response.json(); }).then(function (payload) { return payload && payload.url || ''; }).catch(function () { return ''; });
+    }
+    function scan(root) {
+        (root || document).querySelectorAll('.peer-slot').forEach(function (node) {
+            if (node.dataset.peerReady) return;
+            node.dataset.peerReady = '1';
+            mount(node, {targetId: Number(node.dataset.peerTarget || 0), progressId: Number(node.dataset.peerProgress || 0)});
+        });
+    }
+    function openDeals() {
+        api('/me/deal-history?limit=20&offset=0').then(function (payload) {
+            var layer = document.createElement('div');
+            layer.className = 'peer-layer';
+            var deals = payload.deals || [];
+            layer.innerHTML = '<div class="peer-sheet peer-list" role="dialog"><header><button type="button" data-peer-close>←</button><strong>' + e(ru() ? 'История сделок' : 'Deal history') + '</strong></header><div class="peer-feed">' + (deals.length ? deals.map(function (deal) {
+                var rated = deal.my_peer_review && deal.my_peer_review.rating;
+                return '<article class="peer-card"><b>' + e(deal.app_name || '') + '</b><small>' + e(deal.deal_kind || '') + ' · ' + e(deal.days_done || 0) + '</small><button type="button" data-progress="' + Number(deal.progress_id) + '">' + e(rated ? (Number(rated) > 0 ? '👍' : '👎') : (ru() ? 'Оставить отзыв' : 'Leave a review')) + '</button></article>';
+            }).join('') : '<p class="peer-muted">' + e(ru() ? 'Завершённых сделок пока нет' : 'No finished deals yet') + '</p>') + '</div></div>';
+            layer.addEventListener('click', function (event) {
+                if (event.target === layer || event.target.closest('[data-peer-close]')) { layer.remove(); return; }
+                var button = event.target.closest('[data-progress]');
+                if (button) openRateSheet(Number(button.dataset.progress));
+            });
+            document.body.appendChild(layer);
+        });
     }
     function decorateAppreciation(project) {
         var host = document.getElementById('peer-appreciation-host');
@@ -145,13 +194,24 @@
         var match = String(start || '').match(/^peer_review_(\d+)(_neg)?$/);
         if (match) openRateSheet(Number(match[1]), {presetRating: match[2] ? -1 : 1});
         var karmaHost = document.getElementById('karma-peer-reviews');
-        if (karmaHost && typeof userId !== 'undefined') mount(karmaHost, {targetId: userId});
+        if (karmaHost && typeof userId !== 'undefined') {
+            karmaHost.innerHTML = '<button type="button" class="peer-summary" data-peer-list="' + Number(userId) + '"></button><button type="button" class="peer-link" data-peer-deals="1">' + e(ru() ? 'История сделок ›' : 'Deal history ›') + '</button>';
+            api('/users/' + Number(userId) + '/peer-reviews?filter=all&limit=1').then(function (payload) {
+                var button = karmaHost.querySelector('[data-peer-list]');
+                if (button) button.textContent = summaryLine(payload.summary);
+            }).catch(function () {});
+            karmaHost.addEventListener('click', function (event) {
+                if (event.target.closest('[data-peer-deals]')) openDeals();
+                var list = event.target.closest('[data-peer-list]');
+                if (list) openListModal(Number(list.dataset.peerList));
+            });
+        }
     }
     document.addEventListener('click', function (event) {
         var tag = event.target.closest('.peer-tag');
         if (tag) tag.classList.toggle('is-on');
     });
-    window.PeerReviews = {mount: mount, openRateSheet: openRateSheet, openListModal: openListModal, openAppealModal: openAppealModal, decorateAppreciation: decorateAppreciation};
+    window.PeerReviews = {mount: mount, scan: scan, openRateSheet: openRateSheet, openListModal: openListModal, openAppealModal: openAppealModal, decorateAppreciation: decorateAppreciation, openDeals: openDeals};
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
 })();

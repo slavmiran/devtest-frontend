@@ -10716,6 +10716,10 @@ async function openDossierModal(username, testerId, appId) {
 
     if (openSeq !== _dossierOpenSeq) return;
     bodyEl.innerHTML = html;
+    if (window.PeerReviews) PeerReviews.mount(bodyEl.querySelector('#dossier-peer-host') || bodyEl.appendChild(document.createElement('div')), {
+        targetId: Number(testerId || 0),
+        progressId: Number(tester && tester.progress_id || 0)
+    });
 }
 
 function closeDossierModal(event) {
