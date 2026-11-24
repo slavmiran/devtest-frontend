@@ -274,6 +274,7 @@
         window.setUnifiedReportKind(s.reportKind);
         el('unified-report-note').onfocus = function () {
             if (typeof collapseCheckinDeveloperAccordion === 'function') collapseCheckinDeveloperAccordion('report-developer');
+            el('report-modal').classList.add('is-note-focus');
             syncOwnerHint();
             syncReportViewport();
         };
@@ -281,6 +282,7 @@
             this.style.removeProperty('max-height');
             this.style.removeProperty('min-height');
             el('report-modal').classList.remove('is-review-compact');
+            el('report-modal').classList.remove('is-note-focus');
             syncOwnerHint();
         };
         syncOwnerHint();
@@ -346,9 +348,17 @@
         submit.disabled = s.checkingFiles || !validText || (needsMedia && !files.length) || _checkinProofHasInvalidFiles();
         el('t-checkinProofSubmit').textContent = t(c.buffer ? 'catchupSend' : (s.reportKind === 'bug' ? 'sendBug' : s.reportKind === 'idea' ? 'sendIdea' : 'send'));
         var counter = el('unified-report-count');
-        counter.textContent = rawLength > limit ? t('excess', {count: rawLength - limit})
-            : s.reportKind === 'screenshot' ? rawLength + '/500' : length < 24 ? String(24 - length) : '';
+        var noteField = el('unified-report-note');
+        var collapsed = Array.from(s.note.trim().replace(/\s+/g, ' ')).length;
+        var noteBonus = s.reportKind === 'screenshot' && collapsed >= 14 && rawLength <= limit;
+        noteField.classList.toggle('is-note-bonus', noteBonus);
+        counter.classList.toggle('is-bonus', noteBonus);
         counter.classList.toggle('is-required', s.reportKind !== 'screenshot' && length < 24 || rawLength > limit);
+        if (rawLength > limit) counter.textContent = t('excess', {count: rawLength - limit});
+        else if (s.reportKind === 'screenshot') counter.textContent = noteBonus
+            ? ((typeof lang !== 'undefined' && lang === 'ru') ? '✦ +0,2 · ' : '✦ +0.2 · ') + rawLength + '/500'
+            : String(Math.max(0, 14 - collapsed)) + ((typeof lang !== 'undefined' && lang === 'ru') ? ' до ✦' : ' to ✦');
+        else counter.textContent = length < 24 ? String(24 - length) : rawLength + '/' + limit;
         var test = typeof myTests !== 'undefined' && myTests.find(function (row) { return Number(row.id) === Number(s.appId); });
         renderReviewOption(test, c);
         var seriesEligible = !c.buffer && !(test && typeof isTestedToday === 'function' && isTestedToday(test));
