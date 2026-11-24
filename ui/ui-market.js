@@ -7194,10 +7194,10 @@ function _renderContributionCurrentTab(payload) {
     if (bugsEl) bugsEl.textContent = String(Math.round(Number(me.bugs_count || 0)));
     if (ideasEl) ideasEl.textContent = String(Math.round(Number(me.ideas_count || 0)));
     if (reviewsEl) reviewsEl.textContent = String(Math.round(Number(me.play_reviews_count || 0)));
-
-    let extraCounts=document.getElementById('contribution-report-counts');
-    if(!extraCounts&&reviewsEl){extraCounts=document.createElement('div');extraCounts.id='contribution-report-counts';extraCounts.className='mk-report-counts';reviewsEl.closest('.contribution-stats')?.appendChild(extraCounts);if(!extraCounts.isConnected)reviewsEl.parentElement.parentElement.appendChild(extraCounts);}
-    if(extraCounts)extraCounts.textContent=['five_screens_count','text_reports_count','video_reports_count'].map((k,i)=>window.t('mkContribution'+(i+3),{},lang)+': '+Number(me[k]||0)).join(' · ');
+    [['contribution-three-count','three_screens_count'],['contribution-four-count','four_screens_count'],['contribution-five-count','five_screens_count'],['contribution-note-count','text_reports_count'],['contribution-video-count','video_reports_count']].forEach(function(pair){
+        var node=document.getElementById(pair[0]);
+        if(node)node.textContent=String(Math.round(Number(me[pair[1]]||0)));
+    });
     const moderationEl = document.getElementById('contribution-moderation-summary');
     if (moderationEl) {
         // Summary line now lives inside the moderation accordion header.

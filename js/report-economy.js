@@ -12,12 +12,12 @@
             paceBase: '⚡ Темп Квот {pct} · ещё {points} ✦ до бонуса Спринта +15% ›',
             pacePlain: 'Базовый темп Квот · ещё {points} ✦ до +15% ›',
             paceLoading: '⚡ Темп Квот считается…',
-            title: 'Награды и темп Квот', brings: 'Этот отчёт принесёт',
-            quota: '⚡ +{n} Квот', quotaHint: 'база {base} · темп {pct}',
-            score: '✦ +{n} Вклада', pending: 'после проверки владельцем',
-            formula: 'Как складывается ваш темп Квот', sprint: '✦ Спринт', profile: '🛡 Профиль',
-            brake: '×0.70 · тормоз', instead: 'вместо {pct}',
-            why: 'Почему темп снижен на 30%', relNeed: 'Надёжность {n}% — нужно от 50%', karmaNeed: 'Карма {n} — нужно ≥ 0',
+            title: 'Награды и скорость набора квот', brings: 'Этот отчёт принесёт',
+            quota: '⚡ +{n} Квот', quotaHint: 'база {base}',
+            score: '✦ +{n} Вклада', pending: 'после проверки',
+            formula: 'Как складывается скорость', sprint: 'Спринт', profile: 'Профиль',
+            brake: 'снижение', instead: 'вместо {pct}',
+            why: 'Почему скорость ниже', relNeed: 'Надёжность {n}% · нужно от 50%', karmaNeed: 'Карма {n} · нужно от 0',
             rel: 'Надёжность ›', karma: 'Карма ›', best: 'Берётся лучший результат',
             prev: 'Прошлый #{n}', now: 'Текущий #{n}', acting: 'Действует сейчас ✓', saved: 'минимум защищён',
             below: '▼ ниже прошлого', above: '↑ {pct} к прошлому',
@@ -36,12 +36,12 @@
             paceBase: '⚡ Quota pace {pct} · {points} ✦ until the +15% sprint bonus ›',
             pacePlain: 'Base quota pace · {points} ✦ until +15% ›',
             paceLoading: '⚡ Quota pace is loading…',
-            title: 'Rewards and quota pace', brings: 'This report adds',
-            quota: '⚡ +{n} quota', quotaHint: 'base {base} · pace {pct}',
-            score: '✦ +{n} contribution', pending: 'after the owner accepts it',
-            formula: 'How your quota pace is built', sprint: '✦ Sprint', profile: '🛡 Profile',
-            brake: '×0.70 · slowdown', instead: 'instead of {pct}',
-            why: 'Why the pace is 30% slower', relNeed: 'Reliability {n}% — 50% is required', karmaNeed: 'Karma {n} — needs to be at least 0',
+            title: 'Rewards and quota speed', brings: 'This report adds',
+            quota: '⚡ +{n} quota', quotaHint: 'base {base}',
+            score: '✦ +{n} contribution', pending: 'after review',
+            formula: 'How the speed is built', sprint: 'Sprint', profile: 'Profile',
+            brake: 'reduction', instead: 'instead of {pct}',
+            why: 'Why the speed is lower', relNeed: 'Reliability {n}% · 50% required', karmaNeed: 'Karma {n} · needs 0 or more',
             rel: 'Reliability ›', karma: 'Karma ›', best: 'The better result is used',
             prev: 'Previous #{n}', now: 'Current #{n}', acting: 'Active now ✓', saved: 'floor is kept',
             below: '▼ below the previous sprint', above: '↑ {pct} vs previous',
@@ -79,35 +79,55 @@
         if (!score.total) return text('chipEmpty');
         return text(score.pending ? 'chipWait' : 'chip', { n: num(score.total) });
     }
-    function paceLabel(preview, score) {
-        if (!preview) return text('paceLoading');
+    function fine(value) {
+        var rounded = Math.round(Number(value || 0) * 10000) / 10000;
+        var textValue = String(rounded);
+        return lang() === 'ru' ? textValue.replace('.', ',') : textValue;
+    }
+    function paceHtml(preview) {
+        if (!preview) return '<span class="rp-muted">' + e(text('paceLoading')) + '</span>';
         var total = pct(preview.total_multiplier);
+        var hot = Number(preview.total_pct) >= 20;
         var current = preview.current_sprint, previous = preview.prev_sprint;
+        var aside = '';
+        var arrow = '';
         if (preview.is_slowed_down) {
-            var reason = (preview.slowdown_reasons || []).indexOf('low_reliability') >= 0
+            aside = (preview.slowdown_reasons || []).indexOf('low_reliability') >= 0
                 ? (lang() === 'ru' ? 'Надёжность ' : 'Reliability ') + (preview.reliability_index == null ? '—' : preview.reliability_index + '%')
                 : (lang() === 'ru' ? 'Карма ' : 'Karma ') + num(preview.karma);
-            return text('paceSlow', { pct: total, reason: reason });
+        } else if (preview.sprint_source === 'floor' && previous) {
+            aside = (lang() === 'ru' ? 'бронь #' : 'held #') + previous.season_number + (current && current.rank ? (lang() === 'ru' ? ' · сейчас #' : ' · now #') + current.rank : '');
+            if (Number(preview.sprint_delta_pct) < 0) arrow = '<i class="rp-down">↓</i>';
+        } else if (preview.sprint_source === 'live_up' && current) {
+            arrow = '<i class="rp-up">↑</i>';
+            aside = (lang() === 'ru' ? 'Спринт #' : 'Sprint #') + current.season_number + (lang() === 'ru' ? ' · до цели ещё ' : ' · ') + num(current.points_to_next_tier) + ' ✦';
+        } else if (preview.sprint_source === 'live_match' && current) {
+            aside = (lang() === 'ru' ? 'Спринт #' : 'Sprint #') + current.season_number + ' · ' + (current.next_tier_label || '') + ' · ' + num(current.points_to_next_tier) + ' ✦';
+        } else {
+            var left = current ? num(current.points_to_threshold) : '5';
+            aside = (lang() === 'ru' ? 'ещё ' : '') + left + (lang() === 'ru' ? ' ✦ до +15%' : ' ✦ to +15%');
         }
-        var left = current ? num(current.points_to_next_tier) : num(Math.max(0, 5 - (score ? score.total : 0)));
-        if (preview.sprint_source === 'floor' && previous) return text('paceFloor', { pct: total, season: previous.season_number, rank: current && current.rank || '—' });
-        if (preview.sprint_source === 'live_up' && current) return text('paceUp', { pct: total, season: current.season_number, rank: current.rank || '—', next: current.next_tier_label === '+100%' ? 1 : 3, points: left });
-        if (preview.sprint_source === 'live_match' && current) return text('paceMatch', { pct: total, season: current.season_number, rank: current.rank || '—', goal: current.next_tier_label || 'Top', points: left });
-        if (!preview.profile_multiplier || preview.profile_multiplier === 1 && preview.sprint_multiplier === 1) return text('pacePlain', { points: left });
-        return text('paceBase', { pct: total, points: left });
+        return '<span class="rp-bolt' + (hot ? ' is-hot' : '') + '">⚡</span><b>' + e(total) + '</b>' + arrow + '<span class="rp-muted">' + e(aside) + '</span>';
+    }
+    function fine(value) {
+        var rounded = Math.round(Number(value || 0) * 10000) / 10000;
+        var shown = String(rounded);
+        return lang() === 'ru' ? shown.replace('.', ',') : shown;
     }
     function sheetHtml(preview, score) {
-        var base = num(preview ? preview.base_quota : 0.01);
+        var base = fine(preview ? preview.base_quota : 0.01);
         var pace = preview ? pct(preview.total_multiplier) : '+0%';
-        var quota = preview ? num(Number(preview.base_quota || 0.01) * Number(preview.total_multiplier || 1)) : '0';
+        var quota = preview ? fine(Number(preview.base_quota || 0.01) * Number(preview.total_multiplier || 1)) : '0';
         var parts = [];
         if (score.photos) parts.push((score.photos === 0.5 ? '5' : score.photos === 0.3 ? '4' : '3') + (lang() === 'ru' ? ' фото +' : ' photos +') + num(score.photos));
         if (score.comment) parts.push((lang() === 'ru' ? 'текст +' : 'note +') + num(score.comment));
         if (score.video) parts.push((lang() === 'ru' ? 'видео +' : 'video +') + num(score.video));
         if (score.pending) parts.push(text('pending'));
-        var sprintCard = preview ? pct(preview.sprint_multiplier) + ' <small>×' + Number(preview.sprint_multiplier || 1).toFixed(2) + '</small>' : '—';
+        var sprintPct = preview ? pct(preview.sprint_multiplier) : '+0%';
+        var sprintCoef = preview ? '×' + Number(preview.sprint_multiplier || 1).toFixed(2) : '';
         var profileValue = preview ? pct(preview.profile_multiplier) : '+0%';
         var slowed = preview && preview.is_slowed_down;
+        var hot = preview && Number(preview.total_pct) >= 20;
         var compare = '';
         if (preview && (preview.prev_sprint || preview.current_sprint)) {
             var prev = preview.prev_sprint, curr = preview.current_sprint;
@@ -123,7 +143,7 @@
         ];
         return '<div class="re-sheet" role="dialog" aria-modal="true"><header><strong>' + e(text('title')) + '</strong><button type="button" data-re-close aria-label="Close">×</button></header><div class="re-body">' +
             '<section class="re-block"><h4>' + e(text('brings')) + '</h4><div class="re-tiles"><button type="button" data-re-open="quota"><b>' + e(text('quota', { n: quota })) + '</b><small>' + e(text('quotaHint', { base: base, pct: pace })) + '</small></button><div><b>' + e(text('score', { n: num(score.total) })) + '</b><small>' + e(parts.join(' · ') || '—') + '</small></div></div></section>' +
-            '<section class="re-block"><h4>' + e(text('formula')) + '</h4><div class="re-formula"><div><small>' + e(text('sprint')) + '</small><b>' + sprintCard + '</b></div><span>×</span><div class="' + (slowed ? 'is-slow' : '') + '"><small>' + e(text('profile')) + '</small><b>' + e(profileValue) + '</b><small>' + e(slowed ? text('brake') : '') + '</small></div><span>=</span><div><small>⚡</small><b>' + e(pace) + '</b>' + (slowed ? '<small>' + e(text('instead', { pct: pct(preview.without_penalty_multiplier) })) + '</small>' : '') + '</div></div>' + why + '</section>' +
+            '<section class="re-block"><h4>' + e(text('formula')) + '</h4><div class="re-formula"><div><span>' + e(text('sprint')) + '</span><b>' + e(sprintPct) + '</b><small>' + e(sprintCoef) + '</small></div><span class="re-op">×</span><div><span>' + e(text('profile')) + '</span><b>' + e(profileValue) + '</b><small>' + e(slowed ? text('brake') : '') + '</small></div><span class="re-op">=</span><div><span class="rp-bolt' + (hot ? ' is-hot' : '') + '">⚡</span><b>' + e(pace) + '</b>' + (slowed && preview.without_penalty_multiplier ? '<small>' + e(text('instead', { pct: pct(preview.without_penalty_multiplier) })) + '</small>' : '') + '</div></div>' + why + '</section>' +
             compare +
             '<section class="re-block"><h4>' + e(text('gives')) + '</h4><div class="re-checks">' + checks.map(function (item) { return '<span class="' + (item[1] ? 'is-on' : '') + '">' + (item[1] ? '✓ ' : '○ ') + e(text(item[0])) + '</span>'; }).join('') + '</div></section></div></div>';
     }
@@ -161,5 +181,5 @@
             return cache.data;
         }).catch(function () { return cache.data; });
     }
-    window.ReportEconomy = { pointsOf: pointsOf, chipLabel: chipLabel, paceLabel: paceLabel, openSheet: openSheet, refresh: refresh, current: function () { return cache.data; } };
+    window.ReportEconomy = { pointsOf: pointsOf, chipLabel: chipLabel, paceHtml: paceHtml, openSheet: openSheet, refresh: refresh, current: function () { return cache.data; } };
 })();

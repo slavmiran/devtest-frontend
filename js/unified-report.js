@@ -464,7 +464,7 @@
         else if (images >= 3) chip += ' is-boosted';
         var label = !eligible && screenshot ? t('noDailyBonus') : (window.ReportEconomy ? ReportEconomy.chipLabel(score, s.reportKind) : '✦');
         var preview = window.ReportEconomy ? ReportEconomy.current() : null;
-        var pace = window.ReportEconomy ? ReportEconomy.paceLabel(preview, score) : '';
+        var pace = window.ReportEconomy ? ReportEconomy.paceHtml(preview) : '';
         s.photoCount = images;
         s.videoCount = videos;
         var appId = s.appId || (typeof currentReportAppId !== 'undefined' ? currentReportAppId : 0);
@@ -472,7 +472,7 @@
         series.innerHTML = '<div class="report-info-top"><span>' + escape(t(videos ? 'mediaCount' : images ? 'seriesCount' : 'seriesTitle', {count:images})) + '</span>'
             + '<button type="button" class="' + chip + '" onclick="openReportEconomySheet()">' + escape(label) + '</button></div>'
             + '<div class="report-info-progress" aria-hidden="true">' + [1,2,3,4,5].map(function (n) { return '<i class="' + (images >= n ? 'is-filled' : '') + '"></i>'; }).join('') + '</div>'
-            + '<button type="button" class="report-pace-line' + (preview && preview.is_slowed_down ? ' is-slow' : '') + '" onclick="openReportEconomySheet()">' + escape(pace) + '</button>'
+            + '<button type="button" class="report-pace-line" onclick="openReportEconomySheet()">' + pace + '</button>'
             + (!screenshot ? '<p class="report-info-detail">' + escape(t('qualityHint')) + '</p>' : '');
     }
     window.openReportEconomySheet = function () {
