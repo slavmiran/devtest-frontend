@@ -6434,6 +6434,7 @@ function closeFeedbackRewardModalUi(event) {
 
 function getKarmaSourceLabel(sourceType) {
     const normalized = String(sourceType || '').toLowerCase();
+    if (normalized === 'peer_review') return lang === 'ru' ? 'Оценка партнёра (P2P)' : 'Peer review';
     const keyMap = {
         checkin: 'karmaSrc_checkin',
         overtime_checkin: 'karmaSrc_overtime_checkin',
@@ -6508,6 +6509,7 @@ function renderKarmaHowList() {
         {
             title: label('karmaHowLoseTitle', '🔴 Как потерять'),
             rows: [
+                { label: label('karmaHowPeer', lang === 'ru' ? 'Оценка партнёра' : 'Peer review'), value: '👍 +1.0 / 👎 −1.0' },
                 { label: label('karmaHowAbandon', 'Покинуть проект досрочно (abandoned)'), value: '−3.0' },
                 {
                     label: label('karmaHowCatchupMiss', 'Незакрытый дозапрос контрольного дня'),
@@ -7969,8 +7971,10 @@ function renderKarmaDistributionModal(project, feedbackCountByTester) {
             ${rowsHtml}
         </div>
 
+        <div id="peer-appreciation-host"></div>
         <button type="button" class="btn btn-secondary karma-dist-footer-btn" onclick="closeKarmaDistribution()">${window.escapeHTML(t.inviteClose)}</button>
     `;
+    if (window.PeerReviews) PeerReviews.decorateAppreciation(project);
 }
 
 async function openKarmaDistribution(projectId) {
