@@ -14,7 +14,7 @@
             'We assemble the tester team, manage a 15-day cycle and help prepare your production access application.',
             'Мы собираем команду тестировщиков, ведём 15-дневный цикл и помогаем подготовить заявку на доступ к production.'
         ],
-        price: ['$20', '$20'],
+        price: ['$23', '$23'],
         priceNote: ['one-time payment for one app', 'разовый платеж за одно приложение'],
         includedLabel: ['What is included', 'Что входит'],
         benefit1Title: ['12+ real testers', '12+ реальных тестировщиков'],
@@ -33,8 +33,8 @@
             'Если доступ к production не получен, мы вернем оплату.'
         ],
         footnote: [
-            'Official price $20. Crypto — $20. PayPal / bank — $20 + $3 fee.',
-            'Официальная цена $20. Крипто — $20. PayPal / банк — $20 + комиссия $3.'
+            'Price $23 with crypto, PayPal or bank transfer.',
+            'Стоимость $23 при оплате криптовалютой, через PayPal или банк.'
         ],
         cta: ['Add your app', 'Добавить приложение'],
         close: ['Close', 'Закрыть']
