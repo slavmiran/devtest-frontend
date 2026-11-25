@@ -360,7 +360,7 @@
             <p id="t-disclaimerText" data-i18n="disclaimerText" style="margin: 8px 0 0 0; color: var(--hint-color); font-size: 12px; line-height: 1.4; padding-right: 20px;"></p>
             <div style="margin-top: 12px;">
                 <button type="button" onclick="if(typeof showGuaranteedTestOfferModal==='function')showGuaranteedTestOfferModal();" class="btn btn-primary" data-i18n="bannerGuaranteedTestBtn" style="width: 100%; border-radius: 12px; font-weight: 600; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; padding: 10px 16px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;">
-                    🛡 Гарантированное закрытое тестирование ($20)
+                    🛡 Гарантированное закрытое тестирование ($23)
                 </button>
             </div>
         </div>
@@ -1038,6 +1038,10 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="t-deleteModalTitle" data-i18n="deleteModalTitle">Завершить тестирование?</h3>
             <div id="delete-dynamic-info"></div>
+            <div class="delete-info-block obligation" role="note">
+                <span class="delete-obligation__icon" aria-hidden="true">⚠️</span>
+                <p id="t-deleteModalObligation" data-i18n="deleteModalObligation">По правилам платформы нужно завершить все взятые взаимные обязательства. Если поступят жалобы от пользователей, на профиль может быть наложено ограничение.</p>
+            </div>
             <div class="form-group">
                 <label class="form-label" id="t-deleteMessageLabel" data-i18n="deleteMessageLabel">Пару слов благодарности тестерам (необязательно)...</label>
                 <textarea id="delete-message" class="form-input" rows="3" placeholder="" data-i18n-placeholder="deleteMessagePlaceholder"></textarea>
