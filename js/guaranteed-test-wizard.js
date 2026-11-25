@@ -171,18 +171,18 @@
         methodCrypto: ['Crypto transfer', 'Криптоперевод'],
         methodPaypal: ['PayPal', 'PayPal'],
         methodFiat: ['Bank / local currency', 'Банк / местная валюта'],
-        badgeRecommended: ['Recommended', 'Рекомендуем'],
-        badgeFee: ['+$3 fee', '+$3 комиссия'],
         hintCrypto: ['Choose an exchange', 'Выберите биржу'],
         hintSteps: ['Tap to open the payment steps', 'Нажмите, чтобы открыть шаги оплаты'],
         selectMethod: ['Select a payment method', 'Выберите способ оплаты'],
         selectExchange: ['Select an exchange', 'Выберите биржу'],
         openSteps: ['Payment steps · ${amount}', 'Шаги оплаты · ${amount}'],
-        priceBase: ['$20', '$20'],
+        priceBase: ['$23', '$23'],
+        // Used only by the Phase-2 $BUST top-up flow.
+        badgeFee: ['+$3 fee', '+$3 комиссия'],
         priceFeeExtra: ['+$3', '+$3'],
         amountDueWithFee: [
-            '$20 + $3 fee = $23',
-            '$20 + комиссия $3 = $23'
+            '$23',
+            '$23'
         ],
 
         flowCryptoTitle: ['Crypto transfer · {name}', 'Криптоперевод · {name}'],
@@ -194,8 +194,8 @@
         ],
         flowPaypalTitle: ['PayPal transfer', 'Перевод через PayPal'],
         flowPaypalSubtitle: [
-            'Service $20 + $3 fee. Pay $23 in PayPal, then attach the screenshot.',
-            'Услуга $20 + комиссия $3. Оплатите $23 в PayPal, затем приложите скриншот.'
+            'Service $23. Pay $23 in PayPal, then attach the screenshot.',
+            'Услуга $23. Оплатите $23 в PayPal, затем приложите скриншот.'
         ],
         flowPaypalStep: ['Pay in PayPal', 'Оплатите в PayPal'],
         flowPaypalDesc: [
@@ -205,14 +205,14 @@
         payPaypal: ['Pay $23', 'Оплатить $23'],
         paypalManual: ['Pay manually', 'оплатить вручную'],
         paypalManualHint: [
-            'Copy the email, open PayPal and complete the transfer of $23 ($20 + $3 fee).',
-            'Скопируйте почту, откройте PayPal и переведите $23 ($20 + комиссия $3).'
+            'Copy the email, open PayPal and complete the transfer of $23.',
+            'Скопируйте почту, откройте PayPal и переведите $23.'
         ],
         openPaypal: ['Open PayPal', 'Открыть PayPal'],
         flowFiatTitle: ['Bank / local currency', 'Банк / местная валюта'],
         flowFiatSubtitle: [
-            'Service $20 + $3 fee. The manager will convert $23 into your local currency.',
-            'Услуга $20 + комиссия $3. Менеджер пересчитает $23 в вашу местную валюту.'
+            'Service $23. The manager will convert $23 into your local currency.',
+            'Услуга $23. Менеджер пересчитает $23 в вашу местную валюту.'
         ],
         flowFiatStep: ['Get the payment details', 'Получите реквизиты'],
         flowFiatDesc: [
@@ -223,8 +223,8 @@
         fiatBankPlaceholder: ['Ziraat, Kaspi, T-Bank…', 'Ziraat, Kaspi, Т-Банк…'],
         fiatPersonal: ['Paying from a personal account', 'Оплачиваю с личного счета'],
         fiatTip: [
-            '💡 The manager converts $20 + $3 fee ($23) into your currency at the current rate and sends the exact amount with payment details in chat.',
-            '💡 Менеджер пересчитает $20 + комиссию $3 ($23) в вашу валюту по текущему курсу и пришлёт точную сумму и реквизиты в чате.'
+            '💡 The manager converts $23 into your currency at the current rate and sends the exact amount with payment details in chat.',
+            '💡 Менеджер пересчитает $23 в вашу валюту по текущему курсу и пришлёт точную сумму и реквизиты в чате.'
         ],
         fiatGetRequisites: ['Get payment details', 'Получить реквизиты'],
         fiatRequisitesRequested: ['Details requested', 'Реквизиты запрошены'],
@@ -250,8 +250,8 @@
         fiatPersonalYes: ['Yes', 'Да'],
         fiatPersonalNo: ['No', 'Нет'],
         fiatDmMessage: [
-            'Hello! I want to pay for Private Testing ($20).\n📌 Order: #{code} ({app})\n💳 Payment currency: {currency}\n🏦 My bank: {bank}\n👤 Payment from personal account: {personal}\n💰 Amount with fee: $23 (need equivalent in {currency})\n\nPlease calculate the exact amount in {currency} and send the payment details.',
-            'Здравствуйте! Хочу оплатить Приватное тестирование ($20).\n📌 Заказ: #{code} ({app})\n💳 Валюта оплаты: {currency}\n🏦 Мой банк: {bank}\n👤 Оплата с личного счета: {personal}\n💰 Сумма с комиссией: $23 (нужен эквивалент в {currency})\n\nПожалуйста, рассчитайте точную сумму в {currency} и выдайте реквизиты.'
+            'Hello! I want to pay for Private Testing ($23).\n📌 Order: #{code} ({app})\n💳 Payment currency: {currency}\n🏦 My bank: {bank}\n👤 Payment from personal account: {personal}\n💰 Amount: $23 (need equivalent in {currency})\n\nPlease calculate the exact amount in {currency} and send the payment details.',
+            'Здравствуйте! Хочу оплатить Приватное тестирование ($23).\n📌 Заказ: #{code} ({app})\n💳 Валюта оплаты: {currency}\n🏦 Мой банк: {bank}\n👤 Оплата с личного счета: {personal}\n💰 Сумма: $23 (нужен эквивалент в {currency})\n\nПожалуйста, рассчитайте точную сумму в {currency} и выдайте реквизиты.'
         ],
 
         uploadStepTitle: ['Payment screenshot', 'Скриншот оплаты'],
@@ -676,11 +676,11 @@
         if (bustTopupContext && Number.isFinite(Number(bustTopupContext.usdBase)) && Number(bustTopupContext.usdBase) > 0) {
             return Number(bustTopupContext.usdBase);
         }
-        return 20;
+        return 23;
     }
 
     function getPaymentFee(method) {
-        return (method === 'paypal' || method === 'rub') ? 3 : 0;
+        return bustTopupContext && (method === 'paypal' || method === 'rub') ? 3 : 0;
     }
 
     function getPaymentAmount(method) {
@@ -1234,7 +1234,7 @@
                     <div class="gtw-plan-label">${L('planLabel')}</div>
                     <h2 class="gtw-plan-title">${L('planTitle')}</h2>
                     <div class="gtw-plan-price-row">
-                        <span class="gtw-plan-price">$20</span>
+                        <span class="gtw-plan-price">$23</span>
                         <span class="gtw-plan-subtitle">${L('planPriceNote')}</span>
                     </div>
                     <div class="gtw-plan-features">
@@ -1279,11 +1279,10 @@
                                     <div class="gtw-method-info">
                                         <div class="gtw-method-title-row">
                                             <span class="gtw-method-title">${L('methodCrypto')}</span>
-                                            <span class="gtw-method-badge gtw-badge-rec">${L('badgeRecommended')}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <span class="gtw-method-price">$20</span>
+                                <span class="gtw-method-price">$23</span>
                             </div>
                             <p class="gtw-method-action-hint">${L('hintCrypto')}</p>
                             <div class="gtw-exchange-picker" id="gtw-exchange-picker">
@@ -1298,14 +1297,10 @@
                                     <div class="gtw-method-info">
                                         <div class="gtw-method-title-row">
                                             <span class="gtw-method-title">${L('methodPaypal')}</span>
-                                            <span class="gtw-method-badge gtw-badge-fee">${L('badgeFee')}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <span class="gtw-method-price gtw-method-price--fee">
-                                    <span class="gtw-method-price-base">$20</span>
-                                    <span class="gtw-method-price-extra">${L('priceFeeExtra')}</span>
-                                </span>
+                                <span class="gtw-method-price">$23</span>
                             </div>
                             <p class="gtw-method-action-hint">${L('hintSteps')}</p>
                         </div>
@@ -1317,14 +1312,10 @@
                                     <div class="gtw-method-info">
                                         <div class="gtw-method-title-row">
                                             <span class="gtw-method-title">${L('methodFiat')}</span>
-                                            <span class="gtw-method-badge gtw-badge-fee">${L('badgeFee')}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <span class="gtw-method-price gtw-method-price--fee">
-                                    <span class="gtw-method-price-base">$20</span>
-                                    <span class="gtw-method-price-extra">${L('priceFeeExtra')}</span>
-                                </span>
+                                <span class="gtw-method-price">$23</span>
                             </div>
                             <p class="gtw-method-action-hint">${L('hintSteps')}</p>
                         </div>
@@ -2656,8 +2647,8 @@
                         'bank=' + bankName,
                         'personal_account=' + (wizardState.fiatPersonalAccount ? 'yes' : 'no'),
                         'create_mode=requisites',
-                        'base_amount=20',
-                        'fee_amount=3'
+                        'base_amount=23',
+                        'fee_amount=0'
                     ])
                 }))
             });

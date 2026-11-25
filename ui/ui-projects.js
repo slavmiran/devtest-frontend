@@ -5397,7 +5397,7 @@ function refreshAddProjectChooserTexts(overlay) {
         var privateTag = privateOpt.querySelector('.add-project-chooser-option-tag');
         var privateDesc = privateOpt.querySelector('.add-project-chooser-option-desc');
         if (privateTitle) privateTitle.textContent = getProjectUiText('addProjectChooserPrivateTitle', 'Private Testing');
-        if (privateTag) privateTag.textContent = getProjectUiText('addProjectChooserPrivateTag', '$20');
+        if (privateTag) privateTag.textContent = getProjectUiText('addProjectChooserPrivateTag', '$23');
         if (privateDesc) privateDesc.textContent = getProjectUiText('addProjectChooserPrivateDesc', '12+ devices for 14 days without your involvement. Result guarantee.');
     }
 
