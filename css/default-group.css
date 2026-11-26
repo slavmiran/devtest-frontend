@@ -104,10 +104,13 @@
 .apstep-flow {
     /* 12px row pad + half of 26px num = circle center */
     --apstep-num-center: 25px;
-    --apstep-rail-gap: 16px;
+    --apstep-rail-gap: 14px;
     --apstep-wait-inset: 38px;
-    --apstep-rail: rgba(210, 224, 255, 0.72);
-    --apstep-rail-soft: rgba(210, 224, 255, 0.34);
+    /* Soft border-matched tones — no bright accents */
+    --apstep-rail-from: rgba(76, 141, 255, 0.34);
+    --apstep-rail-mid: rgba(142, 156, 180, 0.18);
+    --apstep-rail-to: rgba(255, 99, 92, 0.28);
+    --apstep-rail-wait: rgba(120, 168, 255, 0.30);
     display: flex;
     flex-direction: column;
     gap: var(--apstep-rail-gap);
@@ -123,14 +126,15 @@
     position: absolute;
     left: var(--apstep-num-center);
     top: calc(100% - 1px);
-    width: 2px;
+    width: 1px;
     height: calc(var(--apstep-rail-gap) + 2px);
-    margin-left: -1px;
+    margin-left: -0.5px;
     border-radius: 1px;
     background: linear-gradient(
         180deg,
-        var(--apstep-rail) 0%,
-        var(--apstep-rail-soft) 100%
+        var(--apstep-rail-from) 0%,
+        var(--apstep-rail-mid) 55%,
+        var(--apstep-rail-to) 100%
     );
     pointer-events: none;
     z-index: 2;
@@ -147,46 +151,43 @@
     width: calc(100% - var(--apstep-wait-inset));
 }
 
-/* Vertical collector: touches bottom of step 1 and top of step 2. */
+/* Vertical collector: fades blue → muted → red to match block frames. */
 .access-problem-wait:not([hidden])::before {
     content: '';
     position: absolute;
     left: calc(var(--apstep-num-center) - var(--apstep-wait-inset));
     top: calc(-1 * var(--apstep-rail-gap) - 1px);
     bottom: calc(-1 * var(--apstep-rail-gap) - 1px);
-    width: 2px;
-    margin-left: -1px;
+    width: 1px;
+    margin-left: -0.5px;
     border-radius: 1px;
     background: linear-gradient(
         180deg,
-        var(--apstep-rail) 0%,
-        var(--apstep-rail-soft) 50%,
-        var(--apstep-rail) 100%
+        var(--apstep-rail-from) 0%,
+        var(--apstep-rail-mid) 42%,
+        var(--apstep-rail-mid) 58%,
+        var(--apstep-rail-to) 100%
     );
     pointer-events: none;
     z-index: 2;
 }
 
-/* Horizontal branch into the timer + junction node on the spine. */
+/* Quiet horizontal branch into the timer — no junction dot. */
 .access-problem-wait:not([hidden])::after {
     content: '';
     position: absolute;
-    left: calc(var(--apstep-num-center) - var(--apstep-wait-inset) - 4px);
+    left: calc(var(--apstep-num-center) - var(--apstep-wait-inset));
     top: 50%;
-    width: calc(var(--apstep-wait-inset) - var(--apstep-num-center) + 5px);
-    height: 10px;
-    margin-top: -5px;
-    background:
-        radial-gradient(
-            circle at 4px 50%,
-            #0c0e14 0 2.1px,
-            var(--apstep-rail) 2.2px 3.4px,
-            transparent 3.5px
-        ),
-        linear-gradient(
-            var(--apstep-rail),
-            var(--apstep-rail)
-        ) 4px 50% / calc(100% - 4px) 2px no-repeat;
+    width: calc(var(--apstep-wait-inset) - var(--apstep-num-center) + 1px);
+    height: 1px;
+    margin-top: -0.5px;
+    margin-left: -0.5px;
+    border-radius: 1px;
+    background: linear-gradient(
+        90deg,
+        var(--apstep-rail-mid) 0%,
+        var(--apstep-rail-wait) 100%
+    );
     pointer-events: none;
     z-index: 3;
 }
