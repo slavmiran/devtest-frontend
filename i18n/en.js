@@ -73,7 +73,7 @@
             paidIssueOpenPlayBtn: "Open Google Play",
             paidIssueOpenPlayHint: "Screenshot the payment page",
             paidIssueScreenshotUpload: "Attach screenshot",
-            paidIssueExampleTitle: "What correct setup looks like",
+            paidIssueExampleTitle: "Google Play payment screen after correct setup",
             paidIssueExampleHint: "Tap to compare with Test card",
             accessOverlayPaidTitle: "Paid app access needs attention",
             accessOverlayPaidGuideLink: "How to fix paid app access",

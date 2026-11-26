@@ -3034,12 +3034,22 @@ function renderTests(force) {
         const waitClockText = typeof formatCustomGroupAccessWaitClock === 'function'
             ? formatCustomGroupAccessWaitClock(waitRemainingMs || (15 * 60 * 1000))
             : '15:00';
-        const waitHintHtml = isCustomGroupForIssue
-            ? `<div class="access-problem-wait" data-custom-group-wait="${test.id}"${waitRemainingMs > 0 ? '' : ' hidden'}>`
-                + `<div class="access-problem-wait__clock" data-custom-group-wait-clock="${test.id}">${waitClockText}</div>`
+        const accessWait = typeof getIssueAccessWaitState === 'function'
+            ? getIssueAccessWaitState(test.id)
+            : {
+                remainingMs: isCustomGroupForIssue ? waitRemainingMs : 0,
+                reason: isCustomGroupForIssue && waitRemainingMs > 0 ? 'group' : '',
+                timeLabel: waitClockText
+            };
+        const showAccessWait = accessWait.remainingMs > 0 && (accessWait.reason === 'group' || accessWait.reason === 'project');
+        const accessWaitTitle = window.t(accessWait.reason === 'project' ? 'reportIssueVerificationTitle' : 'accessProblemWaitTitle', {}, lang);
+        const accessWaitText = window.t(accessWait.reason === 'project' ? 'reportIssueVerificationTimer' : 'accessProblemWaitText', {}, lang);
+        const waitHintHtml = (isCustomGroupForIssue || accessWait.reason === 'project')
+            ? `<div class="access-problem-wait" data-custom-group-wait="${test.id}"${showAccessWait ? '' : ' hidden'}>`
+                + `<div class="access-problem-wait__clock" data-custom-group-wait-clock="${test.id}">${window.escapeHTML(accessWait.timeLabel || waitClockText)}</div>`
                 + `<div class="access-problem-wait__copy">`
-                + `<strong>${window.escapeHTML(window.t('accessProblemWaitTitle', {}, lang))}</strong>`
-                + `<span>${window.escapeHTML(window.t('accessProblemWaitText', {}, lang))}</span>`
+                + `<strong>${window.escapeHTML(accessWaitTitle)}</strong>`
+                + `<span>${window.escapeHTML(accessWaitText)}</span>`
                 + `</div></div>`
             : '';
         const isAccessAccordionOpen = typeof isAccessProblemAccordionOpen === 'function'
@@ -3069,7 +3079,6 @@ function renderTests(force) {
                 <div id="access-problem-panel-${test.id}" class="access-problem-panel${accessAccordionOpenClass}" aria-hidden="${isAccessAccordionOpen ? 'false' : 'true'}">
                     <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
                     <div class="access-problem-panel__body">
-                        ${waitHintHtml}
                         <div class="access-problem-panel__title">${window.escapeHTML(window.t('accessProblemTitle', {}, lang))}</div>
                         <div class="access-problem-panel__hint">${window.escapeHTML(window.t('accessProblemHint', {}, lang))}</div>
                         <div class="apstep-flow">
@@ -3080,6 +3089,7 @@ function renderTests(force) {
                                     <span class="apstep__label">${window.escapeHTML(recheckGroupText)}</span>
                                 </button>
                             </div>
+                            ${waitHintHtml}
                             <div class="apstep">
                                 <button type="button" id="access-problem-freeze-${test.id}" class="apstep__row apstep__row--freeze" onclick="event.stopPropagation(); openIssueReportModal(${test.id})" ${isIssueBlocked ? 'disabled' : ''}>
                                     <span class="apstep__num">2</span>
