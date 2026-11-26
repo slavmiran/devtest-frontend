@@ -983,15 +983,21 @@ function syncCustomGroupAccessWaitUi() {
     var panelNodes = document.querySelectorAll('[data-custom-group-wait]');
     Array.prototype.forEach.call(panelNodes, function(wrap) {
         var appId = Number(wrap.getAttribute('data-custom-group-wait') || 0);
-        var remaining = getCustomGroupAccessWaitRemainingMs(appId);
+        var wait = typeof getIssueAccessWaitState === 'function'
+            ? getIssueAccessWaitState(appId)
+            : { remainingMs: getCustomGroupAccessWaitRemainingMs(appId), reason: 'group' };
         var clock = wrap.querySelector('[data-custom-group-wait-clock]');
-        if (remaining <= 0) {
+        var title = wrap.querySelector('strong');
+        var text = wrap.querySelector('span');
+        if (!wait.remainingMs) {
             wrap.hidden = true;
             return;
         }
         wrap.hidden = false;
         anyActive = true;
-        if (clock) clock.textContent = formatCustomGroupAccessWaitClock(remaining);
+        if (clock) clock.textContent = wait.timeLabel || formatCustomGroupAccessWaitClock(wait.remainingMs);
+        if (title) title.textContent = window.t(wait.reason === 'project' ? 'reportIssueVerificationTitle' : 'accessProblemWaitTitle', {}, lang);
+        if (text) text.textContent = window.t(wait.reason === 'project' ? 'reportIssueVerificationTimer' : 'accessProblemWaitText', {}, lang);
     });
 
     var toggleNodes = document.querySelectorAll('[data-custom-group-wait-toggle]');

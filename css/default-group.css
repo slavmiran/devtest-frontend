@@ -102,26 +102,105 @@
 }
 
 .apstep-flow {
+    /* 12px row pad + half of 26px num = circle center */
+    --apstep-num-center: 25px;
+    --apstep-rail-gap: 14px;
+    --apstep-wait-inset: 38px;
+    /* Soft border-matched tones — no bright accents */
+    --apstep-rail-from: rgba(76, 141, 255, 0.34);
+    --apstep-rail-mid: rgba(142, 156, 180, 0.18);
+    --apstep-rail-to: rgba(255, 99, 92, 0.28);
+    --apstep-rail-wait: rgba(120, 168, 255, 0.30);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--apstep-rail-gap);
 }
 
 .apstep {
     position: relative;
 }
 
-.apstep:not(:last-child)::after {
+/* No wait: short vertical between step cards, aligned to the numbers. */
+.apstep-flow > .apstep:not(:last-child)::after {
     content: '';
     position: absolute;
-    left: 25px;
+    left: var(--apstep-num-center);
     top: calc(100% - 1px);
-    width: 2px;
-    height: 10px;
-    margin-left: -1px;
+    width: 1px;
+    height: calc(var(--apstep-rail-gap) + 2px);
+    margin-left: -0.5px;
     border-radius: 1px;
-    background: rgba(255, 255, 255, 0.14);
+    background: linear-gradient(
+        180deg,
+        var(--apstep-rail-from) 0%,
+        var(--apstep-rail-mid) 55%,
+        var(--apstep-rail-to) 100%
+    );
     pointer-events: none;
+    z-index: 2;
+}
+
+/* Wait visible: collector owns the spine (up / right / down). */
+.apstep-flow > .apstep:has(+ .access-problem-wait:not([hidden]))::after {
+    display: none;
+}
+
+.access-problem-wait:not([hidden]) {
+    position: relative;
+    margin-left: var(--apstep-wait-inset);
+    width: calc(100% - var(--apstep-wait-inset));
+}
+
+/* Vertical collector: fades blue → muted → red to match block frames. */
+.access-problem-wait:not([hidden])::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--apstep-num-center) - var(--apstep-wait-inset));
+    top: calc(-1 * var(--apstep-rail-gap) - 1px);
+    bottom: calc(-1 * var(--apstep-rail-gap) - 1px);
+    width: 1px;
+    margin-left: -0.5px;
+    border-radius: 1px;
+    background: linear-gradient(
+        180deg,
+        var(--apstep-rail-from) 0%,
+        var(--apstep-rail-mid) 42%,
+        var(--apstep-rail-mid) 58%,
+        var(--apstep-rail-to) 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Quiet horizontal branch into the timer — no junction dot. */
+.access-problem-wait:not([hidden])::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--apstep-num-center) - var(--apstep-wait-inset));
+    top: 50%;
+    width: calc(var(--apstep-wait-inset) - var(--apstep-num-center) + 1px);
+    height: 1px;
+    margin-top: -0.5px;
+    margin-left: -0.5px;
+    border-radius: 1px;
+    background: linear-gradient(
+        90deg,
+        var(--apstep-rail-mid) 0%,
+        var(--apstep-rail-wait) 100%
+    );
+    pointer-events: none;
+    z-index: 3;
+}
+
+.access-problem-wait:not([hidden]) + .apstep .apstep__row--freeze {
+    background: rgba(255, 59, 48, 0.07);
+    border-color: rgba(255, 59, 48, 0.24);
+    color: rgba(255, 168, 162, 0.92);
+}
+
+.access-problem-wait:not([hidden]) + .apstep .apstep__row--freeze .apstep__num {
+    background: rgba(255, 59, 48, 0.72);
+    box-shadow: none;
 }
 
 .apstep__row {
@@ -211,11 +290,13 @@
 }
 
 .access-problem-wait {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
+    box-sizing: border-box;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: 14px;
     background: rgba(88, 150, 255, 0.10);
     border: 1px solid rgba(120, 168, 255, 0.30);
 }

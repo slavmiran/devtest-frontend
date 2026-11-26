@@ -280,7 +280,7 @@
             paidIssueOpenPlayBtn: "Открыть Google Play",
             paidIssueOpenPlayHint: "Сделать скриншот страницы оплаты",
             paidIssueScreenshotUpload: "Прикрепить скриншот",
-            paidIssueExampleTitle: "Как выглядит правильная настройка",
+            paidIssueExampleTitle: "Окно оплаты в Google Play, после правильной настройки",
             paidIssueExampleHint: "Нажмите, чтобы сравнить с Test card",
             accessOverlayPaidTitle: "Нужно исправить доступ к платному приложению",
             accessOverlayPaidGuideLink: "Как исправить доступ к платному приложению",
