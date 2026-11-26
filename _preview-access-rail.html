@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access rail — collector</title>
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./css/default-group.css?v=20261126-apstep-collector-v1">
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 18px 14px 40px;
+    background: #0b0b10;
+    color: var(--text-color, #f2f2f7);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .frame { width: min(392px, 100%); margin: 0 auto; }
+  .caption {
+    margin: 0 0 10px;
+    color: rgba(235, 235, 245, 0.55);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .access-problem-panel {
+    max-height: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    margin-top: 0 !important;
+    border-color: rgba(255, 59, 48, 0.42) !important;
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <p class="caption">Коллектор слева у кружков: ↑ шаг 1 · → таймер · ↓ шаг 2</p>
+    <div class="access-problem-panel is-open">
+      <img class="access-problem-panel__image" src="./images/SomethingWentWrong.jpg" alt="">
+      <div class="access-problem-panel__body">
+        <div class="access-problem-panel__title">Приложение недоступно в Google Play?</div>
+        <div class="access-problem-panel__hint">Убедитесь, что вы вступили в Google Group и ваш аккаунт Google Play совпадает с аккаунтом, вступившим в группу.</div>
+        <div class="apstep-flow">
+          <div class="apstep">
+            <button type="button" class="apstep__row apstep__row--group">
+              <span class="apstep__num">1</span>
+              <span class="apstep__glyph" aria-hidden="true">
+                <svg class="apstep__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              </span>
+              <span class="apstep__label">Проверить / Перезайти в Google Group</span>
+            </button>
+          </div>
+          <div class="access-problem-wait">
+            <div class="access-problem-wait__clock">13:49</div>
+            <div class="access-problem-wait__copy">
+              <strong>Play Console обновляет доступ</strong>
+              <span>Для нового участника Google Group</span>
+            </div>
+          </div>
+          <div class="apstep">
+            <button type="button" class="apstep__row apstep__row--freeze">
+              <span class="apstep__num">2</span>
+              <span class="apstep__glyph" aria-hidden="true">
+                <svg class="apstep__icon" viewBox="0 0 24 24"><path fill="currentColor" d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L6.76 2.93 5.34 4.34 10 9v2H8L3.34 6.34 1.93 7.76 5.17 11H1v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l4.24 4.24 1.42-1.41L14 15v-2h2l4.66 4.66 1.41-1.42L18.83 13H23v-2z"/></svg>
+              </span>
+              <span class="apstep__label">Заморозить тест и уведомить владельца</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
