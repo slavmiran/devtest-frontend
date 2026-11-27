@@ -1211,6 +1211,39 @@ function _clearStartappQueryParam() {
 // Do not apply this guard to explicit navigation (Back / Add project).
 var _initialGuaranteedTestOfferOpened = false;
 
+function _openAddProjectChooserWhenReady(maxAttempts, intervalMs) {
+    var attemptsLeft = Number(maxAttempts || 0);
+    var waitMs = Number(intervalMs || 0);
+
+    if (attemptsLeft <= 0) attemptsLeft = 20;
+    if (waitMs <= 0) waitMs = 100;
+
+    function tryOpen() {
+        if (typeof window.openAddProjectChooser === 'function') {
+            window.openAddProjectChooser();
+            return true;
+        }
+        return false;
+    }
+
+    if (tryOpen()) return true;
+
+    var pollId = setInterval(function () {
+        attemptsLeft -= 1;
+        if (tryOpen()) {
+            clearInterval(pollId);
+            return;
+        }
+        if (attemptsLeft <= 0) {
+            clearInterval(pollId);
+            if (typeof openModal === 'function') openModal();
+            else console.warn('Add project chooser is not ready yet.');
+        }
+    }, waitMs);
+
+    return false;
+}
+
 function _openGuaranteedTestOfferWhenReady(maxAttempts, intervalMs) {
     var attemptsLeft = Number(maxAttempts || 0);
     var waitMs = Number(intervalMs || 0);
@@ -1405,6 +1438,9 @@ function _parseInitialRouteTarget() {
         if (normalized === 'add_app' || normalized === 'add-app' || normalized === 'new_project' || normalized === 'new-project') {
             routeKind = 'add_app';
         }
+        if (normalized === 'add_project' || normalized === 'add-project' || normalized === 'choose_format') {
+            routeKind = 'add_project';
+        }
         if (normalized === 'guest_projects' || normalized === 'guestprojects') {
             routeKind = 'guest_projects';
         }
@@ -1505,6 +1541,14 @@ function _parseInitialRouteTarget() {
         return {
             tab: 'projects',
             openAdd: true,
+            openFeedback: false,
+            appId: null,
+        };
+    }
+    if (routeKind === 'add_project') {
+        return {
+            tab: 'projects',
+            openAddChooser: true,
             openFeedback: false,
             appId: null,
         };
@@ -1808,6 +1852,16 @@ async function _handleInitialRoute() {
             await toggleGuestProjectsAccordion(true);
         } catch (error) {
             console.error('Initial guest projects route error:', error);
+        }
+        return;
+    }
+
+    if (route.openAddChooser) {
+        try {
+            _openAddProjectChooserWhenReady(20, 100);
+            _clearStartappQueryParam();
+        } catch (error) {
+            console.error('Initial add project chooser route error:', error);
         }
         return;
     }
